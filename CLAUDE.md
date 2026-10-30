@@ -3,9 +3,10 @@
 Read README.md first, then this file. Keep both up to date with every change.
 
 ## Starting a new session (read this first)
-- Repository: https://github.com/G3DGames/steamworks (branch `main`, public).
+- Repository: https://github.com/G3DGames/TSteamAPI (branch `main`, public;
+  renamed from `steamworks` - old links redirect, use the new name).
   Clone it fresh:
-  `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 5 https://github.com/G3DGames/steamworks`
+  `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 5 https://github.com/G3DGames/TSteamAPI`
   The owner's local working copy may be ahead of GitHub:
   build on files the owner attaches or pastes.
 - The cloud workspace has NO Steamworks SDK (partner download, unreachable)
