@@ -12,7 +12,9 @@
   #) }
 unit uConsoleMain;
 
-{$I Steamworks.inc}
+// No Steamworks.inc here: the Delphi demo has no path to the library
+// sources (it links the packages' DCUs); FPC builds pass -Mdelphi anyway.
+{$ifdef FPC}{$mode delphi}{$H+}{$endif}
 
 interface
 

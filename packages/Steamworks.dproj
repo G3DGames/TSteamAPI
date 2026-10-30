@@ -97,8 +97,6 @@
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_UnitSearchPath>..\lib;..\lib\plugins;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_IncludePath>..\lib;..\lib\plugins;$(DCC_IncludePath)</DCC_IncludePath>
-        <!-- DCUs go where the IDE's default Library path looks (with the .dcp),
-             so projects using the library need no paths. Win32: see Base_Win32. -->
         <DCC_DcuOutput>$(BDSCOMMONDIR)\Dcp\$(Platform)</DCC_DcuOutput>
         <GenDll>true</GenDll>
         <GenPackage>true</GenPackage>

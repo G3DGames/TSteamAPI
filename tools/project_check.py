@@ -8,7 +8,8 @@ For every .dproj / .groupproj under the repository:
   * every DCCReference to a .pas exists on disk;
   * the .pas units of the .dproj match the "in '...'" units of the
     .dpr / .dpk (same set, compared case-insensitively);
-  * every project in a .groupproj exists.
+  * every project in a .groupproj exists;
+  * no demo source includes Steamworks.inc (demos have no path to lib/).
 Exit code 0 = clean, 1 = problems found.
 """
 import os, re, sys
@@ -71,6 +72,17 @@ for dirpath, _, files in os.walk(ROOT):
             problems.append(f"{rel}: {os.path.relpath(u, ROOT)} is in {os.path.basename(main)} but not in the .dproj")
         for u in sorted(refs - src):
             problems.append(f"{rel}: {os.path.relpath(u, ROOT)} is in the .dproj but not in {os.path.basename(main)}")
+
+# Demos have no path to lib/ (they link the packages' DCUs), so a demo
+# source that includes Steamworks.inc fails with F1026 in Delphi.
+INC = re.compile(r"\{\$I(?:NCLUDE)?\s+'?Steamworks\.inc", re.I)
+for dirpath, _, files in os.walk(os.path.join(ROOT, "demos")):
+    for f in files:
+        if f.lower().endswith((".pas", ".dpr", ".lpr")):
+            path = os.path.join(dirpath, f)
+            if INC.search(open(path, encoding="latin-1").read()):
+                problems.append(f"{os.path.relpath(path, ROOT)}: includes Steamworks.inc "
+                                "(demos have no path to lib/ - use {$ifdef FPC}{$mode delphi}{$endif})")
 
 for p in problems:
     print(p)

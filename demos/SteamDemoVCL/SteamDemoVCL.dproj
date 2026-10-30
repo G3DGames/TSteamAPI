@@ -9,6 +9,7 @@
         <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <ProjectName Condition="'$(ProjectName)'==''">SteamDemoVCL</ProjectName>
+        <TargetedPlatforms>3</TargetedPlatforms>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -26,6 +27,18 @@
     <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
         <Cfg_1>true</Cfg_1>
         <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win32)'!=''">
+        <Cfg_1_Win32>true</Cfg_1_Win32>
+        <CfgParent>Cfg_1</CfgParent>
+        <Cfg_1>true</Cfg_1>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win64)'!=''">
+        <Cfg_1_Win64>true</Cfg_1_Win64>
+        <CfgParent>Cfg_1</CfgParent>
+        <Cfg_1>true</Cfg_1>
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
@@ -66,6 +79,12 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+        <BT_BuildType>Debug</BT_BuildType>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
+        <BT_BuildType>Debug</BT_BuildType>
+    </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
@@ -99,15 +118,14 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
                 </Source>
                 <WelcomePageFile Path="..\..\README.md"/>
             </Delphi.Personality>
-            <Deployment Version="5">
-            </Deployment>
+            <Deployment Version="5"/>
             <Platforms>
-                <Platform value="Win32">True</Platform>
-                <Platform value="Win64">True</Platform>
+                <Platform value="Android64">False</Platform>
+                <Platform value="Linux64">False</Platform>
                 <Platform value="OSX64">False</Platform>
                 <Platform value="OSXARM64">False</Platform>
-                <Platform value="Linux64">False</Platform>
-                <Platform value="Android64">False</Platform>
+                <Platform value="Win32">True</Platform>
+                <Platform value="Win64">True</Platform>
             </Platforms>
         </BorlandProject>
         <ProjectFileVersion>12</ProjectFileVersion>
@@ -115,4 +133,36 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
     <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
     <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
     <Import Project="$(MSBuildProjectName).deployproj" Condition="Exists('$(MSBuildProjectName).deployproj')"/>
+    <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win32'">
+        <PreBuildEvent/>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
+        <PreBuildEvent/>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win32'">
+        <PreBuildEvent/>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
+        <PreBuildEvent/>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
 </Project>

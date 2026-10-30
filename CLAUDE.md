@@ -441,6 +441,15 @@ FPC) - both now pass False; SteamDemoLCL.lpr lacked {$R *.res} (manifest /
 DPI); IsMultiThread := True before installing the warning hook; VCL image
 lists cd32Bit. Remaining remark: Application.Scaled does nothing for the
 code-built form (pixel sizes are not scaled).
+Tested 2026-10-30 (Win64, pushed as 202871e): the GUI demos look OK (owner).
+SteamConsole first failed F1026 'Steamworks.inc' - the unit still included it
+after the demos lost their library paths; fixed (project_check.py now flags
+any demo source that includes it). SteamConsole then PASSED (17:03, log
+checked): all 5 plug-ins, live data from each, the 6 achievements with
+unlock times, callbacks 336 / 304 named, clean shutdown. Local-time
+conversion CONFIRMED against the Steam client's achievements page: all 6
+unlock times match to the minute, including RANK_001 (unlocked in summer
+time, 09:58 in both - UTC would have shown 08:58).
 Next:
 1. Owner builds everything on Win64 in this order: Steamworks,
    dclSteamworks (install), SteamworksFMX, dclSteamworksFMX (install), both
