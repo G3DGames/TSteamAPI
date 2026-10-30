@@ -53,7 +53,7 @@ tools/
   pasdoc_check.py           PasDoc coverage, ASCII and comment-nesting check
   check_redist.py           validates all seven redistributables (type, CPU, SDK level)
   project_check.py          .dproj BOM / XML / unit-list agreement check
-  gen_projects.py           regenerates .dproj / .dpk / .groupproj from one list
+  gen_projects.py           creates missing .dproj / .dpk / .groupproj (IDE-saved files win)
 ```
 
 ## Getting started

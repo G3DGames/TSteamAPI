@@ -2,7 +2,15 @@
 """Generates the .dproj files (and the package .dpk files) from one
 definition list, so the unit lists in .dpr/.dpk and .dproj always agree.
 
-    python3 tools/gen_projects.py
+    python3 tools/gen_projects.py            # create MISSING files only
+    python3 tools/gen_projects.py --force    # overwrite existing files too
+
+Since the first test session (2026-10-30) the .dproj / .groupproj files in the
+repository have been re-saved by the Delphi 13 IDE (ProjectVersion 20.5, extra
+platform sections). Those IDE-saved files are authoritative. Without --force
+this script only creates files that do not exist yet (e.g. a new demo), so it
+cannot overwrite IDE changes. Use --force only for a deliberate rebuild, then
+check the result in the IDE.
 
 Existing GUIDs are kept (read back from the current .dproj) so the IDE does
 not see a "new" project after regeneration. Output .dproj files are UTF-8
@@ -87,7 +95,7 @@ def dproj(p):
     a('<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">')
     a('    <PropertyGroup>')
     a(f'        <ProjectGuid>{guid}</ProjectGuid>')
-    a('        <ProjectVersion>20.3</ProjectVersion>')
+    a('        <ProjectVersion>20.5</ProjectVersion>')  # Delphi 13 (Studio 37.0)
     a(f'        <FrameworkType>{p["framework"]}</FrameworkType>')
     a(f'        <AppType>{apptype}</AppType>')
     a(f'        <MainSource>{main}</MainSource>')
@@ -275,11 +283,27 @@ def groupproj():
         fh.write(b"\xef\xbb\xbf" + ("\r\n".join(L) + "\r\n").encode("utf-8"))
 
 
+def target(p, ext):
+    return os.path.join(ROOT, *p["dir"].split("\\"), p["name"] + ext)
+
+
 if __name__ == "__main__":
+    import sys
+    force = "--force" in sys.argv[1:]
     for p in PROJECTS:
-        print("wrote", os.path.relpath(dproj(p), ROOT))
+        if force or not os.path.exists(target(p, ".dproj")):
+            print("wrote", os.path.relpath(dproj(p), ROOT))
+        else:
+            print("kept (exists, use --force)", os.path.relpath(target(p, ".dproj"), ROOT))
         if p["kind"] in ("runtime", "design"):
-            dpk(p)
-            print("wrote", p["dir"] + "\\" + p["name"] + ".dpk")
-    groupproj()
-    print("wrote Steamworks.groupproj")
+            if force or not os.path.exists(target(p, ".dpk")):
+                dpk(p)
+                print("wrote", os.path.relpath(target(p, ".dpk"), ROOT))
+            else:
+                print("kept (exists, use --force)", os.path.relpath(target(p, ".dpk"), ROOT))
+    gp = os.path.join(ROOT, "Steamworks.groupproj")
+    if force or not os.path.exists(gp):
+        groupproj()
+        print("wrote Steamworks.groupproj")
+    else:
+        print("kept (exists, use --force) Steamworks.groupproj")
