@@ -178,6 +178,9 @@ cd demos/SteamConsole
 fpc -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc SteamConsole.dpr
 ```
 
+FPC / Lazarus build output (`*.o`, `*.ppu`, `lib/<cpu>-<os>/`, `backup/`,
+`*.lps`, extensionless demo executables, ...) is ignored by `.gitignore`.
+
 ## Checks before delivery
 ```
 python3 tools/pasdoc_check.py

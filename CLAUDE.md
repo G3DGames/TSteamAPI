@@ -21,6 +21,8 @@ Linux64 are also tested. Project AppID: 2275430.
 - `lib/` - framework-free units only. No FMX, VCL or LCL here, ever.
   Must compile with Delphi and with FPC 3.2+ (`{$mode delphi}` via Steamworks.inc).
 - `lib/plugins/` - one unit per Steam interface (`Steamworks.Plugin.<Name>.pas`).
+- Never create a folder with a '-' in its name under any `lib/`: `.gitignore`
+  ignores `lib/*-*/` (Lazarus unit output such as `lib/x86_64-linux/`).
 - `fmx/` - FireMonkey-specific units. Future: `vcl/`, `lcl/`.
 - `dlls/<Platform>/` - Steam redistributable per Delphi platform name
   (Win32, Win64, OSX64, OSXARM64, Linux64).

@@ -18,6 +18,30 @@ __recovery/
 *.bpl
 *.dcp
 
+# Free Pascal / Lazarus build output
+# Lazarus puts units in lib/<cpu>-<os>/ (e.g. lib/x86_64-linux). The pattern
+# needs the dash, so the library folder lib/ and lib/plugins/ stay tracked.
+lib/*-*/
+*.o
+*.ppu
+*.a
+*.or
+*.rst
+*.rsj
+*.compiled
+*.lps
+*.dbg
+*.bak
+backup/
+link*.res
+ppas.sh
+ppas.bat
+heap.trc
+*.app/
+# Extensionless executables FPC writes next to the .dpr / .lpr
+/demos/SteamConsole/SteamConsole
+/demos/SteamDemo/SteamDemo
+
 # Keep the redistributable folders (binaries are added by the owner)
 !dlls/Win32/
 !dlls/Win64/
