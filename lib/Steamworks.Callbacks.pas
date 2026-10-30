@@ -572,7 +572,7 @@ begin
 
   SetLength(Buf, Max(Integer(Completed.m_cubParam), 1));
   Failed := False;
-  Ok := TSteamAPI.SteamAPI_ManualDispatch_GetAPICallResult(APipe, Completed.m_hAsyncCall,
+  Ok := TSteamLib.SteamAPI_ManualDispatch_GetAPICallResult(APipe, Completed.m_hAsyncCall,
     @Buf[0], Integer(Completed.m_cubParam), Completed.m_iCallback, Failed);
 
   Data := Default(TSteamCallbackData);
@@ -616,15 +616,15 @@ var
   Msg: CallbackMsg_t;
   Data: TSteamCallbackData;
 begin
-  if FPumping or (APipe = 0) or not TSteamAPI.IsLoaded then
+  if FPumping or (APipe = 0) or not TSteamLib.IsLoaded then
     Exit;
   FPumping := True;
   FStopRequested := False;
   try
-    TSteamAPI.SteamAPI_ManualDispatch_RunFrame(APipe);
+    TSteamLib.SteamAPI_ManualDispatch_RunFrame(APipe);
     Msg := Default(CallbackMsg_t);
     while (not FStopRequested) and
-          TSteamAPI.SteamAPI_ManualDispatch_GetNextCallback(APipe, @Msg) do
+          TSteamLib.SteamAPI_ManualDispatch_GetNextCallback(APipe, @Msg) do
     begin
       try
         if Msg.m_iCallback = SteamAPICallCompleted_t_k_iCallback then
@@ -639,7 +639,7 @@ begin
           Deliver(Data);
         end;
       finally
-        TSteamAPI.SteamAPI_ManualDispatch_FreeLastCallback(APipe);
+        TSteamLib.SteamAPI_ManualDispatch_FreeLastCallback(APipe);
       end;
     end;
   finally

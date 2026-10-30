@@ -5,7 +5,7 @@ Run from the repository root before every delivery:
 
     python3 tools/pasdoc_check.py
 
-Checks every .pas / .inc / .dpr / .dpk under lib/, fmx/, packages/ and demos/:
+Checks every .pas / .inc / .dpr / .dpk under lib/, fmx/, design/, packages/ and demos/:
 
   * sources are pure ASCII (use #$xxxx codes for other characters);
   * no '{' inside a { } comment (Pascal comments do not nest, so an example
@@ -27,7 +27,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCAN_DIRS = ["lib", "fmx", "packages", "demos"]
+SCAN_DIRS = ["lib", "fmx", "design", "packages", "demos"]
 SOURCE_EXT = (".pas", ".inc", ".dpr", ".dpk")
 
 DECL_KEYWORDS = re.compile(

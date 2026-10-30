@@ -1,0 +1,34 @@
+object Form1: TForm1
+  Left = 0
+  Top = 0
+  Caption = 'Form1'
+  ClientHeight = 480
+  ClientWidth = 640
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  DesignerMasterStyle = 0
+  object Memo1: TMemo
+    Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+    DataDetectorTypes = []
+    Align = Client
+    Size.Width = 640.000000000000000000
+    Size.Height = 480.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 3
+    Viewport.Width = 636.000000000000000000
+    Viewport.Height = 476.000000000000000000
+  end
+  object SteamAPI1: TSteamAPI
+    AppID = 2275430
+    Left = 208
+    Top = 144
+  end
+  object SteamFriends1: TSteamFriends
+    SteamAPI = SteamAPI1
+    OnPersonaStateChange = SteamFriends1PersonaStateChange
+    Left = 304
+    Top = 144
+  end
+end

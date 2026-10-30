@@ -1,6 +1,7 @@
 { @abstract(Main form of the FMX Steamworks demo.)
 
-  Creates a @code(TSteamworksFMX) in code (no design-time package needed),
+  Creates a @code(TSteamAPI) and a @code(TSteamFriends) component in code (no
+  design-time package needed),
   starts and stops Steam on demand and logs everything the core reports, so
   the Debug log can be pasted back as test evidence. Every log line is also
   appended to SteamDemo.log (next to the executable; the documents folder on
@@ -13,8 +14,10 @@ uses
   System.SysUtils, System.StrUtils, System.Types, System.UITypes, System.Classes,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
   FMX.Controls.Presentation, FMX.Memo.Types, FMX.ScrollBox, FMX.Memo,
-  Steamworks.Types, Steamworks.Callbacks, Steamworks.Core, Steamworks.FMX,
-  Steamworks.Plugin.Utils;
+  Steamworks.Types, Steamworks.SDKTypes, Steamworks.Callbacks, Steamworks.Core, Steamworks.Components,
+  Steamworks.FMX,
+  Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
+  Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
 
 const
   { AppID of this project on Steam. }
@@ -48,8 +51,11 @@ type
     { Handler of @link(btnCopy). }
     procedure btnCopyClick(Sender: TObject);
   private
-    { The Steam component (owned by the form). }
-    FSteam: TSteamworksFMX;
+    { The Steam root component (owned by the form). }
+    FSteam: TSteamAPI;
+    { ISteamFriends component linked to @link(FSteam); its
+      OnPersonaStateChange shows the typed callback events. }
+    FFriends: TSteamFriends;
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
     { Appends a time-stamped line to @link(memLog). }
@@ -68,6 +74,8 @@ type
     procedure SteamWarning(Sender: TObject; ASeverity: Integer; const AText: string);
     { Every callback (diagnostics). }
     procedure SteamCallback(Sender: TObject; const AData: TSteamCallbackData);
+    { TSteamFriends.OnPersonaStateChange (callback 304). }
+    procedure FriendPersonaChanged(Sender: TObject; const AData: PersonaStateChange_t);
   end;
 
 var
@@ -96,7 +104,7 @@ begin
   except
     FLogFile := '';
   end;
-  FSteam := TSteamworksFMX.Create(Self);
+  FSteam := TSteamAPI.Create(Self);
   FSteam.AppID := APP_ID;
 {$IFDEF DEBUG}
   // Development: no steam_appid.txt needed, never relaunch through Steam
@@ -112,6 +120,10 @@ begin
   FSteam.OnSteamShutdown := SteamClientExit;
   FSteam.OnWarning := SteamWarning;
   FSteam.OnCallback := SteamCallback;
+  // A plug-in component: linked to the root, attached while Steam runs
+  FFriends := TSteamFriends.Create(Self);
+  FFriends.SteamAPI := FSteam;
+  FFriends.OnPersonaStateChange := FriendPersonaChanged;
   AddLog(Format('Steamworks demo, AppID %d, %d plug-in class(es) linked',
     [APP_ID, Length(TSteamworks.RegisteredPlugins)]));
   if FLogFile <> '' then
@@ -171,6 +183,11 @@ end;
 procedure TfrmMain.btnInfoClick(Sender: TObject);
 var
   U: TSteamUtilsPlugin;
+  Usr: TSteamUserPlugin;
+  Fr: TSteamFriendsPlugin;
+  Apps: TSteamAppsPlugin;
+  Stats: TSteamUserStatsPlugin;
+  Id: TSteamID;
   V: string;
 begin
   if not FSteam.IsRunning then
@@ -179,7 +196,7 @@ begin
     Exit;
   end;
   AddLog(Format('Library %s: %d interface versions detected',
-    [TSteamAPI.LibraryPath, FSteam.Steam.Versions.Count]));
+    [TSteamLib.LibraryPath, FSteam.Steam.Versions.Count]));
   for V in FSteam.Steam.Versions.ToArray do
     AddLog('  ' + V);
   if FSteam.Steam.Client <> nil then
@@ -194,17 +211,70 @@ begin
     AddLog('ISteamUtils plug-in is not active');
     Exit;
   end;
-  AddLog(Format('ISteamUtils: AppID %d, country %s, UI language %s',
-    [U.AppID, U.IPCountry, U.SteamUILanguage]));
-  AddLog('Server time (UTC): ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', U.ServerTime));
-  AddLog('Overlay enabled: ' + BoolToStr(U.IsOverlayEnabled, True));
-  AddLog('Battery: ' + IntToStr(U.CurrentBatteryPower) + ' (255 = mains power)');
-  AddLog('Big Picture: ' + BoolToStr(U.IsSteamInBigPictureMode, True));
-  if U.HasSteamHardwareDetection then
-    AddLog(Format('Steam hardware type: %d, under Proton: %s',
-      [U.SteamHardwareType, BoolToStr(U.IsRunningUnderProton, True)]))
+  // Each block logs its own failure (a plug-in method raises ESteamworksError
+  // when the loaded library lacks its export) and the next block still runs.
+  try
+    AddLog(Format('ISteamUtils: AppID %d, country %s, UI language %s',
+      [U.GetAppID, U.GetIPCountry, U.GetSteamUILanguage]));
+    AddLog('Server time (UTC): ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', U.ServerTime));
+    AddLog('Overlay enabled: ' + BoolToStr(U.IsOverlayEnabled, True));
+    AddLog('Battery: ' + IntToStr(U.GetCurrentBatteryPower) + ' (255 = mains power)');
+    AddLog('Big Picture: ' + BoolToStr(U.IsSteamInBigPictureMode, True));
+    if Assigned(U.Flat.IsRunningOnSteamHardware) then
+      AddLog(Format('Steam hardware type: %d, under Proton: %s',
+        [Ord(U.IsRunningOnSteamHardware), BoolToStr(U.IsRunningUnderProton, True)]))
+    else
+      AddLog('IsRunningOnSteamHardware is not exported (redistributable older than 1.65)');
+  except
+    on E: Exception do AddLog('ISteamUtils failed: ' + E.Message);
+  end;
+
+  Usr := FSteam.Steam.Plugin<TSteamUserPlugin>;
+  if Usr = nil then
+    AddLog('ISteamUser plug-in is not active')
   else
-    AddLog('IsRunningOnSteamHardware is not exported (redistributable older than 1.65)');
+  try
+    Id := Usr.GetSteamID;
+    AddLog(Format('ISteamUser: logged on %s, SteamID %s (account %d, valid %s), Steam level %d',
+      [BoolToStr(Usr.BLoggedOn, True), Id.ToString, Id.AccountID, BoolToStr(Id.IsValid, True),
+       Usr.GetPlayerSteamLevel]));
+  except
+    on E: Exception do AddLog('ISteamUser failed: ' + E.Message);
+  end;
+
+  Fr := FSteam.Steam.Plugin<TSteamFriendsPlugin>;
+  if Fr = nil then
+    AddLog('ISteamFriends plug-in is not active')
+  else
+  try
+    AddLog(Format('ISteamFriends: persona "%s", state %d, immediate friends %d',
+      [Fr.GetPersonaName, Ord(Fr.GetPersonaState), Fr.GetFriendCount(k_EFriendFlagImmediate)]));
+  except
+    on E: Exception do AddLog('ISteamFriends failed: ' + E.Message);
+  end;
+
+  Apps := FSteam.Steam.Plugin<TSteamAppsPlugin>;
+  if Apps = nil then
+    AddLog('ISteamApps plug-in is not active')
+  else
+  try
+    AddLog(Format('ISteamApps: subscribed %s, game language %s, build id %d, owner %s',
+      [BoolToStr(Apps.BIsSubscribed, True), Apps.GetCurrentGameLanguage, Apps.GetAppBuildId,
+       Apps.GetAppOwner.ToString]));
+  except
+    on E: Exception do AddLog('ISteamApps failed: ' + E.Message);
+  end;
+
+  Stats := FSteam.Steam.Plugin<TSteamUserStatsPlugin>;
+  if Stats = nil then
+    AddLog('ISteamUserStats plug-in is not active')
+  else
+  try
+    AddLog(Format('ISteamUserStats: %d achievements defined for this app',
+      [Stats.GetNumAchievements]));
+  except
+    on E: Exception do AddLog('ISteamUserStats failed: ' + E.Message);
+  end;
 end;
 
 procedure TfrmMain.SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
@@ -245,6 +315,13 @@ begin
   AddLog(Format('Callback %d (%s), %d bytes%s', [AData.CallbackID,
     SteamCallbackGroupName(AData.CallbackID), AData.Size,
     IfThen(AData.IsCallResult, ', call result', '')]));
+end;
+
+procedure TfrmMain.FriendPersonaChanged(Sender: TObject; const AData: PersonaStateChange_t);
+begin
+  AddLog(Format('TSteamFriends.OnPersonaStateChange: SteamID %s, change flags $%x (attached %s)',
+    [TSteamID.Create(AData.m_ulSteamID).ToString, AData.m_nChangeFlags,
+     BoolToStr(FFriends.Attached, True)]));
 end;
 
 end.

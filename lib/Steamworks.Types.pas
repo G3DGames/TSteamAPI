@@ -159,8 +159,10 @@ type
     Id := SomeFlatCallReturningUInt64(...);
     if Id.IsValid and (Id.AccountType = k_EAccountTypeIndividual) then
       Writeln(Id.AccountID);
-    #) }
-  TSteamID = record
+    #)
+    A packed record: the SDK declares CSteamID under #pragma pack(1), so inside
+    callback structs it is only byte-aligned (offset 4 after a uint32, not 8). }
+  TSteamID = packed record
     { The raw 64-bit CSteamID. }
     Value: UInt64;
     { TSteamID from a raw 64-bit value. }

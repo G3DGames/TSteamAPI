@@ -145,56 +145,56 @@ end;
 
 function TSteamClientIntf.CreateSteamPipe: HSteamPipe;
 begin
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_CreateSteamPipe) then
-    Result := TSteamAPI.ISteamClient_CreateSteamPipe(FSelf)
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_CreateSteamPipe) then
+    Result := TSteamLib.ISteamClient_CreateSteamPipe(FSelf)
   else
     Result := 0;
 end;
 
 function TSteamClientIntf.ReleaseSteamPipe(APipe: HSteamPipe): Boolean;
 begin
-  Result := (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_BReleaseSteamPipe) and
-            TSteamAPI.ISteamClient_BReleaseSteamPipe(FSelf, APipe);
+  Result := (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_BReleaseSteamPipe) and
+            TSteamLib.ISteamClient_BReleaseSteamPipe(FSelf, APipe);
 end;
 
 function TSteamClientIntf.ConnectToGlobalUser(APipe: HSteamPipe): HSteamUser;
 begin
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_ConnectToGlobalUser) then
-    Result := TSteamAPI.ISteamClient_ConnectToGlobalUser(FSelf, APipe)
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_ConnectToGlobalUser) then
+    Result := TSteamLib.ISteamClient_ConnectToGlobalUser(FSelf, APipe)
   else
     Result := 0;
 end;
 
 function TSteamClientIntf.CreateLocalUser(var APipe: HSteamPipe; AAccountType: EAccountType): HSteamUser;
 begin
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_CreateLocalUser) then
-    Result := TSteamAPI.ISteamClient_CreateLocalUser(FSelf, @APipe, AAccountType)
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_CreateLocalUser) then
+    Result := TSteamLib.ISteamClient_CreateLocalUser(FSelf, @APipe, AAccountType)
   else
     Result := 0;
 end;
 
 procedure TSteamClientIntf.ReleaseUser(APipe: HSteamPipe; AUser: HSteamUser);
 begin
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_ReleaseUser) then
-    TSteamAPI.ISteamClient_ReleaseUser(FSelf, APipe, AUser);
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_ReleaseUser) then
+    TSteamLib.ISteamClient_ReleaseUser(FSelf, APipe, AUser);
 end;
 
 function TSteamClientIntf.ShutdownIfAllPipesClosed: Boolean;
 begin
-  Result := (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_BShutdownIfAllPipesClosed) and
-            TSteamAPI.ISteamClient_BShutdownIfAllPipesClosed(FSelf);
+  Result := (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_BShutdownIfAllPipesClosed) and
+            TSteamLib.ISteamClient_BShutdownIfAllPipesClosed(FSelf);
 end;
 
 procedure TSteamClientIntf.SetLocalIPBinding(const AIP: SteamIPAddress_t; APort: UInt16);
 begin
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_SetLocalIPBinding) then
-    TSteamAPI.ISteamClient_SetLocalIPBinding(FSelf, @AIP, APort);
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_SetLocalIPBinding) then
+    TSteamLib.ISteamClient_SetLocalIPBinding(FSelf, @AIP, APort);
 end;
 
 function TSteamClientIntf.GetIPCCallCount: UInt32;
 begin
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_GetIPCCallCount) then
-    Result := TSteamAPI.ISteamClient_GetIPCCallCount(FSelf)
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_GetIPCCallCount) then
+    Result := TSteamLib.ISteamClient_GetIPCCallCount(FSelf)
   else
     Result := 0;
 end;
@@ -202,143 +202,143 @@ end;
 procedure TSteamClientIntf.SetWarningMessageHook(AHook: SteamAPIWarningMessageHook_t);
 begin
   FHook := AHook;
-  if (FSelf <> nil) and Assigned(TSteamAPI.ISteamClient_SetWarningMessageHook) then
-    TSteamAPI.ISteamClient_SetWarningMessageHook(FSelf, AHook);
+  if (FSelf <> nil) and Assigned(TSteamLib.ISteamClient_SetWarningMessageHook) then
+    TSteamLib.ISteamClient_SetWarningMessageHook(FSelf, AHook);
 end;
 
 function TSteamClientIntf.GetISteamUtils(APipe: HSteamPipe; const AVersion: string): Pointer;
 var
   V: AnsiString;
 begin
-  if (FSelf = nil) or not Assigned(TSteamAPI.ISteamClient_GetISteamUtils) then
+  if (FSelf = nil) or not Assigned(TSteamLib.ISteamClient_GetISteamUtils) then
     Exit(nil);
   V := AnsiString(AVersion);
-  Result := TSteamAPI.ISteamClient_GetISteamUtils(FSelf, APipe, PAnsiChar(V));
+  Result := TSteamLib.ISteamClient_GetISteamUtils(FSelf, APipe, PAnsiChar(V));
 end;
 
 function TSteamClientIntf.GetGenericInterface(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamGenericInterface, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamGenericInterface, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamUser(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamUser, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamUser, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamGameServer(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamGameServer, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamGameServer, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamFriends(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamFriends, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamFriends, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamMatchmaking(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamMatchmaking, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamMatchmaking, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamMatchmakingServers(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamMatchmakingServers, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamMatchmakingServers, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamUserStats(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamUserStats, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamUserStats, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamGameServerStats(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamGameServerStats, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamGameServerStats, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamApps(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamApps, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamApps, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamNetworking(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamNetworking, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamNetworking, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamRemoteStorage(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamRemoteStorage, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamRemoteStorage, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamScreenshots(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamScreenshots, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamScreenshots, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamGameSearch(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamGameSearch, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamGameSearch, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamHTTP(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamHTTP, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamHTTP, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamController(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamController, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamController, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamUGC(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamUGC, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamUGC, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamMusic(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamMusic, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamMusic, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamMusicRemote(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamMusicRemote, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamMusicRemote, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamHTMLSurface(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamHTMLSurface, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamHTMLSurface, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamInventory(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamInventory, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamInventory, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamVideo(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamVideo, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamVideo, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamParentalSettings(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamParentalSettings, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamParentalSettings, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamInput(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamInput, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamInput, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamParties(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamParties, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamParties, AUser, APipe, AVersion);
 end;
 
 function TSteamClientIntf.GetISteamRemotePlay(AUser: HSteamUser; APipe: HSteamPipe; const AVersion: string): Pointer;
 begin
-  Result := UserIntf(TSteamAPI.ISteamClient_GetISteamRemotePlay, AUser, APipe, AVersion);
+  Result := UserIntf(TSteamLib.ISteamClient_GetISteamRemotePlay, AUser, APipe, AVersion);
 end;
 
 end.

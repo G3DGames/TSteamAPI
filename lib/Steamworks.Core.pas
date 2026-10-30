@@ -560,7 +560,7 @@ end;
 
 function TSteamPlugin.Bind(var AProc; const AExportName: string; ARequired: Boolean): Boolean;
 begin
-  Result := TSteamAPI.Bind(AProc, AExportName, False);
+  Result := TSteamLib.Bind(AProc, AExportName, False);
   if not Result then
   begin
     if ARequired then
@@ -691,8 +691,8 @@ begin
   FOnShutdown := nil;
   if FState = swsRunning then
     DoShutdown;
-  if TSteamAPI.IsLoaded then
-    TSteamAPI.Unload;
+  if TSteamLib.IsLoaded then
+    TSteamLib.Unload;
   FreeAndNil(FClient);
   FreeAndNil(FWarnings);
   FreeAndNil(FWarningLock);
@@ -774,38 +774,38 @@ end;
 
 function TSteamworks.LoadLibrary: Boolean;
 begin
-  if TSteamAPI.IsLoaded then
+  if TSteamLib.IsLoaded then
   begin
     if FState = swsIdle then
       FState := swsLibraryLoaded;
     Exit(True);
   end;
-  Log(sllInfo, 'Platform: ' + TSteamAPI.PlatformDescription);
+  Log(sllInfo, 'Platform: ' + TSteamLib.PlatformDescription);
   // Before the library loads: its C runtime may snapshot the environment
   ApplyAppIdEnvironment;
   try
-    TSteamAPI.OnWarning := LibraryWarning;
-    TSteamAPI.Load(FLibraryPath);
+    TSteamLib.OnWarning := LibraryWarning;
+    TSteamLib.Load(FLibraryPath);
     FVersions.Clear;
-    if FVersions.ScanFile(TSteamAPI.LibraryPath) then
+    if FVersions.ScanFile(TSteamLib.LibraryPath) then
       Log(sllDebug, Format('Loaded %s; %d interface versions detected',
-        [TSteamAPI.LibraryPath, FVersions.Count]))
+        [TSteamLib.LibraryPath, FVersions.Count]))
     else
       Log(sllWarning, 'Could not scan the Steam library for interface versions; using built-in defaults');
-    if TSteamAPI.SDKGeneration = '1.65+' then
+    if TSteamLib.SDKGeneration = '1.65+' then
       Log(sllInfo, 'Steam redistributable is from SDK 1.65 or newer')
     else
       Log(sllWarning, Format('Steam redistributable %s is from SDK %s; this library targets 1.65 - ' +
         'copy redistributable_bin from the 1.65 SDK and run tools/check_redist.py',
-        [TSteamAPI.LibraryPath, TSteamAPI.SDKGeneration]));
+        [TSteamLib.LibraryPath, TSteamLib.SDKGeneration]));
     FState := swsLibraryLoaded;
     Result := True;
   except
     on E: Exception do
     begin
-      if TSteamAPI.RedistributableName <> '' then
+      if TSteamLib.RedistributableName <> '' then
         SetFailure(E.Message + sLineBreak + 'This build needs redistributable_bin/' +
-          TSteamAPI.RedistributableName + ' from the Steamworks SDK 1.65 next to the executable')
+          TSteamLib.RedistributableName + ' from the Steamworks SDK 1.65 next to the executable')
       else
         SetFailure(E.Message);
       Result := False;
@@ -822,31 +822,31 @@ begin
     ID := FAppID;
   if (ID = 0) or not LoadLibrary then
     Exit(False);
-  Result := TSteamAPI.SteamAPI_RestartAppIfNecessary(ID);
+  Result := TSteamLib.SteamAPI_RestartAppIfNecessary(ID);
   if Result then
     Log(sllInfo, 'Steam requested a relaunch through the Steam client');
 end;
 
 function TSteamworks.IsSteamRunning: Boolean;
 begin
-  Result := LoadLibrary and Assigned(TSteamAPI.SteamAPI_IsSteamRunning) and
-            TSteamAPI.SteamAPI_IsSteamRunning();
+  Result := LoadLibrary and Assigned(TSteamLib.SteamAPI_IsSteamRunning) and
+            TSteamLib.SteamAPI_IsSteamRunning();
 end;
 
 procedure TSteamworks.ReleaseCurrentThreadMemory;
 begin
-  if TSteamAPI.IsLoaded and Assigned(TSteamAPI.SteamAPI_ReleaseCurrentThreadMemory) then
-    TSteamAPI.SteamAPI_ReleaseCurrentThreadMemory();
+  if TSteamLib.IsLoaded and Assigned(TSteamLib.SteamAPI_ReleaseCurrentThreadMemory) then
+    TSteamLib.SteamAPI_ReleaseCurrentThreadMemory();
 end;
 
 procedure TSteamworks.SetMiniDumpComment(const AComment: string);
 var
   S: AnsiString;
 begin
-  if TSteamAPI.IsLoaded and Assigned(TSteamAPI.SteamAPI_SetMiniDumpComment) then
+  if TSteamLib.IsLoaded and Assigned(TSteamLib.SteamAPI_SetMiniDumpComment) then
   begin
     S := AnsiString(AComment);
-    TSteamAPI.SteamAPI_SetMiniDumpComment(PAnsiChar(S));
+    TSteamLib.SteamAPI_SetMiniDumpComment(PAnsiChar(S));
   end;
 end;
 
@@ -857,7 +857,7 @@ end;
 
 function TSteamworks.GetProc(const AExportName: string): Pointer;
 begin
-  Result := TSteamAPI.GetProc(AExportName);
+  Result := TSteamLib.GetProc(AExportName);
 end;
 
 type
@@ -884,8 +884,8 @@ begin
   end;
   // 2) the factory the C++ accessors use
   A := AnsiString(Ver);
-  if Assigned(TSteamAPI.SteamInternal_FindOrCreateUserInterface) then
-    Result := TSteamAPI.SteamInternal_FindOrCreateUserInterface(FUser, PAnsiChar(A));
+  if Assigned(TSteamLib.SteamInternal_FindOrCreateUserInterface) then
+    Result := TSteamLib.SteamInternal_FindOrCreateUserInterface(FUser, PAnsiChar(A));
   // 3) ISteamClient generic getter
   if (Result = nil) and (FClient <> nil) then
     Result := FClient.GetGenericInterface(FUser, FPipe, Ver);
@@ -910,8 +910,8 @@ begin
       Exit;
   end;
   A := AnsiString(Ver);
-  if Assigned(TSteamAPI.SteamInternal_FindOrCreateGameServerInterface) then
-    Result := TSteamAPI.SteamInternal_FindOrCreateGameServerInterface(FUser, PAnsiChar(A));
+  if Assigned(TSteamLib.SteamInternal_FindOrCreateGameServerInterface) then
+    Result := TSteamLib.SteamInternal_FindOrCreateGameServerInterface(FUser, PAnsiChar(A));
 end;
 
 function TSteamworks.BuildPluginOrder: TSteamPluginClassArray;
@@ -983,9 +983,9 @@ begin
   Mode := FInitMode;
   if Mode = simAuto then
   begin
-    if Assigned(TSteamAPI.SteamAPI_InitFlat) then
+    if Assigned(TSteamLib.SteamAPI_InitFlat) then
       Mode := simFlat
-    else if Assigned(TSteamAPI.SteamInternal_SteamAPI_Init) then
+    else if Assigned(TSteamLib.SteamInternal_SteamAPI_Init) then
       Mode := simVersioned
     else
       Mode := simLegacy;
@@ -994,17 +994,17 @@ begin
   case Mode of
     simFlat:
       begin
-        if not Assigned(TSteamAPI.SteamAPI_InitFlat) then
+        if not Assigned(TSteamLib.SteamAPI_InitFlat) then
         begin
           SetFailure('SteamAPI_InitFlat is not exported by this redistributable');
           Exit(False);
         end;
-        FLastInitResult := TSteamAPI.SteamAPI_InitFlat(@Err);
+        FLastInitResult := TSteamLib.SteamAPI_InitFlat(@Err);
       end;
 
     simVersioned:
       begin
-        if not Assigned(TSteamAPI.SteamInternal_SteamAPI_Init) then
+        if not Assigned(TSteamLib.SteamInternal_SteamAPI_Init) then
         begin
           SetFailure('SteamInternal_SteamAPI_Init is not exported by this redistributable');
           Exit(False);
@@ -1031,19 +1031,19 @@ begin
         finally
           List.Free;
         end;
-        FLastInitResult := TSteamAPI.SteamInternal_SteamAPI_Init(PAnsiChar(Check), @Err);
+        FLastInitResult := TSteamLib.SteamInternal_SteamAPI_Init(PAnsiChar(Check), @Err);
       end;
 
     simLegacy:
       begin
-        if Assigned(TSteamAPI.SteamAPI_Init) then
+        if Assigned(TSteamLib.SteamAPI_Init) then
         begin
-          if TSteamAPI.SteamAPI_Init() then
+          if TSteamLib.SteamAPI_Init() then
             FLastInitResult := k_ESteamAPIInitResult_OK;
         end
-        else if Assigned(TSteamAPI.SteamAPI_InitSafe) then
+        else if Assigned(TSteamLib.SteamAPI_InitSafe) then
         begin
-          if TSteamAPI.SteamAPI_InitSafe() then
+          if TSteamLib.SteamAPI_InitSafe() then
             FLastInitResult := k_ESteamAPIInitResult_OK;
         end
         else
@@ -1190,16 +1190,16 @@ begin
       Exit;
 
     // Steam is up from here; any failure must shut it down again.
-    TSteamAPI.SteamAPI_ManualDispatch_Init();
-    FPipe := TSteamAPI.SteamAPI_GetHSteamPipe();
-    FUser := TSteamAPI.SteamAPI_GetHSteamUser();
+    TSteamLib.SteamAPI_ManualDispatch_Init();
+    FPipe := TSteamLib.SteamAPI_GetHSteamPipe();
+    FUser := TSteamLib.SteamAPI_GetHSteamUser();
     FState := swsRunning;
     FShutdownPending := False;
     FSteamExitSeen := False;
     Log(sllInfo, Format('SteamAPI initialised (pipe %d, user %d)', [FPipe, FUser]));
 
     ClientVer := AnsiString(ResolveVersion(STEAMCLIENT_INTERFACE_VERSION));
-    ClientPtr := TSteamAPI.SteamInternal_CreateInterface(PAnsiChar(ClientVer));
+    ClientPtr := TSteamLib.SteamInternal_CreateInterface(PAnsiChar(ClientVer));
     FreeAndNil(FClient);
     if ClientPtr <> nil then
     begin
@@ -1245,7 +1245,7 @@ begin
   if FClient <> nil then
     FClient.SetWarningMessageHook(nil);
   FreeAndNil(FClient);
-  TSteamAPI.SteamAPI_Shutdown();
+  TSteamLib.SteamAPI_Shutdown();
   FPipe := 0;
   FUser := 0;
   FState := swsLibraryLoaded;

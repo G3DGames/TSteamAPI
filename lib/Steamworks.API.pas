@@ -14,7 +14,7 @@
   Everything is resolved at run time through @link(TSteamDynLib), so the
   program starts (and can report a useful error) when the redistributable is
   missing, and redistributables that add or drop exports do not stop it from
-  loading. Plug-ins bind their own exports with @link(TSteamAPI.Bind).
+  loading. Plug-ins bind their own exports with @link(TSteamLib.Bind).
 
   All Steamworks exports use the cdecl calling convention (S_CALLTYPE).
 
@@ -118,11 +118,11 @@ type
     Usually you do not use this class directly; @code(TSteamworks) loads it.
 
     @longCode(#
-    TSteamAPI.Load;  // default name, next to the exe
-    if TSteamAPI.SteamAPI_IsSteamRunning() then ...
-    TSteamAPI.Unload;
+    TSteamLib.Load;  // default name, next to the exe
+    if TSteamLib.SteamAPI_IsSteamRunning() then ...
+    TSteamLib.Unload;
     #) }
-  TSteamAPI = class
+  TSteamLib = class
   private
     { The loaded redistributable (@nil when not loaded). }
     class var FLib: TSteamDynLib;
@@ -326,7 +326,7 @@ type
     copied from one header revision - keeps vtables in step.
 
     @longCode(#
-    Versions.ScanFile(TSteamAPI.LibraryPath);
+    Versions.ScanFile(TSteamLib.LibraryPath);
     Ver := Versions.Resolve('SteamUtils010');  // e.g. 'SteamUtils011' if that is what was found
     #) }
   TSteamInterfaceVersions = class
@@ -384,9 +384,9 @@ function sysctlbyname(name: PAnsiChar; oldp: Pointer; oldlenp: PNativeUInt;
   external {$ifdef FPC}'c'{$else}'/usr/lib/libc.dylib'{$endif} name 'sysctlbyname';
 {$endif}
 
-{ TSteamAPI }
+{ TSteamLib }
 
-class function TSteamAPI.DefaultLibraryName: string;
+class function TSteamLib.DefaultLibraryName: string;
 begin
 {$if defined(STEAMWORKS_WINDOWS)}
   {$ifdef STEAMWORKS_CPU64}
@@ -403,7 +403,7 @@ begin
 {$endif}
 end;
 
-class function TSteamAPI.BuildTarget: string;
+class function TSteamLib.BuildTarget: string;
 var
   OS, CPU: string;
 begin
@@ -430,7 +430,7 @@ begin
   Result := OS + ' ' + CPU;
 end;
 
-class function TSteamAPI.ProcessTranslation: string;
+class function TSteamLib.ProcessTranslation: string;
 {$if defined(STEAMWORKS_WINDOWS)}
 var
   Fn: TIsWow64Process2;
@@ -468,7 +468,7 @@ begin
 end;
 {$endif}
 
-class function TSteamAPI.PlatformDescription: string;
+class function TSteamLib.PlatformDescription: string;
 var
   T: string;
 begin
@@ -478,7 +478,7 @@ begin
     Result := Result + ', running under ' + T;
 end;
 
-class function TSteamAPI.RedistributableName: string;
+class function TSteamLib.RedistributableName: string;
 begin
 {$if defined(STEAMWORKS_WINDOWS)}
   {$ifdef STEAMWORKS_CPU64}
@@ -507,17 +507,17 @@ begin
 {$endif}
 end;
 
-class function TSteamAPI.IsLoaded: Boolean;
+class function TSteamLib.IsLoaded: Boolean;
 begin
   Result := FLib <> nil;
 end;
 
-class function TSteamAPI.Lib: TSteamDynLib;
+class function TSteamLib.Lib: TSteamDynLib;
 begin
   Result := FLib;
 end;
 
-class function TSteamAPI.LibraryPath: string;
+class function TSteamLib.LibraryPath: string;
 begin
   if FLib <> nil then
     Result := FLib.FileName
@@ -525,7 +525,7 @@ begin
     Result := '';
 end;
 
-class function TSteamAPI.GetProc(const AName: string): Pointer;
+class function TSteamLib.GetProc(const AName: string): Pointer;
 begin
   if FLib = nil then
     Result := nil
@@ -533,7 +533,7 @@ begin
     Result := FLib.Symbol(AName);
 end;
 
-class function TSteamAPI.Bind(var AProc; const AName: string; ARequired: Boolean): Boolean;
+class function TSteamLib.Bind(var AProc; const AName: string; ARequired: Boolean): Boolean;
 begin
   if FLib = nil then
   begin
@@ -544,7 +544,7 @@ begin
     Result := FLib.Bind(AProc, AName, ARequired);
 end;
 
-class function TSteamAPI.SDKGeneration: string;
+class function TSteamLib.SDKGeneration: string;
 begin
   if FLib = nil then
     Result := ''
@@ -557,7 +557,7 @@ begin
     Result := 'pre-1.59';
 end;
 
-class function TSteamAPI.MissingExports: TSteamStringArray;
+class function TSteamLib.MissingExports: TSteamStringArray;
 var
   I: Integer;
 begin
@@ -571,7 +571,7 @@ begin
     Result[I] := FLib.MissingSymbols[I];
 end;
 
-class procedure TSteamAPI.Load(const APath: string);
+class procedure TSteamLib.Load(const APath: string);
 var
   Name: string;
 begin
@@ -595,13 +595,13 @@ begin
   end;
 end;
 
-class procedure TSteamAPI.Unload;
+class procedure TSteamLib.Unload;
 begin
   ClearAll;            // never leave pointers into unloaded code
   FreeAndNil(FLib);
 end;
 
-class procedure TSteamAPI.ClearAll;
+class procedure TSteamLib.ClearAll;
 begin
   SteamAPI_Init := nil;
   SteamAPI_InitSafe := nil;
@@ -663,7 +663,7 @@ begin
   ISteamClient_GetISteamRemotePlay := nil;
 end;
 
-class procedure TSteamAPI.BindAll;
+class procedure TSteamLib.BindAll;
 
   procedure Req(var AProc; const AName: string);
   begin
@@ -913,6 +913,6 @@ end;
 initialization
 
 finalization
-  TSteamAPI.Unload;
+  TSteamLib.Unload;
 
 end.

@@ -7,6 +7,8 @@
   for that lookup. The numbers match the SDK 1.65 Win64 redistributable as
   scanned on 2026-10-30 (28 families); re-check them when updating the SDK
   (the demos' "Show info" / SteamConsole list what the scan finds).
+  ISteamGameSearch and ISteamMusicRemote were removed in SDK 1.65 (no
+  header, not in steam_api.json), so they have no entry here.
 
   @longCode(#
   Ptr := Steam.AcquireUserInterface(STEAMFRIENDS_INTERFACE_VERSION, 'SteamFriends');
@@ -35,8 +37,6 @@ const
   STEAMMATCHMAKING_INTERFACE_VERSION          = 'SteamMatchMaking009';
   { Fallback version string of the STEAMMATCHMAKINGSERVERS interface family. }
   STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION   = 'SteamMatchMakingServers003';
-  { Fallback version string of the STEAMGAMESEARCH interface family. Not found in the SDK 1.65 redistributable - the interface may have been removed. }
-  STEAMGAMESEARCH_INTERFACE_VERSION           = 'SteamMatchGameSearch001';
   { Fallback version string of the STEAMPARTIES interface family. }
   STEAMPARTIES_INTERFACE_VERSION              = 'SteamParties002';
   { Fallback version string of the STEAMUSERSTATS interface family. }
@@ -53,8 +53,6 @@ const
   STEAMSCREENSHOTS_INTERFACE_VERSION          = 'STEAMSCREENSHOTS_INTERFACE_VERSION003';
   { Fallback version string of the STEAMMUSIC interface family. }
   STEAMMUSIC_INTERFACE_VERSION                = 'STEAMMUSIC_INTERFACE_VERSION001';
-  { Fallback version string of the STEAMMUSICREMOTE interface family. Not found in the SDK 1.65 redistributable - the interface may have been removed. }
-  STEAMMUSICREMOTE_INTERFACE_VERSION          = 'STEAMMUSICREMOTE_INTERFACE_VERSION001';
   { Fallback version string of the STEAMHTTP interface family. }
   STEAMHTTP_INTERFACE_VERSION                 = 'STEAMHTTP_INTERFACE_VERSION003';
   { Fallback version string of the STEAMINPUT interface family. }

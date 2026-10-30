@@ -8,16 +8,10 @@ package SteamworksFMX;
 
 requires
   rtl,
-  fmx;
+  fmx,
+  Steamworks;
 
 contains
-  Steamworks.Types in '..\lib\Steamworks.Types.pas',
-  Steamworks.DynLib in '..\lib\Steamworks.DynLib.pas',
-  Steamworks.Versions in '..\lib\Steamworks.Versions.pas',
-  Steamworks.API in '..\lib\Steamworks.API.pas',
-  Steamworks.Callbacks in '..\lib\Steamworks.Callbacks.pas',
-  Steamworks.SteamClient in '..\lib\Steamworks.SteamClient.pas',
-  Steamworks.Core in '..\lib\Steamworks.Core.pas',
   Steamworks.FMX in '..\fmx\Steamworks.FMX.pas';
 
 end.

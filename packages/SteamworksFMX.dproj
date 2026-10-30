@@ -181,13 +181,7 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="fmx.dcp"/>
-        <DCCReference Include="..\lib\Steamworks.Types.pas"/>
-        <DCCReference Include="..\lib\Steamworks.DynLib.pas"/>
-        <DCCReference Include="..\lib\Steamworks.Versions.pas"/>
-        <DCCReference Include="..\lib\Steamworks.API.pas"/>
-        <DCCReference Include="..\lib\Steamworks.Callbacks.pas"/>
-        <DCCReference Include="..\lib\Steamworks.SteamClient.pas"/>
-        <DCCReference Include="..\lib\Steamworks.Core.pas"/>
+        <DCCReference Include="Steamworks.dcp"/>
         <DCCReference Include="..\fmx\Steamworks.FMX.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

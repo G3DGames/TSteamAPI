@@ -171,8 +171,14 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <DCCReference Include="..\..\lib\Steamworks.API.pas"/>
         <DCCReference Include="..\..\lib\Steamworks.Callbacks.pas"/>
         <DCCReference Include="..\..\lib\Steamworks.SteamClient.pas"/>
+        <DCCReference Include="..\..\lib\Steamworks.SDKTypes.pas"/>
         <DCCReference Include="..\..\lib\Steamworks.Core.pas"/>
+        <DCCReference Include="..\..\lib\Steamworks.Components.pas"/>
         <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.Utils.pas"/>
+        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.User.pas"/>
+        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.Friends.pas"/>
+        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.Apps.pas"/>
+        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.UserStats.pas"/>
         <DCCReference Include="src\uConsoleMain.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

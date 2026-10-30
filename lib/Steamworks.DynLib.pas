@@ -25,7 +25,7 @@
   @bold(Important:) procedural variables bound from a library dangle once the
   library is freed. Owners of such variables must clear them before (or
   immediately after) freeing the @link(TSteamDynLib) - see
-  @code(TSteamAPI.Unload) for the pattern.
+  @code(TSteamLib.Unload) for the pattern.
 
   Example:
   @longCode(#

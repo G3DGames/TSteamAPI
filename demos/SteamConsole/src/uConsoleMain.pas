@@ -23,8 +23,9 @@ implementation
 
 uses
   SysUtils, Classes, DateUtils, StrUtils,
-  Steamworks.Types, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
-  Steamworks.Plugin.Utils;
+  Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
+  Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
+  Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
 
 const
   { AppID of this project on Steam. }
@@ -84,6 +85,10 @@ function RunConsoleDemo: Integer;
 var
   Sink: TConsoleSink;
   U: TSteamUtilsPlugin;
+  Usr: TSteamUserPlugin;
+  Fr: TSteamFriendsPlugin;
+  Apps: TSteamAppsPlugin;
+  Stats: TSteamUserStatsPlugin;
   V: string;
   Versions: TSteamStringArray;
   I, PumpMs: Integer;
@@ -99,7 +104,7 @@ begin
     Steam.SetAppIdEnvironment := True;
 
     Say(Format('Steamworks console demo, AppID %d, library %s',
-      [APP_ID, TSteamAPI.DefaultLibraryName]));
+      [APP_ID, TSteamLib.DefaultLibraryName]));
     if not Steam.Initialize then
     begin
       Say(Format('Initialize failed: result %d (%s): %s',
@@ -108,20 +113,43 @@ begin
     end;
 
     Versions := Steam.Versions.ToArray;
-    Say(Format('Loaded %s, %d interface versions detected', [TSteamAPI.LibraryPath, Length(Versions)]));
+    Say(Format('Loaded %s, %d interface versions detected', [TSteamLib.LibraryPath, Length(Versions)]));
     for I := 0 to High(Versions) do
       Say('  ' + Versions[I]);
 
     U := TSteamUtilsPlugin(Steam.FindPlugin(TSteamUtilsPlugin));
     if U <> nil then
     begin
-      V := U.SteamUILanguage;
+      V := U.GetSteamUILanguage;
       Say(Format('ISteamUtils: AppID %d, country %s, language %s, overlay %s',
-        [U.AppID, U.IPCountry, V, BoolToStr(U.IsOverlayEnabled, True)]));
+        [U.GetAppID, U.GetIPCountry, V, BoolToStr(U.IsOverlayEnabled, True)]));
       Say('Server time (UTC): ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', U.ServerTime));
     end
     else
       Say('ISteamUtils plug-in is not active');
+
+    // Generated plug-ins raise ESteamworksError when the loaded library lacks
+    // an export; report it and carry on.
+    try
+      Usr := TSteamUserPlugin(Steam.FindPlugin(TSteamUserPlugin));
+      if Usr <> nil then
+        Say(Format('ISteamUser: logged on %s, SteamID %s, Steam level %d',
+          [BoolToStr(Usr.BLoggedOn, True), Usr.GetSteamID.ToString, Usr.GetPlayerSteamLevel]));
+      Fr := TSteamFriendsPlugin(Steam.FindPlugin(TSteamFriendsPlugin));
+      if Fr <> nil then
+        Say(Format('ISteamFriends: persona "%s", immediate friends %d',
+          [Fr.GetPersonaName, Fr.GetFriendCount(k_EFriendFlagImmediate)]));
+      Apps := TSteamAppsPlugin(Steam.FindPlugin(TSteamAppsPlugin));
+      if Apps <> nil then
+        Say(Format('ISteamApps: subscribed %s, game language %s, build id %d',
+          [BoolToStr(Apps.BIsSubscribed, True), Apps.GetCurrentGameLanguage, Apps.GetAppBuildId]));
+      Stats := TSteamUserStatsPlugin(Steam.FindPlugin(TSteamUserStatsPlugin));
+      if Stats <> nil then
+        Say(Format('ISteamUserStats: %d achievements defined', [Stats.GetNumAchievements]));
+    except
+      on E: Exception do
+        Say('Plug-in call failed: ' + E.ClassName + ': ' + E.Message);
+    end;
 
     PumpMs := PUMP_MS;
     if (ParamCount >= 1) and (StrToIntDef(ParamStr(1), 0) > 0) then

@@ -48,3 +48,6 @@ redistributable_bin/*
 
 # PasDoc output
 docs/html/
+
+# Python bytecode of the tools
+__pycache__/
