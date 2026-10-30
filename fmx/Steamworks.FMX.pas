@@ -4,8 +4,9 @@
   Drop one on the main form (or create it in code), set @link(TSteamAPI.AppID)
   and @link(TSteamAPI.Active). It loads the library, optionally relaunches
   through Steam, initialises the core and all linked plug-ins, pumps callbacks
-  on the UI thread with an FMX TTimer (so every Steam event arrives on the main
-  thread) and attaches the plug-in components (TSteamFriends, TSteamUser, ...)
+  (by default on the UI thread with an FMX TTimer, so every Steam event
+  arrives on the main thread; UpdateMode selects a worker thread or your own
+  loop instead) and attaches the plug-in components (TSteamFriends, TSteamUser, ...)
   linked to it. Everything except the timer, exception display and application
   exit lives in the framework-free @code(TCustomSteamAPI)
   (Steamworks.Components); the VCL and LCL units declare a TSteamAPI of the
@@ -77,8 +78,15 @@ type
     property LibraryPath;
     { Initialisation entry point. }
     property InitMode;
-    { Pump interval in ms; 0 = no timer (call RunCallbacks yourself). }
+    { Timer interval (sumTimer) or worker period (sumThread) in ms; with
+      sumTimer, 0 = no timer (call Update yourself). }
     property CallbackInterval;
+    { Who drains Steam's queue: the timer (sumTimer, default), a worker
+      thread (sumThread) or your own loop calling Update (sumManual). }
+    property UpdateMode;
+    { Where events run in sumThread mode: main thread (default), inside
+      Update, or on the worker. }
+    property Delivery;
     { Forward Steam debug output to OnWarning. }
     property InstallWarningHook;
     { End the application when the Steam client exits. }

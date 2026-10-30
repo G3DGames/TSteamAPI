@@ -8,6 +8,9 @@ program SteamConsole;
 {$APPTYPE CONSOLE}
 
 uses
+  {$ifdef FPC}{$ifdef UNIX}
+  cthreads,   // FPC on Linux / macOS: needed for the worker thread (mode thread / main / worker)
+  {$endif}{$endif}
   SysUtils,
   uConsoleMain in 'src\uConsoleMain.pas';
 

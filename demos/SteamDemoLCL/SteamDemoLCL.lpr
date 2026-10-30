@@ -2,8 +2,9 @@
 program SteamDemoLCL;
 
 { Lazarus / LCL demo for the Steamworks library (AppID 2275430). The form,
-  shared with the VCL demo, is ../shared/uSteamDemoDesktop.pas; this demo
-  compiles the library from source (lib, lib/plugins, lcl - see the .lpi).
+  with the Steam components on it, is src/uMain.pas / .lfm; the library
+  comes from the Lazarus package packages/SteamworksLCL.lpk (a required
+  package in the .lpi - open or install it once so Lazarus knows it).
   Copy the Steam library for the target platform from
   ../../redistributable_bin next to the executable (x86_64-win64/ etc.). }
 
@@ -13,7 +14,7 @@ uses
   {$IFDEF UNIX}
   cthreads,   // Steam calls the warning hook from its own threads
   {$ENDIF}
-  Interfaces, Forms, uSteamDemoDesktop;
+  Interfaces, Forms, uMain;
 
 {$R *.res}  // Lazarus builds it from the .lpi: XP manifest, DPI awareness
 

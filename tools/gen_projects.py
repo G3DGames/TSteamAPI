@@ -43,12 +43,14 @@ PROJECTS = [
          units=[],
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
          search="src", redist=True, depends=["SteamworksFMX"]),
-    # VCL twin of SteamDemo; its form unit is shared with the Lazarus demo
-    # (demos/SteamDemoLCL, a .lpi project - not listed here or in the group)
+    # VCL twin of SteamDemo, components and UI in src/uMain.dfm (the Lazarus
+    # twin, demos/SteamDemoLCL, is a .lpi project - not listed here or in
+    # the group)
     dict(name="SteamDemoVCL", dir="demos\\SteamDemoVCL", kind="app", framework="VCL",
          platforms=["Win32", "Win64"], default="Win64",
-         units=[("uSteamDemoDesktop", "..\\shared\\uSteamDemoDesktop.pas")],
-         forms=[], search="..\\shared", redist=True, depends=["SteamworksVCL"]),
+         units=[],
+         forms=[("uMain", "src\\uMain.pas", "frmSteamDemo")],
+         search="src", redist=True, depends=["SteamworksVCL"]),
     dict(name="SteamConsole", dir="demos\\SteamConsole", kind="console", framework="None",
          # Android64: placeholder added by the owner 2026-10-30 (not run yet)
          platforms=ALL_PLATFORMS, default="Win64",
@@ -253,7 +255,7 @@ def dproj(p):
     for u, f, form in p["forms"]:
         a(f'        <DCCReference Include="{f}">')
         a(f'            <Form>{form}</Form>')
-        a('            <FormType>fmx</FormType>')
+        a(f'            <FormType>{"dfm" if p["framework"] == "VCL" else "fmx"}</FormType>')
         a('        </DCCReference>')
     a('        <BuildConfiguration Include="Base">')
     a('            <Key>Base</Key>')
@@ -331,8 +333,18 @@ def groupproj():
     L = ['<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">',
          '    <PropertyGroup>', f'        <ProjectGuid>{guid}</ProjectGuid>', '    </PropertyGroup>',
          '    <ItemGroup>']
-    # Packages first: the demos link the DCUs the runtime packages produce
-    ordered = sorted(PROJECTS, key=lambda p: p["kind"] in ("app", "console"))
+    # Shown in the Projects window (owner, 2026-10-30): applications first,
+    # then runtime packages, then design packages. Build order is separate:
+    # the Dependencies below (IDE) and the Build / Clean / Make targets
+    # (MSBuild) build runtime packages, then design packages, then the
+    # applications, which link the DCUs the runtime packages produce.
+    rank_show = {"app": 0, "console": 0, "runtime": 1, "design": 2}
+    rank_build = {"runtime": 0, "design": 1, "app": 2, "console": 2}
+    # packages: framework-free, then FMX, then VCL; applications keep list order
+    fw = lambda p: {"None": 0, "FMX": 1, "VCL": 2}.get(p["framework"], 3) \
+        if p["kind"] in ("runtime", "design") else 0
+    ordered = sorted(PROJECTS, key=lambda p: (rank_show[p["kind"]], fw(p)))
+    build_order = sorted(PROJECTS, key=lambda p: (rank_build[p["kind"]], fw(p)))
     for p in ordered:
         rel = f"{p['dir']}\\{p['name']}.dproj"
         deps = ";".join(f"{q['dir']}\\{q['name']}.dproj" for q in PROJECTS if q["name"] in p.get("depends", []))
@@ -349,7 +361,7 @@ def groupproj():
         L += [f'    <Target Name="{n}">', f'        <MSBuild Projects="{rel}"/>', '    </Target>',
               f'    <Target Name="{n}:Clean">', f'        <MSBuild Projects="{rel}" Targets="Clean"/>', '    </Target>',
               f'    <Target Name="{n}:Make">', f'        <MSBuild Projects="{rel}" Targets="Make"/>', '    </Target>']
-    names = [p["name"] for p in ordered]
+    names = [p["name"] for p in build_order]
     for t, suf in (("Build", ""), ("Clean", ":Clean"), ("Make", ":Make")):
         L += [f'    <Target Name="{t}">', f'        <CallTarget Targets="{";".join(n + suf for n in names)}"/>', '    </Target>']
     L += ["    <Import Project=\"$(BDS)\\Bin\\CodeGear.Group.Targets\" Condition=\"Exists('$(BDS)\\Bin\\CodeGear.Group.Targets')\"/>",

@@ -18,9 +18,19 @@
   (STEAMWORKS_ANONYMOUS_METHODS) closure-based and generic typed overloads are
   available too.
 
-  @bold(Threading:) callbacks are delivered only from @link(TSteamCallbackDispatcher.Pump),
-  on the thread that calls it. Call it from one thread only - normally the
-  main/UI thread, which the framework components do with a timer.
+  @bold(Threading.) Steam's queue is drained by ONE thread at a time, in one
+  of two ways:
+  @unorderedList(
+    @item(@link(TSteamCallbackDispatcher.Pump) drains it and delivers every
+      callback at once, on the calling thread (timer or game-loop pumping).)
+    @item(@link(TSteamCallbackDispatcher.PumpToQueue) drains it on a worker
+      thread and copies every payload (call results are fetched there too);
+      @link(TSteamCallbackDispatcher.DeliverQueued) later delivers the copies
+      on whichever thread calls it - normally the main or game thread.)
+  )
+  Subscribing, unsubscribing and awaiting call results are safe from any
+  thread (the lists are locked); handlers always run outside the lock.
+  TSteamworks chooses between the two (see its UpdateMode and Delivery).
 
   Example (method pointers - Delphi and FPC):
   @longCode(#
@@ -40,7 +50,7 @@ unit Steamworks.Callbacks;
 interface
 
 uses
-  SysUtils, Classes, Generics.Collections,
+  SysUtils, Classes, SyncObjs, Generics.Collections,
   Steamworks.Types;
 
 type
@@ -126,18 +136,59 @@ type
     Proc: TSteamCallResultProc;
     {$endif}
   end;
+  { One callback or call result copied off Steam's queue by
+    @link(TSteamCallbackDispatcher.PumpToQueue), waiting for
+    @link(TSteamCallbackDispatcher.DeliverQueued). A class, not a record:
+    records in lib/ must not hold managed fields (see Steamworks.inc). }
+  TSteamQueuedCallback = class
+  public
+    { k_iCallback of the payload struct. }
+    CallbackID: Integer;
+    { User the callback applies to. }
+    User: HSteamUser;
+    { Call results only: the async call handle. }
+    APICall: SteamAPICall_t;
+    { @true for the reply to an async call (fetched on the pump thread). }
+    IsCallResult: Boolean;
+    { Call results only: SteamAPI_ManualDispatch_GetAPICallResult succeeded. }
+    FetchOk: Boolean;
+    { Call results only: Steam reported a failure (or the fetch failed). }
+    IOFailure: Boolean;
+    { Payload size in bytes as Steam reported it. }
+    Size: Integer;
+    { Copy of the payload (at least one byte long, so @code(@@Payload[0]) is valid). }
+    Payload: TBytes;
+    { The copy as a @link(TSteamCallbackData); its Data points into
+      @link(Payload), so it is valid while this object lives. }
+    function AsData: TSteamCallbackData;
+  end;
+
   { Routes Steam callbacks and call results to subscribers.
     Normally owned by @code(TSteamworks); use @code(Steam.Dispatcher). }
   TSteamCallbackDispatcher = class
   private
-    { All subscriptions, in subscription order. }
+    { All subscriptions, in subscription order. Guarded by @link(FLock). }
     FSubs: TList<TSteamSubscriptionEntry>;
-    { Awaited call results by call handle. }
+    { Awaited call results by call handle. Guarded by @link(FLock). }
     FPending: TDictionary<SteamAPICall_t, TSteamPendingCallEntry>;
-    { Last token issued. }
+    { Last token issued. Guarded by @link(FLock). }
     FNextToken: TSteamSubscription;
+    { Guards @link(FSubs), @link(FPending) and @link(FNextToken); never held
+      while a handler runs. }
+    FLock: SyncObjs.TCriticalSection;
+    { Copies made by @link(PumpToQueue), oldest first. Guarded by @link(FQueueLock). }
+    FQueue: TList<TSteamQueuedCallback>;
+    { Guards @link(FQueue). }
+    FQueueLock: SyncObjs.TCriticalSection;
     { @true while @link(Pump) runs (re-entrancy guard). }
     FPumping: Boolean;
+    { @true while @link(PumpToQueue) runs (re-entrancy guard). }
+    FQueuePumping: Boolean;
+    { @true while @link(DeliverQueued) runs (re-entrancy guard). }
+    FDelivering: Boolean;
+    { Thread running @link(Pump) or @link(DeliverQueued), i.e. the thread
+      whose handlers are running. }
+    FHandlerThread: TThreadID;
     { Set by @link(RequestStop); ends the current pump early. }
     FStopRequested: Boolean;
     { Backing field of @link(OnHandlerError). }
@@ -146,15 +197,34 @@ type
     FOnAnyCallback: TSteamCallbackEvent;
     { Backing field of @link(CallbacksDispatched). }
     FCallbacksDispatched: Int64;
+    { Read accessor of @link(Pumping). }
+    function GetPumping: Boolean;
     { Stores a subscription and returns its new token. }
     function AddSub(const ASub: TSteamSubscriptionEntry): TSteamSubscription;
-    { Index of a subscription in @link(FSubs), or -1. }
+    { Index of a subscription in @link(FSubs), or -1. Caller holds @link(FLock). }
     function IndexOfToken(AToken: TSteamSubscription): Integer;
+    { @true while the subscription AToken still exists (takes the lock). }
+    function TokenAlive(AToken: TSteamSubscription): Boolean;
     { Hands one callback to @link(OnAnyCallback) and matching subscribers. }
     procedure Deliver(const AData: TSteamCallbackData);
     { Processes SteamAPICallCompleted_t: fetches the result and completes the awaiting handler. }
     procedure HandleCallCompleted(APipe: HSteamPipe; const AMsg: CallbackMsg_t);
-    { @true if a subscriber wants unclaimed call results of ACallbackID. }
+    { Removes and returns the handler awaiting ACall.
+      @returns(@false if nobody awaits it.) }
+    function TakePending(ACall: SteamAPICall_t; out APending: TSteamPendingCallEntry): Boolean;
+    { Hands a fetched call result to its awaiting handler (AHasPending) or,
+      if it was fetched successfully (AFetchOk), to the subscribers that
+      asked for unclaimed results. }
+    procedure CompleteCallResult(AHasPending: Boolean; const APending: TSteamPendingCallEntry;
+      const AData: TSteamCallbackData; AFetchOk: Boolean);
+    { Appends one copy to @link(FQueue) (takes the queue lock). }
+    procedure Enqueue(AItem: TSteamQueuedCallback);
+    { Puts ABatch[AFrom..] back at the front of @link(FQueue), in order, and
+      nils those slots in ABatch. }
+    procedure RequeueFront(ABatch: TList<TSteamQueuedCallback>; AFrom: Integer);
+    { Detaches every queued copy (oldest first); @nil when the queue is empty. }
+    function TakeQueue: TList<TSteamQueuedCallback>;
+    { @true if a subscriber wants unclaimed call results of ACallbackID (takes the lock). }
     function HasCallResultSubscribers(ACallbackID: Integer): Boolean;
     { Routes a handler exception to @link(OnHandlerError). @returns(@true if handled.) }
     function HandleError(E: Exception; ACallbackID: Integer): Boolean;
@@ -173,7 +243,36 @@ type
       even when a handler raises. }
     procedure Pump(APipe: HSteamPipe);
 
-    { Stop a running @link(Pump) after the current callback (used by shutdown). }
+    { Drains Steam's queue for APipe WITHOUT delivering anything: every
+      callback is copied, every completed call result is fetched and copied,
+      and the copies wait for @link(DeliverQueued). Meant for a worker thread
+      (TSteamworks' pump thread); runs no user code. Never run it at the same
+      time as @link(Pump).
+      @param(ASteamShutdown  Set to @true if SteamShutdown_t (704) was among
+        the callbacks - the Steam client is exiting.)
+      @returns(Number of copies queued.) }
+    function PumpToQueue(APipe: HSteamPipe; out ASteamShutdown: Boolean): Integer;
+
+    { Delivers the copies queued by @link(PumpToQueue), oldest first, on the
+      calling thread. Re-entrant calls (from a handler) are ignored. If a
+      handler raises and @link(OnHandlerError) does not handle it, the
+      undelivered copies go back to the front of the queue and the exception
+      propagates. @returns(Number of copies delivered.) }
+    function DeliverQueued: Integer;
+
+    { Frees every queued copy without delivering it (used by shutdown). }
+    procedure ClearQueue;
+
+    { Number of copies waiting for @link(DeliverQueued). }
+    function QueuedCount: Integer;
+
+    { @true if the calling thread is inside @link(Pump) or
+      @link(DeliverQueued), i.e. it is running a handler. }
+    function InHandlerOnCurrentThread: Boolean;
+
+    { Stop a running @link(Pump) or @link(DeliverQueued) after the current
+      callback (used by shutdown). Undelivered queued copies are kept;
+      shutdown clears them. }
     procedure RequestStop;
 
     { Subscribes a method to a callback id. The method's object becomes the
@@ -237,8 +336,12 @@ type
     { Drops every subscription and pending call result. }
     procedure Clear;
 
-    { @true while @link(Pump) is running. }
-    property Pumping: Boolean read FPumping;
+    { @true while @link(Pump) or @link(DeliverQueued) runs on any thread
+      (handlers may be running). Use @link(InHandlerOnCurrentThread) to ask
+      about the calling thread. }
+    property Pumping: Boolean read GetPumping;
+    { @true while @link(DeliverQueued) runs. }
+    property Delivering: Boolean read FDelivering;
     { Number of callbacks delivered since creation. }
     property CallbacksDispatched: Int64 read FCallbacksDispatched;
     { Called for every callback before subscribers (diagnostics). }
@@ -271,6 +374,24 @@ begin
 end;
 {$endif}
 
+{ TSteamQueuedCallback }
+
+function TSteamQueuedCallback.AsData: TSteamCallbackData;
+begin
+  Result := Default(TSteamCallbackData);
+  Result.CallbackID := CallbackID;
+  Result.User := User;
+  Result.APICall := APICall;
+  Result.IsCallResult := IsCallResult;
+  Result.IOFailure := IOFailure;
+  if (not IsCallResult) or FetchOk then
+  begin
+    Result.Size := Size;
+    if (Size > 0) and (Length(Payload) > 0) then
+      Result.Data := @Payload[0];
+  end;
+end;
+
 { TSteamCallbackDispatcher }
 
 constructor TSteamCallbackDispatcher.Create;
@@ -278,29 +399,53 @@ begin
   inherited Create;
   FSubs := TList<TSteamSubscriptionEntry>.Create;
   FPending := TDictionary<SteamAPICall_t, TSteamPendingCallEntry>.Create;
+  FQueue := TList<TSteamQueuedCallback>.Create;
+  // Qualified, as in Steamworks.Core: FPC's Windows unit has a record of that name
+  FLock := SyncObjs.TCriticalSection.Create;
+  FQueueLock := SyncObjs.TCriticalSection.Create;
 end;
 
 destructor TSteamCallbackDispatcher.Destroy;
 begin
+  if FQueue <> nil then
+    ClearQueue;
+  FQueue.Free;
   FPending.Free;
   FSubs.Free;
+  FQueueLock.Free;
+  FLock.Free;
   inherited;
+end;
+
+function TSteamCallbackDispatcher.GetPumping: Boolean;
+begin
+  Result := FPumping or FDelivering;
 end;
 
 procedure TSteamCallbackDispatcher.Clear;
 begin
-  FSubs.Clear;
-  FPending.Clear;
+  FLock.Enter;
+  try
+    FSubs.Clear;
+    FPending.Clear;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSteamCallbackDispatcher.AddSub(const ASub: TSteamSubscriptionEntry): TSteamSubscription;
 var
   S: TSteamSubscriptionEntry;
 begin
-  Inc(FNextToken);
   S := ASub;
-  S.Token := FNextToken;
-  FSubs.Add(S);
+  FLock.Enter;
+  try
+    Inc(FNextToken);
+    S.Token := FNextToken;
+    FSubs.Add(S);
+  finally
+    FLock.Leave;
+  end;
   Result := S.Token;
 end;
 
@@ -312,6 +457,16 @@ begin
     if FSubs[I].Token = AToken then
       Exit(I);
   Result := -1;
+end;
+
+function TSteamCallbackDispatcher.TokenAlive(AToken: TSteamSubscription): Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := IndexOfToken(AToken) >= 0;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSteamCallbackDispatcher.Subscribe(ACallbackID: Integer; AHandler: TSteamCallbackEvent;
@@ -341,7 +496,12 @@ begin
   P.Expected := AExpectedCallbackID;
   P.Handler := AHandler;
   P.Owner := TObject(TMethod(AHandler).Data);
-  FPending.AddOrSetValue(ACall, P);
+  FLock.Enter;
+  try
+    FPending.AddOrSetValue(ACall, P);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
@@ -385,7 +545,12 @@ begin
   P.Expected := AExpectedCallbackID;
   P.Proc := AProc;
   P.Owner := AOwner;
-  FPending.AddOrSetValue(ACall, P);
+  FLock.Enter;
+  try
+    FPending.AddOrSetValue(ACall, P);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSteamCallbackDispatcher.AwaitCallResultTyped<T>(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
@@ -408,9 +573,14 @@ var
 begin
   if AToken <> 0 then
   begin
-    I := IndexOfToken(AToken);
-    if I >= 0 then
-      FSubs.Delete(I);
+    FLock.Enter;
+    try
+      I := IndexOfToken(AToken);
+      if I >= 0 then
+        FSubs.Delete(I);
+    finally
+      FLock.Leave;
+    end;
   end;
   AToken := 0;
 end;
@@ -419,9 +589,14 @@ procedure TSteamCallbackDispatcher.UnsubscribeAll(ACallbackID: Integer);
 var
   I: Integer;
 begin
-  for I := FSubs.Count - 1 downto 0 do
-    if FSubs[I].CallbackID = ACallbackID then
-      FSubs.Delete(I);
+  FLock.Enter;
+  try
+    for I := FSubs.Count - 1 downto 0 do
+      if FSubs[I].CallbackID = ACallbackID then
+        FSubs.Delete(I);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TSteamCallbackDispatcher.RemoveOwner(AOwner: TObject);
@@ -433,16 +608,21 @@ var
 begin
   if AOwner = nil then
     Exit;
-  for I := FSubs.Count - 1 downto 0 do
-    if FSubs[I].Owner = AOwner then
-      FSubs.Delete(I);
   Calls := TList<SteamAPICall_t>.Create;
   try
-    for Pair in FPending do
-      if Pair.Value.Owner = AOwner then
-        Calls.Add(Pair.Key);
-    for C in Calls do
-      FPending.Remove(C);
+    FLock.Enter;
+    try
+      for I := FSubs.Count - 1 downto 0 do
+        if FSubs[I].Owner = AOwner then
+          FSubs.Delete(I);
+      for Pair in FPending do
+        if Pair.Value.Owner = AOwner then
+          Calls.Add(Pair.Key);
+      for C in Calls do
+        FPending.Remove(C);
+    finally
+      FLock.Leave;
+    end;
   finally
     Calls.Free;
   end;
@@ -450,27 +630,65 @@ end;
 
 procedure TSteamCallbackDispatcher.CancelCallResult(ACall: SteamAPICall_t);
 begin
-  FPending.Remove(ACall);
+  FLock.Enter;
+  try
+    FPending.Remove(ACall);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSteamCallbackDispatcher.IsCallResultPending(ACall: SteamAPICall_t): Boolean;
 begin
-  Result := FPending.ContainsKey(ACall);
+  FLock.Enter;
+  try
+    Result := FPending.ContainsKey(ACall);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSteamCallbackDispatcher.PendingCallResultCount: Integer;
 begin
-  Result := FPending.Count;
+  FLock.Enter;
+  try
+    Result := FPending.Count;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSteamCallbackDispatcher.HasCallResultSubscribers(ACallbackID: Integer): Boolean;
 var
   I: Integer;
 begin
-  for I := 0 to FSubs.Count - 1 do
-    if (FSubs[I].CallbackID = ACallbackID) and FSubs[I].IncludeCallResults then
-      Exit(True);
   Result := False;
+  FLock.Enter;
+  try
+    for I := 0 to FSubs.Count - 1 do
+      if (FSubs[I].CallbackID = ACallbackID) and FSubs[I].IncludeCallResults then
+      begin
+        Result := True;
+        Break;
+      end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSteamCallbackDispatcher.TakePending(ACall: SteamAPICall_t;
+  out APending: TSteamPendingCallEntry): Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FPending.TryGetValue(ACall, APending);
+    if Result then
+      FPending.Remove(ACall);
+  finally
+    FLock.Leave;
+  end;
+  if not Result then
+    APending := Default(TSteamPendingCallEntry);
 end;
 
 function TSteamCallbackDispatcher.HandleError(E: Exception; ACallbackID: Integer): Boolean;
@@ -529,20 +747,49 @@ begin
           raise;
     end;
   end;
-  // Snapshot, so handlers may subscribe / unsubscribe while we iterate
-  SetLength(Snapshot, FSubs.Count);
-  for I := 0 to FSubs.Count - 1 do
-    Snapshot[I] := FSubs[I];
+  // Snapshot under the lock, call outside it: handlers may subscribe /
+  // unsubscribe (on this or another thread) while we iterate
+  Snapshot := nil;
+  FLock.Enter;
+  try
+    SetLength(Snapshot, FSubs.Count);
+    for I := 0 to FSubs.Count - 1 do
+      Snapshot[I] := FSubs[I];
+  finally
+    FLock.Leave;
+  end;
   for I := 0 to High(Snapshot) do
   begin
     if Snapshot[I].CallbackID <> AData.CallbackID then
       Continue;
     if AData.IsCallResult and not Snapshot[I].IncludeCallResults then
       Continue;
-    if IndexOfToken(Snapshot[I].Token) < 0 then
+    if not TokenAlive(Snapshot[I].Token) then
       Continue; // removed by an earlier handler
     InvokeSub(Snapshot[I], AData);
   end;
+end;
+
+procedure TSteamCallbackDispatcher.CompleteCallResult(AHasPending: Boolean;
+  const APending: TSteamPendingCallEntry; const AData: TSteamCallbackData; AFetchOk: Boolean);
+var
+  D: TSteamCallbackData;
+begin
+  if AHasPending then
+  begin
+    D := AData;
+    if APending.Expected <> AData.CallbackID then
+    begin
+      // k_ESteamAPICallFailureMismatchedCallback: never hand over the wrong struct
+      D.IOFailure := True;
+      D.Data := nil;
+      D.Size := 0;
+    end;
+    InvokePending(APending, D);
+  end
+  // Unclaimed results go to subscribers that asked for them
+  else if AFetchOk then
+    Deliver(AData);
 end;
 
 procedure TSteamCallbackDispatcher.HandleCallCompleted(APipe: HSteamPipe; const AMsg: CallbackMsg_t);
@@ -564,9 +811,7 @@ begin
   Data.User := AMsg.m_hSteamUser;
   Deliver(Data);
 
-  HasPending := FPending.TryGetValue(Completed.m_hAsyncCall, Pending);
-  if HasPending then
-    FPending.Remove(Completed.m_hAsyncCall);
+  HasPending := TakePending(Completed.m_hAsyncCall, Pending);
   if not (HasPending or HasCallResultSubscribers(Completed.m_iCallback)) then
     Exit;
 
@@ -589,21 +834,7 @@ begin
   else
     Data.IOFailure := True;
 
-  if HasPending then
-  begin
-    if Pending.Expected <> Completed.m_iCallback then
-    begin
-      // k_ESteamAPICallFailureMismatchedCallback: never hand over the wrong struct
-      Data.IOFailure := True;
-      Data.Data := nil;
-      Data.Size := 0;
-    end;
-    InvokePending(Pending, Data);
-  end;
-
-  // Unclaimed results go to subscribers that asked for them
-  if Ok and not HasPending then
-    Deliver(Data);
+  CompleteCallResult(HasPending, Pending, Data, Ok);
 end;
 
 procedure TSteamCallbackDispatcher.RequestStop;
@@ -611,13 +842,20 @@ begin
   FStopRequested := True;
 end;
 
+function TSteamCallbackDispatcher.InHandlerOnCurrentThread: Boolean;
+begin
+  Result := (FPumping or FDelivering) and (FHandlerThread = TThread.CurrentThread.ThreadID);
+end;
+
 procedure TSteamCallbackDispatcher.Pump(APipe: HSteamPipe);
 var
   Msg: CallbackMsg_t;
   Data: TSteamCallbackData;
 begin
-  if FPumping or (APipe = 0) or not TSteamLib.IsLoaded then
+  // Never next to PumpToQueue: one reader of Steam's queue at a time
+  if FPumping or FQueuePumping or (APipe = 0) or not TSteamLib.IsLoaded then
     Exit;
+  FHandlerThread := TThread.CurrentThread.ThreadID;
   FPumping := True;
   FStopRequested := False;
   try
@@ -644,6 +882,202 @@ begin
     end;
   finally
     FPumping := False;
+  end;
+end;
+
+{ Queued delivery }
+
+procedure TSteamCallbackDispatcher.Enqueue(AItem: TSteamQueuedCallback);
+begin
+  FQueueLock.Enter;
+  try
+    FQueue.Add(AItem);
+  finally
+    FQueueLock.Leave;
+  end;
+end;
+
+function TSteamCallbackDispatcher.TakeQueue: TList<TSteamQueuedCallback>;
+var
+  I: Integer;
+begin
+  Result := nil;
+  FQueueLock.Enter;
+  try
+    if FQueue.Count = 0 then
+      Exit;
+    Result := TList<TSteamQueuedCallback>.Create;
+    for I := 0 to FQueue.Count - 1 do
+      Result.Add(FQueue[I]);
+    FQueue.Clear;
+  finally
+    FQueueLock.Leave;
+  end;
+end;
+
+function TSteamCallbackDispatcher.QueuedCount: Integer;
+begin
+  FQueueLock.Enter;
+  try
+    Result := FQueue.Count;
+  finally
+    FQueueLock.Leave;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.ClearQueue;
+var
+  Batch: TList<TSteamQueuedCallback>;
+  I: Integer;
+begin
+  Batch := TakeQueue;
+  if Batch = nil then
+    Exit;
+  for I := 0 to Batch.Count - 1 do
+    Batch[I].Free;
+  Batch.Free;
+end;
+
+function TSteamCallbackDispatcher.PumpToQueue(APipe: HSteamPipe; out ASteamShutdown: Boolean): Integer;
+var
+  Msg: CallbackMsg_t;
+  Completed: SteamAPICallCompleted_t;
+  Item: TSteamQueuedCallback;
+  Failed: Boolean;
+begin
+  Result := 0;
+  ASteamShutdown := False;
+  if FQueuePumping or FPumping or (APipe = 0) or not TSteamLib.IsLoaded then
+    Exit;
+  FQueuePumping := True;
+  try
+    TSteamLib.SteamAPI_ManualDispatch_RunFrame(APipe);
+    Msg := Default(CallbackMsg_t);
+    while TSteamLib.SteamAPI_ManualDispatch_GetNextCallback(APipe, @Msg) do
+    begin
+      try
+        // The callback itself (703 included, as Pump delivers it too)
+        Item := TSteamQueuedCallback.Create;
+        try
+          Item.CallbackID := Msg.m_iCallback;
+          Item.User := Msg.m_hSteamUser;
+          Item.Size := Msg.m_cubParam;
+          SetLength(Item.Payload, Max(Msg.m_cubParam, 1));
+          if (Msg.m_cubParam > 0) and (Msg.m_pubParam <> nil) then
+            Move(Msg.m_pubParam^, Item.Payload[0], Msg.m_cubParam);
+        except
+          Item.Free;
+          raise;
+        end;
+        Enqueue(Item);
+        Inc(Result);
+        if Msg.m_iCallback = SteamShutdown_t_k_iCallback then
+          ASteamShutdown := True;
+
+        // A finished async call: its result must be fetched here, on the
+        // thread that owns the pipe, before FreeLastCallback. Who wants it
+        // is decided at delivery time (an AwaitCallResult registered after
+        // this pump still gets it).
+        if Msg.m_iCallback = SteamAPICallCompleted_t_k_iCallback then
+        begin
+          Completed := Default(SteamAPICallCompleted_t);
+          if Msg.m_pubParam <> nil then
+            Move(Msg.m_pubParam^, Completed, Min(Msg.m_cubParam, SizeOf(Completed)));
+          Item := TSteamQueuedCallback.Create;
+          try
+            Item.CallbackID := Completed.m_iCallback;
+            Item.User := Msg.m_hSteamUser;
+            Item.APICall := Completed.m_hAsyncCall;
+            Item.IsCallResult := True;
+            Item.Size := Integer(Completed.m_cubParam);
+            SetLength(Item.Payload, Max(Integer(Completed.m_cubParam), 1));
+            Failed := False;
+            Item.FetchOk := TSteamLib.SteamAPI_ManualDispatch_GetAPICallResult(APipe,
+              Completed.m_hAsyncCall, @Item.Payload[0], Integer(Completed.m_cubParam),
+              Completed.m_iCallback, Failed);
+            Item.IOFailure := Failed or not Item.FetchOk;
+          except
+            Item.Free;
+            raise;
+          end;
+          Enqueue(Item);
+          Inc(Result);
+        end;
+      finally
+        TSteamLib.SteamAPI_ManualDispatch_FreeLastCallback(APipe);
+      end;
+    end;
+  finally
+    FQueuePumping := False;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.RequeueFront(ABatch: TList<TSteamQueuedCallback>; AFrom: Integer);
+var
+  J: Integer;
+begin
+  if AFrom >= ABatch.Count then
+    Exit;
+  FQueueLock.Enter;
+  try
+    for J := ABatch.Count - 1 downto AFrom do
+    begin
+      FQueue.Insert(0, ABatch[J]);
+      ABatch[J] := nil;   // no longer owned by the batch
+    end;
+  finally
+    FQueueLock.Leave;
+  end;
+end;
+
+function TSteamCallbackDispatcher.DeliverQueued: Integer;
+var
+  Batch: TList<TSteamQueuedCallback>;
+  Item: TSteamQueuedCallback;
+  Pending: TSteamPendingCallEntry;
+  HasPending: Boolean;
+  I, J: Integer;
+begin
+  Result := 0;
+  if FDelivering or FPumping then
+    Exit; // called from inside a handler: the outer call delivers the rest
+  Batch := TakeQueue;
+  if Batch = nil then
+    Exit;
+  FHandlerThread := TThread.CurrentThread.ThreadID;
+  FDelivering := True;
+  FStopRequested := False;
+  I := 0;
+  try
+    try
+      while (I < Batch.Count) and not FStopRequested do
+      begin
+        Item := Batch[I];
+        if Item.IsCallResult then
+        begin
+          HasPending := TakePending(Item.APICall, Pending);
+          if HasPending or HasCallResultSubscribers(Item.CallbackID) then
+            CompleteCallResult(HasPending, Pending, Item.AsData, Item.FetchOk);
+        end
+        else
+          Deliver(Item.AsData);
+        Inc(I);
+        Inc(Result);
+      end;
+    except
+      // An unhandled handler exception: the item that raised counts as
+      // delivered; the rest go back to the front of the queue, in order.
+      RequeueFront(Batch, I + 1);
+      raise;
+    end;
+    // Stopped early (RequestStop, e.g. Shutdown from a handler): keep the
+    // rest queued - shutdown clears them, a restart would deliver them.
+    RequeueFront(Batch, I);
+  finally
+    FDelivering := False;
+    for J := 0 to Batch.Count - 1 do
+      Batch[J].Free;   // nil for items handed back to the queue
+    Batch.Free;
   end;
 end;
 

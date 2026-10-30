@@ -124,6 +124,13 @@ type
     FInitMode: TSteamInitMode;
     { Backing field of @link(CallbackInterval). }
     FCallbackInterval: Integer;
+    { Backing field of @link(UpdateMode). }
+    FUpdateMode: TSteamUpdateMode;
+    { Backing field of @link(Delivery). }
+    FDelivery: TSteamDelivery;
+    { @true while the framework timer runs (@link(PumpStart) was called and
+      @link(PumpStop) not yet). }
+    FPumpRunning: Boolean;
     { Backing field of @link(InstallWarningHook). }
     FInstallWarningHook: Boolean;
     { Backing field of @link(QuitOnSteamShutdown). }
@@ -150,6 +157,23 @@ type
     procedure SetActive(const AValue: Boolean);
     { Write accessor of @link(CallbackInterval). }
     procedure SetCallbackInterval(const AValue: Integer);
+    { Write accessor of @link(UpdateMode). }
+    procedure SetUpdateModeProp(const AValue: TSteamUpdateMode);
+    { Write accessor of @link(Delivery). }
+    procedure SetDelivery(const AValue: TSteamDelivery);
+    { Starts or stops the framework timer to match @link(UpdateMode): it
+      runs in @link(sumTimer) mode, and in @link(sumThread) mode only as a
+      fallback when the core's worker could not start. }
+    procedure UpdatePump;
+    { Hands the current mode, delivery and interval to the core. }
+    procedure PushUpdateMode;
+    { @true on the main (UI) thread. }
+    function OnMainThread: Boolean;
+    { Ends the application from any thread: directly on the main thread,
+      otherwise queued to it (TThread.Queue). }
+    procedure SafeTerminate;
+    { TThread.Queue target of @link(SafeTerminate). }
+    procedure QueuedTerminate;
     { Read accessor of @link(Steam). }
     function GetSteam: TSteamworks;
     { Read accessor of @link(IsRunning). }
@@ -205,8 +229,22 @@ type
     function Open: Boolean;
     { Same as @code(Active := False). Safe to call more than once. }
     procedure Close;
-    { Pumps callbacks now, in addition to the timer. }
+    { Pumps / delivers callbacks now (see TSteamworks.RunCallbacks for what
+      that means in each @link(UpdateMode)). The timer calls it in
+      @link(sumTimer) mode. }
     procedure RunCallbacks;
+    { Same as @link(RunCallbacks); call it once per frame in
+      @link(sumManual) mode, or in @link(sumThread) mode with
+      @link(sdOnUpdate) delivery. }
+    procedure Update;
+    { Sets @link(UpdateMode), @link(Delivery) and (when AIntervalMs >= 0)
+      @link(CallbackInterval) in one call; applies at once while running.
+      Call it from the main thread, never from an event handler.
+      @longCode(#
+      SteamAPI.SetUpdateMode(sumThread, sdMainThread);  // worker reads, UI thread handles
+      #) }
+    procedure SetUpdateMode(AMode: TSteamUpdateMode; ADelivery: TSteamDelivery;
+      AIntervalMs: Integer = -1);
     { The core singleton; reach plug-ins with @code(Steam.FindPlugin) (or
       @code(Steam.Plugin<T>) in Delphi). }
     property Steam: TSteamworks read GetSteam;
@@ -231,8 +269,20 @@ type
     property LibraryPath: string read FLibraryPath write FLibraryPath;
     { Initialisation entry point. }
     property InitMode: TSteamInitMode read FInitMode write FInitMode default simAuto;
-    { Pump interval in ms; 0 = no timer (call @link(RunCallbacks) yourself). }
+    { Pump interval in ms: the timer's interval in @link(sumTimer) mode
+      (0 = no timer: call @link(Update) yourself), the worker's period in
+      @link(sumThread) mode (0 = as fast as possible, 1 ms). }
     property CallbackInterval: Integer read FCallbackInterval write SetCallbackInterval default 33;
+    { Who drains Steam's queue: the framework timer (@link(sumTimer),
+      default), a worker thread (@link(sumThread)) or your loop calling
+      @link(Update) (@link(sumManual)). See GameEngineIntegration.md. }
+    property UpdateMode: TSteamUpdateMode read FUpdateMode write SetUpdateModeProp default sumTimer;
+    { Where events run in @link(sumThread) mode: the main thread
+      (@link(sdMainThread), default), inside your @link(Update) call
+      (@link(sdOnUpdate)) or on the worker (@link(sdPumpThread) - your
+      handlers must then synchronise; this component's own message boxes
+      are replaced by log lines there). }
+    property Delivery: TSteamDelivery read FDelivery write SetDelivery default sdMainThread;
     { Forward Steam debug output to @link(OnWarning). }
     property InstallWarningHook: Boolean read FInstallWarningHook write FInstallWarningHook default True;
     { End the application when the Steam client exits. }
@@ -384,6 +434,8 @@ begin
   end;
   FLinked := TList<TSteamPluginComponent>.Create;
   FCallbackInterval := 33;
+  FUpdateMode := sumTimer;
+  FDelivery := sdMainThread;
   FInstallWarningHook := True;
   FShutdownOnSteamExit := True;
   FInitMode := simAuto;
@@ -395,7 +447,11 @@ var
 begin
   if FCounted then
   begin
-    PumpStop;
+    if FPumpRunning then
+    begin
+      PumpStop;
+      FPumpRunning := False;
+    end;
     DetachLinked;
     // The owner's controls may already be gone: detach events first
     UnhookCore;
@@ -408,6 +464,9 @@ begin
     for I := FLinked.Count - 1 downto 0 do
       FLinked[I].FSteamAPI := nil;
   FLinked.Free;
+  // A quit queued from a worker thread (SafeTerminate) must not reach a freed object
+  if FCounted then
+    TThread.RemoveQueuedEvents(nil, QueuedTerminate);
   inherited;
 end;
 
@@ -506,12 +565,105 @@ end;
 procedure TCustomSteamAPI.SetCallbackInterval(const AValue: Integer);
 begin
   FCallbackInterval := Max(0, AValue);
+  if (csDesigning in ComponentState) or (csLoading in ComponentState) then
+    Exit;
+  if FActive then
+  begin
+    PushUpdateMode;
+    if FPumpRunning then
+    begin
+      PumpStop;          // restart with the new interval
+      FPumpRunning := False;
+    end;
+    UpdatePump;
+  end;
+end;
+
+procedure TCustomSteamAPI.SetUpdateModeProp(const AValue: TSteamUpdateMode);
+begin
+  SetUpdateMode(AValue, FDelivery);
+end;
+
+procedure TCustomSteamAPI.SetDelivery(const AValue: TSteamDelivery);
+begin
+  SetUpdateMode(FUpdateMode, AValue);
+end;
+
+procedure TCustomSteamAPI.SetUpdateMode(AMode: TSteamUpdateMode; ADelivery: TSteamDelivery;
+  AIntervalMs: Integer);
+begin
+  FUpdateMode := AMode;
+  FDelivery := ADelivery;
+  if AIntervalMs >= 0 then
+    FCallbackInterval := AIntervalMs;
+  if (csDesigning in ComponentState) or (csLoading in ComponentState) then
+    Exit;
+  if FActive then
+  begin
+    PushUpdateMode;
+    if FPumpRunning then
+    begin
+      PumpStop;
+      FPumpRunning := False;
+    end;
+    UpdatePump;
+  end;
+end;
+
+procedure TCustomSteamAPI.PushUpdateMode;
+begin
+  TSteamworks.Instance.SetUpdateMode(FUpdateMode, FDelivery, Max(1, FCallbackInterval));
+end;
+
+procedure TCustomSteamAPI.UpdatePump;
+var
+  Interval: Integer;
+  Want: Boolean;
+begin
   if csDesigning in ComponentState then
     Exit;
-  if FActive and (FCallbackInterval > 0) then
-    PumpStart(FCallbackInterval)
+  Interval := FCallbackInterval;
+  case FUpdateMode of
+    sumTimer:
+      Want := FActive and (Interval > 0);
+    sumThread:
+      begin
+        // Fallback only: the worker could not start (FPC without cthreads, ...)
+        Want := FActive and GetIsRunning and not TSteamworks.Instance.Threaded;
+        if Interval <= 0 then
+          Interval := 16;
+      end;
   else
+    Want := False;   // sumManual: the program calls Update
+  end;
+  if Want and not FPumpRunning then
+  begin
+    PumpStart(Interval);
+    FPumpRunning := True;
+  end
+  else if FPumpRunning and not Want then
+  begin
     PumpStop;
+    FPumpRunning := False;
+  end;
+end;
+
+function TCustomSteamAPI.OnMainThread: Boolean;
+begin
+  Result := TThread.CurrentThread.ThreadID = MainThreadID;
+end;
+
+procedure TCustomSteamAPI.SafeTerminate;
+begin
+  if OnMainThread then
+    TerminateApplication
+  else
+    TThread.Queue(nil, QueuedTerminate);
+end;
+
+procedure TCustomSteamAPI.QueuedTerminate;
+begin
+  TerminateApplication;
 end;
 
 procedure TCustomSteamAPI.HookCore;
@@ -555,6 +707,8 @@ begin
   S.InitMode := FInitMode;
   S.InstallWarningHook := FInstallWarningHook;
   S.ShutdownOnSteamExit := FShutdownOnSteamExit;
+  // Before Initialize: in sumThread mode the core starts its worker there
+  S.SetUpdateMode(FUpdateMode, FDelivery, Max(1, FCallbackInterval));
 
   if FRestartIfNecessary and (FAppID <> 0) and S.RestartAppIfNecessary(FAppID) then
   begin
@@ -562,7 +716,7 @@ begin
     if Assigned(FOnRestartRequired) then
       FOnRestartRequired(Self, Terminate);
     if Terminate then
-      TerminateApplication;
+      SafeTerminate;
     Exit(False);
   end;
 
@@ -573,8 +727,7 @@ begin
   if Result then
   begin
     FActive := True;
-    if FCallbackInterval > 0 then
-      PumpStart(FCallbackInterval);
+    UpdatePump;
     AttachLinked;
     if Assigned(FOnInitialized) then
       FOnInitialized(Self);
@@ -585,7 +738,11 @@ end;
 
 procedure TCustomSteamAPI.DoDeactivate;
 begin
-  PumpStop;
+  if FPumpRunning then
+  begin
+    PumpStop;
+    FPumpRunning := False;
+  end;
   if TSteamworks.HasInstance then
     TSteamworks.Instance.Shutdown;   // fires CoreShutdown -> OnShutdown
 end;
@@ -612,6 +769,11 @@ begin
     TSteamworks.Instance.RunCallbacks;
 end;
 
+procedure TCustomSteamAPI.Update;
+begin
+  RunCallbacks;
+end;
+
 procedure TCustomSteamAPI.CoreLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
 begin
   if Alive and Assigned(FOnLog) then
@@ -631,12 +793,18 @@ begin
   if Assigned(FOnSteamShutdown) then
     FOnSteamShutdown(Self);
   if FQuitOnSteamShutdown then
-    TerminateApplication;
+    SafeTerminate;
 end;
 
 procedure TCustomSteamAPI.CoreShutdown(Sender: TObject);
 begin
-  PumpStop;
+  // The timer only runs when events arrive on the main thread, so this is
+  // never a framework call from the worker
+  if FPumpRunning then
+  begin
+    PumpStop;
+    FPumpRunning := False;
+  end;
   DetachLinked;
   FActive := False;
   if Alive and Assigned(FOnShutdown) then
@@ -652,7 +820,13 @@ end;
 procedure TCustomSteamAPI.CoreHandlerError(Sender: TObject; E: Exception; ACallbackID: Integer;
   var AHandled: Boolean);
 begin
-  ShowHandlerException(E);
+  if OnMainThread then
+    ShowHandlerException(E)
+  else if TSteamworks.HasInstance then
+    // sdPumpThread: no message box from a worker thread; the exception
+    // object dies with this handler, so only its text can travel
+    TSteamworks.Instance.Log(sllError, Format('Handler for callback %d raised %s: %s',
+      [ACallbackID, E.ClassName, E.Message]));
   AHandled := True;
 end;
 

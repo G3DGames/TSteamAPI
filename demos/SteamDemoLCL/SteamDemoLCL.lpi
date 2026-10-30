@@ -28,6 +28,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="SteamworksLCL"/>
+      </Item>
+      <Item>
         <PackageName Value="LCL"/>
       </Item>
     </RequiredPackages>
@@ -37,8 +40,11 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../shared/uSteamDemoDesktop.pas"/>
+        <Filename Value="src/uMain.pas"/>
         <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmSteamDemo"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
       </Unit>
     </Units>
   </ProjectOptions>
@@ -48,8 +54,8 @@
       <Filename Value="$(TargetCPU)-$(TargetOS)/SteamDemoLCL"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="../../lib;$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../lib;../../lib/plugins;../../lcl;../shared"/>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="src"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>

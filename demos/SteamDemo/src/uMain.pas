@@ -1,7 +1,10 @@
 { @abstract(Main form of the FMX Steamworks demo.)
 
-  Creates a @code(TSteamAPI) and the @code(TSteamFriends) / @code(TSteamUserStats)
-  components in code (no design-time package needed). Three tabs: Output (the
+  Everything is on the form (uMain.fmx): the @code(TSteamAPI) root, the
+  @code(TSteamFriends) / @code(TSteamUserStats) plug-in components with their
+  events wired in the form file, and the UI. Open it in the IDE with the
+  design packages installed (dclSteamworks, dclSteamworksFMX) to see them;
+  only the Debug-only settings are made in FormCreate. Three tabs: Output (the
   log), Personal (the user's avatar, persona, Steam ids, level, country and the
   friends list with avatars) and Achievements (icons, unlock state). It
   starts and stops Steam on demand and logs everything the core reports, so
@@ -39,9 +42,38 @@ type
     btnStop: TButton;
     { Copies the log to the clipboard. }
     btnCopy: TButton;
+    { Tabs: Output (the log), Personal, Achievements. }
+    tabMain: TTabControl;
+    { Output tab. }
+    tiOutput: TTabItem;
     { Log output. }
     memLog: TMemo;
-    { Creates and configures the Steam component. }
+    { Personal tab. }
+    tiPersonal: TTabItem;
+    { Top of the Personal tab: avatar and details. }
+    layPersonalTop: TLayout;
+    { The user's large avatar. }
+    imgAvatar: TImage;
+    { The user's persona, Steam ids, level, ... }
+    lbInfo: TListBox;
+    { Caption above the friends list. }
+    lblFriends: TLabel;
+    { The user's friends with their avatars; each item's TagString is the
+      friend's SteamID. }
+    lbFriends: TListBox;
+    { Achievements tab. }
+    tiAchievements: TTabItem;
+    { The app's achievements; each item's TagString is the API name. }
+    lbAchievements: TListBox;
+    { The Steam root component. Active is False in the form: the Start button
+      opens Steam. }
+    SteamAPI1: TSteamAPI;
+    { ISteamFriends component linked to @link(SteamAPI1); its typed events
+      show persona changes and loaded avatars. }
+    SteamFriends1: TSteamFriends;
+    { ISteamUserStats component: stats received, achievement icons fetched. }
+    SteamUserStats1: TSteamUserStats;
+    { Debug-only settings and the log file. }
     procedure FormCreate(Sender: TObject);
     { Shuts Steam down while the form's controls still exist. }
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -53,62 +85,40 @@ type
     procedure btnStopClick(Sender: TObject);
     { Handler of @link(btnCopy). }
     procedure btnCopyClick(Sender: TObject);
+    { SteamAPI1.OnLog: core log messages. }
+    procedure SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
+    { SteamAPI1.OnInitialized: Steam started. }
+    procedure SteamInitialized(Sender: TObject);
+    { SteamAPI1.OnInitFailed: Steam failed to start. }
+    procedure SteamInitFailed(Sender: TObject; AResult: Integer; const AMessage: string);
+    { SteamAPI1.OnShutdown: Steam shut down. }
+    procedure SteamShutdown(Sender: TObject);
+    { SteamAPI1.OnSteamShutdown: the Steam client is exiting. }
+    procedure SteamClientExit(Sender: TObject);
+    { SteamAPI1.OnWarning: Steam debug output. }
+    procedure SteamWarning(Sender: TObject; ASeverity: Integer; const AText: string);
+    { SteamAPI1.OnCallback: every callback (diagnostics). }
+    procedure SteamCallback(Sender: TObject; const AData: TSteamCallbackData);
+    { SteamFriends1.OnPersonaStateChange (callback 304). }
+    procedure FriendPersonaChanged(Sender: TObject; const AData: PersonaStateChange_t);
+    { SteamFriends1.OnAvatarImageLoaded (callback 334): a requested avatar arrived. }
+    procedure FriendAvatarLoaded(Sender: TObject; const AData: AvatarImageLoaded_t);
+    { SteamUserStats1.OnUserStatsReceived (callback 1101): refresh the list. }
+    procedure StatsReceived(Sender: TObject; const AData: UserStatsReceived_t);
+    { SteamUserStats1.OnUserAchievementIconFetched (callback 1109). }
+    procedure AchievementIconFetched(Sender: TObject; const AData: UserAchievementIconFetched_t);
   private
-    { The Steam root component (owned by the form). }
-    FSteam: TSteamAPI;
-    { ISteamFriends component linked to @link(FSteam); its
-      OnPersonaStateChange shows the typed callback events. }
-    FFriends: TSteamFriends;
-    { ISteamUserStats component: stats received, achievement icons fetched. }
-    FStats: TSteamUserStats;
-    { Tabs: Output (the log), Personal, Achievements. }
-    FTabs: TTabControl;
-    { The user's large avatar (Personal tab). }
-    FAvatar: TImage;
-    { The user's persona, Steam ids, level, ... (Personal tab). }
-    FInfo: TListBox;
-    { The user's friends with their avatars (Personal tab); each item's
-      TagString is the friend's SteamID. }
-    FFriendsList: TListBox;
-    { The app's achievements; each item's TagString is the API name. }
-    FAchievements: TListBox;
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
     { Appends a time-stamped line to @link(memLog). }
     procedure AddLog(const S: string);
-    { Core log messages. }
-    procedure SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
-    { Steam started. }
-    procedure SteamInitialized(Sender: TObject);
-    { Steam failed to start. }
-    procedure SteamInitFailed(Sender: TObject; AResult: Integer; const AMessage: string);
-    { Steam shut down. }
-    procedure SteamShutdown(Sender: TObject);
-    { Steam client exiting. }
-    procedure SteamClientExit(Sender: TObject);
-    { Steam debug output. }
-    procedure SteamWarning(Sender: TObject; ASeverity: Integer; const AText: string);
-    { Every callback (diagnostics). }
-    procedure SteamCallback(Sender: TObject; const AData: TSteamCallbackData);
-    { TSteamFriends.OnPersonaStateChange (callback 304). }
-    procedure FriendPersonaChanged(Sender: TObject; const AData: PersonaStateChange_t);
-    { TSteamFriends.OnAvatarImageLoaded (callback 334): a requested avatar arrived. }
-    procedure FriendAvatarLoaded(Sender: TObject; const AData: AvatarImageLoaded_t);
-    { TSteamUserStats.OnUserStatsReceived (callback 1101): refresh the list. }
-    procedure StatsReceived(Sender: TObject; const AData: UserStatsReceived_t);
-    { TSteamUserStats.OnUserAchievementIconFetched (callback 1109). }
-    procedure AchievementIconFetched(Sender: TObject; const AData: UserAchievementIconFetched_t);
-    { Creates the tabs and moves the log into the Output tab. }
-    procedure CreateTabs;
-    { Adds a tab with the given title. }
-    function AddTab(const ATitle: string): TTabItem;
-    { Adds a Text / Detail row to @link(FInfo). }
+    { Adds a Text / Detail row to @link(lbInfo). }
     procedure AddInfo(const AName, AValue: string);
     { Fills the Personal tab: avatar, persona, ids, friends. }
     procedure LoadPersonal;
     { Puts an avatar into the friend item of ASteamID, if listed. }
     procedure ShowFriendAvatar(const ASteamID: TSteamID; AImage: Integer);
-    { Fills @link(FAchievements) from ISteamUserStats. }
+    { Fills @link(lbAchievements) from ISteamUserStats. }
     procedure LoadAchievements;
   end;
 
@@ -126,6 +136,26 @@ uses
 const
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
 
+function UpdateModeText(AMode: TSteamUpdateMode): string;
+begin
+  case AMode of
+    sumTimer:  Result := 'sumTimer';
+    sumThread: Result := 'sumThread';
+  else
+    Result := 'sumManual';
+  end;
+end;
+
+function DeliveryText(ADelivery: TSteamDelivery): string;
+begin
+  case ADelivery of
+    sdMainThread: Result := 'sdMainThread';
+    sdOnUpdate:   Result := 'sdOnUpdate';
+  else
+    Result := 'sdPumpThread';
+  end;
+end;
+
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
 {$IFDEF ANDROID}
@@ -138,44 +168,31 @@ begin
   except
     FLogFile := '';
   end;
-  FSteam := TSteamAPI.Create(Self);
-  FSteam.AppID := APP_ID;
+  // AppID, UpdateMode, events and the plug-in links are set in uMain.fmx.
+  // A form file cannot depend on the build configuration, so this is here:
 {$IFDEF DEBUG}
   // Development: no steam_appid.txt needed, never relaunch through Steam
-  FSteam.SetAppIdEnvironment := True;
-  FSteam.RestartIfNecessary := False;
+  SteamAPI1.SetAppIdEnvironment := True;
+  SteamAPI1.RestartIfNecessary := False;
 {$ELSE}
-  FSteam.RestartIfNecessary := True;
+  SteamAPI1.RestartIfNecessary := True;
 {$ENDIF}
-  FSteam.OnLog := SteamLog;
-  FSteam.OnInitialized := SteamInitialized;
-  FSteam.OnInitFailed := SteamInitFailed;
-  FSteam.OnShutdown := SteamShutdown;
-  FSteam.OnSteamShutdown := SteamClientExit;
-  FSteam.OnWarning := SteamWarning;
-  FSteam.OnCallback := SteamCallback;
-  // A plug-in component: linked to the root, attached while Steam runs
-  FFriends := TSteamFriends.Create(Self);
-  FFriends.SteamAPI := FSteam;
-  FFriends.OnPersonaStateChange := FriendPersonaChanged;
-  FFriends.OnAvatarImageLoaded := FriendAvatarLoaded;
-  FStats := TSteamUserStats.Create(Self);
-  FStats.SteamAPI := FSteam;
-  FStats.OnUserStatsReceived := StatsReceived;
-  FStats.OnUserAchievementIconFetched := AchievementIconFetched;
-  CreateTabs;
+  tabMain.TabIndex := 0;
   AddLog(Format('Steamworks demo, AppID %d, %d plug-in class(es) linked',
-    [APP_ID, Length(TSteamworks.RegisteredPlugins)]));
+    [SteamAPI1.AppID, Length(TSteamworks.RegisteredPlugins)]));
   if FLogFile <> '' then
     AddLog('Log file: ' + FLogFile)
   else
     AddLog('Log file could not be created; log is on screen only');
+  AddLog(Format('Update mode (from the form): %s, delivery %s, interval %d ms',
+    [UpdateModeText(SteamAPI1.UpdateMode), DeliveryText(SteamAPI1.Delivery),
+     SteamAPI1.CallbackInterval]));
 end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(FSteam.IsRunning, True)]));
-  FSteam.Close;
+  AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(SteamAPI1.IsRunning, True)]));
+  SteamAPI1.Close;
 end;
 
 procedure TfrmMain.AddLog(const S: string);
@@ -197,7 +214,7 @@ end;
 procedure TfrmMain.btnStartClick(Sender: TObject);
 begin
   AddLog('Start pressed');
-  if FSteam.Open then
+  if SteamAPI1.Open then
     AddLog('Open returned True: Steam is running')
   else
     AddLog('Open returned False: Steam did not start');
@@ -206,7 +223,7 @@ end;
 procedure TfrmMain.btnStopClick(Sender: TObject);
 begin
   AddLog('Stop pressed');
-  FSteam.Close;
+  SteamAPI1.Close;
 end;
 
 procedure TfrmMain.btnCopyClick(Sender: TObject);
@@ -230,22 +247,22 @@ var
   Id: TSteamID;
   V: string;
 begin
-  if not FSteam.IsRunning then
+  if not SteamAPI1.IsRunning then
   begin
     AddLog('Info: Steam is not running - press Start first');
     Exit;
   end;
   AddLog(Format('Library %s: %d interface versions detected',
-    [TSteamLib.LibraryPath, FSteam.Steam.Versions.Count]));
-  for V in FSteam.Steam.Versions.ToArray do
+    [TSteamLib.LibraryPath, SteamAPI1.Steam.Versions.Count]));
+  for V in SteamAPI1.Steam.Versions.ToArray do
     AddLog('  ' + V);
-  if FSteam.Steam.Client <> nil then
-    AddLog('ISteamClient ' + FSteam.Steam.Client.Version +
-      ', IPC calls since last query: ' + UIntToStr(FSteam.Steam.Client.GetIPCCallCount))
+  if SteamAPI1.Steam.Client <> nil then
+    AddLog('ISteamClient ' + SteamAPI1.Steam.Client.Version +
+      ', IPC calls since last query: ' + UIntToStr(SteamAPI1.Steam.Client.GetIPCCallCount))
   else
     AddLog('ISteamClient was not created');
 
-  U := FSteam.Steam.Plugin<TSteamUtilsPlugin>;
+  U := SteamAPI1.Steam.Plugin<TSteamUtilsPlugin>;
   if U = nil then
   begin
     AddLog('ISteamUtils plug-in is not active');
@@ -269,7 +286,7 @@ begin
     on E: Exception do AddLog('ISteamUtils failed: ' + E.Message);
   end;
 
-  Usr := FSteam.Steam.Plugin<TSteamUserPlugin>;
+  Usr := SteamAPI1.Steam.Plugin<TSteamUserPlugin>;
   if Usr = nil then
     AddLog('ISteamUser plug-in is not active')
   else
@@ -282,7 +299,7 @@ begin
     on E: Exception do AddLog('ISteamUser failed: ' + E.Message);
   end;
 
-  Fr := FSteam.Steam.Plugin<TSteamFriendsPlugin>;
+  Fr := SteamAPI1.Steam.Plugin<TSteamFriendsPlugin>;
   if Fr = nil then
     AddLog('ISteamFriends plug-in is not active')
   else
@@ -293,7 +310,7 @@ begin
     on E: Exception do AddLog('ISteamFriends failed: ' + E.Message);
   end;
 
-  Apps := FSteam.Steam.Plugin<TSteamAppsPlugin>;
+  Apps := SteamAPI1.Steam.Plugin<TSteamAppsPlugin>;
   if Apps = nil then
     AddLog('ISteamApps plug-in is not active')
   else
@@ -305,7 +322,7 @@ begin
     on E: Exception do AddLog('ISteamApps failed: ' + E.Message);
   end;
 
-  Stats := FSteam.Steam.Plugin<TSteamUserStatsPlugin>;
+  Stats := SteamAPI1.Steam.Plugin<TSteamUserStatsPlugin>;
   if Stats = nil then
     AddLog('ISteamUserStats plug-in is not active')
   else
@@ -325,7 +342,7 @@ end;
 procedure TfrmMain.SteamInitialized(Sender: TObject);
 begin
   AddLog(Format('OnInitialized: pipe %d, user %d, %d plug-in(s) active',
-    [FSteam.Steam.Pipe, FSteam.Steam.User, FSteam.Steam.PluginCount]));
+    [SteamAPI1.Steam.Pipe, SteamAPI1.Steam.User, SteamAPI1.Steam.PluginCount]));
   LoadPersonal;
   LoadAchievements;
 end;
@@ -346,71 +363,12 @@ begin
   end;
 end;
 
-function TfrmMain.AddTab(const ATitle: string): TTabItem;
-begin
-  Result := TTabItem.Create(FTabs);
-  Result.Text := ATitle;
-  FTabs.AddObject(Result);
-end;
-
-procedure TfrmMain.CreateTabs;
-var
-  Tab: TTabItem;
-  TopArea: TLayout;
-  FriendsCaption: TLabel;
-begin
-  FTabs := TTabControl.Create(Self);
-  FTabs.Parent := Self;
-  FTabs.Align := TAlignLayout.Client;
-
-  // Output: the existing log memo
-  Tab := AddTab('Output');
-  memLog.Parent := Tab;
-  memLog.Align := TAlignLayout.Client;
-
-  // Personal: avatar + details on top, friends below
-  Tab := AddTab('Personal');
-  TopArea := TLayout.Create(Self);
-  TopArea.Parent := Tab;
-  TopArea.Align := TAlignLayout.Top;
-  TopArea.Height := 200;
-  FAvatar := TImage.Create(Self);
-  FAvatar.Parent := TopArea;
-  FAvatar.Align := TAlignLayout.Left;
-  FAvatar.Width := 184;
-  FAvatar.Margins.Rect := TRectF.Create(8, 8, 8, 8);
-  FInfo := TListBox.Create(Self);
-  FInfo.Parent := TopArea;
-  FInfo.Align := TAlignLayout.Client;
-  FInfo.DefaultItemStyles.ItemStyle := 'listboxitemrightdetail';
-  FriendsCaption := TLabel.Create(Self);
-  FriendsCaption.Parent := Tab;
-  FriendsCaption.Align := TAlignLayout.Top;
-  FriendsCaption.Margins.Rect := TRectF.Create(8, 4, 8, 4);
-  FriendsCaption.Text := 'Friends';
-  FFriendsList := TListBox.Create(Self);
-  FFriendsList.Parent := Tab;
-  FFriendsList.Align := TAlignLayout.Client;
-  FFriendsList.ItemHeight := 56;
-  FFriendsList.DefaultItemStyles.ItemStyle := 'listboxitembottomdetail';
-
-  // Achievements
-  Tab := AddTab('Achievements');
-  FAchievements := TListBox.Create(Self);
-  FAchievements.Parent := Tab;
-  FAchievements.Align := TAlignLayout.Client;
-  FAchievements.ItemHeight := 72;
-  FAchievements.DefaultItemStyles.ItemStyle := 'listboxitembottomdetail';
-
-  FTabs.TabIndex := 0;
-end;
-
 procedure TfrmMain.AddInfo(const AName, AValue: string);
 var
   Item: TListBoxItem;
 begin
-  Item := TListBoxItem.Create(FInfo);
-  Item.Parent := FInfo;
+  Item := TListBoxItem.Create(lbInfo);
+  Item.Parent := lbInfo;
   Item.ItemData.Text := AName;
   Item.ItemData.Detail := AValue;
 end;
@@ -425,16 +383,16 @@ var
   Nick, FriendName: string;
   Item: TListBoxItem;
 begin
-  Usr := FSteam.Steam.Plugin<TSteamUserPlugin>;
-  Fr := FFriends.Plugin;
-  U := FSteam.Steam.Plugin<TSteamUtilsPlugin>;
+  Usr := SteamAPI1.Steam.Plugin<TSteamUserPlugin>;
+  Fr := SteamFriends1.Plugin;
+  U := SteamAPI1.Steam.Plugin<TSteamUtilsPlugin>;
   if (Usr = nil) or (Fr = nil) then
     Exit;
   try
     Me := Usr.GetSteamID;
-    FInfo.BeginUpdate;
+    lbInfo.BeginUpdate;
     try
-      FInfo.Clear;
+      lbInfo.Clear;
       AddInfo('Persona name', Fr.GetPersonaName);
       AddInfo('Status', PersonaStateText(Fr.GetPersonaState));
       AddInfo('SteamID', Me.ToString);
@@ -448,20 +406,20 @@ begin
         AddInfo('Steam UI language', U.GetSteamUILanguage);
       end;
     finally
-      FInfo.EndUpdate;
+      lbInfo.EndUpdate;
     end;
 
     // Own avatar: -1 = Steam is fetching it -> OnAvatarImageLoaded
     H := Fr.GetLargeFriendAvatar(Me);
     if H > 0 then
-      SteamImageToBitmap(H, FAvatar.Bitmap);
+      SteamImageToBitmap(H, imgAvatar.Bitmap);
     AddLog(Format('Personal: %s (%s), level %d, large avatar handle %d',
       [Fr.GetPersonaName, Me.ToString, Usr.GetPlayerSteamLevel, H]));
 
     Count := Fr.GetFriendCount(k_EFriendFlagImmediate);
-    FFriendsList.BeginUpdate;
+    lbFriends.BeginUpdate;
     try
-      FFriendsList.Clear;
+      lbFriends.Clear;
       for I := 0 to Count - 1 do
       begin
         Friend := Fr.GetFriendByIndex(I, k_EFriendFlagImmediate);
@@ -472,8 +430,8 @@ begin
         Nick := Fr.GetPlayerNickname(Friend);
         if Nick <> '' then
           FriendName := FriendName + ' (' + Nick + ')';
-        Item := TListBoxItem.Create(FFriendsList);
-        Item.Parent := FFriendsList;
+        Item := TListBoxItem.Create(lbFriends);
+        Item.Parent := lbFriends;
         Item.TagString := Friend.ToString;
         Item.ItemData.Text := FriendName;
         Item.ItemData.Detail := Format('%s, level %d, %s', [PersonaStateText(Fr.GetFriendPersonaState(Friend)),
@@ -485,7 +443,7 @@ begin
           [I, FriendName, H]));
       end;
     finally
-      FFriendsList.EndUpdate;
+      lbFriends.EndUpdate;
     end;
     AddLog(Format('Personal: %d immediate friend(s) listed', [Count]));
   except
@@ -499,9 +457,9 @@ var
   Key: string;
 begin
   Key := ASteamID.ToString;
-  for I := 0 to FFriendsList.Count - 1 do
-    if FFriendsList.ListItems[I].TagString = Key then
-      SteamImageToBitmap(AImage, FFriendsList.ListItems[I].ItemData.Bitmap);
+  for I := 0 to lbFriends.Count - 1 do
+    if lbFriends.ListItems[I].TagString = Key then
+      SteamImageToBitmap(AImage, lbFriends.ListItems[I].ItemData.Bitmap);
 end;
 
 procedure TfrmMain.FriendAvatarLoaded(Sender: TObject; const AData: AvatarImageLoaded_t);
@@ -510,11 +468,11 @@ var
 begin
   AddLog(Format('TSteamFriends.OnAvatarImageLoaded: SteamID %s, image %d, %dx%d',
     [AData.m_steamID.ToString, AData.m_iImage, AData.m_iWide, AData.m_iTall]));
-  Usr := FSteam.Steam.Plugin<TSteamUserPlugin>;
+  Usr := SteamAPI1.Steam.Plugin<TSteamUserPlugin>;
   // Large (184 px) avatar of the user -> the Personal tab's picture; medium
   // ones -> the friends list
   if (Usr <> nil) and (AData.m_steamID = Usr.GetSteamID) and (AData.m_iWide >= 184) then
-    SteamImageToBitmap(AData.m_iImage, FAvatar.Bitmap)
+    SteamImageToBitmap(AData.m_iImage, imgAvatar.Bitmap)
   else
     ShowFriendAvatar(AData.m_steamID, AData.m_iImage);
 end;
@@ -528,14 +486,14 @@ var
   Achieved, Hidden: Boolean;
   Item: TListBoxItem;
 begin
-  S := FStats.Plugin;
+  S := SteamUserStats1.Plugin;
   if S = nil then
     Exit;
   try
     N := S.GetNumAchievements;
-    FAchievements.BeginUpdate;
+    lbAchievements.BeginUpdate;
     try
-      FAchievements.Clear;
+      lbAchievements.Clear;
       for I := 0 to Integer(N) - 1 do
       begin
         AchName := S.GetAchievementName(UInt32(I));
@@ -549,8 +507,8 @@ begin
           State := 'unlocked ' + FormatDateTime('yyyy-mm-dd hh:nn', SteamTimeToLocal(UnlockTime))
         else
           State := 'locked';
-        Item := TListBoxItem.Create(FAchievements);
-        Item.Parent := FAchievements;
+        Item := TListBoxItem.Create(lbAchievements);
+        Item.Parent := lbAchievements;
         Item.TagString := AchName;
         Item.ItemData.Text := Title;
         if Hidden and not Achieved then
@@ -564,7 +522,7 @@ begin
           BoolToStr(Hidden, True), Icon]));
       end;
     finally
-      FAchievements.EndUpdate;
+      lbAchievements.EndUpdate;
     end;
   except
     on E: Exception do AddLog('Achievements failed: ' + E.Message);
@@ -577,7 +535,7 @@ var
 begin
   AddLog(Format('TSteamUserStats.OnUserStatsReceived: SteamID %s, result %d',
     [AData.m_steamIDUser.ToString, Ord(AData.m_eResult)]));
-  Usr := FSteam.Steam.Plugin<TSteamUserPlugin>;
+  Usr := SteamAPI1.Steam.Plugin<TSteamUserPlugin>;
   if (AData.m_eResult = k_EResultOK) and (Usr <> nil) and (AData.m_steamIDUser = Usr.GetSteamID) then
     LoadAchievements;
 end;
@@ -590,9 +548,9 @@ begin
   AchName := string(UTF8String(PAnsiChar(@AData.m_rgchAchievementName[0])));
   AddLog(Format('TSteamUserStats.OnUserAchievementIconFetched: %s, achieved %s, icon %d',
     [AchName, BoolToStr(AData.m_bAchieved, True), AData.m_nIconHandle]));
-  for I := 0 to FAchievements.Count - 1 do
-    if FAchievements.ListItems[I].TagString = AchName then
-      SteamImageToBitmap(AData.m_nIconHandle, FAchievements.ListItems[I].ItemData.Bitmap);
+  for I := 0 to lbAchievements.Count - 1 do
+    if lbAchievements.ListItems[I].TagString = AchName then
+      SteamImageToBitmap(AData.m_nIconHandle, lbAchievements.ListItems[I].ItemData.Bitmap);
 end;
 
 procedure TfrmMain.SteamInitFailed(Sender: TObject; AResult: Integer; const AMessage: string);
@@ -609,7 +567,7 @@ end;
 procedure TfrmMain.SteamClientExit(Sender: TObject);
 begin
   AddLog(Format('OnSteamShutdown: the Steam client is exiting; SteamAPI shuts down next: %s ' +
-    '(the demo keeps running; press Start once Steam is back)', [BoolToStr(FSteam.ShutdownOnSteamExit, True)]));
+    '(the demo keeps running; press Start once Steam is back)', [BoolToStr(SteamAPI1.ShutdownOnSteamExit, True)]));
 end;
 
 procedure TfrmMain.SteamWarning(Sender: TObject; ASeverity: Integer; const AText: string);
@@ -632,22 +590,22 @@ var
 begin
   // Keep the friends list current (names and avatars arrive after
   // RequestUserInformation)
-  Fr := FFriends.Plugin;
+  Fr := SteamFriends1.Plugin;
   Id := TSteamID.Create(AData.m_ulSteamID);
   if Fr <> nil then
-    for I := 0 to FFriendsList.Count - 1 do
-      if FFriendsList.ListItems[I].TagString = Id.ToString then
+    for I := 0 to lbFriends.Count - 1 do
+      if lbFriends.ListItems[I].TagString = Id.ToString then
       begin
-        FFriendsList.ListItems[I].ItemData.Text := Fr.GetFriendPersonaName(Id);
-        FFriendsList.ListItems[I].ItemData.Detail := Format('%s, level %d, %s',
+        lbFriends.ListItems[I].ItemData.Text := Fr.GetFriendPersonaName(Id);
+        lbFriends.ListItems[I].ItemData.Detail := Format('%s, level %d, %s',
           [PersonaStateText(Fr.GetFriendPersonaState(Id)), Fr.GetFriendSteamLevel(Id), Id.ToString]);
         H := Fr.GetMediumFriendAvatar(Id);
         if H > 0 then
-          SteamImageToBitmap(H, FFriendsList.ListItems[I].ItemData.Bitmap);
+          SteamImageToBitmap(H, lbFriends.ListItems[I].ItemData.Bitmap);
       end;
   AddLog(Format('TSteamFriends.OnPersonaStateChange: SteamID %s, change flags $%x (attached %s)',
     [TSteamID.Create(AData.m_ulSteamID).ToString, AData.m_nChangeFlags,
-     BoolToStr(FFriends.Attached, True)]));
+     BoolToStr(SteamFriends1.Attached, True)]));
 end;
 
 end.

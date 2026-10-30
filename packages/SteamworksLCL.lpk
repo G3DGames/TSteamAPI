@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <Name Value="SteamworksLCL"/>
+    <Type Value="RunAndDesignTime"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <SearchPaths>
+        <IncludeFiles Value="../lib"/>
+        <OtherUnitFiles Value="../lib;../lib/plugins;../lcl"/>
+        <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <SyntaxMode Value="Delphi"/>
+        </SyntaxOptions>
+      </Parsing>
+    </CompilerOptions>
+    <Description Value="Steamworks SDK 1.65 for Lazarus: the LCL TSteamAPI and the plug-in components (TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats) on the Steamworks palette page. Compiles the library from the repository's lib, lib/plugins and lcl folders."/>
+    <Version Major="1"/>
+    <Files>
+      <Item>
+        <Filename Value="../lcl/Steamworks.LCL.Reg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="Steamworks.LCL.Reg"/>
+      </Item>
+      <Item>
+        <Filename Value="../lcl/Steamworks.LCL.pas"/>
+        <UnitName Value="Steamworks.LCL"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.Types.pas"/>
+        <UnitName Value="Steamworks.Types"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.DynLib.pas"/>
+        <UnitName Value="Steamworks.DynLib"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.Versions.pas"/>
+        <UnitName Value="Steamworks.Versions"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.API.pas"/>
+        <UnitName Value="Steamworks.API"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.Callbacks.pas"/>
+        <UnitName Value="Steamworks.Callbacks"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.SteamClient.pas"/>
+        <UnitName Value="Steamworks.SteamClient"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.SDKTypes.pas"/>
+        <UnitName Value="Steamworks.SDKTypes"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.Core.pas"/>
+        <UnitName Value="Steamworks.Core"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.Components.pas"/>
+        <UnitName Value="Steamworks.Components"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Utils.pas"/>
+        <UnitName Value="Steamworks.Plugin.Utils"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.User.pas"/>
+        <UnitName Value="Steamworks.Plugin.User"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Friends.pas"/>
+        <UnitName Value="Steamworks.Plugin.Friends"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Apps.pas"/>
+        <UnitName Value="Steamworks.Plugin.Apps"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.UserStats.pas"/>
+        <UnitName Value="Steamworks.Plugin.UserStats"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.inc"/>
+        <Type Value="Include"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.AlignNatural.inc"/>
+        <Type Value="Include"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/Steamworks.AlignDefault.inc"/>
+        <Type Value="Include"/>
+      </Item>
+    </Files>
+    <RequiredPkgs>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

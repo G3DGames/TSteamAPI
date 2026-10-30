@@ -1,4 +1,4 @@
-{ @abstract(The Steam client core (@link(TSteamworks)) and the plug-in base
+(* @abstract(The Steam client core (@link(TSteamworks)) and the plug-in base
   class (@link(TSteamPlugin)).)
 
   @link(TSteamworks) owns the process-wide Steam session: loading the
@@ -37,11 +37,19 @@
     else
     begin
       Writeln(Steam.FindPlugin(TSteamUtilsPlugin) <> nil);
-      // game loop: call Steam.RunCallbacks every frame
+      // game loop: call Steam.Update (= RunCallbacks) every frame
       Steam.Shutdown;
     end;
   end.
-  #) }
+  #)
+
+  @bold(Updating.) @link(TSteamworks.UpdateMode) chooses who drains Steam's
+  queue: a framework timer (the components' default), your own loop
+  (@link(sumManual)), or a worker thread (@link(sumThread)) whose results
+  are delivered on the main thread, inside your Update call, or on the
+  worker itself (@link(TSteamworks.Delivery)). GameEngineIntegration.md
+  explains every combination. FPC on Linux / macOS: a worker thread needs
+  @code(cthreads) as the first unit of the program. *)
 unit Steamworks.Core;
 
 {$I Steamworks.inc}
@@ -82,6 +90,40 @@ type
     simVersioned,
     { SteamAPI_Init / SteamAPI_InitSafe from pre-1.59 redistributables. }
     simLegacy
+  );
+
+  { Who drains Steam's callback queue. See GameEngineIntegration.md. }
+  TSteamUpdateMode = (
+    { A framework timer calls RunCallbacks on the UI thread (the TSteamAPI
+      components' default). For the core alone this is the same as
+      @link(sumManual): something else must call
+      @link(TSteamworks.RunCallbacks). }
+    sumTimer,
+    { A worker thread owned by the core drains the queue every
+      @link(TSteamworks.PumpInterval) ms; @link(TSteamworks.Delivery) says
+      where the handlers run. Steam's I/O never stalls a frame. }
+    sumThread,
+    { Your loop calls @link(TSteamworks.Update) (or RunCallbacks) - every
+      frame of a game loop, for example. Handlers run inside that call. }
+    sumManual
+  );
+
+  { Where handlers run when @link(TSteamworks.UpdateMode) is
+    @link(sumThread). Ignored otherwise (handlers then run on the thread that
+    calls RunCallbacks / Update). }
+  TSteamDelivery = (
+    { The worker hands each batch to the main thread with TThread.Queue.
+      Needs a main loop that calls CheckSynchronize: FMX, VCL and LCL do;
+      a console program or a custom loop must call it itself. }
+    sdMainThread,
+    { Handlers run inside @link(TSteamworks.Update), on whichever thread calls
+      it - the game thread, at the point in the frame you choose. Needs
+      nothing from the host. Recommended for game engines. }
+    sdOnUpdate,
+    { Handlers run on the worker thread itself, as soon as the callback is
+      read. Lowest latency; every handler must do its own synchronisation and
+      must never touch UI or engine objects directly. }
+    sdPumpThread
   );
 
   { Severity passed to @link(TSteamLogEvent). }
@@ -196,8 +238,11 @@ type
   end;
 
   { The process-wide Steam core. There is exactly one; use the @link(Steam)
-    function or @link(TSteamworks.Instance). All events fire on the thread that
-    calls @link(RunCallbacks). }
+    function or @link(TSteamworks.Instance). Callback handlers and the
+    events raised from them fire on the thread that calls @link(RunCallbacks)
+    / @link(Update) - unless @link(UpdateMode) is @link(sumThread), when
+    @link(Delivery) decides (main thread, the thread calling Update, or the
+    worker). Initialize / Shutdown events fire on the calling thread. }
   TSteamworks = class
   private
     { @true once the constructor completed (guards Destroy after a failed Create). }
@@ -249,6 +294,34 @@ type
     FWarningLock: SyncObjs.TCriticalSection;
     { Warnings queued by the hook; Objects[] holds the severity. }
     FWarnings: TStringList;
+    { Backing field of @link(UpdateMode). }
+    FUpdateMode: TSteamUpdateMode;
+    { Backing field of @link(Delivery). }
+    FDelivery: TSteamDelivery;
+    { Backing field of @link(PumpInterval). }
+    FPumpInterval: Integer;
+    { The worker thread (a TSteamPumpThread) while @link(Threaded); @nil otherwise. }
+    FPumpThread: TThread;
+    { A worker that ended itself (Shutdown from an sdPumpThread handler) and
+      still has to be freed by another thread. Guarded by @link(FThreadLock). }
+    FDeadThread: TThread;
+    { Guards @link(FMainQueued), @link(FDeadThread) and @link(FThreadErrors). }
+    FThreadLock: SyncObjs.TCriticalSection;
+    { @true while a main-thread delivery is queued with TThread.Queue. }
+    FMainQueued: Boolean;
+    { @true while @link(StopPumpThread) waits for the worker: TThread.WaitFor
+      runs queued main-thread work meanwhile, and @link(RunCallbacks) must not
+      start reading Steam's queue while the worker may still be reading it. }
+    FWorkerStopping: Boolean;
+    { Set by the worker when it read SteamShutdown_t and ShutdownOnSteamExit
+      is on: it stops calling into Steam until shutdown. }
+    FThreadSteamExit: Boolean;
+    { Errors caught on the worker thread, reported by the next delivery. }
+    FThreadErrors: TStringList;
+    { Serialises @link(DoShutdown): with sdPumpThread delivery the worker and
+      the main thread may both shut down at once; the second finds nothing
+      to do. Never held while waiting for the worker. }
+    FShutdownLock: SyncObjs.TCriticalSection;
     { Backing field of @link(OnLog). }
     FOnLog: TSteamLogEvent;
     { Backing field of @link(OnWarning). }
@@ -277,8 +350,11 @@ type
     procedure FinalizePluginsOfClass(AClass: TSteamPluginClass);
     { Exports SteamAppId / SteamGameId when @link(SetAppIdEnvironment) is set. }
     procedure ApplyAppIdEnvironment;
-    { Performs the shutdown (never during a pump). }
+    { Performs the shutdown (never during a pump): stops the worker, then
+      runs @link(DoShutdownLocked) under @link(FShutdownLock). }
     procedure DoShutdown;
+    { The shutdown itself; caller holds @link(FShutdownLock) and Steam runs. }
+    procedure DoShutdownLocked;
     { Records @link(LastError) and logs it. }
     procedure SetFailure(const AMessage: string);
     { Handler of SteamShutdown_t; raises @link(OnSteamShutdown). }
@@ -287,6 +363,41 @@ type
     procedure LibraryWarning(Sender: TObject; const AMessage: string);
     { Delivers queued warnings to @link(OnWarning) on the pump thread. }
     procedure DrainWarnings;
+    { Logs the errors the worker thread caught since the last call. }
+    procedure DrainThreadErrors;
+    { Read accessor of @link(Threaded). }
+    function GetThreaded: Boolean;
+    { Write accessor of @link(UpdateMode). }
+    procedure SetUpdateModeValue(const AValue: TSteamUpdateMode);
+    { Write accessor of @link(Delivery). }
+    procedure SetDelivery(const AValue: TSteamDelivery);
+    { Write accessor of @link(PumpInterval). }
+    procedure SetPumpInterval(const AValue: Integer);
+    { Starts the worker if running in @link(sumThread) mode and none runs.
+      A failure (FPC without cthreads, ...) is logged and leaves the core
+      pumping from RunCallbacks. }
+    procedure StartPumpThread;
+    { Stops the worker and waits for it; from the worker itself only asks it
+      to end (another thread frees it later). Removes a queued main-thread
+      delivery. Queued copies stay (see @link(DoShutdown)). }
+    procedure StopPumpThread;
+    { Frees a worker that ended itself, unless called on that worker. }
+    procedure ReapDeadThread;
+    { Starts the worker for the (new) mode while running, or delivers what an
+      old worker left queued. The old worker is already stopped. }
+    procedure ApplyUpdateMode;
+    { One worker iteration (runs on the worker thread). }
+    procedure ThreadTick;
+    { Queues @link(MainThreadDeliver) with TThread.Queue unless one is queued. }
+    procedure ScheduleMainDelivery;
+    { Runs on the main thread (TThread.Queue): delivers the queued callbacks. }
+    procedure MainThreadDeliver;
+    { Records an error caught on the worker thread. }
+    procedure AddThreadError(const AMessage: string);
+    { SteamAPI_ReleaseCurrentThreadMemory, only while Steam runs - checked
+      under @link(FShutdownLock), so never after another thread's
+      SteamAPI_Shutdown. }
+    procedure ReleaseThreadMemoryIfRunning;
   public
     { Use @link(Instance) instead. Raises if an instance already exists. }
     constructor Create;
@@ -334,9 +445,36 @@ type
       from a callback handler (it then completes after the current callback). }
     procedure Shutdown;
 
-    { Delivers pending callbacks and queued warnings. Call regularly
-      (every frame or every 15-50 ms) from ONE thread. }
+    { Delivers pending callbacks and queued warnings on the calling thread.
+      @unorderedList(
+        @item(No worker running (@link(sumTimer), @link(sumManual), or a
+          worker that could not start): drains Steam's queue and delivers
+          everything. Call it regularly - every frame or every 15-50 ms -
+          and always from the SAME thread.)
+        @item(@link(sumThread) with @link(sdOnUpdate): delivers what the
+          worker has read. Call it once per frame from your game thread.)
+        @item(@link(sumThread) with @link(sdMainThread): delivers now when
+          called on the main thread (otherwise does nothing - the queued
+          main-thread delivery will).)
+        @item(@link(sumThread) with @link(sdPumpThread): nothing to do.)
+      ) }
     procedure RunCallbacks;
+
+    { Same as @link(RunCallbacks): the name a game loop expects
+      (@code(Steam.Update) once per frame). }
+    procedure Update;
+
+    { Sets @link(UpdateMode), @link(Delivery) and (when AIntervalMs >= 0)
+      @link(PumpInterval) in one call; applies at once if Steam is running.
+      Call it from the main / game thread, never from a handler.
+      @longCode(#
+      Steam.SetUpdateMode(sumThread, sdOnUpdate);   // engine: call Steam.Update per frame
+      #) }
+    procedure SetUpdateMode(AMode: TSteamUpdateMode; ADelivery: TSteamDelivery;
+      AIntervalMs: Integer = -1);
+
+    { Number of callbacks the worker has read but not yet delivered. }
+    function QueuedCallbackCount: Integer;
 
     { @true if a Steam client is running. Loads the library if needed. }
     function IsSteamRunning: Boolean;
@@ -408,6 +546,19 @@ type
       until the process ends. }
     property ShutdownOnSteamExit: Boolean read FShutdownOnSteamExit write FShutdownOnSteamExit;
 
+    { Who drains Steam's callback queue (default @link(sumTimer), which for
+      the core means "someone calls RunCallbacks"). Changing it while Steam
+      runs restarts the worker as needed. }
+    property UpdateMode: TSteamUpdateMode read FUpdateMode write SetUpdateModeValue;
+    { Where handlers run in @link(sumThread) mode (default @link(sdMainThread)). }
+    property Delivery: TSteamDelivery read FDelivery write SetDelivery;
+    { Worker period in ms (default 33, minimum 1). The worker also wakes
+      early when shutting down. }
+    property PumpInterval: Integer read FPumpInterval write SetPumpInterval;
+    { @true while the worker thread runs. @false in @link(sumThread) mode
+      means it could not start (see the log) and RunCallbacks pumps instead. }
+    property Threaded: Boolean read GetThreaded;
+
     { Current lifecycle state. }
     property State: TSteamworksState read FState;
     { @true while SteamAPI is initialised. }
@@ -467,6 +618,17 @@ begin
   Result := TSteamworks.Instance;
 end;
 
+{ Name of a TSteamDelivery value, for log lines. }
+function DeliveryName(ADelivery: TSteamDelivery): string;
+begin
+  case ADelivery of
+    sdMainThread: Result := 'sdMainThread';
+    sdOnUpdate:   Result := 'sdOnUpdate';
+  else
+    Result := 'sdPumpThread';
+  end;
+end;
+
 { Steam may call this from any thread. Queue the text; RunCallbacks delivers
   it on the pump thread. Never call into user code from here. }
 procedure SteamWarningHook(nSeverity: Integer; pchDebugText: PAnsiChar); cdecl;
@@ -487,6 +649,81 @@ begin
   finally
     GInstance.FWarningLock.Leave;
   end;
+end;
+
+type
+  { The core's worker (@link(sumThread)): calls TSteamworks.ThreadTick every
+    PumpInterval ms until terminated. Runs no user code itself except in
+    @link(sdPumpThread) mode, where the handlers run inside ThreadTick. }
+  TSteamPumpThread = class(TThread)
+  private
+    { The core that owns this thread. }
+    FOwner: TSteamworks;
+    { Auto-reset event: wakes the thread early (shutdown, interval change). }
+    FWake: SyncObjs.TEvent;
+    { Ticks between SteamAPI_ReleaseCurrentThreadMemory calls (about 1 s). }
+    FReleaseEvery: Integer;
+  protected
+    { The pump loop. }
+    procedure Execute; override;
+  public
+    { Creates and starts the thread for AOwner. }
+    constructor Create(AOwner: TSteamworks);
+    { Ends the loop, waits for it, frees the event. }
+    destructor Destroy; override;
+    { Wakes the thread before its interval elapses. }
+    procedure Wake;
+  end;
+
+constructor TSteamPumpThread.Create(AOwner: TSteamworks);
+begin
+  FOwner := AOwner;
+  FWake := SyncObjs.TEvent.Create(nil, False, False, '');
+  FReleaseEvery := 1000 div AOwner.FPumpInterval;
+  if FReleaseEvery < 1 then
+    FReleaseEvery := 1;
+  FreeOnTerminate := False;
+  inherited Create(False);
+end;
+
+destructor TSteamPumpThread.Destroy;
+begin
+  Terminate;
+  if FWake <> nil then
+    FWake.SetEvent;
+  inherited Destroy;   // waits for Execute to end
+  FreeAndNil(FWake);
+end;
+
+procedure TSteamPumpThread.Wake;
+begin
+  if FWake <> nil then
+    FWake.SetEvent;
+end;
+
+procedure TSteamPumpThread.Execute;
+var
+  Ticks: Integer;
+begin
+  {$ifndef FPC}
+  NameThreadForDebugging('Steamworks pump');
+  {$endif}
+  Ticks := 0;
+  while not Terminated do
+  begin
+    FOwner.ThreadTick;
+    Inc(Ticks);
+    // Valve: threads that call Steam should release its per-thread memory
+    // now and then (SteamAPI_RunCallbacks does it for the main thread)
+    if Ticks >= FReleaseEvery then
+    begin
+      Ticks := 0;
+      FOwner.ReleaseThreadMemoryIfRunning;
+    end;
+    if not Terminated then
+      FWake.WaitFor(Cardinal(FOwner.FPumpInterval));
+  end;
+  FOwner.ReleaseThreadMemoryIfRunning;
 end;
 
 { TSteamPlugin }
@@ -668,6 +905,12 @@ begin
   // TCriticalSection = TRTLCriticalSection, a record, which hides SyncObjs'.
   FWarningLock := SyncObjs.TCriticalSection.Create;
   FWarnings := TStringList.Create;
+  FThreadLock := SyncObjs.TCriticalSection.Create;
+  FThreadErrors := TStringList.Create;
+  FShutdownLock := SyncObjs.TCriticalSection.Create;
+  FUpdateMode := sumTimer;
+  FDelivery := sdMainThread;
+  FPumpInterval := 33;
   FUseRegisteredPlugins := True;
   FInstallWarningHook := True;
   FShutdownOnSteamExit := True;
@@ -693,11 +936,16 @@ begin
   FOnShutdown := nil;
   if FState = swsRunning then
     DoShutdown;
+  StopPumpThread;   // normally done by DoShutdown already
+  ReapDeadThread;
   if TSteamLib.IsLoaded then
     TSteamLib.Unload;
   FreeAndNil(FClient);
   FreeAndNil(FWarnings);
   FreeAndNil(FWarningLock);
+  FreeAndNil(FThreadErrors);
+  FreeAndNil(FThreadLock);
+  FreeAndNil(FShutdownLock);
   FExcluded.Free;
   FIncluded.Free;
   FPlugins.Free;
@@ -1227,6 +1475,10 @@ begin
       Exit;
     end;
 
+    // Last: every plug-in has subscribed before the first callback is read
+    if FUpdateMode = sumThread then
+      StartPumpThread;
+
     Result := True;
     if Assigned(FOnInitialized) then
       FOnInitialized(Self);
@@ -1246,7 +1498,26 @@ procedure TSteamworks.DoShutdown;
 begin
   if FState <> swsRunning then
     Exit;
-  FShutdownPending := False;
+  // The worker must not touch the pipe once SteamAPI_Shutdown has run.
+  // Stopped OUTSIDE FShutdownLock: the worker may itself be on its way into
+  // DoShutdown (sdPumpThread), and we must not wait for it while holding
+  // the lock it needs.
+  StopPumpThread;
+  FShutdownLock.Enter;
+  try
+    // Whoever got here second finds Steam already shut down
+    if FState <> swsRunning then
+      Exit;
+    FShutdownPending := False;
+    DoShutdownLocked;
+  finally
+    FShutdownLock.Leave;
+  end;
+end;
+
+procedure TSteamworks.DoShutdownLocked;
+begin
+  FDispatcher.ClearQueue;
   FinalizePlugins;
   FDispatcher.Unsubscribe(FShutdownSub);
   FDispatcher.Clear;
@@ -1272,7 +1543,7 @@ procedure TSteamworks.Shutdown;
 begin
   if FState <> swsRunning then
     Exit;
-  if FDispatcher.Pumping then
+  if FDispatcher.InHandlerOnCurrentThread then
   begin
     // Inside a callback handler: finish the current callback first
     FShutdownPending := True;
@@ -1308,15 +1579,307 @@ end;
 
 procedure TSteamworks.RunCallbacks;
 begin
+  if FWorkerStopping then
+    Exit;   // inside StopPumpThread's wait (see FWorkerStopping)
+  ReapDeadThread;
   if FState <> swsRunning then
     Exit;
   try
-    FDispatcher.Pump(FPipe);
-    DrainWarnings;
+    if FPumpThread = nil then
+    begin
+      // Timer / manual pumping (or a worker that could not start)
+      FDispatcher.Pump(FPipe);
+      DrainWarnings;
+    end
+    else if (FDelivery = sdOnUpdate) or
+            ((FDelivery = sdMainThread) and (TThread.CurrentThread.ThreadID = MainThreadID)) then
+    begin
+      FDispatcher.DeliverQueued;
+      DrainWarnings;
+      DrainThreadErrors;
+    end;
+    // sdPumpThread: the worker delivers everything itself
   finally
-    if FShutdownPending then
+    // Never from inside a handler (a re-entrant call): the outer call does
+    // it; and with sdPumpThread the worker that was asked finishes it itself
+    if FShutdownPending and not FDispatcher.InHandlerOnCurrentThread and
+       not ((FPumpThread <> nil) and (FDelivery = sdPumpThread)) then
       DoShutdown;
   end;
+end;
+
+procedure TSteamworks.Update;
+begin
+  RunCallbacks;
+end;
+
+function TSteamworks.QueuedCallbackCount: Integer;
+begin
+  Result := FDispatcher.QueuedCount;
+end;
+
+function TSteamworks.GetThreaded: Boolean;
+begin
+  Result := FPumpThread <> nil;
+end;
+
+procedure TSteamworks.SetUpdateMode(AMode: TSteamUpdateMode; ADelivery: TSteamDelivery;
+  AIntervalMs: Integer);
+var
+  Changed: Boolean;
+begin
+  if AIntervalMs >= 0 then
+    FPumpInterval := AIntervalMs;
+  if FPumpInterval < 1 then
+    FPumpInterval := 1;
+  Changed := (AMode <> FUpdateMode) or (ADelivery <> FDelivery);
+  if not Changed then
+  begin
+    if FPumpThread <> nil then
+      TSteamPumpThread(FPumpThread).Wake;   // new interval applies at once
+    Exit;
+  end;
+  // The running worker reads FDelivery: stop it BEFORE the value changes,
+  // and hand over what it read under the old rules
+  if FPumpThread <> nil then
+  begin
+    StopPumpThread;
+    if (FDelivery <> sdPumpThread) and not FDispatcher.InHandlerOnCurrentThread then
+      FDispatcher.DeliverQueued;
+  end;
+  FUpdateMode := AMode;
+  FDelivery := ADelivery;
+  ApplyUpdateMode;
+end;
+
+procedure TSteamworks.SetUpdateModeValue(const AValue: TSteamUpdateMode);
+begin
+  SetUpdateMode(AValue, FDelivery);
+end;
+
+procedure TSteamworks.SetDelivery(const AValue: TSteamDelivery);
+begin
+  SetUpdateMode(FUpdateMode, AValue);
+end;
+
+procedure TSteamworks.SetPumpInterval(const AValue: Integer);
+begin
+  FPumpInterval := AValue;
+  if FPumpInterval < 1 then
+    FPumpInterval := 1;
+  if FPumpThread <> nil then
+    TSteamPumpThread(FPumpThread).Wake;   // picks the new interval up at once
+end;
+
+procedure TSteamworks.ApplyUpdateMode;
+begin
+  if FState <> swsRunning then
+    Exit;   // Initialize starts the worker when needed
+  if FUpdateMode = sumThread then
+    StartPumpThread
+  else if FDispatcher.QueuedCount > 0 then
+    FDispatcher.DeliverQueued;   // nothing else would deliver them now
+end;
+
+procedure TSteamworks.StartPumpThread;
+begin
+  ReapDeadThread;
+  if (FPumpThread <> nil) or (FState <> swsRunning) then
+    Exit;
+  FThreadSteamExit := False;
+  FMainQueued := False;
+  try
+    FPumpThread := TSteamPumpThread.Create(Self);
+    Log(sllInfo, Format('Callback worker thread started (every %d ms, delivery %s)',
+      [FPumpInterval, DeliveryName(FDelivery)]));
+  except
+    on E: Exception do
+    begin
+      FPumpThread := nil;
+      Log(sllError, 'Could not start the callback worker thread (' + E.Message + '); ' +
+        'callbacks are pumped by RunCallbacks / Update instead. With FPC on Linux or ' +
+        'macOS, add cthreads as the FIRST unit of the program''s uses clause.');
+    end;
+  end;
+end;
+
+procedure TSteamworks.StopPumpThread;
+var
+  T: TThread;
+  OnWorker: Boolean;
+begin
+  if FPumpThread = nil then   // unsynchronised peek; taken under the lock
+    Exit;
+  // Exactly one caller (main thread or the worker itself) takes ownership,
+  // and a worker that stops itself is recorded as dead in the SAME critical
+  // section - no moment where neither field holds it.
+  FThreadLock.Enter;
+  try
+    T := FPumpThread;
+    FPumpThread := nil;
+    OnWorker := (T <> nil) and (T.ThreadID = TThread.CurrentThread.ThreadID);
+    if OnWorker then
+      FDeadThread := T;
+  finally
+    FThreadLock.Leave;
+  end;
+  if (T = nil) or OnWorker then
+  begin
+    // On the worker (Shutdown from an sdPumpThread handler): it cannot wait
+    // for itself. Let the loop end; another thread frees it (ReapDeadThread).
+    if T <> nil then
+    begin
+      T.Terminate;
+      Log(sllDebug, 'Callback worker thread ending (stopped from one of its own handlers)');
+    end;
+    Exit;
+  end;
+  // A main-thread delivery queued earlier must not run any more; and while
+  // we wait, WaitFor runs other queued main-thread work, which must not
+  // start reading Steam's queue next to the still-running worker.
+  TThread.RemoveQueuedEvents(nil, MainThreadDeliver);
+  FWorkerStopping := True;
+  try
+    T.Free;   // Terminate + wake + wait (TSteamPumpThread.Destroy)
+  finally
+    FWorkerStopping := False;
+  end;
+  TThread.RemoveQueuedEvents(nil, MainThreadDeliver);   // queued during the wait
+  FThreadLock.Enter;
+  try
+    FMainQueued := False;
+  finally
+    FThreadLock.Leave;
+  end;
+  Log(sllDebug, 'Callback worker thread stopped');
+end;
+
+procedure TSteamworks.ReapDeadThread;
+var
+  T: TThread;
+begin
+  if FDeadThread = nil then   // unsynchronised peek; re-checked under lock
+    Exit;
+  FThreadLock.Enter;
+  try
+    T := FDeadThread;
+    if (T <> nil) and (T.ThreadID = TThread.CurrentThread.ThreadID) then
+      Exit;   // still on that thread: someone else frees it
+    FDeadThread := nil;
+  finally
+    FThreadLock.Leave;
+  end;
+  T.Free;
+end;
+
+procedure TSteamworks.ReleaseThreadMemoryIfRunning;
+begin
+  FShutdownLock.Enter;
+  try
+    if FState = swsRunning then
+      ReleaseCurrentThreadMemory;
+  finally
+    FShutdownLock.Leave;
+  end;
+end;
+
+procedure TSteamworks.AddThreadError(const AMessage: string);
+begin
+  FThreadLock.Enter;
+  try
+    if FThreadErrors.Count < 100 then   // do not grow without bound
+      FThreadErrors.Add(AMessage);
+  finally
+    FThreadLock.Leave;
+  end;
+end;
+
+procedure TSteamworks.DrainThreadErrors;
+var
+  Pending: TStringList;
+  I: Integer;
+begin
+  if FThreadErrors.Count = 0 then  // unsynchronised peek; re-checked under lock
+    Exit;
+  Pending := TStringList.Create;
+  try
+    FThreadLock.Enter;
+    try
+      Pending.Assign(FThreadErrors);
+      FThreadErrors.Clear;
+    finally
+      FThreadLock.Leave;
+    end;
+    for I := 0 to Pending.Count - 1 do
+      Log(sllError, 'Callback worker thread: ' + Pending[I]);
+  finally
+    Pending.Free;
+  end;
+end;
+
+procedure TSteamworks.ThreadTick;
+var
+  Count: Integer;
+  SawExit: Boolean;
+begin
+  if (FState <> swsRunning) or FThreadSteamExit then
+    Exit;
+  try
+    if FDelivery = sdPumpThread then
+    begin
+      // Everything happens here, on the worker
+      try
+        FDispatcher.Pump(FPipe);
+        DrainWarnings;
+        DrainThreadErrors;
+      finally
+        if FShutdownPending then
+          DoShutdown;   // stops this thread too (it ends after this tick)
+      end;
+    end
+    else
+    begin
+      Count := FDispatcher.PumpToQueue(FPipe, SawExit);
+      // After 704 Steam's pipe goes away (Linux: ~1.5 s later); the delivery
+      // thread shuts down on 704, so stop calling into Steam now.
+      if SawExit and FShutdownOnSteamExit then
+        FThreadSteamExit := True;
+      if (FDelivery = sdMainThread) and
+         ((Count > 0) or (FWarnings.Count > 0) or (FThreadErrors.Count > 0)) then
+        ScheduleMainDelivery;
+    end;
+  except
+    // Never let an exception end the worker silently
+    on E: Exception do
+      AddThreadError(E.ClassName + ': ' + E.Message);
+  end;
+end;
+
+procedure TSteamworks.ScheduleMainDelivery;
+begin
+  FThreadLock.Enter;
+  try
+    if FMainQueued then
+      Exit;
+    FMainQueued := True;
+  finally
+    FThreadLock.Leave;
+  end;
+  TThread.Queue(nil, MainThreadDeliver);
+end;
+
+procedure TSteamworks.MainThreadDeliver;
+begin
+  FThreadLock.Enter;
+  try
+    FMainQueued := False;   // first: callbacks read from now on queue a new run
+  finally
+    FThreadLock.Leave;
+  end;
+  // Queued by a worker that may be gone (mode change, shutdown): only a live
+  // worker's queue is delivered here, never a direct read of Steam's queue
+  if (FPumpThread <> nil) and (FDelivery = sdMainThread) then
+    RunCallbacks;
 end;
 
 function TSteamworks.FindPlugin(AClass: TSteamPluginClass): TSteamPlugin;

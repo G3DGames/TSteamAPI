@@ -47,6 +47,10 @@ heap.trc
 # its unit output (lib/<cpu>-<os>/ - the lib/*-*/ pattern above is anchored
 # to the repository root, so it does not match here)
 /demos/SteamDemoLCL/lib/
+# Lazarus package output: units in packages/lib/<cpu>-<os>/, and the package
+# unit Lazarus regenerates from the .lpk on every compile
+/packages/lib/
+/packages/SteamworksLCL.pas
 
 # Steamworks SDK redistributables: copied in by each developer, never committed
 redistributable_bin/*

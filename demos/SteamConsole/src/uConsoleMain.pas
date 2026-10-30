@@ -6,6 +6,20 @@
   parameter, e.g. @code(SteamConsole 60)) and shuts down. Every step is written to the console so the
   output can be pasted back as test evidence.
 
+  The optional second parameter selects how callbacks are pumped (see
+  GameEngineIntegration.md); every callback line says which thread ran it:
+  @unorderedList(
+    @item(@code(manual) (default): the loop calls Steam.Update - main thread.)
+    @item(@code(thread): worker thread reads, the loop's Steam.Update
+      delivers (sumThread + sdOnUpdate) - main thread.)
+    @item(@code(main): worker reads, TThread.Queue hands it to the main
+      thread; the loop calls CheckSynchronize (sumThread + sdMainThread) -
+      main thread.)
+    @item(@code(worker): worker reads and delivers (sumThread +
+      sdPumpThread) - worker thread.)
+  )
+  e.g. @code(SteamConsole 60 thread).
+
   The same source is intended to build with Free Pascal:
   @longCode(#
   fpc -Mdelphi -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc SteamConsole.dpr
@@ -24,7 +38,7 @@ function RunConsoleDemo: Integer;
 implementation
 
 uses
-  SysUtils, Classes, DateUtils, StrUtils,
+  SysUtils, Classes, SyncObjs, DateUtils, StrUtils,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
   Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
   Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
@@ -44,7 +58,9 @@ type
   { Receives core events and writes them to the console. }
   TConsoleSink = class
   public
-    { Set when SteamShutdown_t arrives; the pump loop then exits. }
+    { Set when SteamShutdown_t arrives; the pump loop then exits. Written
+      by the worker thread in mode @code(worker), hence volatile in spirit:
+      the loop only polls it. }
     SteamExiting: Boolean;
     { Core log messages. }
     procedure Log(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
@@ -54,10 +70,21 @@ type
     procedure AnyCallback(const AData: TSteamCallbackData);
   end;
 
+var
+  { Serialises console output: in mode worker the worker thread writes too,
+    and Writeln to the shared console buffer is not thread-safe (unguarded,
+    a line was once printed twice). }
+  SayLock: TCriticalSection;
+
 procedure Say(const S: string);
 begin
-  Writeln(FormatDateTime('hh:nn:ss.zzz', Now), '  ', S);
-  Flush(Output); // keep the evidence even if the process is killed
+  SayLock.Enter;
+  try
+    Writeln(FormatDateTime('hh:nn:ss.zzz', Now), '  ', S);
+    Flush(Output); // keep the evidence even if the process is killed
+  finally
+    SayLock.Leave;
+  end;
 end;
 
 procedure TConsoleSink.Log(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
@@ -79,8 +106,9 @@ begin
     // a game that is still running about 10 s after this callback.
     SteamExiting := True;
   end;
-  Say(Format('Callback %d (%s), %d bytes',
-    [AData.CallbackID, SteamCallbackGroupName(AData.CallbackID), AData.Size]));
+  Say(Format('Callback %d (%s), %d bytes, on the %s thread',
+    [AData.CallbackID, SteamCallbackGroupName(AData.CallbackID), AData.Size,
+     IfThen(TThread.CurrentThread.ThreadID = MainThreadID, 'main', 'WORKER')]));
 end;
 
 function RunConsoleDemo: Integer;
@@ -97,6 +125,7 @@ var
   Versions: TSteamStringArray;
   I, PumpMs: Integer;
   Started: TDateTime;
+  Mode: string;
 begin
   Result := 1;
   Sink := TConsoleSink.Create;
@@ -106,6 +135,22 @@ begin
     Steam.Dispatcher.OnAnyCallback := Sink.AnyCallback;
     Steam.AppID := APP_ID;
     Steam.SetAppIdEnvironment := True;
+
+    Mode := 'manual';
+    if ParamCount >= 2 then
+      Mode := LowerCase(ParamStr(2));
+    if Mode = 'thread' then
+      Steam.SetUpdateMode(sumThread, sdOnUpdate, TICK_MS)
+    else if Mode = 'main' then
+      Steam.SetUpdateMode(sumThread, sdMainThread, TICK_MS)
+    else if Mode = 'worker' then
+      Steam.SetUpdateMode(sumThread, sdPumpThread, TICK_MS)
+    else
+    begin
+      Mode := 'manual';
+      Steam.SetUpdateMode(sumManual, sdMainThread, TICK_MS);
+    end;
+    Say('Update mode: ' + Mode);
 
     Say(Format('Steamworks console demo, AppID %d, library %s',
       [APP_ID, TSteamLib.DefaultLibraryName]));
@@ -172,12 +217,16 @@ begin
     PumpMs := PUMP_MS;
     if (ParamCount >= 1) and (StrToIntDef(ParamStr(1), 0) > 0) then
       PumpMs := StrToIntDef(ParamStr(1), 0) * 1000;
-    Say(Format('Pumping callbacks for %d ms (every %d ms)', [PumpMs, TICK_MS]));
+    Say(Format('Pumping callbacks for %d ms (every %d ms, mode %s, worker thread running: %s)',
+      [PumpMs, TICK_MS, Mode, BoolToStr(Steam.Threaded, True)]));
     Started := Now;
     while (MilliSecondsBetween(Now, Started) < PumpMs) and not Sink.SteamExiting do
     begin
-      Steam.RunCallbacks;
-      Sleep(TICK_MS);
+      Steam.Update;   // = RunCallbacks; in mode worker it has nothing to do
+      if Mode = 'main' then
+        CheckSynchronize(TICK_MS)   // runs what the worker queued for the main thread
+      else
+        Sleep(TICK_MS);
     end;
     Say(Format('Pumped for %d ms; %d callbacks dispatched%s',
       [MilliSecondsBetween(Now, Started), Steam.Dispatcher.CallbacksDispatched,
@@ -192,5 +241,11 @@ begin
     Sink.Free;
   end;
 end;
+
+initialization
+  SayLock := TCriticalSection.Create;
+
+finalization
+  SayLock.Free;
 
 end.

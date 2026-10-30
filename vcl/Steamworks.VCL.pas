@@ -4,7 +4,9 @@
   Same name, properties and events as the FMX and LCL TSteamAPI: everything
   except the timer, exception display and application exit lives in the
   framework-free @code(TCustomSteamAPI) (Steamworks.Components). The callback
-  timer is the VCL TTimer, so Steam events arrive on the main thread. The VCL
+  timer is the VCL TTimer, so Steam events arrive on the main thread (the
+  default UpdateMode, sumTimer; sumThread moves the reading to a worker
+  thread and still delivers on the main thread by default). The VCL
   and FMX TSteamAPI can both be installed: each design package registers its
   class in its framework's class group. *)
 unit Steamworks.VCL;
@@ -53,8 +55,15 @@ type
     property LibraryPath;
     { Initialisation entry point. }
     property InitMode;
-    { Pump interval in ms; 0 = no timer (call RunCallbacks yourself). }
+    { Timer interval (sumTimer) or worker period (sumThread) in ms; with
+      sumTimer, 0 = no timer (call Update yourself). }
     property CallbackInterval;
+    { Who drains Steam's queue: the timer (sumTimer, default), a worker
+      thread (sumThread) or your own loop calling Update (sumManual). }
+    property UpdateMode;
+    { Where events run in sumThread mode: main thread (default), inside
+      Update, or on the worker. }
+    property Delivery;
     { Forward Steam debug output to OnWarning. }
     property InstallWarningHook;
     { End the application when the Steam client exits. }

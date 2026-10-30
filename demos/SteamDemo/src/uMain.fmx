@@ -7,8 +7,8 @@ object frmMain: TfrmMain
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
-  OnClose = FormClose
   OnCreate = FormCreate
+  OnClose = FormClose
   DesignerMasterStyle = 0
   object pnlTop: TPanel
     Align = Top
@@ -57,12 +57,178 @@ object frmMain: TfrmMain
       OnClick = btnCopyClick
     end
   end
-  object memLog: TMemo
-    ReadOnly = True
+  object tabMain: TTabControl
     Align = Client
     Size.Width = 720.000000000000000000
     Size.Height = 472.000000000000000000
     Size.PlatformDefault = False
+    TabIndex = 0
     TabOrder = 1
+    TabPosition = Top
+    Sizes = (
+      720s
+      446s
+      720s
+      446s
+      720s
+      446s)
+    object tiOutput: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = True
+      Size.Width = 58.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Output'
+      ExplicitSize.cx = 50.000000000000000000
+      ExplicitSize.cy = 50.000000000000000000
+      object memLog: TMemo
+        Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+        DataDetectorTypes = []
+        ReadOnly = True
+        Align = Client
+        Size.Width = 720.000000000000000000
+        Size.Height = 446.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 0
+        Viewport.Width = 716.000000000000000000
+        Viewport.Height = 442.000000000000000000
+      end
+    end
+    object tiPersonal: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = False
+      Size.Width = 65.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Personal'
+      ExplicitSize.cx = 50.000000000000000000
+      ExplicitSize.cy = 50.000000000000000000
+      object layPersonalTop: TLayout
+        Align = Top
+        Size.Width = 720.000000000000000000
+        Size.Height = 200.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 0
+        object imgAvatar: TImage
+          MultiResBitmap = <
+            item
+            end>
+          Align = Left
+          Margins.Left = 8.000000000000000000
+          Margins.Top = 8.000000000000000000
+          Margins.Right = 8.000000000000000000
+          Margins.Bottom = 8.000000000000000000
+          Position.X = 8.000000000000000000
+          Position.Y = 8.000000000000000000
+          Size.Width = 184.000000000000000000
+          Size.Height = 184.000000000000000000
+          Size.PlatformDefault = False
+        end
+        object lbInfo: TListBox
+          Align = Client
+          Size.Width = 520.000000000000000000
+          Size.Height = 200.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 0
+          DisableFocusEffect = True
+          DefaultItemStyles.ItemStyle = 'listboxitemrightdetail'
+          DefaultItemStyles.GroupHeaderStyle = ''
+          DefaultItemStyles.GroupFooterStyle = ''
+          Viewport.Width = 516.000000000000000000
+          Viewport.Height = 196.000000000000000000
+        end
+      end
+      object lblFriends: TLabel
+        Align = Top
+        Margins.Left = 8.000000000000000000
+        Margins.Top = 4.000000000000000000
+        Margins.Right = 8.000000000000000000
+        Margins.Bottom = 4.000000000000000000
+        Position.X = 8.000000000000000000
+        Position.Y = 204.000000000000000000
+        Size.Width = 704.000000000000000000
+        Size.Height = 17.000000000000000000
+        Size.PlatformDefault = False
+        Text = 'Friends'
+        TabOrder = 2
+      end
+      object lbFriends: TListBox
+        Align = Client
+        Size.Width = 720.000000000000000000
+        Size.Height = 221.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 1
+        DisableFocusEffect = True
+        ItemHeight = 56.000000000000000000
+        DefaultItemStyles.ItemStyle = 'listboxitembottomdetail'
+        DefaultItemStyles.GroupHeaderStyle = ''
+        DefaultItemStyles.GroupFooterStyle = ''
+        Viewport.Width = 716.000000000000000000
+        Viewport.Height = 217.000000000000000000
+      end
+    end
+    object tiAchievements: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = False
+      Size.Width = 94.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Achievements'
+      ExplicitSize.cx = 50.000000000000000000
+      ExplicitSize.cy = 50.000000000000000000
+      object lbAchievements: TListBox
+        Align = Client
+        Size.Width = 720.000000000000000000
+        Size.Height = 446.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 0
+        DisableFocusEffect = True
+        ItemHeight = 72.000000000000000000
+        DefaultItemStyles.ItemStyle = 'listboxitembottomdetail'
+        DefaultItemStyles.GroupHeaderStyle = ''
+        DefaultItemStyles.GroupFooterStyle = ''
+        Viewport.Width = 716.000000000000000000
+        Viewport.Height = 442.000000000000000000
+      end
+    end
+  end
+  object SteamAPI1: TSteamAPI
+    AppID = 2275430
+    UpdateMode = sumThread
+    OnInitialized = SteamInitialized
+    OnInitFailed = SteamInitFailed
+    OnShutdown = SteamShutdown
+    OnSteamShutdown = SteamClientExit
+    OnLog = SteamLog
+    OnWarning = SteamWarning
+    OnCallback = SteamCallback
+    Left = 600
+    Top = 8
+  end
+  object SteamFriends1: TSteamFriends
+    SteamAPI = SteamAPI1
+    OnPersonaStateChange = FriendPersonaChanged
+    OnAvatarImageLoaded = FriendAvatarLoaded
+    Left = 600
+    Top = 64
+  end
+  object SteamUserStats1: TSteamUserStats
+    SteamAPI = SteamAPI1
+    OnUserStatsReceived = StatsReceived
+    OnUserAchievementIconFetched = AchievementIconFetched
+    Left = 600
+    Top = 120
   end
 end
