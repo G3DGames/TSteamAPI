@@ -20,7 +20,7 @@ unit uSteamDemoDesktop;
 interface
 
 uses
-  SysUtils, Classes, DateUtils, Controls, Forms, StdCtrls, ComCtrls, ExtCtrls, Graphics,
+  SysUtils, Classes, Controls, Forms, StdCtrls, ComCtrls, ExtCtrls, Graphics,
   {$ifdef FPC}Steamworks.LCL{$else}Steamworks.VCL{$endif},
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
   Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
@@ -155,12 +155,6 @@ begin
   else
     Result := 'state ' + IntToStr(Ord(AState));
   end;
-end;
-
-function UnixToLocal(AUnix: UInt32): TDateTime;
-begin
-  // 2nd parameter is AReturnUTC in Delphi and FPC 3.2+: False = local time
-  Result := UnixToDateTime(AUnix, False);
 end;
 
 { TfrmSteamDemo }
@@ -518,7 +512,7 @@ begin
         Desc := S.GetAchievementDisplayAttribute(AchName, 'desc');
         Hidden := S.GetAchievementDisplayAttribute(AchName, 'hidden') = '1';
         if Achieved then
-          State := 'unlocked ' + FormatDateTime('yyyy-mm-dd hh:nn', UnixToLocal(UnlockTime))
+          State := 'unlocked ' + FormatDateTime('yyyy-mm-dd hh:nn', SteamTimeToLocal(UnlockTime))
         else
           State := 'locked';
         Item := FAchievements.Items.Add;

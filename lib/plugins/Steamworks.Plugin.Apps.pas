@@ -320,6 +320,7 @@ end;
 
 class function TSteamAppsPlugin.InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray;
 begin
+  Result := nil;
   SetLength(Result, 1);
   Result[0] := AVersions.Resolve(STEAMAPPS_INTERFACE_VERSION);
 end;

@@ -443,6 +443,7 @@ end;
 
 class function TSteamUtilsPlugin.InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray;
 begin
+  Result := nil;
   SetLength(Result, 1);
   Result[0] := AVersions.Resolve(STEAMUTILS_INTERFACE_VERSION);
 end;

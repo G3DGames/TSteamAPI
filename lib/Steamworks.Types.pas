@@ -286,10 +286,80 @@ function SteamCallbackGroupName(ACallbackID: Integer): string;
   @param(AResult  Value returned by SteamAPI_InitFlat.) }
 function SteamInitResultToString(AResult: ESteamAPIInitResult): string;
 
+(* A Steam time (Unix seconds, UTC - achievement unlock times, server time,
+   ...) as a local TDateTime, using the UTC offset that applied AT THAT
+   MOMENT (summer or winter time), on Delphi and FPC alike.
+   FPC 3.2's @code(UnixToDateTime(T, False)) applies today's offset to every
+   date: an August unlock read in winter came out an hour early (tested
+   2026-10-30) - use this instead.
+   @param(AUnixTime  Seconds since 1970-01-01 00:00 UTC.) *)
+function SteamTimeToLocal(AUnixTime: Int64): TDateTime;
+
 implementation
 
 uses
-  SysUtils;
+  SysUtils, DateUtils;
+
+(* FPC 3.2.2 has no per-date UTC offset (its GetLocalTimeOffset only knows
+   the current one), so ask the OS for the local time of that instant. *)
+{$if defined(FPC) and defined(MSWINDOWS)}
+type
+  { Win32 SYSTEMTIME (eight Words - no packing question). }
+  TSteamSystemTime = record
+    wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds: Word;
+  end;
+
+function SystemTimeToTzSpecificLocalTime(lpTimeZone: Pointer; const lpUniversalTime: TSteamSystemTime;
+  out lpLocalTime: TSteamSystemTime): LongBool; stdcall; external 'kernel32.dll';
+
+function SteamTimeToLocal(AUnixTime: Int64): TDateTime;
+var
+  U, L: TSteamSystemTime;
+  Y, Mo, D, H, Mi, S, Ms: Word;
+begin
+  Result := UnixToDateTime(AUnixTime, True);   // UTC
+  DecodeDateTime(Result, Y, Mo, D, H, Mi, S, Ms);
+  U.wYear := Y; U.wMonth := Mo; U.wDayOfWeek := 0; U.wDay := D;
+  U.wHour := H; U.wMinute := Mi; U.wSecond := S; U.wMilliseconds := Ms;
+  // nil = the current time zone, with the DST rule in force on that date
+  if SystemTimeToTzSpecificLocalTime(nil, U, L) then
+    Result := EncodeDateTime(L.wYear, L.wMonth, L.wDay, L.wHour, L.wMinute, L.wSecond, L.wMilliseconds)
+  else
+    Result := UniversalTimeToLocal(Result);
+end;
+{$elseif defined(FPC)}
+{$push}{$packrecords c}
+type
+  { C struct tm (glibc / macOS), up to tm_gmtoff; C packing, whatever
+    Steamworks.inc set. }
+  TSteamCTm = record
+    tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday, tm_isdst: LongInt;
+    tm_gmtoff: PtrInt;       // seconds east of UTC (C long)
+    tm_zone: PAnsiChar;
+  end;
+{$pop}
+
+function localtime_r(const ATime: PPtrInt; AResult: Pointer): Pointer; cdecl; external 'c';
+
+function SteamTimeToLocal(AUnixTime: Int64): TDateTime;
+var
+  T: PtrInt;           // time_t is a C long on Linux / macOS
+  Tm: TSteamCTm;
+begin
+  Result := UnixToDateTime(AUnixTime, True);   // UTC
+  T := PtrInt(AUnixTime);
+  FillChar(Tm, SizeOf(Tm), 0);
+  if localtime_r(@T, @Tm) <> nil then
+    Result := IncSecond(Result, Tm.tm_gmtoff)
+  else
+    Result := UniversalTimeToLocal(Result);
+end;
+{$else}
+function SteamTimeToLocal(AUnixTime: Int64): TDateTime;
+begin
+  Result := UnixToDateTime(AUnixTime, False);  // TTimeZone: per-date offset
+end;
+{$endif}
 
 const
   (* Public callback ranges, highest base first (see the k_i...Callbacks

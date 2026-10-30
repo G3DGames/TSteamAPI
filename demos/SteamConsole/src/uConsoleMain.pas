@@ -159,8 +159,7 @@ begin
           Stats.GetAchievementAndUnlockTime(V, Achieved, UnlockTime);
           if Achieved then
             Say(Format('  %s "%s": unlocked %s', [V, Stats.GetAchievementDisplayAttribute(V, 'name'),
-              // local time: 2nd parameter is AReturnUTC (Delphi and FPC 3.2+)
-              FormatDateTime('yyyy-mm-dd hh:nn', UnixToDateTime(UnlockTime, False))]))
+              FormatDateTime('yyyy-mm-dd hh:nn', SteamTimeToLocal(UnlockTime))]))
           else
             Say(Format('  %s "%s": locked', [V, Stats.GetAchievementDisplayAttribute(V, 'name')]));
         end;

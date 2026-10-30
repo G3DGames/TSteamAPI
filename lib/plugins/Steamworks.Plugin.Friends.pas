@@ -741,6 +741,7 @@ end;
 
 class function TSteamFriendsPlugin.InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray;
 begin
+  Result := nil;
   SetLength(Result, 1);
   Result[0] := AVersions.Resolve(STEAMFRIENDS_INTERFACE_VERSION);
 end;

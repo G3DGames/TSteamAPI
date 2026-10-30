@@ -174,6 +174,38 @@ Project AppID: 2275430.
 - Flat exports are cdecl. Optional exports must be checked with Assigned().
 - Pascal comments do not nest: a doc comment that contains `{$...}` or any
   `{` must use `(* *)` (pasdoc_check.py enforces this).
+- FPC's Windows unit declares `TCriticalSection = TRTLCriticalSection` (a
+  record): a unit that uses Windows must write `SyncObjs.TCriticalSection`
+  (first FPC compile, 2026-10-30, failed on exactly that).
+- Initialise an empty dynamic-array Result with `Result := nil`, not
+  `SetLength(Result, 0)`, and write `Result := nil;` before a
+  `SetLength(Result, N)` (FPC warns 5093 "result ... not initialized").
+- FIRST FPC BUILD (Lazarus 4.8 / FPC 3.2.2 Win64, 2026-10-30): after the
+  TCriticalSection fix the library and SteamDemoLCL compiled and linked.
+  Remaining messages, all accepted: FPC's own generics.collections
+  (4046 "Constructing a class TCustomDictionaryEnumerator with abstract
+  method" for every TDictionary, 5071 / 6058 notes), unused Sender /
+  parameter hints, managed-local hints. Everything else in the log is
+  Lazarus rebuilding its own LCL packages.
+- SteamDemoLCL FIRST RUN (18:28, log checked): DLL load, SDK 1.65, 28
+  versions, all 5 plug-ins with live data, friend avatar handle 6, all 6
+  icon fetches (1109) with handles 11-16, OnPersonaStateChange, Stop /
+  Start, close (FormClose twice, clean). ONE BUG: RANK_001 showed
+  2025-08-23 08:58, Delphi 09:58 (confirmed right by the Steam client).
+  The review's claim that FPC's UnixToDateTime(T, False) equals Delphi's was
+  WRONG: FPC 3.2 applies TODAY's offset (GMT in late October) to every date.
+  Fix: SteamTimeToLocal (Steamworks.Types). Delphi: UnixToDateTime(T,
+  False). FPC: FPC 3.2.2 has NO per-date offset (the GetLocalTimeOffset
+  (DateTime, ...) overload is newer - first attempt failed to compile), so
+  the OS is asked: Windows SystemTimeToTzSpecificLocalTime (kernel32),
+  Linux / macOS libc localtime_r (tm_gmtoff; struct under packrecords C).
+  All three demos use it. CONFIRMED 18:37 (SteamDemoLCL, Win64): RANK_001
+  2025-08-23 09:58, Feb dates unchanged; the build had no warnings from our
+  code (8 left, all FPC's generics 4046). Same run: Start with Steam closed
+  -> result 2 via OnInitFailed, app kept running; Show info without Steam ->
+  "press Start first"; Start after Steam came up -> full data; normal close
+  -> FormClose once, clean. The localtime_r path waits for an FPC Linux /
+  macOS build. SteamDemoLCL Win64 COMPLETE.
 - No `TArray<T>` / `.ToArray` in `lib/` (FPC 3.2's Generics.Collections
   clashes); use `TSteamStringArray`, `TSteamPluginClassArray` or local
   `array of` types and copy loops.

@@ -193,6 +193,11 @@ plug-in unit also declares a component named after the interface -
   `TBitmap`. A handle of -1 means Steam is still loading it - wait for
   `TSteamFriends.OnAvatarImageLoaded` / `TSteamUserStats.OnUserAchievementIconFetched`.
   SteamDemo shows the user's avatar and the app's achievements this way.
+* Steam times (achievement unlock times, ...) are Unix seconds in UTC;
+  `SteamTimeToLocal` (Steamworks.Types) converts one to local time with the
+  offset that applied on that date. Prefer it to `UnixToDateTime(T, False)`,
+  which on FPC 3.2 applies today's offset (summer dates read in winter come
+  out an hour out).
 * When Steam cannot start and no `OnInitFailed` handler is assigned,
   `Active := True` shows the error (an `ESteamworksError` with Steam's own
   message) in the framework's message box and leaves `Active` False - it

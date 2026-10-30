@@ -246,7 +246,7 @@ type
     { Subscription to SteamShutdown_t. }
     FShutdownSub: TSteamSubscription;
     { Guards @link(FWarnings) (the warning hook may run on any thread). }
-    FWarningLock: TCriticalSection;
+    FWarningLock: SyncObjs.TCriticalSection;
     { Warnings queued by the hook; Objects[] holds the severity. }
     FWarnings: TStringList;
     { Backing field of @link(OnLog). }
@@ -510,7 +510,7 @@ end;
 
 class function TSteamPlugin.Dependencies: TSteamPluginClassArray;
 begin
-  SetLength(Result, 0);
+  Result := nil;
 end;
 
 class function TSteamPlugin.IsRequired: Boolean;
@@ -520,7 +520,7 @@ end;
 
 class function TSteamPlugin.InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray;
 begin
-  SetLength(Result, 0);
+  Result := nil;
 end;
 
 function TSteamPlugin.Initialize(ASteam: TSteamworks): Boolean;
@@ -645,7 +645,7 @@ var
   I: Integer;
 begin
   if GRegistry = nil then
-    SetLength(Result, 0)
+    Result := nil
   else
   begin
     SetLength(Result, GRegistry.Count);
@@ -664,7 +664,9 @@ begin
   FPlugins := TObjectList<TSteamPlugin>.Create(True);
   FIncluded := TList<TSteamPluginClass>.Create;
   FExcluded := TList<TSteamPluginClass>.Create;
-  FWarningLock := TCriticalSection.Create;
+  // Qualified: under FPC the Windows unit (used below on Windows) declares
+  // TCriticalSection = TRTLCriticalSection, a record, which hides SyncObjs'.
+  FWarningLock := SyncObjs.TCriticalSection.Create;
   FWarnings := TStringList.Create;
   FUseRegisteredPlugins := True;
   FInstallWarningHook := True;
@@ -956,6 +958,7 @@ begin
         Roots.Add(FIncluded[I]);
     for I := 0 to Roots.Count - 1 do
       Visit(Roots[I]);
+    Result := nil;   // FPC: initialise before SetLength (warning 5093)
     SetLength(Result, Ordered.Count);
     for I := 0 to Ordered.Count - 1 do
       Result[I] := Ordered[I];

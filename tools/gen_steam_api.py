@@ -915,6 +915,7 @@ class PluginUnit:
         w("")
         w(f"class function {self.cls}.InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray;")
         w("begin")
+        w("  Result := nil;")  # FPC warns (5093) on SetLength of an uninitialised result
         w("  SetLength(Result, 1);")
         w(f"  Result[0] := AVersions.Resolve({self.version_const()});")
         w("end;")

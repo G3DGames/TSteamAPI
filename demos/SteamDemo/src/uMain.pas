@@ -546,7 +546,7 @@ begin
         Desc := S.GetAchievementDisplayAttribute(AchName, 'desc');
         Hidden := S.GetAchievementDisplayAttribute(AchName, 'hidden') = '1';
         if Achieved then
-          State := 'unlocked ' + FormatDateTime('yyyy-mm-dd hh:nn', UnixToDateTime(UnlockTime, False))
+          State := 'unlocked ' + FormatDateTime('yyyy-mm-dd hh:nn', SteamTimeToLocal(UnlockTime))
         else
           State := 'locked';
         Item := TListBoxItem.Create(FAchievements);

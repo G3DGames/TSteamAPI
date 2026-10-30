@@ -518,6 +518,7 @@ end;
 
 class function TSteamUserStatsPlugin.InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray;
 begin
+  Result := nil;
   SetLength(Result, 1);
   Result[0] := AVersions.Resolve(STEAMUSERSTATS_INTERFACE_VERSION);
 end;

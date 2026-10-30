@@ -563,7 +563,7 @@ var
 begin
   if FLib = nil then
   begin
-    SetLength(Result, 0);
+    Result := nil;
     Exit;
   end;
   SetLength(Result, FLib.MissingSymbols.Count);
@@ -783,6 +783,7 @@ begin
     for S in FMap.Values do
       L.Add(S);
     L.Sort;
+    Result := nil;   // FPC: initialise before SetLength (warning 5093)
     SetLength(Result, L.Count);
     for I := 0 to L.Count - 1 do
       Result[I] := L[I];
