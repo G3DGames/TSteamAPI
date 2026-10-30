@@ -75,6 +75,8 @@ type
     FInstallWarningHook: Boolean;
     { Backing field of @link(QuitOnSteamShutdown). }
     FQuitOnSteamShutdown: Boolean;
+    { Backing field of @link(ShutdownOnSteamExit). }
+    FShutdownOnSteamExit: Boolean;
     { Backing field of @link(OnInitialized). }
     FOnInitialized: TNotifyEvent;
     { Backing field of @link(OnInitFailed). }
@@ -160,6 +162,9 @@ type
     property InstallWarningHook: Boolean read FInstallWarningHook write FInstallWarningHook default True;
     { Terminate the application when the Steam client exits. }
     property QuitOnSteamShutdown: Boolean read FQuitOnSteamShutdown write FQuitOnSteamShutdown default False;
+    { Shut Steam down (not the app) as soon as the Steam client exits; see
+      TSteamworks.ShutdownOnSteamExit. }
+    property ShutdownOnSteamExit: Boolean read FShutdownOnSteamExit write FShutdownOnSteamExit default True;
 
     { Steam started successfully. }
     property OnInitialized: TNotifyEvent read FOnInitialized write FOnInitialized;
@@ -202,6 +207,7 @@ begin
   end;
   FCallbackInterval := 33;
   FInstallWarningHook := True;
+  FShutdownOnSteamExit := True;
   FInitMode := simAuto;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -322,6 +328,7 @@ begin
   S.LibraryPath := FLibraryPath;
   S.InitMode := FInitMode;
   S.InstallWarningHook := FInstallWarningHook;
+  S.ShutdownOnSteamExit := FShutdownOnSteamExit;
 
   if FRestartIfNecessary and (FAppID <> 0) and S.RestartAppIfNecessary(FAppID) then
   begin

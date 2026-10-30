@@ -93,6 +93,11 @@ Project AppID: 2275430.
   only inside `{$ifdef STEAMWORKS_ANONYMOUS_METHODS}`.
 - No class constructors/destructors in `lib/` (use unit initialization /
   finalization) - keeps FPC behaviour predictable.
+- Steamworks.inc sets Steam's packing ({$ALIGN 4} outside Windows) for EVERY
+  record in lib/, not only Steam structs. Never put managed fields (string,
+  dynamic array, interface) in a record or record typed constant in lib/:
+  on Linux64 such a string field sat at offset 4 and Format got a bad
+  pointer (access violation). Use parallel arrays or a class instead.
 - C `bool` -> `Boolean`; C enums need 4 bytes (the .inc does this);
   C++ `const T&` parameters are pointers, never records by value;
   structs under `#pragma pack(1)` are `packed record`.
@@ -142,6 +147,48 @@ Project AppID: 2275430.
 - SteamMatchGameSearch and STEAMMUSICREMOTE versions were not found in the
   1.65 redistributable; check isteamgamesearch.h / isteammusicremote.h.
 - FPC build of lib/ and SteamConsole not yet run.
+- Linux64 tested 2026-10-30 (Delphi 13 via PAServer, Steam client running):
+  SteamConsole loads libsteam_api.so beside the executable, SDK 1.65, init OK,
+  ISteamUtils live data, 5 internal callbacks in 3 s, clean shutdown. The 28
+  detected versions equal the fallbacks (minus the two known missing ones).
+  The log showed a RELATIVE library path (ParamStr(0) is argv[0] on POSIX) and
+  a US-locale server time; fixed (exe folder now ExpandFileName'd, times ISO)
+  and confirmed on a rebuild the same day (absolute path, 2026-10-30 11:11:48).
+  SteamDemo on Linux64 (2026-10-30): Start, Show info, Stop, Start again all
+  as on Windows; same 28 versions; ISteamUtils live data. WARNING HOOK PROVEN:
+  Show info produced "[S_API WARN] The loaded overlay DLL doesn't support
+  IsOverlayEnabled" (severity 1) via OnWarning. Steam's text ends in a line
+  break; the hook now TrimRight's it - confirmed (one line, no blank).
+  Window close (command line, Steam running): FormClose ran ONCE (Windows:
+  twice), then SteamAPI shut down cleanly. That command-line run produced no
+  overlay warning, unlike the PAServer-launched runs - possibly the overlay
+  .so is only loaded (LD_PRELOAD?) in PAServer's environment; unverified.
+  Steam -> Exit, SteamDemo (2026-10-30): NO close request, process not ended;
+  704 arrived TWICE (11:29:30, 11:29:31); by the second the pipe was broken.
+  The later FormClose -> SteamAPI_Shutdown made steamclient assert (Broken
+  pipe, steamclient.cpp 837) and write minidumps to /tmp/dumps (upload failed:
+  no libcurl.so - harmless). Fix: ShutdownOnSteamExit (core + FMX, default
+  true) shuts SteamAPI down right after the first OnSteamShutdown; repeats of
+  704 are ignored. Re-test with Linux5.zip: the core shut down correctly on
+  704, but the demo showed "Access violation at 44E42F, accessing 1708" the
+  instant Steam -> Exit was chosen. addr2line: System.SysUtils.WideFormatBuf.
+  Cause (most likely): the demo's OnCallback names each callback with
+  SteamCallbackGroupName; 704 was the first non-internal callback ever named,
+  and its table was a record typed constant with a string field misaligned by
+  {$ALIGN 4}. Replaced by two parallel arrays, no Format. (The 11:29 run's
+  missing "Callback 704 (Utils+4)" line was the same crash, unnoticed.)
+  CONFIRMED 2026-10-30 12:01 (Linux7.zip): "Callback 704 (Utils+4), 1 bytes"
+  (SteamShutdown_t is an empty struct; size 1, not 8 as predicted), one
+  OnSteamShutdown, SteamAPI shut down 1 ms later, no second 704, no asserts or
+  minidumps, later window close clean with Steam running: False.
+  SteamConsole 60, Steam -> Exit (2026-10-30 12:19, rebuilt binary): 704
+  named "Utils+4", SteamAPI shut down 1 ms later, pump stopped early, clean
+  exit, no asserts. A first run at 12:06 crashed in WideFormatBuf (same
+  accessed address 1708) - its binary was STALE (11:13, before the fix): the
+  IDE redeployed the old Linux64 build after the folder was deleted. Lesson:
+  after source changes use Project -> Build for the remote platform and check
+  the deployed executable's timestamp before trusting a result.
+LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
 - Android64 is enabled in the FMX projects with only the Steam library deployed
   (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
   entries itself. Not yet run on a device.
@@ -155,13 +202,17 @@ demos, Steam-not-running, Steam client exit, missing and wrong-bitness DLL
 messages, check_redist.py against the real 1.65 files.
 
 Next tests, in order:
-1. Linux64 via PAServer - SteamConsole then SteamDemo; libsteam_api.so deployed
-   beside the executable; log shows SDK 1.65 or newer.
+1. Linux64 via PAServer - DONE 2026-10-30 (see Known gaps). Windows has not
+   been re-run since ShutdownOnSteamExit and the callback-name table changed:
+   quick Win64 check of both demos (incl. Steam -> Exit) before or after push.
 2. macOS OSX64 and OSXARM64 - dylib in Contents/MacOS.
 3. Android64 - build and deploy only (check the .so is in the APK).
-4. Warning hook - -debug_steamapi produced nothing; needs a deliberate misuse
-   to prove the hook path.
-5. Later: overlay and Release relaunch once a build of 2275430 is on Steam;
+4. Warning hook - proven on Linux64 (overlay warning from Show info); on
+   Windows -debug_steamapi still produced nothing.
+5. Leak check: SteamDemo Debug sets ReportMemoryLeaksOnShutdown (added
+   2026-10-30). Run on Win64: Start, Show info, Stop, Start, close; expect no
+   leak dialog. (On POSIX targets the setting is believed to do nothing.)
+6. Later: overlay and Release relaunch once a build of 2275430 is on Steam;
    InitMode simVersioned; FPC build of lib/ + SteamConsole.
 
 Decided 2026-10-30: a missing redistributable FAILS the Windows demo builds.

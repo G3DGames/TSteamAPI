@@ -184,9 +184,23 @@ Observed with SDK 1.65 on Windows (Steam -> Exit while a demo runs):
   process about 10 s later if it is still running. SteamConsole shows the
   right response: save, shut down and exit on 704.
 
-Either way: save state in your close / `OnSteamShutdown` handling, and do not
-assume it runs only once. `QuitOnSteamShutdown` on the FMX component quits on
-704 automatically.
+Observed with SDK 1.65 on Linux64 (Steam -> Exit while SteamDemo runs):
+
+* **Windowed app:** no close request and the process is NOT ended. Steam sends
+  `SteamShutdown_t` (704) **twice**, about 1.5 s apart, and by the second its
+  pipe is gone. Every Steam call after that - `SteamAPI_Shutdown` included -
+  makes steamclient print `Broken pipe` assertions and write minidumps to
+  `/tmp/dumps`.
+
+So the core shuts SteamAPI down on the first 704 (`ShutdownOnSteamExit`,
+default on, also on the FMX component), right after `OnSteamShutdown`
+returns: Steam calls still work inside that handler, nothing calls into the
+dead pipe afterwards, and `OnSteamShutdown` is raised once per session. The
+application keeps running; call `Initialize` / `Open` again once Steam is back.
+
+Everywhere: save state in your close / `OnSteamShutdown` handling, and do not
+assume a close request comes only once. `QuitOnSteamShutdown` on the FMX
+component also quits the application on 704.
 
 ### Interface versions
 Each flat function is compiled against one interface version, so the version

@@ -121,7 +121,7 @@ type
 
     { Candidate file names tried, in order, when loading AName.
       If AName contains a path only AName itself is returned. Otherwise:
-      the executable's folder, (macOS) the bundle's Contents/MacOS and
+      the executable's folder (made absolute), (macOS) the bundle's Contents/MacOS and
       Contents/Frameworks, then the bare name for the OS search path. }
     class function CandidatePaths(const AName: string): TStringList; static;
 
@@ -257,7 +257,10 @@ begin
     Result.Add(AName);
     Exit;
   end;
-  ExeDir := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  // ParamStr(0) is argv[0] on Linux / macOS and may be relative to the
+  // current directory ('SteamConsole/SteamConsole'): make it absolute so the
+  // path tried, loaded and logged is exact.
+  ExeDir := IncludeTrailingPathDelimiter(ExpandFileName(ExtractFilePath(ParamStr(0))));
   Result.Add(ExeDir + AName);
   {$ifdef STEAMWORKS_MACOS}
   // <App>.app/Contents/MacOS/<exe>  ->  also try Contents/Frameworks

@@ -118,7 +118,7 @@ begin
       V := U.SteamUILanguage;
       Say(Format('ISteamUtils: AppID %d, country %s, language %s, overlay %s',
         [U.AppID, U.IPCountry, V, BoolToStr(U.IsOverlayEnabled, True)]));
-      Say('Server time (UTC): ' + DateTimeToStr(U.ServerTime));
+      Say('Server time (UTC): ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', U.ServerTime));
     end
     else
       Say('ISteamUtils plug-in is not active');

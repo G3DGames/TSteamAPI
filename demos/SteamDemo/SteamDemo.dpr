@@ -21,6 +21,12 @@ uses
   uMain in 'src\uMain.pas' {frmMain};
 
 begin
+{$IFDEF DEBUG}
+  // Debug builds list leaked blocks when the program ends. Effective with
+  // Delphi's default memory manager on Windows; on Linux / macOS / Android
+  // the RTL uses the platform allocator and this setting has no effect.
+  ReportMemoryLeaksOnShutdown := True;
+{$ENDIF}
   Application.Initialize;
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;

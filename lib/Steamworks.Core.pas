@@ -238,6 +238,11 @@ type
     FInstallWarningHook: Boolean;
     { @true when @link(Shutdown) was called during a pump. }
     FShutdownPending: Boolean;
+    { Backing field of @link(ShutdownOnSteamExit). }
+    FShutdownOnSteamExit: Boolean;
+    { @true once SteamShutdown_t has been handled in this session (Steam may
+      send it twice); reset by @link(Initialize). }
+    FSteamExitSeen: Boolean;
     { Subscription to SteamShutdown_t. }
     FShutdownSub: TSteamSubscription;
     { Guards @link(FWarnings) (the warning hook may run on any thread). }
@@ -394,6 +399,14 @@ type
     property UseRegisteredPlugins: Boolean read FUseRegisteredPlugins write FUseRegisteredPlugins;
     { Route ISteamClient debug output to @link(OnWarning) (default @true). }
     property InstallWarningHook: Boolean read FInstallWarningHook write FInstallWarningHook;
+    { Shut SteamAPI down when the Steam client exits (SteamShutdown_t, 704),
+      right after @link(OnSteamShutdown) returns (default @true). Observed on
+      Linux (SDK 1.65): Steam sends 704 twice, does not end the process, and
+      about 1.5 s later its pipe is gone - every later call, SteamAPI_Shutdown
+      included, then asserts inside steamclient and writes minidumps. Shutting
+      down on the first 704 avoids that. Set @false only to keep using Steam
+      until the process ends. }
+    property ShutdownOnSteamExit: Boolean read FShutdownOnSteamExit write FShutdownOnSteamExit;
 
     { Current lifecycle state. }
     property State: TSteamworksState read FState;
@@ -418,7 +431,10 @@ type
     property OnLog: TSteamLogEvent read FOnLog write FOnLog;
     { Steam client debug output (launch with -debug_steamapi). }
     property OnWarning: TSteamWarningEvent read FOnWarning write FOnWarning;
-    { SteamShutdown_t (704): the Steam client is exiting - save and quit. }
+    { SteamShutdown_t (704): the Steam client is exiting - save and quit.
+      Raised once per session even if Steam sends 704 again. With
+      @link(ShutdownOnSteamExit) SteamAPI shuts down when the handler returns
+      (Steam calls such as Cloud saves still work inside the handler). }
     property OnSteamShutdown: TNotifyEvent read FOnSteamShutdown write FOnSteamShutdown;
     { After a successful @link(Initialize). }
     property OnInitialized: TNotifyEvent read FOnInitialized write FOnInitialized;
@@ -460,7 +476,9 @@ begin
   if (GInstance = nil) or (GInstance.FWarnings = nil) then
     Exit;
   if pchDebugText <> nil then
-    Text := string(UTF8String(pchDebugText))
+    // Steam ends its text with a line break (seen on Linux, SDK 1.65):
+    // strip it so each warning is one log line.
+    Text := TrimRight(string(UTF8String(pchDebugText)))
   else
     Text := '';
   GInstance.FWarningLock.Enter;
@@ -650,6 +668,7 @@ begin
   FWarnings := TStringList.Create;
   FUseRegisteredPlugins := True;
   FInstallWarningHook := True;
+  FShutdownOnSteamExit := True;
   FInitMode := simAuto;
   FState := swsIdle;
   FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
@@ -1129,9 +1148,25 @@ end;
 
 procedure TSteamworks.HandleSteamShutdown(const AData: TSteamCallbackData);
 begin
-  Log(sllInfo, 'Steam client is shutting down');
-  if Assigned(FOnSteamShutdown) then
-    FOnSteamShutdown(Self);
+  if FSteamExitSeen then
+  begin
+    Log(sllDebug, 'SteamShutdown_t (704) received again - ignored');
+    Exit;
+  end;
+  FSteamExitSeen := True;
+  if FShutdownOnSteamExit then
+    Log(sllInfo, 'Steam client is shutting down (SteamShutdown_t, 704); ' +
+      'SteamAPI shuts down after OnSteamShutdown (ShutdownOnSteamExit)')
+  else
+    Log(sllInfo, 'Steam client is shutting down (SteamShutdown_t, 704); ' +
+      'SteamAPI stays up (ShutdownOnSteamExit is off)');
+  try
+    if Assigned(FOnSteamShutdown) then
+      FOnSteamShutdown(Self);
+  finally
+    if FShutdownOnSteamExit then
+      Shutdown; // inside the pump: deferred until this callback has finished
+  end;
 end;
 
 function TSteamworks.Initialize: Boolean;
@@ -1159,6 +1194,7 @@ begin
     FUser := TSteamAPI.SteamAPI_GetHSteamUser();
     FState := swsRunning;
     FShutdownPending := False;
+    FSteamExitSeen := False;
     Log(sllInfo, Format('SteamAPI initialised (pipe %d, user %d)', [FPipe, FUser]));
 
     ClientVer := AnsiString(ResolveVersion(STEAMCLIENT_INTERFACE_VERSION));

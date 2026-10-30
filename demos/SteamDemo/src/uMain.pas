@@ -89,7 +89,7 @@ begin
 {$IFDEF ANDROID}
   FLogFile := TPath.Combine(TPath.GetDocumentsPath, 'SteamDemo.log');
 {$ELSE}
-  FLogFile := TPath.Combine(ExtractFilePath(ParamStr(0)), 'SteamDemo.log');
+  FLogFile := TPath.Combine(ExpandFileName(ExtractFilePath(ParamStr(0))), 'SteamDemo.log');
 {$ENDIF}
   try
     TFile.WriteAllText(FLogFile, '');
@@ -196,7 +196,7 @@ begin
   end;
   AddLog(Format('ISteamUtils: AppID %d, country %s, UI language %s',
     [U.AppID, U.IPCountry, U.SteamUILanguage]));
-  AddLog('Server time (UTC): ' + DateTimeToStr(U.ServerTime));
+  AddLog('Server time (UTC): ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', U.ServerTime));
   AddLog('Overlay enabled: ' + BoolToStr(U.IsOverlayEnabled, True));
   AddLog('Battery: ' + IntToStr(U.CurrentBatteryPower) + ' (255 = mains power)');
   AddLog('Big Picture: ' + BoolToStr(U.IsSteamInBigPictureMode, True));
@@ -231,7 +231,8 @@ end;
 
 procedure TfrmMain.SteamClientExit(Sender: TObject);
 begin
-  AddLog('OnSteamShutdown: the Steam client is exiting (the demo keeps running unless Steam ends it)');
+  AddLog(Format('OnSteamShutdown: the Steam client is exiting; SteamAPI shuts down next: %s ' +
+    '(the demo keeps running; press Start once Steam is back)', [BoolToStr(FSteam.ShutdownOnSteamExit, True)]));
 end;
 
 procedure TfrmMain.SteamWarning(Sender: TObject; ASeverity: Integer; const AText: string);

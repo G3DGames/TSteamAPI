@@ -289,53 +289,94 @@ implementation
 uses
   SysUtils;
 
-type
-  TSteamCallbackRange = record
-    Base: Integer;
-    Name: string;
-  end;
-
 const
-  { Public callback ranges, highest base first (see the k_i...Callbacks constants). }
-  SteamCallbackRanges: array[0..37] of TSteamCallbackRange = (
-    (Base: k_iSteamTimelineCallbacks;           Name: 'Timeline'),
-    (Base: k_iSteamChatCallbacks;               Name: 'Chat'),
-    (Base: k_iSteamRemotePlayCallbacks;         Name: 'RemotePlay'),
-    (Base: k_iSteamSTARCallbacks;               Name: 'STAR'),
-    (Base: k_iSteamPartiesCallbacks;            Name: 'Parties'),
-    (Base: k_iSteamGameSearchCallbacks;         Name: 'GameSearch'),
-    (Base: k_iSteamParentalSettingsCallbacks;   Name: 'ParentalSettings'),
-    (Base: k_iSteamInventoryCallbacks;          Name: 'Inventory'),
-    (Base: k_iSteamVideoCallbacks;              Name: 'Video'),
-    (Base: k_iSteamHTMLSurfaceCallbacks;        Name: 'HTMLSurface'),
-    (Base: k_iSteamGameNotificationCallbacks;   Name: 'GameNotification'),
-    (Base: k_iSteamMusicRemoteCallbacks;        Name: 'MusicRemote'),
-    (Base: k_iSteamMusicCallbacks;              Name: 'Music'),
-    (Base: k_iSteamStreamClientCallbacks;       Name: 'StreamClient'),
-    (Base: k_iSteamUGCCallbacks;                Name: 'UGC'),
-    (Base: k_iSteamControllerCallbacks;         Name: 'Controller/Input'),
-    (Base: k_iSteamStreamLauncherCallbacks;     Name: 'StreamLauncher'),
-    (Base: k_iSteamScreenshotsCallbacks;        Name: 'Screenshots'),
-    (Base: k_iSteamHTTPCallbacks;               Name: 'HTTP'),
-    (Base: k_iSteamGameStatsCallbacks;          Name: 'GameStats'),
-    (Base: k_iSteam2AsyncCallbacks;             Name: 'Steam2Async'),
-    (Base: k_iSteamGameServerStatsCallbacks;    Name: 'GameServerStats'),
-    (Base: k_iSteamGameCoordinatorCallbacks;    Name: 'GameCoordinator'),
-    (Base: k_iSteamGameServerItemsCallbacks;    Name: 'GameServerItems'),
-    (Base: k_iSteamRemoteStorageCallbacks;      Name: 'RemoteStorage'),
-    (Base: k_iSteamNetworkingUtilsCallbacks;    Name: 'NetworkingUtils'),
-    (Base: k_iSteamNetworkingMessagesCallbacks; Name: 'NetworkingMessages'),
-    (Base: k_iSteamNetworkingSocketsCallbacks;  Name: 'NetworkingSockets'),
-    (Base: k_iSteamNetworkingCallbacks;         Name: 'Networking'),
-    (Base: k_iSteamUserStatsCallbacks;          Name: 'UserStats'),
-    (Base: k_iSteamAppsCallbacks;               Name: 'Apps'),
-    (Base: k_iSteamUtilsCallbacks;              Name: 'Utils'),
-    (Base: k_iSteamContentServerCallbacks;      Name: 'ContentServer'),
-    (Base: k_iSteamMatchmakingCallbacks;        Name: 'Matchmaking'),
-    (Base: k_iSteamBillingCallbacks;            Name: 'Billing'),
-    (Base: k_iSteamFriendsCallbacks;            Name: 'Friends'),
-    (Base: k_iSteamGameServerCallbacks;         Name: 'GameServer'),
-    (Base: k_iSteamUserCallbacks;               Name: 'User')
+  (* Public callback ranges, highest base first (see the k_i...Callbacks
+     constants), as two parallel arrays. Not an array of records: lib/ units
+     use Steam's packing ({$ALIGN 4} outside Windows), which put the string
+     field of such a record at offset 4 - a misaligned managed pointer in a
+     typed constant. On Linux64 (Delphi 13) Format then read a bad pointer
+     (access violation in WideFormatBuf) the first time a non-internal
+     callback (704) was named. *)
+  SteamCallbackBases: array[0..37] of Integer = (
+    k_iSteamTimelineCallbacks,
+    k_iSteamChatCallbacks,
+    k_iSteamRemotePlayCallbacks,
+    k_iSteamSTARCallbacks,
+    k_iSteamPartiesCallbacks,
+    k_iSteamGameSearchCallbacks,
+    k_iSteamParentalSettingsCallbacks,
+    k_iSteamInventoryCallbacks,
+    k_iSteamVideoCallbacks,
+    k_iSteamHTMLSurfaceCallbacks,
+    k_iSteamGameNotificationCallbacks,
+    k_iSteamMusicRemoteCallbacks,
+    k_iSteamMusicCallbacks,
+    k_iSteamStreamClientCallbacks,
+    k_iSteamUGCCallbacks,
+    k_iSteamControllerCallbacks,
+    k_iSteamStreamLauncherCallbacks,
+    k_iSteamScreenshotsCallbacks,
+    k_iSteamHTTPCallbacks,
+    k_iSteamGameStatsCallbacks,
+    k_iSteam2AsyncCallbacks,
+    k_iSteamGameServerStatsCallbacks,
+    k_iSteamGameCoordinatorCallbacks,
+    k_iSteamGameServerItemsCallbacks,
+    k_iSteamRemoteStorageCallbacks,
+    k_iSteamNetworkingUtilsCallbacks,
+    k_iSteamNetworkingMessagesCallbacks,
+    k_iSteamNetworkingSocketsCallbacks,
+    k_iSteamNetworkingCallbacks,
+    k_iSteamUserStatsCallbacks,
+    k_iSteamAppsCallbacks,
+    k_iSteamUtilsCallbacks,
+    k_iSteamContentServerCallbacks,
+    k_iSteamMatchmakingCallbacks,
+    k_iSteamBillingCallbacks,
+    k_iSteamFriendsCallbacks,
+    k_iSteamGameServerCallbacks,
+    k_iSteamUserCallbacks
+  );
+  { Group names, same order as @link(SteamCallbackBases). }
+  SteamCallbackNames: array[0..37] of string = (
+    'Timeline',
+    'Chat',
+    'RemotePlay',
+    'STAR',
+    'Parties',
+    'GameSearch',
+    'ParentalSettings',
+    'Inventory',
+    'Video',
+    'HTMLSurface',
+    'GameNotification',
+    'MusicRemote',
+    'Music',
+    'StreamClient',
+    'UGC',
+    'Controller/Input',
+    'StreamLauncher',
+    'Screenshots',
+    'HTTP',
+    'GameStats',
+    'Steam2Async',
+    'GameServerStats',
+    'GameCoordinator',
+    'GameServerItems',
+    'RemoteStorage',
+    'NetworkingUtils',
+    'NetworkingMessages',
+    'NetworkingSockets',
+    'Networking',
+    'UserStats',
+    'Apps',
+    'Utils',
+    'ContentServer',
+    'Matchmaking',
+    'Billing',
+    'Friends',
+    'GameServer',
+    'User'
   );
 
 function SteamCallbackGroupName(ACallbackID: Integer): string;
@@ -344,9 +385,9 @@ var
 begin
   if ACallbackID >= 1000000 then
     Exit('internal');
-  for I := Low(SteamCallbackRanges) to High(SteamCallbackRanges) do
-    if ACallbackID >= SteamCallbackRanges[I].Base then
-      Exit(Format('%s+%d', [SteamCallbackRanges[I].Name, ACallbackID - SteamCallbackRanges[I].Base]));
+  for I := Low(SteamCallbackBases) to High(SteamCallbackBases) do
+    if ACallbackID >= SteamCallbackBases[I] then
+      Exit(SteamCallbackNames[I] + '+' + IntToStr(ACallbackID - SteamCallbackBases[I]));
   Result := 'unknown';
 end;
 
