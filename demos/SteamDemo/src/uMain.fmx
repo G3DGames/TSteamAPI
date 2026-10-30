@@ -1,0 +1,68 @@
+object frmMain: TfrmMain
+  Left = 0
+  Top = 0
+  Caption = 'Steamworks FMX Demo - AppID 2275430 (SDK 1.65)'
+  ClientHeight = 520
+  ClientWidth = 720
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnClose = FormClose
+  OnCreate = FormCreate
+  DesignerMasterStyle = 0
+  object pnlTop: TPanel
+    Align = Top
+    Size.Width = 720.000000000000000000
+    Size.Height = 48.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 0
+    object btnStart: TButton
+      Position.X = 8.000000000000000000
+      Position.Y = 10.000000000000000000
+      Size.Width = 120.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      Text = 'Start Steam'
+      OnClick = btnStartClick
+    end
+    object btnInfo: TButton
+      Position.X = 136.000000000000000000
+      Position.Y = 10.000000000000000000
+      Size.Width = 120.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 1
+      Text = 'Show info'
+      OnClick = btnInfoClick
+    end
+    object btnStop: TButton
+      Position.X = 264.000000000000000000
+      Position.Y = 10.000000000000000000
+      Size.Width = 120.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 2
+      Text = 'Stop Steam'
+      OnClick = btnStopClick
+    end
+    object btnCopy: TButton
+      Position.X = 392.000000000000000000
+      Position.Y = 10.000000000000000000
+      Size.Width = 120.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 3
+      Text = 'Copy log'
+      OnClick = btnCopyClick
+    end
+  end
+  object memLog: TMemo
+    ReadOnly = True
+    Align = Client
+    Size.Width = 720.000000000000000000
+    Size.Height = 472.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+  end
+end

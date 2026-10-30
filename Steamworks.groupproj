@@ -1,0 +1,72 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{E0575766-15F2-4138-B820-78E738F222D7}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="demos\SteamDemo\SteamDemo.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="demos\SteamConsole\SteamConsole.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="packages\SteamworksFMX.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="packages\dclSteamworksFMX.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SteamDemo">
+        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj"/>
+    </Target>
+    <Target Name="SteamDemo:Clean">
+        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamDemo:Make">
+        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SteamConsole">
+        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj"/>
+    </Target>
+    <Target Name="SteamConsole:Clean">
+        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamConsole:Make">
+        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SteamworksFMX">
+        <MSBuild Projects="packages\SteamworksFMX.dproj"/>
+    </Target>
+    <Target Name="SteamworksFMX:Clean">
+        <MSBuild Projects="packages\SteamworksFMX.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamworksFMX:Make">
+        <MSBuild Projects="packages\SteamworksFMX.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="dclSteamworksFMX">
+        <MSBuild Projects="packages\dclSteamworksFMX.dproj"/>
+    </Target>
+    <Target Name="dclSteamworksFMX:Clean">
+        <MSBuild Projects="packages\dclSteamworksFMX.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="dclSteamworksFMX:Make">
+        <MSBuild Projects="packages\dclSteamworksFMX.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SteamDemo;SteamConsole;SteamworksFMX;dclSteamworksFMX"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SteamDemo:Clean;SteamConsole:Clean;SteamworksFMX:Clean;dclSteamworksFMX:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SteamDemo:Make;SteamConsole:Make;SteamworksFMX:Make;dclSteamworksFMX:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

@@ -1,0 +1,650 @@
+{ @abstract(Callback and call-result dispatcher built on Steam's manual
+  dispatch API (SteamAPI_ManualDispatch_*).)
+
+  It replaces the C++ CCallback / CCallResult templates, which cannot be used
+  from Pascal.
+
+  @definitionList(
+    @itemLabel(Callbacks)
+    @item(Broadcast notifications identified by the struct's k_iCallback,
+      e.g. 704 SteamShutdown_t. Any number of subscribers.)
+    @itemLabel(Call results)
+    @item(The reply to one async call (a SteamAPICall_t). One handler, removed
+      after it fires.)
+  )
+
+  The portable API uses method pointers (@code(of object)), which work with
+  Delphi and FPC 3.2. When the compiler supports anonymous methods
+  (STEAMWORKS_ANONYMOUS_METHODS) closure-based and generic typed overloads are
+  available too.
+
+  @bold(Threading:) callbacks are delivered only from @link(TSteamCallbackDispatcher.Pump),
+  on the thread that calls it. Call it from one thread only - normally the
+  main/UI thread, which the framework components do with a timer.
+
+  Example (method pointers - Delphi and FPC):
+  @longCode(#
+  procedure TMyGame.SteamShutdown(const AData: TSteamCallbackData);
+  begin
+    SaveAndQuit;
+  end;
+  ...
+  Steam.Dispatcher.Subscribe(SteamShutdown_t_k_iCallback, SteamShutdown);
+  ...
+  Steam.Dispatcher.RemoveOwner(Self);   // in the destructor
+  #) }
+unit Steamworks.Callbacks;
+
+{$I Steamworks.inc}
+
+interface
+
+uses
+  SysUtils, Classes, Generics.Collections,
+  Steamworks.Types;
+
+type
+  { Opaque token returned by the Subscribe methods; pass it to
+    @link(TSteamCallbackDispatcher.Unsubscribe). 0 means "none". }
+  TSteamSubscription = Int64;
+
+  { Everything known about one delivered callback or call result. }
+  TSteamCallbackData = record
+    { k_iCallback of the payload struct. }
+    CallbackID: Integer;
+    { Payload. Valid only while the handler runs - copy what you need. }
+    Data: Pointer;
+    { Payload size in bytes. }
+    Size: Integer;
+    { User the callback applies to. }
+    User: HSteamUser;
+    { Non-zero for call results. }
+    APICall: SteamAPICall_t;
+    { @true if this is the reply to an async call. }
+    IsCallResult: Boolean;
+    { Call results only: @true if the call failed (Data may then be @nil). }
+    IOFailure: Boolean;
+    { Copies the payload into ABuffer (zero-filled first). Copies at most
+      ABufferSize bytes. @returns(@false if there is no payload.)
+      @longCode(#
+      var Ev: LowBatteryPower_t;
+      if AData.CopyTo(Ev, SizeOf(Ev)) then ...
+      #) }
+    function CopyTo(out ABuffer; ABufferSize: Integer): Boolean;
+    {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+    { Generic form of @link(CopyTo): @code(AData.AsRecord<LowBatteryPower_t>). }
+    function AsRecord<T>: T;
+    {$endif}
+  end;
+
+  { Handler for broadcast callbacks. }
+  TSteamCallbackEvent = procedure(const AData: TSteamCallbackData) of object;
+  { Handler for call results. AIOFailure duplicates AData.IOFailure. }
+  TSteamCallResultEvent = procedure(const AData: TSteamCallbackData; AIOFailure: Boolean) of object;
+  { Raised when a handler throws. Set AHandled to @true to swallow the exception. }
+  TSteamHandlerErrorEvent = procedure(Sender: TObject; E: Exception; ACallbackID: Integer;
+    var AHandled: Boolean) of object;
+
+  {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+  { Closure handler for broadcast callbacks (anonymous-method compilers only). }
+  TSteamCallbackProc = reference to procedure(const AData: TSteamCallbackData);
+  { Closure handler for call results (anonymous-method compilers only). }
+  TSteamCallResultProc = reference to procedure(const AData: TSteamCallbackData; AIOFailure: Boolean);
+  { Typed closure handler; T is the SDK struct (anonymous-method compilers only). }
+  TSteamCallbackHandler<T> = reference to procedure(const AData: T);
+  { Typed closure call-result handler (anonymous-method compilers only). }
+  TSteamCallResultHandler<T> = reference to procedure(const AData: T; AIOFailure: Boolean);
+  {$endif}
+
+  { @exclude Internal subscription entry. }
+  TSteamSubscriptionEntry = record
+    { Token returned to the subscriber. }
+    Token: TSteamSubscription;
+    { Callback id subscribed to. }
+    CallbackID: Integer;
+    { Object that owns the entry, for @link(TSteamCallbackDispatcher.RemoveOwner). }
+    Owner: TObject;
+    { Method handler (@nil when a closure is used). }
+    Handler: TSteamCallbackEvent;
+    {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+    { Closure handler (@nil when a method is used). }
+    Proc: TSteamCallbackProc;
+    {$endif}
+    { Also deliver unclaimed call results with this id. }
+    IncludeCallResults: Boolean;
+  end;
+  { @exclude Internal pending call-result entry. }
+  TSteamPendingCallEntry = record
+    { Callback id the result struct must have. }
+    Expected: Integer;
+    { Object that owns the entry, for @link(TSteamCallbackDispatcher.RemoveOwner). }
+    Owner: TObject;
+    { Method handler (@nil when a closure is used). }
+    Handler: TSteamCallResultEvent;
+    {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+    { Closure handler (@nil when a method is used). }
+    Proc: TSteamCallResultProc;
+    {$endif}
+  end;
+  { Routes Steam callbacks and call results to subscribers.
+    Normally owned by @code(TSteamworks); use @code(Steam.Dispatcher). }
+  TSteamCallbackDispatcher = class
+  private
+    { All subscriptions, in subscription order. }
+    FSubs: TList<TSteamSubscriptionEntry>;
+    { Awaited call results by call handle. }
+    FPending: TDictionary<SteamAPICall_t, TSteamPendingCallEntry>;
+    { Last token issued. }
+    FNextToken: TSteamSubscription;
+    { @true while @link(Pump) runs (re-entrancy guard). }
+    FPumping: Boolean;
+    { Set by @link(RequestStop); ends the current pump early. }
+    FStopRequested: Boolean;
+    { Backing field of @link(OnHandlerError). }
+    FOnHandlerError: TSteamHandlerErrorEvent;
+    { Backing field of @link(OnAnyCallback). }
+    FOnAnyCallback: TSteamCallbackEvent;
+    { Backing field of @link(CallbacksDispatched). }
+    FCallbacksDispatched: Int64;
+    { Stores a subscription and returns its new token. }
+    function AddSub(const ASub: TSteamSubscriptionEntry): TSteamSubscription;
+    { Index of a subscription in @link(FSubs), or -1. }
+    function IndexOfToken(AToken: TSteamSubscription): Integer;
+    { Hands one callback to @link(OnAnyCallback) and matching subscribers. }
+    procedure Deliver(const AData: TSteamCallbackData);
+    { Processes SteamAPICallCompleted_t: fetches the result and completes the awaiting handler. }
+    procedure HandleCallCompleted(APipe: HSteamPipe; const AMsg: CallbackMsg_t);
+    { @true if a subscriber wants unclaimed call results of ACallbackID. }
+    function HasCallResultSubscribers(ACallbackID: Integer): Boolean;
+    { Routes a handler exception to @link(OnHandlerError). @returns(@true if handled.) }
+    function HandleError(E: Exception; ACallbackID: Integer): Boolean;
+    { Calls one subscription, routing exceptions to @link(HandleError). }
+    procedure InvokeSub(const ASub: TSteamSubscriptionEntry; const AData: TSteamCallbackData);
+    { Calls one call-result handler, routing exceptions to @link(HandleError). }
+    procedure InvokePending(const APending: TSteamPendingCallEntry; const AData: TSteamCallbackData);
+  public
+    { Creates an empty dispatcher. }
+    constructor Create;
+    { Releases everything this object owns. }
+    destructor Destroy; override;
+
+    { Delivers all pending callbacks for APipe. Re-entrant calls are ignored.
+      Requires SteamAPI_ManualDispatch_Init. FreeLastCallback is always called,
+      even when a handler raises. }
+    procedure Pump(APipe: HSteamPipe);
+
+    { Stop a running @link(Pump) after the current callback (used by shutdown). }
+    procedure RequestStop;
+
+    { Subscribes a method to a callback id. The method's object becomes the
+      subscription owner (see @link(RemoveOwner)).
+      @param(ACallbackID  k_iCallback of the struct, e.g. 704.)
+      @param(AHandler  Method to call.)
+      @param(AIncludeCallResults  Also receive call results of this id that
+        nobody registered with @link(AwaitCallResult).)
+      @returns(Token for @link(Unsubscribe), or 0 if AHandler is nil.) }
+    function Subscribe(ACallbackID: Integer; AHandler: TSteamCallbackEvent;
+      AIncludeCallResults: Boolean = False): TSteamSubscription;
+
+    { Registers a one-shot handler for an async call.
+      @param(ACall  Handle returned by the Steam function.)
+      @param(AExpectedCallbackID  k_iCallback of the result struct. A different
+        id is reported as an IO failure, never handed over as the wrong struct.)
+      @returns(@false (nothing registered) when ACall is 0.)
+
+      @longCode(#
+      Call := F_RequestCurrentStats(FIntf);  // hypothetical flat call
+      Steam.Dispatcher.AwaitCallResult(Call, 1101, StatsReceived);
+      #) }
+    function AwaitCallResult(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
+      AHandler: TSteamCallResultEvent): Boolean;
+
+    {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+    { Closure version of @link(Subscribe). AOwner is used by @link(RemoveOwner). }
+    function SubscribeProc(ACallbackID: Integer; const AProc: TSteamCallbackProc;
+      AOwner: TObject = nil; AIncludeCallResults: Boolean = False): TSteamSubscription;
+    { Typed closure subscription. T must mirror the SDK struct.
+      @longCode(#
+      Steam.Dispatcher.SubscribeTyped<LowBatteryPower_t>(702,
+        procedure(const D: LowBatteryPower_t)
+        begin
+          ShowBatteryWarning(D.m_nMinutesBatteryLeft);
+        end, Self);
+      #) }
+    function SubscribeTyped<T>(ACallbackID: Integer; const AHandler: TSteamCallbackHandler<T>;
+      AOwner: TObject = nil): TSteamSubscription;
+    { Closure version of @link(AwaitCallResult). }
+    function AwaitCallResultProc(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
+      const AProc: TSteamCallResultProc; AOwner: TObject = nil): Boolean;
+    { Typed closure call result. }
+    function AwaitCallResultTyped<T>(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
+      const AHandler: TSteamCallResultHandler<T>; AOwner: TObject = nil): Boolean;
+    {$endif}
+
+    { Removes one subscription and sets AToken to 0. }
+    procedure Unsubscribe(var AToken: TSteamSubscription);
+    { Removes every subscription for a callback id. }
+    procedure UnsubscribeAll(ACallbackID: Integer);
+    { Removes every subscription and pending call result owned by AOwner.
+      Call it from the destructor of any object that subscribed. }
+    procedure RemoveOwner(AOwner: TObject);
+    { Forgets a pending call result. }
+    procedure CancelCallResult(ACall: SteamAPICall_t);
+    { @true while a call result is awaited. }
+    function IsCallResultPending(ACall: SteamAPICall_t): Boolean;
+    { Number of call results awaited. }
+    function PendingCallResultCount: Integer;
+    { Drops every subscription and pending call result. }
+    procedure Clear;
+
+    { @true while @link(Pump) is running. }
+    property Pumping: Boolean read FPumping;
+    { Number of callbacks delivered since creation. }
+    property CallbacksDispatched: Int64 read FCallbacksDispatched;
+    { Called for every callback before subscribers (diagnostics). }
+    property OnAnyCallback: TSteamCallbackEvent read FOnAnyCallback write FOnAnyCallback;
+    { Raised when a handler throws. If unassigned, or AHandled stays @false,
+      the exception propagates out of @link(Pump) (after FreeLastCallback). }
+    property OnHandlerError: TSteamHandlerErrorEvent read FOnHandlerError write FOnHandlerError;
+  end;
+
+implementation
+
+uses
+  Math,
+  Steamworks.API;
+
+{ TSteamCallbackData }
+
+function TSteamCallbackData.CopyTo(out ABuffer; ABufferSize: Integer): Boolean;
+begin
+  FillChar(ABuffer, ABufferSize, 0);
+  Result := (Data <> nil) and (Size > 0);
+  if Result then
+    Move(Data^, ABuffer, Min(Size, ABufferSize));
+end;
+
+{$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+function TSteamCallbackData.AsRecord<T>: T;
+begin
+  CopyTo(Result, SizeOf(T));
+end;
+{$endif}
+
+{ TSteamCallbackDispatcher }
+
+constructor TSteamCallbackDispatcher.Create;
+begin
+  inherited Create;
+  FSubs := TList<TSteamSubscriptionEntry>.Create;
+  FPending := TDictionary<SteamAPICall_t, TSteamPendingCallEntry>.Create;
+end;
+
+destructor TSteamCallbackDispatcher.Destroy;
+begin
+  FPending.Free;
+  FSubs.Free;
+  inherited;
+end;
+
+procedure TSteamCallbackDispatcher.Clear;
+begin
+  FSubs.Clear;
+  FPending.Clear;
+end;
+
+function TSteamCallbackDispatcher.AddSub(const ASub: TSteamSubscriptionEntry): TSteamSubscription;
+var
+  S: TSteamSubscriptionEntry;
+begin
+  Inc(FNextToken);
+  S := ASub;
+  S.Token := FNextToken;
+  FSubs.Add(S);
+  Result := S.Token;
+end;
+
+function TSteamCallbackDispatcher.IndexOfToken(AToken: TSteamSubscription): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to FSubs.Count - 1 do
+    if FSubs[I].Token = AToken then
+      Exit(I);
+  Result := -1;
+end;
+
+function TSteamCallbackDispatcher.Subscribe(ACallbackID: Integer; AHandler: TSteamCallbackEvent;
+  AIncludeCallResults: Boolean): TSteamSubscription;
+var
+  S: TSteamSubscriptionEntry;
+begin
+  if not Assigned(AHandler) then
+    Exit(0);
+  S := Default(TSteamSubscriptionEntry);
+  S.CallbackID := ACallbackID;
+  S.Handler := AHandler;
+  S.Owner := TObject(TMethod(AHandler).Data);
+  S.IncludeCallResults := AIncludeCallResults;
+  Result := AddSub(S);
+end;
+
+function TSteamCallbackDispatcher.AwaitCallResult(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
+  AHandler: TSteamCallResultEvent): Boolean;
+var
+  P: TSteamPendingCallEntry;
+begin
+  Result := (ACall <> k_uAPICallInvalid) and Assigned(AHandler);
+  if not Result then
+    Exit;
+  P := Default(TSteamPendingCallEntry);
+  P.Expected := AExpectedCallbackID;
+  P.Handler := AHandler;
+  P.Owner := TObject(TMethod(AHandler).Data);
+  FPending.AddOrSetValue(ACall, P);
+end;
+
+{$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+function TSteamCallbackDispatcher.SubscribeProc(ACallbackID: Integer; const AProc: TSteamCallbackProc;
+  AOwner: TObject; AIncludeCallResults: Boolean): TSteamSubscription;
+var
+  S: TSteamSubscriptionEntry;
+begin
+  if not Assigned(AProc) then
+    Exit(0);
+  S := Default(TSteamSubscriptionEntry);
+  S.CallbackID := ACallbackID;
+  S.Proc := AProc;
+  S.Owner := AOwner;
+  S.IncludeCallResults := AIncludeCallResults;
+  Result := AddSub(S);
+end;
+
+function TSteamCallbackDispatcher.SubscribeTyped<T>(ACallbackID: Integer;
+  const AHandler: TSteamCallbackHandler<T>; AOwner: TObject): TSteamSubscription;
+var
+  H: TSteamCallbackHandler<T>;
+begin
+  H := AHandler;
+  Result := SubscribeProc(ACallbackID,
+    procedure(const AData: TSteamCallbackData)
+    begin
+      H(AData.AsRecord<T>);
+    end, AOwner);
+end;
+
+function TSteamCallbackDispatcher.AwaitCallResultProc(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
+  const AProc: TSteamCallResultProc; AOwner: TObject): Boolean;
+var
+  P: TSteamPendingCallEntry;
+begin
+  Result := (ACall <> k_uAPICallInvalid) and Assigned(AProc);
+  if not Result then
+    Exit;
+  P := Default(TSteamPendingCallEntry);
+  P.Expected := AExpectedCallbackID;
+  P.Proc := AProc;
+  P.Owner := AOwner;
+  FPending.AddOrSetValue(ACall, P);
+end;
+
+function TSteamCallbackDispatcher.AwaitCallResultTyped<T>(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
+  const AHandler: TSteamCallResultHandler<T>; AOwner: TObject): Boolean;
+var
+  H: TSteamCallResultHandler<T>;
+begin
+  H := AHandler;
+  Result := AwaitCallResultProc(ACall, AExpectedCallbackID,
+    procedure(const AData: TSteamCallbackData; AIOFailure: Boolean)
+    begin
+      H(AData.AsRecord<T>, AIOFailure);
+    end, AOwner);
+end;
+{$endif}
+
+procedure TSteamCallbackDispatcher.Unsubscribe(var AToken: TSteamSubscription);
+var
+  I: Integer;
+begin
+  if AToken <> 0 then
+  begin
+    I := IndexOfToken(AToken);
+    if I >= 0 then
+      FSubs.Delete(I);
+  end;
+  AToken := 0;
+end;
+
+procedure TSteamCallbackDispatcher.UnsubscribeAll(ACallbackID: Integer);
+var
+  I: Integer;
+begin
+  for I := FSubs.Count - 1 downto 0 do
+    if FSubs[I].CallbackID = ACallbackID then
+      FSubs.Delete(I);
+end;
+
+procedure TSteamCallbackDispatcher.RemoveOwner(AOwner: TObject);
+var
+  I: Integer;
+  Calls: TList<SteamAPICall_t>;
+  Pair: TPair<SteamAPICall_t, TSteamPendingCallEntry>;
+  C: SteamAPICall_t;
+begin
+  if AOwner = nil then
+    Exit;
+  for I := FSubs.Count - 1 downto 0 do
+    if FSubs[I].Owner = AOwner then
+      FSubs.Delete(I);
+  Calls := TList<SteamAPICall_t>.Create;
+  try
+    for Pair in FPending do
+      if Pair.Value.Owner = AOwner then
+        Calls.Add(Pair.Key);
+    for C in Calls do
+      FPending.Remove(C);
+  finally
+    Calls.Free;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.CancelCallResult(ACall: SteamAPICall_t);
+begin
+  FPending.Remove(ACall);
+end;
+
+function TSteamCallbackDispatcher.IsCallResultPending(ACall: SteamAPICall_t): Boolean;
+begin
+  Result := FPending.ContainsKey(ACall);
+end;
+
+function TSteamCallbackDispatcher.PendingCallResultCount: Integer;
+begin
+  Result := FPending.Count;
+end;
+
+function TSteamCallbackDispatcher.HasCallResultSubscribers(ACallbackID: Integer): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to FSubs.Count - 1 do
+    if (FSubs[I].CallbackID = ACallbackID) and FSubs[I].IncludeCallResults then
+      Exit(True);
+  Result := False;
+end;
+
+function TSteamCallbackDispatcher.HandleError(E: Exception; ACallbackID: Integer): Boolean;
+begin
+  // True = dealt with; False = caller re-raises
+  Result := False;
+  if Assigned(FOnHandlerError) then
+    FOnHandlerError(Self, E, ACallbackID, Result);
+end;
+
+procedure TSteamCallbackDispatcher.InvokeSub(const ASub: TSteamSubscriptionEntry; const AData: TSteamCallbackData);
+begin
+  try
+    if Assigned(ASub.Handler) then
+      ASub.Handler(AData)
+    {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+    else if Assigned(ASub.Proc) then
+      ASub.Proc(AData)
+    {$endif};
+  except
+    on E: Exception do
+      if not HandleError(E, AData.CallbackID) then
+        raise;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.InvokePending(const APending: TSteamPendingCallEntry; const AData: TSteamCallbackData);
+begin
+  try
+    if Assigned(APending.Handler) then
+      APending.Handler(AData, AData.IOFailure)
+    {$ifdef STEAMWORKS_ANONYMOUS_METHODS}
+    else if Assigned(APending.Proc) then
+      APending.Proc(AData, AData.IOFailure)
+    {$endif};
+  except
+    on E: Exception do
+      if not HandleError(E, AData.CallbackID) then
+        raise;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.Deliver(const AData: TSteamCallbackData);
+var
+  Snapshot: array of TSteamSubscriptionEntry;
+  I: Integer;
+begin
+  Inc(FCallbacksDispatched);
+  if Assigned(FOnAnyCallback) then
+  begin
+    try
+      FOnAnyCallback(AData);
+    except
+      on E: Exception do
+        if not HandleError(E, AData.CallbackID) then
+          raise;
+    end;
+  end;
+  // Snapshot, so handlers may subscribe / unsubscribe while we iterate
+  SetLength(Snapshot, FSubs.Count);
+  for I := 0 to FSubs.Count - 1 do
+    Snapshot[I] := FSubs[I];
+  for I := 0 to High(Snapshot) do
+  begin
+    if Snapshot[I].CallbackID <> AData.CallbackID then
+      Continue;
+    if AData.IsCallResult and not Snapshot[I].IncludeCallResults then
+      Continue;
+    if IndexOfToken(Snapshot[I].Token) < 0 then
+      Continue; // removed by an earlier handler
+    InvokeSub(Snapshot[I], AData);
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.HandleCallCompleted(APipe: HSteamPipe; const AMsg: CallbackMsg_t);
+var
+  Completed: SteamAPICallCompleted_t;
+  Pending: TSteamPendingCallEntry;
+  HasPending, Failed, Ok: Boolean;
+  Buf: TBytes;
+  Data: TSteamCallbackData;
+begin
+  Completed := Default(SteamAPICallCompleted_t);
+  Move(AMsg.m_pubParam^, Completed, Min(AMsg.m_cubParam, SizeOf(Completed)));
+
+  // The raw 703 notification, for anyone interested
+  Data := Default(TSteamCallbackData);
+  Data.CallbackID := AMsg.m_iCallback;
+  Data.Data := AMsg.m_pubParam;
+  Data.Size := AMsg.m_cubParam;
+  Data.User := AMsg.m_hSteamUser;
+  Deliver(Data);
+
+  HasPending := FPending.TryGetValue(Completed.m_hAsyncCall, Pending);
+  if HasPending then
+    FPending.Remove(Completed.m_hAsyncCall);
+  if not (HasPending or HasCallResultSubscribers(Completed.m_iCallback)) then
+    Exit;
+
+  SetLength(Buf, Max(Integer(Completed.m_cubParam), 1));
+  Failed := False;
+  Ok := TSteamAPI.SteamAPI_ManualDispatch_GetAPICallResult(APipe, Completed.m_hAsyncCall,
+    @Buf[0], Integer(Completed.m_cubParam), Completed.m_iCallback, Failed);
+
+  Data := Default(TSteamCallbackData);
+  Data.CallbackID := Completed.m_iCallback;
+  Data.User := AMsg.m_hSteamUser;
+  Data.APICall := Completed.m_hAsyncCall;
+  Data.IsCallResult := True;
+  if Ok then
+  begin
+    Data.Data := @Buf[0];
+    Data.Size := Integer(Completed.m_cubParam);
+    Data.IOFailure := Failed;
+  end
+  else
+    Data.IOFailure := True;
+
+  if HasPending then
+  begin
+    if Pending.Expected <> Completed.m_iCallback then
+    begin
+      // k_ESteamAPICallFailureMismatchedCallback: never hand over the wrong struct
+      Data.IOFailure := True;
+      Data.Data := nil;
+      Data.Size := 0;
+    end;
+    InvokePending(Pending, Data);
+  end;
+
+  // Unclaimed results go to subscribers that asked for them
+  if Ok and not HasPending then
+    Deliver(Data);
+end;
+
+procedure TSteamCallbackDispatcher.RequestStop;
+begin
+  FStopRequested := True;
+end;
+
+procedure TSteamCallbackDispatcher.Pump(APipe: HSteamPipe);
+var
+  Msg: CallbackMsg_t;
+  Data: TSteamCallbackData;
+begin
+  if FPumping or (APipe = 0) or not TSteamAPI.IsLoaded then
+    Exit;
+  FPumping := True;
+  FStopRequested := False;
+  try
+    TSteamAPI.SteamAPI_ManualDispatch_RunFrame(APipe);
+    Msg := Default(CallbackMsg_t);
+    while (not FStopRequested) and
+          TSteamAPI.SteamAPI_ManualDispatch_GetNextCallback(APipe, @Msg) do
+    begin
+      try
+        if Msg.m_iCallback = SteamAPICallCompleted_t_k_iCallback then
+          HandleCallCompleted(APipe, Msg)
+        else
+        begin
+          Data := Default(TSteamCallbackData);
+          Data.CallbackID := Msg.m_iCallback;
+          Data.Data := Msg.m_pubParam;
+          Data.Size := Msg.m_cubParam;
+          Data.User := Msg.m_hSteamUser;
+          Deliver(Data);
+        end;
+      finally
+        TSteamAPI.SteamAPI_ManualDispatch_FreeLastCallback(APipe);
+      end;
+    end;
+  finally
+    FPumping := False;
+  end;
+end;
+
+end.
