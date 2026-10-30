@@ -21,7 +21,7 @@
         <Projects Include="packages\dclSteamworksFMX.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="demos\SteamPlaygroundFMX\SteamTestFMX.dproj">
+        <Projects Include="demos\BasicFormFMX\BasicFormFMX.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -86,23 +86,23 @@
     <Target Name="dclSteamworksFMX:Make">
         <MSBuild Projects="packages\dclSteamworksFMX.dproj" Targets="Make"/>
     </Target>
-    <Target Name="SteamTestFMX">
-        <MSBuild Projects="demos\SteamPlaygroundFMX\SteamTestFMX.dproj"/>
+    <Target Name="BasicFormFMX">
+        <MSBuild Projects="demos\BasicFormFMX\BasicFormFMX.dproj"/>
     </Target>
-    <Target Name="SteamTestFMX:Clean">
-        <MSBuild Projects="demos\SteamPlaygroundFMX\SteamTestFMX.dproj" Targets="Clean"/>
+    <Target Name="BasicFormFMX:Clean">
+        <MSBuild Projects="demos\BasicFormFMX\BasicFormFMX.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="SteamTestFMX:Make">
-        <MSBuild Projects="demos\SteamPlaygroundFMX\SteamTestFMX.dproj" Targets="Make"/>
+    <Target Name="BasicFormFMX:Make">
+        <MSBuild Projects="demos\BasicFormFMX\BasicFormFMX.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="SteamDemo;SteamConsole;Steamworks;dclSteamworks;SteamworksFMX;dclSteamworksFMX;SteamTestFMX"/>
+        <CallTarget Targets="SteamDemo;SteamConsole;Steamworks;dclSteamworks;SteamworksFMX;dclSteamworksFMX;BasicFormFMX"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="SteamDemo:Clean;SteamConsole:Clean;Steamworks:Clean;dclSteamworks:Clean;SteamworksFMX:Clean;dclSteamworksFMX:Clean;SteamTestFMX:Clean"/>
+        <CallTarget Targets="SteamDemo:Clean;SteamConsole:Clean;Steamworks:Clean;dclSteamworks:Clean;SteamworksFMX:Clean;dclSteamworksFMX:Clean;BasicFormFMX:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="SteamDemo:Make;SteamConsole:Make;Steamworks:Make;dclSteamworks:Make;SteamworksFMX:Make;dclSteamworksFMX:Make;SteamTestFMX:Make"/>
+        <CallTarget Targets="SteamDemo:Make;SteamConsole:Make;Steamworks:Make;dclSteamworks:Make;SteamworksFMX:Make;dclSteamworksFMX:Make;BasicFormFMX:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

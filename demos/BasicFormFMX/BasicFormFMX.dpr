@@ -1,9 +1,9 @@
-program SteamTestFMX;
+program BasicFormFMX;
 
 uses
   System.StartUpCopy,
   FMX.Forms,
-  SteamTestMain in 'SteamTestMain.pas' {Form1};
+  BasicFormFMXMain in 'BasicFormFMXMain.pas' {Form1};
 
 {$R *.res}
 

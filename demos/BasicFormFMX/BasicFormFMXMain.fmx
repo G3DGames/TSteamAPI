@@ -22,6 +22,10 @@ object Form1: TForm1
   end
   object SteamAPI1: TSteamAPI
     AppID = 2275430
+    SetAppIdEnvironment = True
+    OnInitialized = SteamAPI1Initialized
+    OnInitFailed = SteamAPI1InitFailed
+    OnCallback = SteamAPI1Callback
     Left = 208
     Top = 144
   end

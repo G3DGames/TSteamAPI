@@ -6,10 +6,10 @@
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
-        <ProjectName Condition="'$(ProjectName)'==''">SteamTestFMX</ProjectName>
+        <ProjectName Condition="'$(ProjectName)'==''">BasicFormFMX</ProjectName>
         <TargetedPlatforms>2790547</TargetedPlatforms>
         <AppType>Application</AppType>
-        <MainSource>SteamTestFMX.dpr</MainSource>
+        <MainSource>BasicFormFMX.dpr</MainSource>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -129,7 +129,7 @@
         <AUP_READ_PHONE_STATE>true</AUP_READ_PHONE_STATE>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
-        <SanitizedProjectName>SteamTestFMX</SanitizedProjectName>
+        <SanitizedProjectName>BasicFormFMX</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <DCC_UsePackage>P4DPandas;FMXTMSFNCUIPackPkg;P4DPyQT5;fmx;DbxCommonDriver;bindengine;IndyIPCommon;emsclient;IndyProtocols;dbxcds;P4DONNXRuntime;P4DTikToken;FireDACSqliteDriver;DbxClientDriver;soapmidas;dbexpress;Python;inet;P4DOpenCV;FireDACDBXDriver;P4DRemBG;CustomIPTransport;P4DSciPy;P4DTQDM;Native.FmxStd.Package;IndySystem;TMSFNCCorePkg;P4DWhisper;P4DNumba;FireDACCommon;emsserverresource;P4DScikitLearn;P4DPyTorch;bindcompdbx;rtl;P4DPSUtil;DBXSqliteDriver;FMXTMSFNCChartPkg;FMXTMSFNCBloxToolBarsPkg;DataSnapFireDAC;FireDAC;P4DPillow;xmlrtl;P4DEnvironment;dsnap;FMXTMSFNCWebSocketPkg;DataSnapNativeClient;FMXTMSFNCMapsPkg;FMXTMSFNCCorePkg;P4DMatplotLib;FMXTMSFNCChartGridAdapterPkg;emshosting;FireDACCommonDriver;IndyIPClient;FMXTMSFNCCloudPackPkg;P4DMoreItertools;emsedge;bindcompfmx;P4DMoviePy;FMXTMSFNCWXPackPkg;fmxFireDAC;P4DPyPackage;DataSnapCommon;fmxase;dbrtl;P4DTensorFlow;P4DKeras;DBXInterBaseDriver;FMXTMSFNCGanttChartPkg;FMXTMSFNCDashboardPackPkg;bindcomp;P4DH5Py;inetstn;IndyCore;RESTBackendComponents;RESTComponents;IndyIPServer;dsnapxml;DataSnapClient;DataSnapProviderClient;P4DNLTK;FMXTMSFNCRESTClientEditorPkg;Gorilla3D_Delphi_13_2_0_Florence;TMSFNCPushNotificationsPkg;FMXTMSFNCBloxPkg;emsclientfiredac;FireDACDSDriver;tethering;P4DBoto3;CloudService;P4DNumPy;PythonFmx;soaprtl;soapserver;FireDACIBDriver;$(DCC_UsePackage)</DCC_UsePackage>
@@ -340,7 +340,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="SteamTestMain.pas">
+        <DCCReference Include="BasicFormFMXMain.pas">
             <Form>Form1</Form>
             <FormType>fmx</FormType>
         </DCCReference>
@@ -362,7 +362,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">SteamTestFMX.dpr</Source>
+                    <Source Name="MainSource">BasicFormFMX.dpr</Source>
                 </Source>
             </Delphi.Personality>
             <Deployment Version="5">
@@ -381,21 +381,21 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win32\Debug\SteamTestFMX.exe" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="Win32\Debug\BasicFormFMX.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
-                        <RemoteName>SteamTestFMX.exe</RemoteName>
+                        <RemoteName>BasicFormFMX.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win64\Debug\SteamTestFMX.exe" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="Win64\Debug\BasicFormFMX.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win64">
-                        <RemoteName>SteamTestFMX.exe</RemoteName>
+                        <RemoteName>BasicFormFMX.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win64\Debug\SteamTestFMX.rsm" Configuration="Debug" Class="DebugSymbols">
+                <DeployFile LocalName="Win64\Debug\BasicFormFMX.rsm" Configuration="Debug" Class="DebugSymbols">
                     <Platform Name="Win64">
-                        <RemoteName>SteamTestFMX.rsm</RemoteName>
+                        <RemoteName>BasicFormFMX.rsm</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
