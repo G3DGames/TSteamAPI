@@ -1205,7 +1205,12 @@ begin
     begin
       FClient := TSteamClientIntf.Create(ClientPtr, string(ClientVer));
       if FInstallWarningHook then
+      begin
+        // Steam may call the hook from its own threads: make the memory
+        // manager / RTL thread-safe before it can happen.
+        IsMultiThread := True;
         FClient.SetWarningMessageHook(SteamWarningHook);
+      end;
     end
     else
       Log(sllWarning, 'Could not create ' + string(ClientVer) + '; ISteamClient features unavailable');

@@ -108,6 +108,10 @@ type
     FActive: Boolean;
     { Active value read from the form file, applied in @link(Loaded). }
     FStreamedActive: Boolean;
+    { > 0 while @link(Open) runs: a failed start is reported by its result. }
+    FOpenDepth: Integer;
+    { Why the last start failed ('' when it did not, or Steam is relaunching). }
+    FFailMessage: string;
     { Backing field of @link(AppID). }
     FAppID: Cardinal;
     { Backing field of @link(RestartIfNecessary). }
@@ -196,7 +200,8 @@ type
     constructor Create(AOwner: TComponent); override;
     { Shuts Steam down if this instance started it, and releases everything. }
     destructor Destroy; override;
-    { Same as @code(Active := True), returning the outcome. }
+    { Same as @code(Active := True), but never raises for a failed start:
+      @returns(@true when Steam is running.) }
     function Open: Boolean;
     { Same as @code(Active := False). Safe to call more than once. }
     procedure Close;
@@ -208,7 +213,11 @@ type
     { @true while Steam is running. }
     property IsRunning: Boolean read GetIsRunning;
 
-    { Starts / stops Steam. At design time the value is only stored. }
+    { Starts / stops Steam. At design time the value is only stored. When
+      Steam cannot start and no @link(OnInitFailed) handler is assigned,
+      setting it to @true raises ESteamworksError with Steam's message (use
+      @link(Open) to get a Boolean instead); when Active was set in the form
+      file the error is shown (ShowHandlerException) and the form still loads. }
     property Active: Boolean read FActive write SetActive default False;
     { Your Steam AppID. }
     property AppID: Cardinal read FAppID write FAppID default 0;
@@ -443,12 +452,32 @@ begin
 end;
 
 procedure TCustomSteamAPI.Loaded;
+var
+  E: ESteamworksError;
 begin
   inherited;
   if csDesigning in ComponentState then
     FActive := FStreamedActive
   else if FStreamedActive then
-    SetActive(True);
+  begin
+    // A failed start must not abort form loading (the exception would escape
+    // Application.CreateForm): show it the framework's way instead.
+    Inc(FOpenDepth);
+    try
+      SetActive(True);
+    finally
+      Dec(FOpenDepth);
+    end;
+    if (not FActive) and (FFailMessage <> '') and not Assigned(FOnInitFailed) then
+    begin
+      E := ESteamworksError.Create(FFailMessage);
+      try
+        ShowHandlerException(E);
+      finally
+        E.Free;
+      end;
+    end;
+  end;
   FStreamedActive := False;
 end;
 
@@ -467,7 +496,12 @@ begin
   if AValue = FActive then
     Exit;
   if AValue then
-    DoActivate   // sets FActive itself; OnInitialized may already have closed again
+  begin
+    FFailMessage := '';
+    DoActivate;  // sets FActive itself; OnInitialized may already have closed again
+    if (not FActive) and (FFailMessage <> '') and (FOpenDepth = 0) and not Assigned(FOnInitFailed) then
+      raise ESteamworksError.Create(FFailMessage);
+  end
   else
   begin
     DoDeactivate;
@@ -539,6 +573,9 @@ begin
   end;
 
   Result := S.Initialize;
+  if not Result then
+    FFailMessage := Format('Steam did not start (result %d): %s',
+      [Ord(S.LastInitResult), S.LastError]);
   if Result then
   begin
     FActive := True;
@@ -561,7 +598,12 @@ end;
 
 function TCustomSteamAPI.Open: Boolean;
 begin
-  Active := True;
+  Inc(FOpenDepth);
+  try
+    Active := True;
+  finally
+    Dec(FOpenDepth);
+  end;
   Result := FActive;
 end;
 

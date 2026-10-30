@@ -102,8 +102,8 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <SanitizedProjectName>SteamDemo</SanitizedProjectName>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\..\lib;..\..\lib\plugins;..\..\fmx;src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_IncludePath>..\..\lib;..\..\lib\plugins;..\..\fmx;src;$(DCC_IncludePath)</DCC_IncludePath>
+        <DCC_UnitSearchPath>src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_IncludePath>src;$(DCC_IncludePath)</DCC_IncludePath>
         <DCC_DcuOutput>.\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
@@ -255,21 +255,6 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="..\..\lib\Steamworks.Types.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.DynLib.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.Versions.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.API.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.Callbacks.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.SteamClient.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.SDKTypes.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.Core.pas"/>
-        <DCCReference Include="..\..\lib\Steamworks.Components.pas"/>
-        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.Utils.pas"/>
-        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.User.pas"/>
-        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.Friends.pas"/>
-        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.Apps.pas"/>
-        <DCCReference Include="..\..\lib\plugins\Steamworks.Plugin.UserStats.pas"/>
-        <DCCReference Include="..\..\fmx\Steamworks.FMX.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmMain</Form>
             <FormType>fmx</FormType>

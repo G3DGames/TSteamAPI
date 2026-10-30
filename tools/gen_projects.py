@@ -35,20 +35,32 @@ def lib_units(rel):   # rel = path from project dir to repo root
     return [(u, f"{rel}lib\\{u}.pas") for u in LIB]
 
 PROJECTS = [
+    # The demos use the library like any user project: its DCUs come from the
+    # runtime packages' output in Delphi's Dcp folder (default Library path),
+    # so they list and search only their own sources. Build the packages first.
     dict(name="SteamDemo", dir="demos\\SteamDemo", kind="app", framework="FMX",
          platforms=ALL_PLATFORMS, default="Win64",
-         units=lib_units("..\\..\\") +
-               [(u, f"..\\..\\lib\\plugins\\{u}.pas") for u in PLUGINS] +
-               [("Steamworks.FMX", "..\\..\\fmx\\Steamworks.FMX.pas")],
+         units=[],
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
-         search="..\\..\\lib;..\\..\\lib\\plugins;..\\..\\fmx;src", redist=True),
+         search="src", redist=True, depends=["SteamworksFMX"]),
+    # VCL twin of SteamDemo; its form unit is shared with the Lazarus demo
+    # (demos/SteamDemoLCL, a .lpi project - not listed here or in the group)
+    dict(name="SteamDemoVCL", dir="demos\\SteamDemoVCL", kind="app", framework="VCL",
+         platforms=["Win32", "Win64"], default="Win64",
+         units=[("uSteamDemoDesktop", "..\\shared\\uSteamDemoDesktop.pas")],
+         forms=[], search="..\\shared", redist=True, depends=["SteamworksVCL"]),
     dict(name="SteamConsole", dir="demos\\SteamConsole", kind="console", framework="None",
          # Android64: placeholder added by the owner 2026-10-30 (not run yet)
          platforms=ALL_PLATFORMS, default="Win64",
-         units=lib_units("..\\..\\") +
-               [(u, f"..\\..\\lib\\plugins\\{u}.pas") for u in PLUGINS] +
-               [("uConsoleMain", "src\\uConsoleMain.pas")],
-         forms=[], search="..\\..\\lib;..\\..\\lib\\plugins;src", redist=True),
+         units=[("uConsoleMain", "src\\uConsoleMain.pas")],
+         forms=[], search="src", redist=True, depends=["Steamworks"]),
+    # The owner's "user's own project" test: a form made in the IDE from the
+    # palette, no demo conveniences (no post-build copy). Its .dproj is the
+    # IDE's; listed here for the project group and project_check only.
+    dict(name="BasicFormFMX", dir="demos\\BasicFormFMX", kind="app", framework="FMX",
+         platforms=["Win32", "Win64"], default="Win64",
+         units=[], forms=[("BasicFormFMXMain", "BasicFormFMXMain.pas", "Form1")],
+         search="", redist=False, depends=["SteamworksFMX"]),
     # Framework-free runtime package: the whole library, the plug-ins and the
     # shared component layer (TCustomSteamAPI, plug-in components).
     dict(name="Steamworks", dir="packages", kind="runtime", framework="None",
@@ -71,6 +83,18 @@ PROJECTS = [
          forms=[], search="..\\lib;..\\lib\\plugins;..\\fmx", requires=["rtl", "fmx", "Steamworks"],
          description="Steamworks SDK 1.65 for FireMonkey - runtime",
          depends=["Steamworks"]),
+    dict(name="SteamworksVCL", dir="packages", kind="runtime", framework="VCL",
+         platforms=["Win32", "Win64"], default="Win64",
+         units=[("Steamworks.VCL", "..\\vcl\\Steamworks.VCL.pas")],
+         forms=[], search="..\\lib;..\\lib\\plugins;..\\vcl", requires=["rtl", "vcl", "Steamworks"],
+         description="Steamworks SDK 1.65 for VCL - runtime",
+         depends=["Steamworks"]),
+    dict(name="dclSteamworksVCL", dir="packages", kind="design", framework="VCL",
+         platforms=["Win32", "Win64"], default="Win32",
+         units=[("Steamworks.VCL.Reg", "..\\vcl\\Steamworks.VCL.Reg.pas")],
+         forms=[], search="..\\lib;..\\vcl", requires=["rtl", "vcl", "designide", "SteamworksVCL"],
+         description="Steamworks SDK 1.65 for VCL - design time",
+         depends=["SteamworksVCL"]),
     dict(name="dclSteamworksFMX", dir="packages", kind="design", framework="FMX",
          platforms=["Win32", "Win64"], default="Win32",
          units=[("Steamworks.FMX.Reg", "..\\fmx\\Steamworks.FMX.Reg.pas")],
@@ -80,6 +104,8 @@ PROJECTS = [
 ]
 
 NS_BASE = "System;Xml;Data;Datasnap;Web;Soap"
+# VCL projects: unscoped VCL unit names (Forms, Controls, ...) resolve through these
+NS_VCL = "Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell"
 NS_PLAT = {
     "Win32": "Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win",
     "Win64": "Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win",
@@ -150,7 +176,12 @@ def dproj(p):
     a(f'        <DCC_Namespace>{NS_BASE};$(DCC_Namespace)</DCC_Namespace>')
     a(f'        <DCC_UnitSearchPath>{p["search"]};$(DCC_UnitSearchPath)</DCC_UnitSearchPath>')
     a(f'        <DCC_IncludePath>{p["search"]};$(DCC_IncludePath)</DCC_IncludePath>')
-    a('        <DCC_DcuOutput>.\\$(Platform)\\$(Config)\\dcu</DCC_DcuOutput>')
+    if p["kind"] == "runtime":
+        # DCUs next to the .dcp, on the IDE's default Library path, so projects
+        # (demos included) need no paths; Win32 is overridden in Base_Win32
+        a('        <DCC_DcuOutput>$(BDSCOMMONDIR)\\Dcp\\$(Platform)</DCC_DcuOutput>')
+    else:
+        a('        <DCC_DcuOutput>.\\$(Platform)\\$(Config)\\dcu</DCC_DcuOutput>')
     if is_pkg:
         # No DCC_BplOutput / DCC_DcpOutput: Delphi's defaults ($(BDSCOMMONDIR)\\Bpl and
         # \\Dcp per platform) are on the IDE's PATH and library path, so the design
@@ -172,7 +203,11 @@ def dproj(p):
     a('    </PropertyGroup>')
     for pl in p["platforms"]:
         a(f"    <PropertyGroup Condition=\"'$(Base_{pl})'!=''\">")
-        a(f'        <DCC_Namespace>{NS_PLAT[pl]};$(DCC_Namespace)</DCC_Namespace>')
+        ns = NS_PLAT[pl] + (";" + NS_VCL if p["framework"] == "VCL" else "")
+        a(f'        <DCC_Namespace>{ns};$(DCC_Namespace)</DCC_Namespace>')
+        if p["kind"] == "runtime" and pl == "Win32":
+            # Win32's Dcp folder has no platform sub-folder (see the Base group)
+            a('        <DCC_DcuOutput>$(BDSCOMMONDIR)\\Dcp</DCC_DcuOutput>')
         if pl.startswith("OSX") and p["kind"] in ("app", "console"):
             # Without bundle keys the IDE writes an EMPTY Info.plist and PAServer's
             # 'plutil -convert binary1' fails (E0264) - seen 2026-10-30, OSXARM64.
@@ -296,7 +331,9 @@ def groupproj():
     L = ['<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">',
          '    <PropertyGroup>', f'        <ProjectGuid>{guid}</ProjectGuid>', '    </PropertyGroup>',
          '    <ItemGroup>']
-    for p in PROJECTS:
+    # Packages first: the demos link the DCUs the runtime packages produce
+    ordered = sorted(PROJECTS, key=lambda p: p["kind"] in ("app", "console"))
+    for p in ordered:
         rel = f"{p['dir']}\\{p['name']}.dproj"
         deps = ";".join(f"{q['dir']}\\{q['name']}.dproj" for q in PROJECTS if q["name"] in p.get("depends", []))
         L += [f'        <Projects Include="{rel}">',
@@ -306,13 +343,13 @@ def groupproj():
           '        <Borland.Personality>Default.Personality.12</Borland.Personality>',
           '        <Borland.ProjectType/>', '        <BorlandProject>',
           '            <Default.Personality/>', '        </BorlandProject>', '    </ProjectExtensions>']
-    for p in PROJECTS:
+    for p in ordered:
         rel = f"{p['dir']}\\{p['name']}.dproj"
         n = p["name"]
         L += [f'    <Target Name="{n}">', f'        <MSBuild Projects="{rel}"/>', '    </Target>',
               f'    <Target Name="{n}:Clean">', f'        <MSBuild Projects="{rel}" Targets="Clean"/>', '    </Target>',
               f'    <Target Name="{n}:Make">', f'        <MSBuild Projects="{rel}" Targets="Make"/>', '    </Target>']
-    names = [p["name"] for p in PROJECTS]
+    names = [p["name"] for p in ordered]
     for t, suf in (("Build", ""), ("Clean", ":Clean"), ("Make", ":Make")):
         L += [f'    <Target Name="{t}">', f'        <CallTarget Targets="{";".join(n + suf for n in names)}"/>', '    </Target>']
     L += ["    <Import Project=\"$(BDS)\\Bin\\CodeGear.Group.Targets\" Condition=\"Exists('$(BDS)\\Bin\\CodeGear.Group.Targets')\"/>",

@@ -5,8 +5,10 @@ A Pascal binding of the Steamworks SDK **1.65**, built as a small **core**
 one per Steam interface, so a game links only what it uses.
 
 * Target order: **FMX** (now), **VCL** (next), **Free Pascal / Lazarus** (after).
-  `lib/` is framework-free and written to compile with Delphi and FPC 3.2+
-  (`{$mode delphi}`); only `fmx/` uses FireMonkey.
+  `lib/` is framework-free and written to compile with Delphi (13
+  recommended; earlier versions will be tested later, no guarantee yet) and FPC 3.2.2
+  (`{$mode delphi}`; the FPC version Castle Game Engine uses); `fmx/`,
+  `vcl/` and `lcl/` hold the framework-specific units.
 * Platforms - everything Valve ships a redistributable for:
 
   | Platform        | Delphi target | FPC target      | redistributable_bin/            |
@@ -52,16 +54,26 @@ lib/                        framework-free library (Delphi + FPC)
 fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread)
   Steamworks.FMX.Reg.pas    design-time registration of the FMX TSteamAPI
+vcl/                        VCL only (Delphi, Windows)
+  Steamworks.VCL.pas        TSteamAPI for VCL (VCL TTimer), SteamImageToBitmap
+  Steamworks.VCL.Reg.pas    design-time registration of the VCL TSteamAPI
+lcl/                        LCL only (Lazarus / Free Pascal)
+  Steamworks.LCL.pas        TSteamAPI for LCL (LCL TTimer), SteamImageToBitmap
 design/
   Steamworks.Reg.pas        GENERATED: registers the plug-in components (all frameworks)
 packages/                   Steamworks (runtime: lib + plug-ins + components, no framework),
                             dclSteamworks (design: plug-in components),
-                            SteamworksFMX (runtime: FMX TSteamAPI), dclSteamworksFMX (design)
+                            SteamworksFMX (runtime: FMX TSteamAPI), dclSteamworksFMX (design),
+                            SteamworksVCL (runtime: VCL TSteamAPI), dclSteamworksVCL (design)
 redistributable_bin/        copy of sdk/redistributable_bin from the SDK
                             (git-ignored except its README.md)
 demos/
   SteamDemo/                FMX demo: SteamDemo.dproj + .dpr, sources in src/
+  SteamDemoVCL/             VCL demo (Delphi project)          \ same form:
+  SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr)     / shared/
+  shared/                   uSteamDemoDesktop.pas: the VCL / LCL demo form (UI built in code)
   SteamConsole/             console smoke test (no framework; FPC-ready)
+  BasicFormFMX/             a "user's own project": a form built in the IDE from the palette
 tools/
   pasdoc_check.py           PasDoc coverage, ASCII and comment-nesting check
   check_redist.py           validates all seven redistributables (type, CPU, SDK level)
@@ -78,7 +90,12 @@ tools/
    the contents of `sdk/redistributable_bin` into `redistributable_bin/`.
    Check the result with `python3 tools/check_redist.py` (see
    `redistributable_bin/README.md`).
-2. Open `Steamworks.groupproj` in Delphi 13.
+2. Open `Steamworks.groupproj` in Delphi 13. For each platform you build
+   for, build the runtime packages `Steamworks` and `SteamworksFMX` first
+   (**Build All** does, packages come first in the group): the demos - like
+   your own projects - link the units those packages compile into Delphi's
+   `Dcp` folder (step 4) and have no path to the library sources. After
+   changing library sources, rebuild the packages before the demos.
 3. Build and run **SteamDemo** (or **SteamConsole**; `SteamConsole 60` pumps
    callbacks for 60 s instead of 3) with the Steam client
    running and logged in. Debug builds export `SteamAppId=2275430`, so no
@@ -88,7 +105,12 @@ tools/
    the 64-bit IDE, Win32 for the 32-bit IDE):
    1. **Build** (do not install) the runtime packages `Steamworks`, then
       `SteamworksFMX`. Their `.dcp` / `.bpl` go to Delphi's default `Dcp` /
-      `Bpl` folders.
+      `Bpl` folders, and their compiled units (`.dcu`) go to the same `Dcp`
+      folder (`$(BDSCOMMONDIR)\Dcp` for Win32, `$(BDSCOMMONDIR)\Dcp\<platform>`
+      otherwise), which is on the IDE's default Library path - so your own
+      projects need no extra paths. Build them once for every platform you
+      target (Win32, Win64, ...); the last configuration built (Debug or
+      Release) is the one your projects link.
    2. **Install** `dclSteamworks` (the plug-in components: TSteamUtils,
       TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats) and
       `dclSteamworksFMX` (the FMX TSteamAPI). They appear on the "Steamworks"
@@ -100,15 +122,15 @@ tools/
 
 ### In your own project
 
-The design packages only give the IDE the components; your project compiles
-the units from source, so Delphi must know where they are. Once, for every
-platform you build for (a new project starts on Win32; the Library path is
-kept per platform): **Tools > Options > Language > Delphi > Library**,
-choose the platform under *Selected Platform*, and add the repository's
-`lib`, `lib\plugins` and `fmx` folders to the **Library path** (`lib` also
-provides `Steamworks.inc`). Without that, the first build stops with
-`F2613 Unit 'Steamworks.FMX' not found`. Alternatively add the same folders
-to the project's own search path.
+Your project links the units the runtime packages compiled into Delphi's
+`Dcp` folder (see Getting started, step 4), so after building `Steamworks`
+and `SteamworksFMX` for a platform nothing else is needed for it. If a build
+stops with `F2613 Unit 'Steamworks.FMX' not found`, the packages have not
+been built for that platform yet (a new project starts on Win32). To compile
+the library from source instead (or to step into it while debugging), add
+the repository's `lib`, `lib\plugins` and `fmx` folders to the project's
+search path or to **Tools > Options > Language > Delphi > Library** (Library
+path or Browsing path) for that platform.
 
 At run time the program needs the Steam library for its platform next to the
 executable (`steam_api.dll` for Win32, `steam_api64.dll` for Win64; see the
@@ -165,6 +187,14 @@ plug-in unit also declares a component named after the interface -
   it is nil while Steam is not running.
 * At design time the IDE adds the units the generated event handlers need
   (`Steamworks.SDKTypes`, `Steamworks.Callbacks`, ...) to the form's uses.
+* Steam images (avatars, achievement icons) are integer handles; in FMX,
+  `SteamImageToBitmap(Handle, Bitmap)` (Steamworks.FMX) copies one into a
+  `TBitmap`. A handle of -1 means Steam is still loading it - wait for
+  `TSteamFriends.OnAvatarImageLoaded` / `TSteamUserStats.OnUserAchievementIconFetched`.
+  SteamDemo shows the user's avatar and the app's achievements this way.
+* When Steam cannot start and no `OnInitFailed` handler is assigned,
+  `Active := True` raises `ESteamworksError` with Steam's own message;
+  `Open` returns False instead.
 * Do not free `TSteamAPI` inside one of its own or a plug-in component's
   events (they run from its timer); call `Close` there and free it later.
 
@@ -350,8 +380,19 @@ forward-declared in the public headers). New interfaces are added to the
 * `ISteamGameSearch` and `ISteamMusicRemote` are gone (no header, not in
   `steam_api.json`, no version string in the redistributables).
 
-## Building with Free Pascal (planned)
-`lib/` and the console demo are written for FPC 3.2 `{$mode delphi}`:
+## Building with Free Pascal / Lazarus
+`lib/`, `lcl/` and the console demo are written for FPC 3.2 `{$mode delphi}`
+(the reference install is Lazarus 4.8 / FPC 3.2.2).
+
+* **SteamDemoLCL:** open `demos/SteamDemoLCL/SteamDemoLCL.lpi` in Lazarus and
+  build. It compiles the library from source (its search paths point at
+  `lib`, `lib/plugins`, `lcl` and `demos/shared`) and passes `-dDEBUG`, so it
+  sets the AppID itself. The executable goes to
+  `demos/SteamDemoLCL/<cpu>-<os>/` (e.g. `x86_64-win64/`); copy the Steam
+  library for that platform from `redistributable_bin` next to it
+  (`win64/steam_api64.dll` on Windows 64-bit). It is the same form as the
+  VCL demo: Output, Personal, Achievements.
+* **SteamConsole:**
 
 ```
 cd demos/SteamConsole

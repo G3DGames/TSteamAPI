@@ -73,6 +73,13 @@ Project AppID: 2275430.
   plug-in unit, linked to the root through `SteamAPI` ("dropped and linked":
   only what is dropped is linked in). The core flat-export class formerly
   called TSteamAPI is `TSteamLib` (lib/Steamworks.API.pas).
+- Owner's direction 2026-10-30: iron out Windows first (largest target) and
+  add plug-ins as we go; other platforms are re-tested later in one round.
+- Runtime packages (Steamworks, SteamworksFMX) write their DCUs to
+  $(BDSCOMMONDIR)\Dcp (Win32) / $(BDSCOMMONDIR)\Dcp\$(Platform) (others),
+  i.e. next to their .dcp on the IDE's default Library path, so projects
+  using the library need no paths (owner's request; gen_projects.py does
+  the same). Debug and Release builds share that folder (last one wins).
 - Packages: `Steamworks` (runtime, rtl only: lib + plug-ins + components),
   `dclSteamworks` (design: registers the plug-in components once, no class
   group, so they show for FMX and VCL), `SteamworksFMX` (runtime: only
@@ -81,17 +88,45 @@ Project AppID: 2275430.
   VCL TSteamAPI of the same name can be registered later, like TButton).
 - `lib/` - framework-free units only. No FMX, VCL or LCL here, ever.
   Must compile with Delphi and with FPC 3.2+ (`{$mode delphi}` via Steamworks.inc).
+  Compiler targets (owner, 2026-10-30):
+  * FPC 3.2.2 exactly - it is what Castle Game Engine
+    (github.com/castle-engine/castle-engine) builds with, a specific target.
+    Use nothing newer (no trunk / 3.3.1 features outside the
+    anonymous-methods define); check FPC facts against the 3.2.2 RTL.
+  * Delphi 13 is RECOMMENDED (the reference; the only version tested).
+    Earlier versions (11.0+) are tested later, with no guarantee for now.
+    Still avoid needless breakage: no Delphi 12+ language features
+    (multi-line ''' strings), no Delphi 13 ones (ternary if-expressions,
+    `is not` / `not in`, NameOf) and no newer RTL / platform ids without a
+    {$if CompilerVersion} guard. If 11.0 turns out to need something newer,
+    the minimum becomes 13. The .dproj files are Delphi 13 format
+    (ProjectVersion 20.5).
 - `lib/plugins/` - one unit per Steam interface (`Steamworks.Plugin.<Name>.pas`).
 - Never create a folder with a '-' in its name under any `lib/`: `.gitignore`
   ignores `lib/*-*/` (Lazarus unit output such as `lib/x86_64-linux/`).
-- `fmx/` - FireMonkey-specific units. Future: `vcl/`, `lcl/`.
+- `fmx/`, `vcl/`, `lcl/` - framework-specific units: each declares
+  TSteamAPI (TCustomSteamAPI + its timer) and SteamImageToBitmap for its
+  bitmap type. vcl/ and fmx/ are Delphi-only; lcl/ is FPC/Lazarus.
+- `demos/shared/` - source shared by several demos: uSteamDemoDesktop.pas is
+  the ONE form unit of both SteamDemoVCL (Delphi) and SteamDemoLCL (Lazarus),
+  UI built in code (CreateNew - no .dfm/.lfm), {$ifdef FPC} only where VCL
+  and LCL differ. Keep it compiling with both. It must not include
+  Steamworks.inc (the VCL demo has no path to the library).
+- Lazarus projects (.lpi/.lpr) are not in gen_projects.py, the project group
+  or project_check.py; they compile the library from source.
 - `design/` - framework-independent design-time units (generated Reg unit).
 - `redistributable_bin/` - each developer copies `sdk/redistributable_bin`
   from the Steamworks SDK 1.65 here. Only its README.md is tracked; never
   commit SDK binaries (partner licence). `tools/check_redist.py` validates it;
   projects copy / deploy from it (paths set in `tools/gen_projects.py`).
 - `demos/<Name>/` - `<Name>.dpr` + `<Name>.dproj` in the folder, all other
-  sources in `demos/<Name>/src/`.
+  sources in `demos/<Name>/src/` (BasicFormFMX, the owner's IDE-made test,
+  keeps its form beside the .dpr). Demos list and search ONLY their own
+  sources: the library comes from the runtime packages' DCUs in Delphi's
+  Dcp folder, exactly as for a user's project (owner's decision 2026-10-30).
+  So packages build before demos (group order + Dependencies), and library
+  changes need a package rebuild before a demo sees them. The IDE dropped
+  the group's Dependencies once already - check them after it re-saves.
 - `packages/` - runtime and design-time packages.
 - `Steamworks.groupproj` at the root lists every project.
 - `tools/` - Python helpers.
@@ -376,8 +411,36 @@ named, shut down 3 ms later, early stop). Packages install and the palette
 works; a blank FMX form with the components failed with F2613 'Steamworks.FMX
 not found' (dcc32) - no Library path entries for the sources: README now
 says to add lib, lib\plugins, fmx per platform (Tools > Options > Library).
-Not yet reported: that form compiled and running (event stubs + RequiresUnits),
-SteamDemo Steam -> Exit with TSteamFriends attached, the other platforms.
+The blank-form test (demos/SteamPlaygroundFMX, renamed by the owner to
+demos/BasicFormFMX at 15606b0 - a "user's own project" without demo
+conveniences such as the post-build DLL copy):
+the IDE wrote the typed event stub and RequiresUnits added every needed unit;
+it then failed silently because SetAppIdEnvironment was off, no DLL next to
+the exe and no OnInitFailed handler -> TSteamAPI now raises on a failed
+Active := True when OnInitFailed is unassigned (Open still returns False).
+BasicFormFMX fails pasdoc_check (11 IDE form declarations) and its .dproj
+lists the owner's third-party runtime packages and WinARM64EC - offered to
+document / tidy it once the owner stops editing it locally.
+Added (untested): SteamImageToBitmap (fmx), SteamDemo side panel with the
+user's large avatar and the achievement list (icons via
+OnUserAchievementIconFetched, avatar via OnAvatarImageLoaded when -1),
+SteamConsole prints the achievements; the AppID has 6 achievements.
+Not yet reported: SteamDemo Steam -> Exit with components attached; a fresh
+test project without manual paths (packages' DCU output).
+Added 2026-10-30 (untested): SteamDemo is tabbed (Output / Personal: avatar,
+persona, ids, level, country, friends with avatars / Achievements: icons,
+unlock state); the demos no longer reference library sources (they link the
+packages' DCUs); vcl/ + SteamworksVCL / dclSteamworksVCL + SteamDemoVCL;
+lcl/ + SteamDemoLCL (Lazarus 4.8, FPC 3.2.2 - FIRST FPC COMPILE of lib/,
+expect FPC-specific fixes). The owner's Lazarus: 4.8, FPC 3.2.2,
+x86_64-win64, win32 widgetset.
+Review of the VCL/LCL code + FPC scan of lib/ (no compiler, 2026-10-30): no
+compile errors found. Fixed: FPC 3.2's UnixToDateTime 2nd parameter is
+aReturnUTC like Delphi's (an earlier ifdef here was WRONG and gave UTC on
+FPC) - both now pass False; SteamDemoLCL.lpr lacked {$R *.res} (manifest /
+DPI); IsMultiThread := True before installing the warning hook; VCL image
+lists cd32Bit. Remaining remark: Application.Scaled does nothing for the
+code-built form (pixel sizes are not scaled).
 Next:
 1. Owner builds everything on Win64 in this order: Steamworks,
    dclSteamworks (install), SteamworksFMX, dclSteamworksFMX (install), both

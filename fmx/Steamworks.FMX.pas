@@ -37,7 +37,7 @@ unit Steamworks.FMX;
 interface
 
 uses
-  SysUtils, Classes, FMX.Types,
+  SysUtils, Classes, FMX.Types, FMX.Graphics,
   Steamworks.Types, Steamworks.Core, Steamworks.Components;
 
 type
@@ -102,10 +102,59 @@ type
     property OnCallback;
   end;
 
+{ Copies a Steam image into an FMX bitmap: an avatar handle from
+  TSteamFriendsPlugin.GetSmall/Medium/LargeFriendAvatar or an achievement icon
+  from TSteamUserStatsPlugin.GetAchievementIcon (also the handles in
+  AvatarImageLoaded_t / UserAchievementIconFetched_t). ABitmap is resized to
+  the image.
+  @returns(@false when the handle is 0 or -1 (not available / still loading -
+    wait for the callback), Steam is not running, or the pixels cannot be
+    read; ABitmap is then unchanged - except when the bitmap cannot be mapped
+    for writing, after it was already resized.) }
+function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
+
 implementation
 
 uses
-  FMX.Forms;
+  UITypes, FMX.Forms, Steamworks.Plugin.Utils;
+
+function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
+var
+  U: TSteamUtilsPlugin;
+  Pixels: TBytes;
+  W, H: UInt32;
+  Data: TBitmapData;
+  X, Y: Integer;
+  P: PByte;
+begin
+  Result := False;
+  if (AImage <= 0) or (ABitmap = nil) or not TSteamworks.HasInstance then
+    Exit;
+  U := TSteamUtilsPlugin(TSteamworks.Instance.FindPlugin(TSteamUtilsPlugin));
+  if U = nil then
+    Exit;
+  Pixels := U.GetImageRGBABytes(AImage, W, H);
+  if Pixels = nil then
+    Exit;
+  ABitmap.SetSize(Integer(W), Integer(H));
+  if not ABitmap.Map(TMapAccess.Write, Data) then
+    Exit;
+  try
+    // Steam gives straight RGBA, 4 bytes per pixel, rows top-down; SetPixel
+    // converts to whatever pixel format the bitmap uses on this platform.
+    P := @Pixels[0];
+    for Y := 0 to Integer(H) - 1 do
+      for X := 0 to Integer(W) - 1 do
+      begin
+        Data.SetPixel(X, Y, (TAlphaColor(P[3]) shl 24) or (TAlphaColor(P[0]) shl 16) or
+          (TAlphaColor(P[1]) shl 8) or TAlphaColor(P[2]));
+        Inc(P, 4);
+      end;
+  finally
+    ABitmap.Unmap(Data);
+  end;
+  Result := True;
+end;
 
 { TSteamAPI }
 

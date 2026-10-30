@@ -1,0 +1,182 @@
+(* @abstract(@link(TSteamAPI) for the VCL (Delphi, Windows) - the non-visual root
+  component that drives Steam.)
+
+  Same name, properties and events as the FMX and LCL TSteamAPI: everything
+  except the timer, exception display and application exit lives in the
+  framework-free @code(TCustomSteamAPI) (Steamworks.Components). The callback
+  timer is the VCL TTimer, so Steam events arrive on the main thread. The VCL
+  and FMX TSteamAPI can both be installed: each design package registers its
+  class in its framework's class group. *)
+unit Steamworks.VCL;
+
+{$I Steamworks.inc}
+
+interface
+
+uses
+  System.SysUtils, System.Classes, Vcl.ExtCtrls, Vcl.Graphics,
+  Steamworks.Types, Steamworks.Core, Steamworks.Components;
+
+type
+  { VCL TSteamAPI: @code(TCustomSteamAPI) with a VCL timer pump. }
+  [ComponentPlatformsAttribute(pidWin32 or pidWin64)]
+  TSteamAPI = class(TCustomSteamAPI)
+  private
+    { Timer that pumps callbacks on the UI thread. }
+    FTimer: TTimer;
+    { Timer handler: pumps callbacks. }
+    procedure TimerTick(Sender: TObject);
+  protected
+    { Starts the timer. }
+    procedure PumpStart(AIntervalMs: Integer); override;
+    { Stops the timer. }
+    procedure PumpStop; override;
+    { Application.ShowException. }
+    procedure ShowHandlerException(E: Exception); override;
+    { Application.Terminate. }
+    procedure TerminateApplication; override;
+  public
+    { Creates the (disabled) timer. }
+    constructor Create(AOwner: TComponent); override;
+    { Stops and frees the timer, then shuts Steam down (inherited). }
+    destructor Destroy; override;
+  published
+    { Starts / stops Steam. At design time the value is only stored. }
+    property Active;
+    { Your Steam AppID. }
+    property AppID;
+    { Call SteamAPI_RestartAppIfNecessary first (recommended for release builds). }
+    property RestartIfNecessary;
+    { Export SteamAppId so development builds need no steam_appid.txt. }
+    property SetAppIdEnvironment;
+    { Explicit redistributable path; empty = default. }
+    property LibraryPath;
+    { Initialisation entry point. }
+    property InitMode;
+    { Pump interval in ms; 0 = no timer (call RunCallbacks yourself). }
+    property CallbackInterval;
+    { Forward Steam debug output to OnWarning. }
+    property InstallWarningHook;
+    { End the application when the Steam client exits. }
+    property QuitOnSteamShutdown;
+    { Shut Steam down (not the app) as soon as the Steam client exits. }
+    property ShutdownOnSteamExit;
+    { Steam started successfully (plug-in components are attached already). }
+    property OnInitialized;
+    { Steam could not start; see the message. }
+    property OnInitFailed;
+    { Steam was shut down. }
+    property OnShutdown;
+    { The Steam client is exiting - save and quit. }
+    property OnSteamShutdown;
+    { Steam is relaunching the game through the client. }
+    property OnRestartRequired;
+    { Diagnostic messages from the core and plug-ins. }
+    property OnLog;
+    { Steam client debug output (launch with -debug_steamapi). }
+    property OnWarning;
+    { Every Steam callback, for diagnostics. }
+    property OnCallback;
+  end;
+
+{ Copies a Steam image into a bitmap: an avatar handle from
+  TSteamFriendsPlugin.GetSmall/Medium/LargeFriendAvatar or an achievement icon
+  from TSteamUserStatsPlugin.GetAchievementIcon (also the handles in
+  AvatarImageLoaded_t / UserAchievementIconFetched_t). ABitmap is resized to
+  the image (32 bits per pixel, alpha kept).
+  @returns(@false when the handle is 0 or -1 (not available / still loading -
+    wait for the callback), Steam is not running, or the pixels cannot be
+    read; ABitmap is then unchanged.) }
+function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
+
+implementation
+
+uses
+  Vcl.Forms, Steamworks.Plugin.Utils;
+
+function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
+var
+  U: TSteamUtilsPlugin;
+  Pixels: TBytes;
+  W, H: UInt32;
+  X, Y: Integer;
+  Src, Dst: PByte;
+begin
+  Result := False;
+  if (AImage <= 0) or (ABitmap = nil) or not TSteamworks.HasInstance then
+    Exit;
+  U := TSteamUtilsPlugin(TSteamworks.Instance.FindPlugin(TSteamUtilsPlugin));
+  if U = nil then
+    Exit;
+  Pixels := U.GetImageRGBABytes(AImage, W, H);
+  if Pixels = nil then
+    Exit;
+  ABitmap.PixelFormat := pf32bit;
+  ABitmap.AlphaFormat := afIgnored;
+  ABitmap.SetSize(Integer(W), Integer(H));
+  // Steam: RGBA, rows top-down; a pf32bit VCL bitmap row is BGRA
+  Src := @Pixels[0];
+  for Y := 0 to Integer(H) - 1 do
+  begin
+    Dst := ABitmap.ScanLine[Y];
+    for X := 0 to Integer(W) - 1 do
+    begin
+      Dst[0] := Src[2];
+      Dst[1] := Src[1];
+      Dst[2] := Src[0];
+      Dst[3] := Src[3];
+      Inc(Src, 4);
+      Inc(Dst, 4);
+    end;
+  end;
+  ABitmap.Modified := True;
+  Result := True;
+end;
+
+{ TSteamAPI }
+
+constructor TSteamAPI.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FTimer := TTimer.Create(nil);
+  FTimer.Enabled := False;
+  FTimer.OnTimer := TimerTick;
+end;
+
+destructor TSteamAPI.Destroy;
+begin
+  PumpStop;
+  inherited;          // may call PumpStop again: FTimer is still valid here
+  FreeAndNil(FTimer);
+end;
+
+procedure TSteamAPI.TimerTick(Sender: TObject);
+begin
+  RunCallbacks;
+end;
+
+procedure TSteamAPI.PumpStart(AIntervalMs: Integer);
+begin
+  if FTimer = nil then
+    Exit;
+  FTimer.Interval := AIntervalMs;
+  FTimer.Enabled := True;
+end;
+
+procedure TSteamAPI.PumpStop;
+begin
+  if FTimer <> nil then
+    FTimer.Enabled := False;
+end;
+
+procedure TSteamAPI.ShowHandlerException(E: Exception);
+begin
+  Application.ShowException(E);
+end;
+
+procedure TSteamAPI.TerminateApplication;
+begin
+  Application.Terminate;
+end;
+
+end.

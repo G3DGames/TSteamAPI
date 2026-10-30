@@ -41,6 +41,9 @@ heap.trc
 # Extensionless executables FPC writes next to the .dpr / .lpr
 /demos/SteamConsole/SteamConsole
 /demos/SteamDemo/SteamDemo
+# Lazarus demo output: executable (plus the Steam library you copy next to
+# it) in <cpu>-<os>/, units in lib/<cpu>-<os>/
+/demos/SteamDemoLCL/*-*/
 
 # Steamworks SDK redistributables: copied in by each developer, never committed
 redistributable_bin/*

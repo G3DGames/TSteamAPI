@@ -89,6 +89,8 @@ var
   Fr: TSteamFriendsPlugin;
   Apps: TSteamAppsPlugin;
   Stats: TSteamUserStatsPlugin;
+  Achieved: Boolean;
+  UnlockTime: UInt32;
   V: string;
   Versions: TSteamStringArray;
   I, PumpMs: Integer;
@@ -145,7 +147,22 @@ begin
           [BoolToStr(Apps.BIsSubscribed, True), Apps.GetCurrentGameLanguage, Apps.GetAppBuildId]));
       Stats := TSteamUserStatsPlugin(Steam.FindPlugin(TSteamUserStatsPlugin));
       if Stats <> nil then
+      begin
         Say(Format('ISteamUserStats: %d achievements defined', [Stats.GetNumAchievements]));
+        for I := 0 to Integer(Stats.GetNumAchievements) - 1 do
+        begin
+          V := Stats.GetAchievementName(UInt32(I));
+          Achieved := False;
+          UnlockTime := 0;
+          Stats.GetAchievementAndUnlockTime(V, Achieved, UnlockTime);
+          if Achieved then
+            Say(Format('  %s "%s": unlocked %s', [V, Stats.GetAchievementDisplayAttribute(V, 'name'),
+              // local time: 2nd parameter is AReturnUTC (Delphi and FPC 3.2+)
+              FormatDateTime('yyyy-mm-dd hh:nn', UnixToDateTime(UnlockTime, False))]))
+          else
+            Say(Format('  %s "%s": locked', [V, Stats.GetAchievementDisplayAttribute(V, 'name')]));
+        end;
+      end;
     except
       on E: Exception do
         Say('Plug-in call failed: ' + E.ClassName + ': ' + E.Message);
