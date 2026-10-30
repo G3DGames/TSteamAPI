@@ -46,7 +46,8 @@ PROJECTS = [
          platforms=["Win32", "Win64"], default="Win32",
          units=[("Steamworks.FMX.Reg", "..\\fmx\\Steamworks.FMX.Reg.pas")],
          forms=[], search="..\\lib;..\\fmx", requires=["rtl", "fmx", "designide", "SteamworksFMX"],
-         description="Steamworks SDK 1.65 for FireMonkey - design time"),
+         description="Steamworks SDK 1.65 for FireMonkey - design time",
+         depends=["SteamworksFMX"]),
 ]
 
 NS_BASE = "System;Xml;Data;Datasnap;Web;Soap"
@@ -117,8 +118,9 @@ def dproj(p):
     a(f'        <DCC_IncludePath>{p["search"]};$(DCC_IncludePath)</DCC_IncludePath>')
     a('        <DCC_DcuOutput>.\\$(Platform)\\$(Config)\\dcu</DCC_DcuOutput>')
     if is_pkg:
-        a('        <DCC_BplOutput>.\\$(Platform)\\$(Config)</DCC_BplOutput>')
-        a('        <DCC_DcpOutput>.\\$(Platform)\\$(Config)</DCC_DcpOutput>')
+        # No DCC_BplOutput / DCC_DcpOutput: Delphi's defaults ($(BDSCOMMONDIR)\\Bpl and
+        # \\Dcp per platform) are on the IDE's PATH and library path, so the design
+        # package finds SteamworksFMX.dcp and the IDE can load SteamworksFMX.bpl.
         a('        <GenDll>true</GenDll>')
         a('        <GenPackage>true</GenPackage>')
         a(f'        <DCC_Description>{p["description"]}</DCC_Description>')
@@ -140,7 +142,8 @@ def dproj(p):
         if p.get("redist") and pl.startswith("Win"):
             src = f"$(PROJECTDIR)\\..\\..\\redistributable_bin\\{REDIST[pl]}{DLL[pl]}"
             # Two plain lines: a parenthesised if/else breaks when a path contains ')'
-            cmd = (f'if exist "{src}" copy /Y "{src}" "$(OUTPUTDIR)"\r\n'
+            cmd = (f'echo Steamworks post-build: $(Platform) $(Config), copying {DLL[pl]} to $(OUTPUTDIR)\r\n'
+                   f'if exist "{src}" copy /Y "{src}" "$(OUTPUTDIR)"\r\n'
                    f'if not exist "{src}" echo WARNING: {DLL[pl]} not found in redistributable_bin\\{REDIST[pl]} - '
                    f'copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, '
                    f'then run tools\\check_redist.py')
@@ -249,7 +252,10 @@ def groupproj():
          '    <ItemGroup>']
     for p in PROJECTS:
         rel = f"{p['dir']}\\{p['name']}.dproj"
-        L += [f'        <Projects Include="{rel}">', '            <Dependencies/>', '        </Projects>']
+        deps = ";".join(f"{q['dir']}\\{q['name']}.dproj" for q in PROJECTS if q["name"] in p.get("depends", []))
+        L += [f'        <Projects Include="{rel}">',
+              f'            <Dependencies>{deps}</Dependencies>' if deps else '            <Dependencies/>',
+              '        </Projects>']
     L += ['    </ItemGroup>', '    <ProjectExtensions>',
           '        <Borland.Personality>Default.Personality.12</Borland.Personality>',
           '        <Borland.ProjectType/>', '        <BorlandProject>',

@@ -63,12 +63,21 @@ tools/
    Check the result with `python3 tools/check_redist.py` (see
    `redistributable_bin/README.md`).
 2. Open `Steamworks.groupproj` in Delphi 13.
-3. Build and run **SteamDemo** (or **SteamConsole**) with the Steam client
+3. Build and run **SteamDemo** (or **SteamConsole**; `SteamConsole 60` pumps
+   callbacks for 60 s instead of 3) with the Steam client
    running and logged in. Debug builds export `SteamAppId=2275430`, so no
    `steam_appid.txt` is needed. On Windows the post-build event copies the DLL
    next to the executable; on macOS / Linux it is deployed with the app.
-4. To use the component at design time, build `SteamworksFMX` and install
-   `dclSteamworksFMX` (palette page "Steamworks").
+4. To use the component at design time:
+   1. **Build** (do not install) `SteamworksFMX` for the IDE's platform:
+      Win64 for the 64-bit IDE, Win32 for the 32-bit IDE. It is runtime-only;
+      its `.dcp` / `.bpl` go to Delphi's default `Dcp` / `Bpl` folders.
+   2. **Install** `dclSteamworksFMX` (same platform). The component appears on
+      the "Steamworks" palette page.
+
+   Building `dclSteamworksFMX` from the project group builds `SteamworksFMX`
+   first. Programs that do not use runtime packages need neither package -
+   they compile the units directly.
 
 ### In your own project
 
@@ -161,6 +170,23 @@ the exception goes to `OnHandlerError` (the FMX component shows it with
 `Application.HandleException`). `Shutdown` from inside a handler is deferred
 until that callback finishes. Steam's warning hook may fire on any thread, so
 warnings are queued and delivered from `RunCallbacks`.
+
+### When the Steam client exits
+Observed with SDK 1.65 on Windows (Steam -> Exit while a demo runs):
+
+* **Windowed app (SteamDemo):** Steam asks the window to close at once - no
+  `SteamShutdown_t` arrives first. The form's normal close path runs and
+  SteamAPI shuts down cleanly. The close request arrived **twice** (probably
+  one per top-level window: FMX's hidden application window and the form),
+  so close handling must be safe to run twice. `TSteamworksFMX.Close` is.
+* **Console app (SteamConsole):** Steam sends `SteamShutdown_t` (callback 704,
+  `OnSteamShutdown`), then `SteamServersDisconnected_t` (103), and ends the
+  process about 10 s later if it is still running. SteamConsole shows the
+  right response: save, shut down and exit on 704.
+
+Either way: save state in your close / `OnSteamShutdown` handling, and do not
+assume it runs only once. `QuitOnSteamShutdown` on the FMX component quits on
+704 automatically.
 
 ### Interface versions
 Each flat function is compiled against one interface version, so the version

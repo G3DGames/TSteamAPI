@@ -272,6 +272,14 @@ const
   { Callback id of @link(SteamShutdown_t) (704). }
   SteamShutdown_t_k_iCallback         = k_iSteamUtilsCallbacks + 4;
 
+{ Diagnostic label for a callback id: the public interface range it falls in
+  and its offset, e.g. 304 -> @code('Friends+4'), 703 -> @code('Utils+3').
+  Ids of 1000000 and above are the Steam client's own internal callbacks,
+  which manual dispatch also delivers; they are not in the public SDK headers
+  and are labelled @code('internal').
+  @param(ACallbackID  k_iCallback value.) }
+function SteamCallbackGroupName(ACallbackID: Integer): string;
+
 { Human-readable text for an @link(ESteamAPIInitResult).
   @param(AResult  Value returned by SteamAPI_InitFlat.) }
 function SteamInitResultToString(AResult: ESteamAPIInitResult): string;
@@ -280,6 +288,67 @@ implementation
 
 uses
   SysUtils;
+
+type
+  TSteamCallbackRange = record
+    Base: Integer;
+    Name: string;
+  end;
+
+const
+  { Public callback ranges, highest base first (see the k_i...Callbacks constants). }
+  SteamCallbackRanges: array[0..37] of TSteamCallbackRange = (
+    (Base: k_iSteamTimelineCallbacks;           Name: 'Timeline'),
+    (Base: k_iSteamChatCallbacks;               Name: 'Chat'),
+    (Base: k_iSteamRemotePlayCallbacks;         Name: 'RemotePlay'),
+    (Base: k_iSteamSTARCallbacks;               Name: 'STAR'),
+    (Base: k_iSteamPartiesCallbacks;            Name: 'Parties'),
+    (Base: k_iSteamGameSearchCallbacks;         Name: 'GameSearch'),
+    (Base: k_iSteamParentalSettingsCallbacks;   Name: 'ParentalSettings'),
+    (Base: k_iSteamInventoryCallbacks;          Name: 'Inventory'),
+    (Base: k_iSteamVideoCallbacks;              Name: 'Video'),
+    (Base: k_iSteamHTMLSurfaceCallbacks;        Name: 'HTMLSurface'),
+    (Base: k_iSteamGameNotificationCallbacks;   Name: 'GameNotification'),
+    (Base: k_iSteamMusicRemoteCallbacks;        Name: 'MusicRemote'),
+    (Base: k_iSteamMusicCallbacks;              Name: 'Music'),
+    (Base: k_iSteamStreamClientCallbacks;       Name: 'StreamClient'),
+    (Base: k_iSteamUGCCallbacks;                Name: 'UGC'),
+    (Base: k_iSteamControllerCallbacks;         Name: 'Controller/Input'),
+    (Base: k_iSteamStreamLauncherCallbacks;     Name: 'StreamLauncher'),
+    (Base: k_iSteamScreenshotsCallbacks;        Name: 'Screenshots'),
+    (Base: k_iSteamHTTPCallbacks;               Name: 'HTTP'),
+    (Base: k_iSteamGameStatsCallbacks;          Name: 'GameStats'),
+    (Base: k_iSteam2AsyncCallbacks;             Name: 'Steam2Async'),
+    (Base: k_iSteamGameServerStatsCallbacks;    Name: 'GameServerStats'),
+    (Base: k_iSteamGameCoordinatorCallbacks;    Name: 'GameCoordinator'),
+    (Base: k_iSteamGameServerItemsCallbacks;    Name: 'GameServerItems'),
+    (Base: k_iSteamRemoteStorageCallbacks;      Name: 'RemoteStorage'),
+    (Base: k_iSteamNetworkingUtilsCallbacks;    Name: 'NetworkingUtils'),
+    (Base: k_iSteamNetworkingMessagesCallbacks; Name: 'NetworkingMessages'),
+    (Base: k_iSteamNetworkingSocketsCallbacks;  Name: 'NetworkingSockets'),
+    (Base: k_iSteamNetworkingCallbacks;         Name: 'Networking'),
+    (Base: k_iSteamUserStatsCallbacks;          Name: 'UserStats'),
+    (Base: k_iSteamAppsCallbacks;               Name: 'Apps'),
+    (Base: k_iSteamUtilsCallbacks;              Name: 'Utils'),
+    (Base: k_iSteamContentServerCallbacks;      Name: 'ContentServer'),
+    (Base: k_iSteamMatchmakingCallbacks;        Name: 'Matchmaking'),
+    (Base: k_iSteamBillingCallbacks;            Name: 'Billing'),
+    (Base: k_iSteamFriendsCallbacks;            Name: 'Friends'),
+    (Base: k_iSteamGameServerCallbacks;         Name: 'GameServer'),
+    (Base: k_iSteamUserCallbacks;               Name: 'User')
+  );
+
+function SteamCallbackGroupName(ACallbackID: Integer): string;
+var
+  I: Integer;
+begin
+  if ACallbackID >= 1000000 then
+    Exit('internal');
+  for I := Low(SteamCallbackRanges) to High(SteamCallbackRanges) do
+    if ACallbackID >= SteamCallbackRanges[I].Base then
+      Exit(Format('%s+%d', [SteamCallbackRanges[I].Name, ACallbackID - SteamCallbackRanges[I].Base]));
+  Result := 'unknown';
+end;
 
 function SteamInitResultToString(AResult: ESteamAPIInitResult): string;
 begin

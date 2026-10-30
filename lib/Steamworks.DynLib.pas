@@ -285,17 +285,19 @@ begin
   try
     for I := 0 to Paths.Count - 1 do
     begin
-      // Skip explicit paths that do not exist; always try the bare name
+      // Explicit paths that do not exist are listed but not loaded;
+      // the bare name is always tried (OS search path)
       if (ExtractFilePath(Paths[I]) <> '') and not FileExists(Paths[I]) then
+      begin
+        Errors := Errors + sLineBreak + '  ' + Paths[I] + ': not present';
         Continue;
+      end;
       if TryLoadFile(Paths[I], H, Err) then
         Exit(TSteamDynLib.Create(AName, Paths[I], H));
       Errors := Errors + sLineBreak + '  ' + Paths[I];
       if Err <> '' then
         Errors := Errors + ': ' + Err;
     end;
-    if Errors = '' then
-      Errors := sLineBreak + '  (no candidate file exists)';
   finally
     Paths.Free;
   end;

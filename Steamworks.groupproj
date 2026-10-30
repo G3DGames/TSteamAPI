@@ -13,7 +13,7 @@
             <Dependencies/>
         </Projects>
         <Projects Include="packages\dclSteamworksFMX.dproj">
-            <Dependencies/>
+            <Dependencies>packages\SteamworksFMX.dproj</Dependencies>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>

@@ -2,7 +2,9 @@
 
   Creates a @code(TSteamworksFMX) in code (no design-time package needed),
   starts and stops Steam on demand and logs everything the core reports, so
-  the Debug log can be pasted back as test evidence. }
+  the Debug log can be pasted back as test evidence. Every log line is also
+  appended to SteamDemo.log (next to the executable; the documents folder on
+  Android) as it is written, so the log survives if the process is killed. }
 unit uMain;
 
 interface
@@ -48,6 +50,8 @@ type
   private
     { The Steam component (owned by the form). }
     FSteam: TSteamworksFMX;
+    { Log file every line is appended to; '' if it cannot be written. }
+    FLogFile: string;
     { Appends a time-stamped line to @link(memLog). }
     procedure AddLog(const S: string);
     { Core log messages. }
@@ -75,13 +79,23 @@ implementation
 {$R *.fmx}
 
 uses
-  FMX.Platform, Steamworks.API;
+  System.IOUtils, FMX.Platform, Steamworks.API;
 
 const
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
+{$IFDEF ANDROID}
+  FLogFile := TPath.Combine(TPath.GetDocumentsPath, 'SteamDemo.log');
+{$ELSE}
+  FLogFile := TPath.Combine(ExtractFilePath(ParamStr(0)), 'SteamDemo.log');
+{$ENDIF}
+  try
+    TFile.WriteAllText(FLogFile, '');
+  except
+    FLogFile := '';
+  end;
   FSteam := TSteamworksFMX.Create(Self);
   FSteam.AppID := APP_ID;
 {$IFDEF DEBUG}
@@ -100,21 +114,37 @@ begin
   FSteam.OnCallback := SteamCallback;
   AddLog(Format('Steamworks demo, AppID %d, %d plug-in class(es) linked',
     [APP_ID, Length(TSteamworks.RegisteredPlugins)]));
+  if FLogFile <> '' then
+    AddLog('Log file: ' + FLogFile)
+  else
+    AddLog('Log file could not be created; log is on screen only');
 end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(FSteam.IsRunning, True)]));
   FSteam.Close;
 end;
 
 procedure TfrmMain.AddLog(const S: string);
+var
+  Line: string;
 begin
-  memLog.Lines.Add(FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S);
+  Line := FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S;
+  memLog.Lines.Add(Line);
   memLog.GoToTextEnd;
+  if FLogFile <> '' then
+  try
+    // Open, append, close per line: nothing is lost if the process is killed
+    TFile.AppendAllText(FLogFile, Line + sLineBreak);
+  except
+    FLogFile := '';
+  end;
 end;
 
 procedure TfrmMain.btnStartClick(Sender: TObject);
 begin
+  AddLog('Start pressed');
   if FSteam.Open then
     AddLog('Open returned True: Steam is running')
   else
@@ -123,6 +153,7 @@ end;
 
 procedure TfrmMain.btnStopClick(Sender: TObject);
 begin
+  AddLog('Stop pressed');
   FSteam.Close;
 end;
 
@@ -200,7 +231,7 @@ end;
 
 procedure TfrmMain.SteamClientExit(Sender: TObject);
 begin
-  AddLog('OnSteamShutdown: the Steam client is exiting');
+  AddLog('OnSteamShutdown: the Steam client is exiting (the demo keeps running unless Steam ends it)');
 end;
 
 procedure TfrmMain.SteamWarning(Sender: TObject; ASeverity: Integer; const AText: string);
@@ -210,7 +241,8 @@ end;
 
 procedure TfrmMain.SteamCallback(Sender: TObject; const AData: TSteamCallbackData);
 begin
-  AddLog(Format('Callback %d, %d bytes%s', [AData.CallbackID, AData.Size,
+  AddLog(Format('Callback %d (%s), %d bytes%s', [AData.CallbackID,
+    SteamCallbackGroupName(AData.CallbackID), AData.Size,
     IfThen(AData.IsCallResult, ', call result', '')]));
 end;
 

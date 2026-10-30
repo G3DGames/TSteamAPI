@@ -2,7 +2,8 @@
 
   Loads the redistributable, initialises Steam for AppID 2275430, prints the
   detected interface versions and ISteamUtils information, pumps callbacks for
-  a few seconds and shuts down. Every step is written to the console so the
+  a few seconds (or for the number of seconds given as the first command-line
+  parameter, e.g. @code(SteamConsole 60)) and shuts down. Every step is written to the console so the
   output can be pasted back as test evidence.
 
   The same source is intended to build with Free Pascal:
@@ -21,14 +22,15 @@ function RunConsoleDemo: Integer;
 implementation
 
 uses
-  SysUtils, Classes,
+  SysUtils, Classes, DateUtils, StrUtils,
   Steamworks.Types, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
   Steamworks.Plugin.Utils;
 
 const
   { AppID of this project on Steam. }
   APP_ID = 2275430;
-  { How long callbacks are pumped, in milliseconds. }
+  { Default time callbacks are pumped, in milliseconds (measured with the clock).
+    Override with the first command-line parameter, in seconds. }
   PUMP_MS = 3000;
   { Pump interval, in milliseconds. }
   TICK_MS = 33;
@@ -39,6 +41,8 @@ type
   { Receives core events and writes them to the console. }
   TConsoleSink = class
   public
+    { Set when SteamShutdown_t arrives; the pump loop then exits. }
+    SteamExiting: Boolean;
     { Core log messages. }
     procedure Log(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
     { Steam debug output. }
@@ -50,6 +54,7 @@ type
 procedure Say(const S: string);
 begin
   Writeln(FormatDateTime('hh:nn:ss.zzz', Now), '  ', S);
+  Flush(Output); // keep the evidence even if the process is killed
 end;
 
 procedure TConsoleSink.Log(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
@@ -64,7 +69,15 @@ end;
 
 procedure TConsoleSink.AnyCallback(const AData: TSteamCallbackData);
 begin
-  Say(Format('Callback %d, %d bytes', [AData.CallbackID, AData.Size]));
+  if AData.CallbackID = SteamShutdown_t_k_iCallback then
+  begin
+    Say('SteamShutdown_t received: the Steam client is exiting - shutting down now');
+    // What a game should do: save, shut Steam down and quit. Steam terminates
+    // a game that is still running about 10 s after this callback.
+    SteamExiting := True;
+  end;
+  Say(Format('Callback %d (%s), %d bytes',
+    [AData.CallbackID, SteamCallbackGroupName(AData.CallbackID), AData.Size]));
 end;
 
 function RunConsoleDemo: Integer;
@@ -73,7 +86,8 @@ var
   U: TSteamUtilsPlugin;
   V: string;
   Versions: TSteamStringArray;
-  I, Elapsed: Integer;
+  I, PumpMs: Integer;
+  Started: TDateTime;
 begin
   Result := 1;
   Sink := TConsoleSink.Create;
@@ -109,15 +123,19 @@ begin
     else
       Say('ISteamUtils plug-in is not active');
 
-    Say(Format('Pumping callbacks for %d ms', [PUMP_MS]));
-    Elapsed := 0;
-    while Elapsed < PUMP_MS do
+    PumpMs := PUMP_MS;
+    if (ParamCount >= 1) and (StrToIntDef(ParamStr(1), 0) > 0) then
+      PumpMs := StrToIntDef(ParamStr(1), 0) * 1000;
+    Say(Format('Pumping callbacks for %d ms (every %d ms)', [PumpMs, TICK_MS]));
+    Started := Now;
+    while (MilliSecondsBetween(Now, Started) < PumpMs) and not Sink.SteamExiting do
     begin
       Steam.RunCallbacks;
       Sleep(TICK_MS);
-      Inc(Elapsed, TICK_MS);
     end;
-    Say(Format('%d callbacks dispatched', [Steam.Dispatcher.CallbacksDispatched]));
+    Say(Format('Pumped for %d ms; %d callbacks dispatched%s',
+      [MilliSecondsBetween(Now, Started), Steam.Dispatcher.CallbacksDispatched,
+       IfThen(Sink.SteamExiting, ' (stopped early: Steam is exiting)', '')]));
 
     Steam.Shutdown;
     Result := 0;

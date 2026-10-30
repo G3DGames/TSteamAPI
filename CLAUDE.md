@@ -78,19 +78,55 @@ Project AppID: 2275430.
 - State plainly when an earlier conclusion was wrong.
 
 ## Known gaps / to check
-- Fallback interface version numbers in Steamworks.Versions.pas are best
-  known values; confirm against sdk/public/steam/*.h (the runtime scan
-  normally overrides them).
 - ESteamHardwareType values and GetSteamHardwareDefaultConfig() need the
   1.65 isteamutils.h.
+- Tested 2026-10-30, Delphi 13 Win64: packages build and install; SteamConsole
+  and SteamDemo initialise with AppID 2275430, ISteamUtils returns live data,
+  stop / restart works, closing while running is clean. Version fallbacks match
+  the 1.65 Win64 scan. check_redist.py identifies all seven real 1.65
+  libraries (incl. Linux vs Android aarch64; the macOS dylib is universal).
+  Steam not running -> clean failure, result 2 with Steam's message.
+- Steam client exit, tested 2026-10-30 (Steam -> Exit): windowed demo gets a
+  close request with no prior 704, closes cleanly; FormClose ran twice (likely
+  one WM_CLOSE per top-level window). Console gets 704 then 103 and is ended
+  ~10 s later; SteamConsole exits by itself on 704 (tested: stops within 50 ms).
+- Failure messages tested 2026-10-30 (Win64): Steam not running -> result 2
+  with Steam's text; missing DLL and 32-bit DLL in a Win64 folder -> every
+  path tried with the Windows error (193 for wrong bitness) and the
+  redistributable_bin file to copy. -debug_steamapi: no warnings produced, so
+  the warning hook is still unexercised.
+- Win32 tested 2026-10-30: SteamConsole and SteamDemo match Win64 (DLL load,
+  SDK 1.65, AppID 2275430, Show info, stop / restart). The earlier "post-build
+  did not copy" was steam_api.dll missing from redistributable_bin (probably
+  moved, not copied, during test 6) - not a project problem. Post-build now
+  always echoes a line; check_redist.py would have reported it.
+- SteamMatchGameSearch and STEAMMUSICREMOTE versions were not found in the
+  1.65 redistributable; check isteamgamesearch.h / isteammusicremote.h.
 - FPC build of lib/ and SteamConsole not yet run.
-- redistributable_bin layout and the SDK-generation markers used by
-  check_redist.py / TSteamAPI.SDKGeneration come from Valve's documentation and
-  the 1.65 release notes, not from the real zip (no SDK copy was available).
-  Confirm on first run; if Valve's dylib is x86_64-only the check warns.
 - .dproj ProjectVersion is 20.3; the IDE may upgrade it on first open.
 - Android64 is enabled in the FMX projects with only the Steam library deployed
   (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
   entries itself. Not yet run on a device.
-- check_redist.py tells Linux and Android aarch64 builds apart by their C
-  library (glibc vs Android NDK markers); confirm against the real files.
+
+## Handover (2026-10-30, end of first test session)
+State: everything delivered up to Win32Diag.zip + this CLAUDE.md. All Windows
+tests pass on Delphi 13 (Win64 and Win32): packages build / install, both
+demos, Steam-not-running, Steam client exit, missing and wrong-bitness DLL
+messages, check_redist.py against the real 1.65 files.
+
+Next tests, in order:
+1. Linux64 via PAServer - SteamConsole then SteamDemo; libsteam_api.so deployed
+   beside the executable; log shows SDK 1.65 or newer.
+2. macOS OSX64 and OSXARM64 - dylib in Contents/MacOS.
+3. Android64 - build and deploy only (check the .so is in the APK).
+4. Warning hook - -debug_steamapi produced nothing; needs a deliberate misuse
+   to prove the hook path.
+5. Later: overlay and Release relaunch once a build of 2275430 is on Steam;
+   InitMode simVersioned; FPC build of lib/ + SteamConsole.
+
+Open question for the owner: should a missing redistributable FAIL the demo
+builds (post-build exit code) instead of printing a WARNING line?
+
+After that: start the interface plug-ins (User, Friends, UserStats/achievements,
+Apps, RemoteStorage, ...), ideally generated from sdk/public/steam/steam_api.json.
+
