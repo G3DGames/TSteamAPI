@@ -18,7 +18,7 @@ Read README.md first, then this file. Keep both up to date with every change.
 - Owner's setup: Delphi 13 (Studio 37.0, 64-bit IDE, so design packages are
   built Win64 with dcc64); SDK 1.65 copied into `redistributable_bin/` (all
   seven libraries, verified by check_redist.py).
-- Read the "Handover" section at the end for where testing stopped.
+- Read the newest "Handover" section (marked READ THIS FIRST) for where work stopped.
 
 ## Syncing safely
 - When the owner says a push is done: clone or fetch into a SEPARATE scratch
@@ -341,7 +341,51 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
   entries itself. Not yet run on a device.
 
-## Handover (2026-10-30, end of second test session)
+## Handover (2026-10-30, end of third session) - READ THIS FIRST
+State: pushed and verified up to f6cf2aa "FPC check" (every file of the
+Lazarus5 zip identical). This handover + the .gitignore fix below follow it.
+
+Done and confirmed from logs this session (Windows first, owner's order):
+- Win64, Delphi 13: SteamDemo (FMX, tabbed), SteamDemoVCL, SteamConsole;
+  Win64, Lazarus 4.8 / FPC 3.2.2: SteamDemoLCL - FIRST FPC BUILD of lib/.
+  All: 5 plug-ins live, avatar + friend avatar, 6 achievements with icons
+  (fetch path via 1109 proven), local unlock times (match the Steam client),
+  Stop / Start, close, Steam -> Exit, no leaks (VCL Debug).
+- Fresh FMX project with NO library paths links the packages' DCUs from
+  the Dcp folder (Win64 and Win32; Win32 needs the runtime packages built
+  for Win32). The owner also uses the 32-bit IDE (separate package install).
+- Failed start without OnInitFailed is SHOWN, never raised (it used to end
+  the app from FormCreate); FMX error display fixed (ShowException).
+- SteamTimeToLocal (Steamworks.Types): per-date local time; FPC 3.2's own
+  conversion is an hour out for summer dates.
+- README "Known issues (that are not really issues)": icons + Steam client
+  restart, unthemed VCL demo (left on purpose), Steam exit behaviour,
+  Win32 F2613, IsRunningOnSteamDeck debug line. Add new pitfalls there.
+
+To do now (owner): a build artifact got committed -
+  git rm --cached demos/SteamDemoLCL/lib/x86_64-win64/SteamDemoLCL.obj
+.gitignore now ignores /demos/SteamDemoLCL/lib/ (the old lib/*-*/ pattern
+is anchored to the root and never matched the demo's unit folder).
+Lazarus added a blank first line to SteamDemoLCL.lpr - harmless.
+
+Next, in order:
+1. Next generator batch (owner: "do other plugins as we go"): RemoteStorage,
+   Screenshots, Timeline, UGC, ...; then C unions (Networking*, Input);
+   game-server interfaces last. Raw-pointer methods the generator lists
+   (Apps 6, UserStats 7) are candidates for hand wrappers in plugin_extras.
+2. Other platforms in one round later: Linux64 / macOS with the components
+   and new demos; FPC on Linux / macOS (SteamTimeToLocal's localtime_r path
+   and SteamConsole's FPC build are untested); Android64 still placeholder.
+3. Unexercised: avatar handle -1 -> OnAvatarImageLoaded (own avatar always
+   cached); Win32 VCL; Release builds of the packages (share the Dcp folder).
+4. Owner to decide: BasicFormFMX (owner's IDE test) - document as a demo or
+   keep local; it causes pasdoc_check's 11 problems, lists the owner's
+   third-party packages and WinARM64EC.
+5. Later / optional: Delphi 11.0 compile check (13 recommended, older not
+   guaranteed); Lazarus "Execute after" DLL copy; CGE demo (CallbackInterval
+   0 + RunCallbacks from the engine loop).
+
+## Earlier handover (2026-10-30, end of second test session)
 State: pushed and verified up to 3f0ebfe "Add Android64"; the Mac4-6 / Win1
 zips (CLAUDE.md, gen_projects.py) follow it. Every desktop platform Delphi
 targets now passes with both demos, each confirmed from its log: Win64,

@@ -44,6 +44,9 @@ heap.trc
 # Lazarus demo output: executable (plus the Steam library you copy next to
 # it) in <cpu>-<os>/, units in lib/<cpu>-<os>/
 /demos/SteamDemoLCL/*-*/
+# its unit output (lib/<cpu>-<os>/ - the lib/*-*/ pattern above is anchored
+# to the repository root, so it does not match here)
+/demos/SteamDemoLCL/lib/
 
 # Steamworks SDK redistributables: copied in by each developer, never committed
 redistributable_bin/*
