@@ -40,7 +40,8 @@ PROJECTS = [
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
          search="..\\..\\lib;..\\..\\lib\\plugins;..\\..\\fmx;src", redist=True),
     dict(name="SteamConsole", dir="demos\\SteamConsole", kind="console", framework="None",
-         platforms=DESKTOP_PLATFORMS, default="Win64",
+         # Android64: placeholder added by the owner 2026-10-30 (not run yet)
+         platforms=ALL_PLATFORMS, default="Win64",
          units=lib_units("..\\..\\") +
                [(u, f"..\\..\\lib\\plugins\\{u}.pas") for u in PLUGINS] +
                [("uConsoleMain", "src\\uConsoleMain.pas")],

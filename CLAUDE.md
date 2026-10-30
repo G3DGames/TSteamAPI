@@ -201,18 +201,33 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
   entries itself. Not yet run on a device.
 
-## Handover (2026-10-30, end of first test session)
-State: everything delivered up to Handover.zip is pushed (commit 0c832e5
-"handover") and verified against a fresh clone; this CLAUDE.md update and the
-safer gen_projects.py follow it. All Windows
-tests pass on Delphi 13 (Win64 and Win32): packages build / install, both
-demos, Steam-not-running, Steam client exit, missing and wrong-bitness DLL
-messages, check_redist.py against the real 1.65 files.
+## Handover (2026-10-30, end of second test session)
+State: pushed and verified up to 3f0ebfe "Add Android64"; the Mac4-6 / Win1
+zips (CLAUDE.md, gen_projects.py) follow it. Every desktop platform Delphi
+targets now passes with both demos, each confirmed from its log: Win64,
+Linux64, OSXARM64, OSX64 (Rosetta 2); Win32 passed before this session's
+changes (recheck optional). Covered everywhere: library load from the
+deployed location, SDK 1.65, the same 28 interface versions, ISteamUtils live
+data, Stop / Start, window close, Steam client exit.
+
+Steam client exit (Steam -> Exit), SDK 1.65, as observed:
+  Windows  windowed: close request x2, no 704, process ended by Steam;
+           console: 704, then ended ~10 s later
+  Linux64  windowed: 704 x2, no close request, process NOT ended
+  macOS    windowed: 704 x1, no close request, process NOT ended
+  console on Linux / macOS / Windows: 704, SteamConsole exits itself
+ShutdownOnSteamExit (default on) handles all of these; OnSteamShutdown is
+raised once per session; FormClose must tolerate running twice (Windows).
 
 Next tests, in order:
-1. Linux64 via PAServer - DONE 2026-10-30 (see Known gaps). Windows has not
-   been re-run since ShutdownOnSteamExit and the callback-name table changed:
-   quick Win64 check of both demos (incl. Steam -> Exit) before or after push.
+1. Linux64 via PAServer - DONE 2026-10-30 (see Known gaps).
+   Win64 recheck after this session's changes - DONE 2026-10-30, logs
+   checked: "Platform: Windows x64 build"; the first non-internal callbacks
+   on Windows (336 Friends+36, 304 Friends+4) are named correctly;
+   SteamConsole 60: 704 -> SteamAPI shut down 4 ms later, early stop, clean
+   exit; SteamDemo: Steam -> Exit gives a close request twice and no 704
+   (unchanged), second FormClose is a no-op. Owner: no leak report, build
+   copied the DLL with no ERROR. Win32 not rechecked (optional).
 2. macOS - OSXARM64 first on the owner's Apple-silicon Mac (PAServer cannot debug
    OSXARM64: lldb deployment bug - rely on logs, run from Terminal via
    .../X.app/Contents/MacOS/X). Then try OSX64 on the M4 under Rosetta 2;
@@ -231,13 +246,28 @@ Next tests, in order:
    Architecture is now logged ("[info] Platform: ..."). SteamConsole 60 as
    OSX64 on Apple silicon PASSED (2026-10-30): "macOS x64 build, running under
    Rosetta 2", same 28 versions, Steam -> Exit clean. An Intel Mac run is
-   optional now. Still to run: SteamDemo OSXARM64 (and OSX64 if wanted).
-3. Android64 - build and deploy only (check the .so is in the APK).
+   optional now.
+   SteamDemo OSXARM64 PASSED (2026-10-30): "macOS ARM64 build", Start / Show
+   info / Stop / Start, same 28 versions, no overlay warning. Steam -> Exit:
+   like Linux - 704 (once here), no close request, process not ended;
+   ShutdownOnSteamExit shut SteamAPI down 6 ms later; the later window close
+   ran FormClose ONCE (Steam running: False). Log file in Contents/MacOS.
+   SteamDemo OSX64 under Rosetta 2 PASSED (2026-10-30, log checked):
+   "macOS x64 build, running under Rosetta 2", same 28 versions, Show info,
+   Stop / Start, Steam -> Exit: one 704, SteamAPI shut down 8 ms later, no
+   close request; window close later ran FormClose once (Steam running:
+   False). MACOS COMPLETE: both demos on OSXARM64 and OSX64 (Rosetta 2). A
+   real Intel Mac run remains optional.
+   The IDE added demos/*/info.plist.TemplateOSX.xml and
+   Entitlement.TemplateOSX.xml (standard templates) - keep them tracked.
+3. Android64 - placeholder only for now (owner added it to SteamConsole,
+   SteamDemo and SteamworksFMX on 2026-10-30; gen_projects.py matches). Not
+   implemented / not run; later: build and deploy, check the .so is in the APK.
 4. Warning hook - proven on Linux64 (overlay warning from Show info); on
    Windows -debug_steamapi still produced nothing.
-5. Leak check: SteamDemo Debug sets ReportMemoryLeaksOnShutdown (added
-   2026-10-30). Run on Win64: Start, Show info, Stop, Start, close; expect no
-   leak dialog. (On POSIX targets the setting is believed to do nothing.)
+5. Leak check: SteamDemo Debug sets ReportMemoryLeaksOnShutdown. Win64 run
+   2026-10-30 (Start, Show info, Stop, Start, Steam -> Exit, close): no leak
+   report (owner). On POSIX targets the setting is believed to do nothing.
 6. Later: overlay and Release relaunch once a build of 2275430 is on Steam;
    InitMode simVersioned; FPC build of lib/ + SteamConsole.
 
@@ -251,7 +281,7 @@ ERROR) was skipped. The old WARNING could therefore never appear. Now:
 (macro paths may contain ')'). Changed in both demo .dproj files (base and IDE
 per-config groups) and gen_projects.py. Tested 2026-10-30 (RedistFail2.zip):
 with the DLLs missing, Win32 and Win64 builds of both demos fail as expected.
-Still to confirm: DLLs restored -> builds copy and succeed.
+DLLs restored -> builds copy and succeed (owner, 2026-10-30 Win64 recheck).
 
 After that: start the interface plug-ins (User, Friends, UserStats/achievements,
 Apps, RemoteStorage, ...), ideally generated from sdk/public/steam/steam_api.json.
