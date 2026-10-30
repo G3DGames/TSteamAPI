@@ -164,8 +164,17 @@ Next tests, in order:
 5. Later: overlay and Release relaunch once a build of 2275430 is on Steam;
    InitMode simVersioned; FPC build of lib/ + SteamConsole.
 
-Open question for the owner: should a missing redistributable FAIL the demo
-builds (post-build exit code) instead of printing a WARNING line?
+Decided 2026-10-30: a missing redistributable FAILS the Windows demo builds.
+The first attempt did nothing: the IDE re-saves post-build events as ONE line
+joined with '&&', and cmd makes everything after an 'if' part of its body, so
+when the DLL was missing the whole rest of the line (the WARNING, later the
+ERROR) was skipped. The old WARNING could therefore never appear. Now:
+`copy /Y "<src>" "$(OUTPUTDIR)" || (echo ERROR: could not copy ... & exit /b 1)`
+- no 'if' anywhere in a post-build event; brackets hold only literal text
+(macro paths may contain ')'). Changed in both demo .dproj files (base and IDE
+per-config groups) and gen_projects.py. Tested 2026-10-30 (RedistFail2.zip):
+with the DLLs missing, Win32 and Win64 builds of both demos fail as expected.
+Still to confirm: DLLs restored -> builds copy and succeed.
 
 After that: start the interface plug-ins (User, Friends, UserStats/achievements,
 Apps, RemoteStorage, ...), ideally generated from sdk/public/steam/steam_api.json.

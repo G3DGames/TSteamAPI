@@ -67,7 +67,7 @@ tools/
    callbacks for 60 s instead of 3) with the Steam client
    running and logged in. Debug builds export `SteamAppId=2275430`, so no
    `steam_appid.txt` is needed. On Windows the post-build event copies the DLL
-   next to the executable; on macOS / Linux it is deployed with the app.
+   next to the executable and fails the build if it is missing; on macOS / Linux it is deployed with the app.
 4. To use the component at design time:
    1. **Build** (do not install) `SteamworksFMX` for the IDE's platform:
       Win64 for the 64-bit IDE, Win32 for the 32-bit IDE. It is runtime-only;

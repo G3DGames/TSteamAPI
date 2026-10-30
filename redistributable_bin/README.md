@@ -36,8 +36,9 @@ is in place; paste the output back if it reports a problem.
 Two further checks happen without Python:
 
 - **Build (Windows):** the demo projects' post-build event copies the DLL next
-  to the executable, or prints a `WARNING: ... not found in redistributable_bin`
-  line in the build messages.
+  to the executable. If the copy fails (DLL missing, or the
+  target locked) it prints `ERROR: could not copy ...` after Windows' own
+  reason and the build FAILS (post-build exit code 1).
 - **Run time:** after loading the library the core logs which SDK generation
   it is from, and logs a warning if it is older than 1.65.
 

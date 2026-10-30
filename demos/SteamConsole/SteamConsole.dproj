@@ -114,16 +114,14 @@
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <PostBuildEvent><![CDATA[echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)
-if exist "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" "$(OUTPUTDIR)"
-if not exist "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" echo WARNING: steam_api.dll not found in redistributable_bin\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py]]></PostBuildEvent>
-        <PostBuildEventIgnoreExitCode>true</PostBuildEventIgnoreExitCode>
+copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" "$(OUTPUTDIR)" || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py & exit /b 1)]]></PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <PostBuildEvent><![CDATA[echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)
-if exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPUTDIR)"
-if not exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" echo WARNING: steam_api64.dll not found in redistributable_bin\win64\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py]]></PostBuildEvent>
-        <PostBuildEventIgnoreExitCode>true</PostBuildEventIgnoreExitCode>
+copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPUTDIR)" || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py & exit /b 1)]]></PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -1216,7 +1214,7 @@ if not exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" ech
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;if exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot;&amp;&amp;if not exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; echo WARNING: steam_api.dll not found in redistributable_bin\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
@@ -1224,7 +1222,7 @@ if not exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" ech
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;if exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot;&amp;&amp;if not exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; echo WARNING: steam_api64.dll not found in redistributable_bin\win64\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win32'">
@@ -1232,7 +1230,7 @@ if not exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" ech
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;if exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot;&amp;&amp;if not exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; echo WARNING: steam_api.dll not found in redistributable_bin\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
@@ -1240,7 +1238,7 @@ if not exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" ech
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;if exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot;&amp;&amp;if not exist &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; echo WARNING: steam_api64.dll not found in redistributable_bin\win64\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
 </Project>

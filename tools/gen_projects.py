@@ -149,14 +149,18 @@ def dproj(p):
         a(f'        <DCC_Namespace>{NS_PLAT[pl]};$(DCC_Namespace)</DCC_Namespace>')
         if p.get("redist") and pl.startswith("Win"):
             src = f"$(PROJECTDIR)\\..\\..\\redistributable_bin\\{REDIST[pl]}{DLL[pl]}"
-            # Two plain lines: a parenthesised if/else breaks when a path contains ')'
-            cmd = (f'echo Steamworks post-build: $(Platform) $(Config), copying {DLL[pl]} to $(OUTPUTDIR)\r\n'
-                   f'if exist "{src}" copy /Y "{src}" "$(OUTPUTDIR)"\r\n'
-                   f'if not exist "{src}" echo WARNING: {DLL[pl]} not found in redistributable_bin\\{REDIST[pl]} - '
+            # The IDE re-saves the event as ONE line joined with '&&', and cmd makes
+            # everything after an 'if' part of its body - so no 'if' here: a failed
+            # copy runs the bracketed error. The brackets hold only literal text (no
+            # macro paths, which may contain ')'). A missing redistributable FAILS
+            # the build: exit code 1, not ignored.
+            msg = (f'could not copy {DLL[pl]} from redistributable_bin\\{REDIST[pl]} - if it is missing, '
                    f'copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, '
                    f'then run tools\\check_redist.py')
+            cmd = (f'echo Steamworks post-build: $(Platform) $(Config), copying {DLL[pl]} to $(OUTPUTDIR)\r\n'
+                   f'copy /Y "{src}" "$(OUTPUTDIR)" || (echo ERROR: {msg} & exit /b 1)')
             a('        <PostBuildEvent><![CDATA[' + cmd + ']]></PostBuildEvent>')
-            a('        <PostBuildEventIgnoreExitCode>true</PostBuildEventIgnoreExitCode>')
+            a('        <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>')
         a('    </PropertyGroup>')
     a("    <PropertyGroup Condition=\"'$(Cfg_1)'!=''\">")
     a('        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>')
