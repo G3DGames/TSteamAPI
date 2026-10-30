@@ -63,12 +63,14 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <PostBuildEvent><![CDATA[if exist "$(PROJECTDIR)\..\..\dlls\Win32\steam_api.dll" copy /Y "$(PROJECTDIR)\..\..\dlls\Win32\steam_api.dll" "$(OUTPUTDIR)"]]></PostBuildEvent>
+        <PostBuildEvent><![CDATA[if exist "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" "$(OUTPUTDIR)"
+if not exist "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" echo WARNING: steam_api.dll not found in redistributable_bin\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>true</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <PostBuildEvent><![CDATA[if exist "$(PROJECTDIR)\..\..\dlls\Win64\steam_api64.dll" copy /Y "$(PROJECTDIR)\..\..\dlls\Win64\steam_api64.dll" "$(OUTPUTDIR)"]]></PostBuildEvent>
+        <PostBuildEvent><![CDATA[if exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPUTDIR)"
+if not exist "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" echo WARNING: steam_api64.dll not found in redistributable_bin\win64\ - copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>true</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_OSX64)'!=''">
@@ -129,42 +131,42 @@
                 </Source>
             </Delphi.Personality>
             <Deployment Version="5">
-                <DeployFile LocalName="..\..\dlls\OSX64\libsteam_api.dylib" Configuration="Debug" Class="File">
+                <DeployFile LocalName="..\..\redistributable_bin\osx\libsteam_api.dylib" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
                         <RemoteDir>Contents\MacOS\</RemoteDir>
                         <RemoteName>libsteam_api.dylib</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\dlls\OSX64\libsteam_api.dylib" Configuration="Release" Class="File">
+                <DeployFile LocalName="..\..\redistributable_bin\osx\libsteam_api.dylib" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
                         <RemoteDir>Contents\MacOS\</RemoteDir>
                         <RemoteName>libsteam_api.dylib</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\dlls\OSXARM64\libsteam_api.dylib" Configuration="Debug" Class="File">
+                <DeployFile LocalName="..\..\redistributable_bin\osx\libsteam_api.dylib" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
                         <RemoteDir>Contents\MacOS\</RemoteDir>
                         <RemoteName>libsteam_api.dylib</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\dlls\OSXARM64\libsteam_api.dylib" Configuration="Release" Class="File">
+                <DeployFile LocalName="..\..\redistributable_bin\osx\libsteam_api.dylib" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
                         <RemoteDir>Contents\MacOS\</RemoteDir>
                         <RemoteName>libsteam_api.dylib</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\dlls\Linux64\libsteam_api.so" Configuration="Debug" Class="File">
+                <DeployFile LocalName="..\..\redistributable_bin\linux64\libsteam_api.so" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
                         <RemoteDir>.\</RemoteDir>
                         <RemoteName>libsteam_api.so</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\dlls\Linux64\libsteam_api.so" Configuration="Release" Class="File">
+                <DeployFile LocalName="..\..\redistributable_bin\linux64\libsteam_api.so" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
                         <RemoteDir>.\</RemoteDir>
                         <RemoteName>libsteam_api.so</RemoteName>
@@ -178,6 +180,7 @@
                 <Platform value="OSX64">True</Platform>
                 <Platform value="OSXARM64">True</Platform>
                 <Platform value="Linux64">True</Platform>
+                <Platform value="Android64">False</Platform>
             </Platforms>
         </BorlandProject>
         <ProjectFileVersion>12</ProjectFileVersion>

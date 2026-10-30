@@ -6,7 +6,10 @@ Read README.md first, then this file. Keep both up to date with every change.
 Pascal binding of the Steamworks SDK 1.65. Core + plug-ins.
 Target order: FMX, then VCL, then Free Pascal. Delphi 13 is the reference
 compiler; Windows is the main development platform, macOS (PAServer) and
-Linux64 are also tested. Project AppID: 2275430.
+Linux64 are also tested. Supported: every platform Valve ships a
+redistributable for - Win32, Win64, macOS (x64/ARM64), Linux64, Android64
+(Delphi + FPC) and Linux32, LinuxARM64 (FPC only; Linux32 may be dropped).
+Project AppID: 2275430.
 
 ## Delivery
 - Deliver whole changed files in a zip with paths from the repository root.
@@ -24,8 +27,10 @@ Linux64 are also tested. Project AppID: 2275430.
 - Never create a folder with a '-' in its name under any `lib/`: `.gitignore`
   ignores `lib/*-*/` (Lazarus unit output such as `lib/x86_64-linux/`).
 - `fmx/` - FireMonkey-specific units. Future: `vcl/`, `lcl/`.
-- `dlls/<Platform>/` - Steam redistributable per Delphi platform name
-  (Win32, Win64, OSX64, OSXARM64, Linux64).
+- `redistributable_bin/` - each developer copies `sdk/redistributable_bin`
+  from the Steamworks SDK 1.65 here. Only its README.md is tracked; never
+  commit SDK binaries (partner licence). `tools/check_redist.py` validates it;
+  projects copy / deploy from it (paths set in `tools/gen_projects.py`).
 - `demos/<Name>/` - `<Name>.dpr` + `<Name>.dproj` in the folder, all other
   sources in `demos/<Name>/src/`.
 - `packages/` - runtime and design-time packages.
@@ -79,4 +84,13 @@ Linux64 are also tested. Project AppID: 2275430.
 - ESteamHardwareType values and GetSteamHardwareDefaultConfig() need the
   1.65 isteamutils.h.
 - FPC build of lib/ and SteamConsole not yet run.
+- redistributable_bin layout and the SDK-generation markers used by
+  check_redist.py / TSteamAPI.SDKGeneration come from Valve's documentation and
+  the 1.65 release notes, not from the real zip (no SDK copy was available).
+  Confirm on first run; if Valve's dylib is x86_64-only the check warns.
 - .dproj ProjectVersion is 20.3; the IDE may upgrade it on first open.
+- Android64 is enabled in the FMX projects with only the Steam library deployed
+  (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
+  entries itself. Not yet run on a device.
+- check_redist.py tells Linux and Android aarch64 builds apart by their C
+  library (glibc vs Android NDK markers); confirm against the real files.

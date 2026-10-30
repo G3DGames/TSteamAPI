@@ -48,7 +48,7 @@ type
   TSteamCallbackNotifyEvent = procedure(Sender: TObject; const AData: TSteamCallbackData) of object;
 
   { FireMonkey component wrapper for @code(TSteamworks). }
-  [ComponentPlatformsAttribute(pidWin32 or pidWin64 or pidOSX64 or pidOSXArm64 or pidLinux64)]
+  [ComponentPlatformsAttribute(pidWin32 or pidWin64 or pidOSX64 or pidOSXArm64 or pidLinux64 or pidAndroidArm64)]
   TSteamworksFMX = class(TComponent)
   private
     { Timer that pumps callbacks on the UI thread. }

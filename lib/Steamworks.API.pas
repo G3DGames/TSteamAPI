@@ -255,8 +255,14 @@ type
     class var ISteamClient_GetISteamRemotePlay: TISteamClient_GetUserInterface;
 
     { Platform file name of the redistributable: steam_api64.dll / steam_api.dll
-      (Windows), libsteam_api.dylib (macOS), libsteam_api.so (Linux). }
+      (Windows), libsteam_api.dylib (macOS), libsteam_api.so (Linux, Android). }
     class function DefaultLibraryName: string; static;
+
+    { Where the library for the platform this program was compiled for lives
+      inside the SDK's redistributable_bin folder, e.g. @code('win64/steam_api64.dll')
+      or @code('linuxarm64/libsteam_api.so'); '' if Steam has none. Used in
+      error messages so the user knows exactly which file to copy. }
+    class function RedistributableName: string; static;
 
     { Loads the redistributable and binds the core exports.
       @param(APath  Explicit file; empty = @link(DefaultLibraryName), searched
@@ -284,6 +290,13 @@ type
 
     { File the library was loaded from ('' when not loaded). }
     class function LibraryPath: string; static;
+
+    { SDK generation of the loaded redistributable, judged by its exports:
+      @code('1.65+') (has IsRunningOnSteamHardware, no IsRunningOnSteamDeck),
+      @code('1.59-1.64') (has SteamAPI_InitFlat), @code('pre-1.59'), or
+      '' when nothing is loaded. tools/check_redist.py applies the same test
+      to the files in redistributable_bin. }
+    class function SDKGeneration: string; static;
 
     { Exports that were looked up but not found. }
     class function MissingExports: TSteamStringArray; static;
@@ -352,8 +365,37 @@ begin
   {$endif}
 {$elseif defined(STEAMWORKS_MACOS)}
   Result := 'libsteam_api.dylib';
-{$elseif defined(STEAMWORKS_LINUX)}
+{$elseif defined(STEAMWORKS_LINUX) or defined(STEAMWORKS_ANDROID)}
   Result := 'libsteam_api.so';
+{$else}
+  Result := '';
+{$endif}
+end;
+
+class function TSteamAPI.RedistributableName: string;
+begin
+{$if defined(STEAMWORKS_WINDOWS)}
+  {$ifdef STEAMWORKS_CPU64}
+  Result := 'win64/steam_api64.dll';
+  {$else}
+  Result := 'steam_api.dll';
+  {$endif}
+{$elseif defined(STEAMWORKS_MACOS)}
+  Result := 'osx/libsteam_api.dylib';
+{$elseif defined(STEAMWORKS_ANDROID)}
+  {$ifdef STEAMWORKS_CPUARM64}
+  Result := 'androidarm64/libsteam_api.so';
+  {$else}
+  Result := '';
+  {$endif}
+{$elseif defined(STEAMWORKS_LINUX)}
+  {$if defined(STEAMWORKS_CPUARM64)}
+  Result := 'linuxarm64/libsteam_api.so';
+  {$elseif defined(STEAMWORKS_CPU64)}
+  Result := 'linux64/libsteam_api.so';
+  {$else}
+  Result := 'linux32/libsteam_api.so';
+  {$endif}
 {$else}
   Result := '';
 {$endif}
@@ -394,6 +436,19 @@ begin
   end
   else
     Result := FLib.Bind(AProc, AName, ARequired);
+end;
+
+class function TSteamAPI.SDKGeneration: string;
+begin
+  if FLib = nil then
+    Result := ''
+  else if FLib.HasSymbol('SteamAPI_ISteamUtils_IsRunningOnSteamHardware') and
+          not FLib.HasSymbol('SteamAPI_ISteamUtils_IsRunningOnSteamDeck') then
+    Result := '1.65+'
+  else if FLib.HasSymbol('SteamAPI_InitFlat') then
+    Result := '1.59-1.64'
+  else
+    Result := 'pre-1.59';
 end;
 
 class function TSteamAPI.MissingExports: TSteamStringArray;

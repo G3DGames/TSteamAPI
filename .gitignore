@@ -42,12 +42,9 @@ heap.trc
 /demos/SteamConsole/SteamConsole
 /demos/SteamDemo/SteamDemo
 
-# Keep the redistributable folders (binaries are added by the owner)
-!dlls/Win32/
-!dlls/Win64/
-!dlls/OSX64/
-!dlls/OSXARM64/
-!dlls/Linux64/
+# Steamworks SDK redistributables: copied in by each developer, never committed
+redistributable_bin/*
+!redistributable_bin/README.md
 
 # PasDoc output
 docs/html/

@@ -772,12 +772,22 @@ begin
         [TSteamAPI.LibraryPath, FVersions.Count]))
     else
       Log(sllWarning, 'Could not scan the Steam library for interface versions; using built-in defaults');
+    if TSteamAPI.SDKGeneration = '1.65+' then
+      Log(sllInfo, 'Steam redistributable is from SDK 1.65 or newer')
+    else
+      Log(sllWarning, Format('Steam redistributable %s is from SDK %s; this library targets 1.65 - ' +
+        'copy redistributable_bin from the 1.65 SDK and run tools/check_redist.py',
+        [TSteamAPI.LibraryPath, TSteamAPI.SDKGeneration]));
     FState := swsLibraryLoaded;
     Result := True;
   except
     on E: Exception do
     begin
-      SetFailure(E.Message);
+      if TSteamAPI.RedistributableName <> '' then
+        SetFailure(E.Message + sLineBreak + 'This build needs redistributable_bin/' +
+          TSteamAPI.RedistributableName + ' from the Steamworks SDK 1.65 next to the executable')
+      else
+        SetFailure(E.Message);
       Result := False;
     end;
   end;

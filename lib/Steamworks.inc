@@ -24,9 +24,9 @@
 
   Defines produced here (use them instead of compiler-specific symbols):
 
-  - STEAMWORKS_WINDOWS, STEAMWORKS_MACOS, STEAMWORKS_LINUX
-  - STEAMWORKS_CPU64
-  - STEAMWORKS_UNSUPPORTED_PLATFORM  (iOS, Android, WebAssembly, ...)
+  - STEAMWORKS_WINDOWS, STEAMWORKS_MACOS, STEAMWORKS_LINUX, STEAMWORKS_ANDROID
+  - STEAMWORKS_CPU64, STEAMWORKS_CPUARM64, STEAMWORKS_CPU386
+  - STEAMWORKS_UNSUPPORTED_PLATFORM  (iOS, WebAssembly, ...)
   - STEAMWORKS_ANONYMOUS_METHODS     (compiler supports "reference to")
 *)
 
@@ -60,10 +60,15 @@
 {$endif}
 
 { ---------------------------------------------------------------- platform }
-{$if defined(ANDROID) or defined(IOS) or defined(IPHONESIM) or defined(WASI) or defined(WASM)}
+{ Valve ships redistributables for: Win32, Win64, macOS (universal),
+  Linux32, Linux64, LinuxARM64 and AndroidARM64. iOS and WebAssembly have none.
+  ANDROID is tested before LINUX because FPC's Android target is Linux-based. }
+{$if defined(IOS) or defined(IPHONESIM) or defined(WASI) or defined(WASM)}
   {$define STEAMWORKS_UNSUPPORTED_PLATFORM}
 {$elseif defined(MSWINDOWS)}
   {$define STEAMWORKS_WINDOWS}
+{$elseif defined(ANDROID)}
+  {$define STEAMWORKS_ANDROID}
 {$elseif defined(DARWIN) or defined(MACOS)}
   {$define STEAMWORKS_MACOS}
 {$elseif defined(LINUX)}
@@ -72,6 +77,13 @@
   {$define STEAMWORKS_UNSUPPORTED_PLATFORM}
 {$endif}
 
+{ ---------------------------------------------------------------- cpu }
 {$if defined(CPU64) or defined(CPU64BITS) or defined(CPUX64)}
   {$define STEAMWORKS_CPU64}
+{$endif}
+{$if defined(CPUARM64) or defined(CPUAARCH64)}
+  {$define STEAMWORKS_CPUARM64}
+{$endif}
+{$if defined(CPU386) or defined(CPUI386) or defined(CPUX86)}
+  {$define STEAMWORKS_CPU386}
 {$endif}

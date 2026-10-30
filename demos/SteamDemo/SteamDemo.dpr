@@ -2,7 +2,8 @@ program SteamDemo;
 
 { FMX demo for the Steamworks library (AppID 2275430).
   The redistributable for the target platform is copied from
-  ..\..\dlls\<Platform> next to the executable by the post-build event
+  ..\..\redistributable_bin (copied there from the Steamworks SDK)
+  next to the executable by the post-build event
   (Windows) or deployed by the Deployment entries (macOS / Linux). }
 
 uses

@@ -7,8 +7,21 @@ one per Steam interface, so a game links only what it uses.
 * Target order: **FMX** (now), **VCL** (next), **Free Pascal / Lazarus** (after).
   `lib/` is framework-free and written to compile with Delphi and FPC 3.2+
   (`{$mode delphi}`); only `fmx/` uses FireMonkey.
-* Platforms: Win32, Win64, macOS (x64 / ARM64), Linux64. iOS / Android are
-  not supported by Steamworks.
+* Platforms - everything Valve ships a redistributable for:
+
+  | Platform        | Delphi target | FPC target      | redistributable_bin/            |
+  |-----------------|---------------|-----------------|---------------------------------|
+  | Windows 32-bit  | Win32         | i386-win32      | `steam_api.dll`                 |
+  | Windows 64-bit  | Win64         | x86_64-win64    | `win64/steam_api64.dll`         |
+  | macOS Intel     | OSX64         | x86_64-darwin   | `osx/libsteam_api.dylib`        |
+  | macOS ARM       | OSXARM64      | aarch64-darwin  | `osx/libsteam_api.dylib`        |
+  | Linux x86_64    | Linux64       | x86_64-linux    | `linux64/libsteam_api.so`       |
+  | Linux i386      | -             | i386-linux      | `linux32/libsteam_api.so` (may be dropped) |
+  | Linux ARM64     | -             | aarch64-linux   | `linuxarm64/libsteam_api.so`    |
+  | Android ARM64   | Android64     | aarch64-android | `androidarm64/libsteam_api.so`  |
+
+  iOS has no Steam redistributable. `TSteamAPI.RedistributableName` returns
+  the file the running build needs, and load errors name it.
 * Project AppID: **2275430** (owned by the project; Valve's public test app
   480 "Spacewar" also works).
 
@@ -31,13 +44,14 @@ fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamworksFMX component (TTimer pump on the UI thread)
   Steamworks.FMX.Reg.pas    design-time registration
 packages/                   SteamworksFMX (runtime), dclSteamworksFMX (design time)
-dlls/<Platform>/            Steam redistributable per Delphi platform name:
-                            Win32, Win64, OSX64, OSXARM64, Linux64
+redistributable_bin/        copy of sdk/redistributable_bin from the SDK
+                            (git-ignored except its README.md)
 demos/
   SteamDemo/                FMX demo: SteamDemo.dproj + .dpr, sources in src/
   SteamConsole/             console smoke test (no framework; FPC-ready)
 tools/
   pasdoc_check.py           PasDoc coverage, ASCII and comment-nesting check
+  check_redist.py           validates all seven redistributables (type, CPU, SDK level)
   project_check.py          .dproj BOM / XML / unit-list agreement check
   gen_projects.py           regenerates .dproj / .dpk / .groupproj from one list
 ```
@@ -45,7 +59,9 @@ tools/
 ## Getting started
 
 1. Download `steamworks_sdk_165.zip` from the Steamworks partner site and copy
-   the redistributables into `dlls/` (each folder's README.txt says which file).
+   the contents of `sdk/redistributable_bin` into `redistributable_bin/`.
+   Check the result with `python3 tools/check_redist.py` (see
+   `redistributable_bin/README.md`).
 2. Open `Steamworks.groupproj` in Delphi 13.
 3. Build and run **SteamDemo** (or **SteamConsole**) with the Steam client
    running and logged in. Debug builds export `SteamAppId=2275430`, so no

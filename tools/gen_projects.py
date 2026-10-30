@@ -15,7 +15,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LIB = ["Steamworks.Types", "Steamworks.DynLib", "Steamworks.Versions", "Steamworks.API",
        "Steamworks.Callbacks", "Steamworks.SteamClient", "Steamworks.Core"]
 PLUGINS = ["Steamworks.Plugin.Utils"]
-ALL_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64"]
+# Delphi platforms with a Steam redistributable. Linux32 and LinuxARM64 are
+# FPC-only (Delphi has no such targets); see README.
+ALL_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64", "Android64"]
+DESKTOP_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64"]
 
 def lib_units(rel):   # rel = path from project dir to repo root
     return [(u, f"{rel}lib\\{u}.pas") for u in LIB]
@@ -27,13 +30,13 @@ PROJECTS = [
                [(u, f"..\\..\\lib\\plugins\\{u}.pas") for u in PLUGINS] +
                [("Steamworks.FMX", "..\\..\\fmx\\Steamworks.FMX.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
-         search="..\\..\\lib;..\\..\\lib\\plugins;..\\..\\fmx;src", dlls=True),
+         search="..\\..\\lib;..\\..\\lib\\plugins;..\\..\\fmx;src", redist=True),
     dict(name="SteamConsole", dir="demos\\SteamConsole", kind="console", framework="None",
-         platforms=ALL_PLATFORMS, default="Win64",
+         platforms=DESKTOP_PLATFORMS, default="Win64",
          units=lib_units("..\\..\\") +
                [(u, f"..\\..\\lib\\plugins\\{u}.pas") for u in PLUGINS] +
                [("uConsoleMain", "src\\uConsoleMain.pas")],
-         forms=[], search="..\\..\\lib;..\\..\\lib\\plugins;src", dlls=True),
+         forms=[], search="..\\..\\lib;..\\..\\lib\\plugins;src", redist=True),
     dict(name="SteamworksFMX", dir="packages", kind="runtime", framework="FMX",
          platforms=ALL_PLATFORMS, default="Win64",
          units=lib_units("..\\") + [("Steamworks.FMX", "..\\fmx\\Steamworks.FMX.pas")],
@@ -51,9 +54,17 @@ NS_PLAT = {
     "Win32": "Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win",
     "Win64": "Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win",
     "OSX64": "Macapi;Posix", "OSXARM64": "Macapi;Posix", "Linux64": "Posix",
+    "Android64": "Androidapi;Posix",
 }
+# File name of the Steam redistributable per platform, and where it lives in
+# redistributable_bin/ (copied by the user from the Steamworks SDK).
 DLL = {"Win32": "steam_api.dll", "Win64": "steam_api64.dll", "OSX64": "libsteam_api.dylib",
-       "OSXARM64": "libsteam_api.dylib", "Linux64": "libsteam_api.so"}
+       "OSXARM64": "libsteam_api.dylib", "Linux64": "libsteam_api.so", "Android64": "libsteam_api.so"}
+REDIST = {"Win32": "", "Win64": "win64\\", "OSX64": "osx\\", "OSXARM64": "osx\\", "Linux64": "linux64\\",
+          "Android64": "androidarm64\\"}
+# Where the library goes inside the deployed application
+REMOTE_DIR = {"OSX64": "Contents\\MacOS\\", "OSXARM64": "Contents\\MacOS\\", "Linux64": ".\\",
+              "Android64": "library\\lib\\arm64-v8a\\"}
 
 
 def existing_guid(path):
@@ -126,9 +137,14 @@ def dproj(p):
     for pl in p["platforms"]:
         a(f"    <PropertyGroup Condition=\"'$(Base_{pl})'!=''\">")
         a(f'        <DCC_Namespace>{NS_PLAT[pl]};$(DCC_Namespace)</DCC_Namespace>')
-        if p.get("dlls") and pl.startswith("Win"):
-            src = f"$(PROJECTDIR)\\..\\..\\dlls\\{pl}\\{DLL[pl]}"
-            a('        <PostBuildEvent><![CDATA[if exist "' + src + '" copy /Y "' + src + '" "$(OUTPUTDIR)"]]></PostBuildEvent>')
+        if p.get("redist") and pl.startswith("Win"):
+            src = f"$(PROJECTDIR)\\..\\..\\redistributable_bin\\{REDIST[pl]}{DLL[pl]}"
+            # Two plain lines: a parenthesised if/else breaks when a path contains ')'
+            cmd = (f'if exist "{src}" copy /Y "{src}" "$(OUTPUTDIR)"\r\n'
+                   f'if not exist "{src}" echo WARNING: {DLL[pl]} not found in redistributable_bin\\{REDIST[pl]} - '
+                   f'copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, '
+                   f'then run tools\\check_redist.py')
+            a('        <PostBuildEvent><![CDATA[' + cmd + ']]></PostBuildEvent>')
             a('        <PostBuildEventIgnoreExitCode>true</PostBuildEventIgnoreExitCode>')
         a('    </PropertyGroup>')
     a("    <PropertyGroup Condition=\"'$(Cfg_1)'!=''\">")
@@ -179,14 +195,14 @@ def dproj(p):
     a(f'                    <Source Name="MainSource">{main}</Source>')
     a('                </Source>')
     a('            </Delphi.Personality>')
-    if p.get("dlls"):
+    if p.get("redist"):
         a('            <Deployment Version="5">')
-        for pl in ("OSX64", "OSXARM64", "Linux64"):
+        for pl in ("OSX64", "OSXARM64", "Linux64", "Android64"):
             if pl not in p["platforms"]:
                 continue
-            remote = "Contents\\MacOS\\" if pl.startswith("OSX") else ".\\"
+            remote = REMOTE_DIR[pl]
             for cfg in ("Debug", "Release"):
-                a(f'                <DeployFile LocalName="..\\..\\dlls\\{pl}\\{DLL[pl]}" Configuration="{cfg}" Class="File">')
+                a(f'                <DeployFile LocalName="..\\..\\redistributable_bin\\{REDIST[pl]}{DLL[pl]}" Configuration="{cfg}" Class="File">')
                 a(f'                    <Platform Name="{pl}">')
                 a(f'                        <RemoteDir>{remote}</RemoteDir>')
                 a(f'                        <RemoteName>{DLL[pl]}</RemoteName>')

@@ -2,7 +2,8 @@ program SteamConsole;
 
 { Console smoke test for the Steamworks core (no UI framework).
   The redistributable for the target platform is copied from
-  ..\..\dlls\<Platform> next to the executable by the post-build event. }
+  ..\..\redistributable_bin (copied there from the Steamworks SDK)
+  next to the executable by the post-build event. }
 
 {$APPTYPE CONSOLE}
 
