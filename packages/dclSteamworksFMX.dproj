@@ -152,6 +152,7 @@
                 <Source>
                     <Source Name="MainSource">dclSteamworksFMX.dpk</Source>
                 </Source>
+                <WelcomePageFile Path="..\README.md"/>
             </Delphi.Personality>
             <Platforms>
                 <Platform value="Android">False</Platform>

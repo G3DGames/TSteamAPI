@@ -6,7 +6,7 @@ Read README.md first, then this file. Keep both up to date with every change.
 - Repository: https://github.com/G3DGames/steamworks (branch `main`, public).
   Clone it fresh:
   `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 5 https://github.com/G3DGames/steamworks`
-  The owner's working copy is `C:\src\Steamworks` and may be ahead of GitHub:
+  The owner's local working copy may be ahead of GitHub:
   build on files the owner attaches or pastes.
 - The cloud workspace has NO Steamworks SDK (partner download, unreachable)
   and no Delphi / FPC compiler. Never claim to have the SDK. For SDK facts
@@ -69,6 +69,9 @@ Project AppID: 2275430.
 - `tools/` - Python helpers.
 
 ## Project files
+- Every .dproj has `<WelcomePageFile Path="..\..\README.md"/>` (relative to
+  the project) inside `<Delphi.Personality>`, so the IDE shows README.md as
+  the project page; gen_projects.py writes it too.
 - The .dproj / .groupproj files in the repository were re-saved by the Delphi
   13 IDE (ProjectVersion 20.5, extra platform sections, post-build events
   repeated per configuration). They are now AUTHORITATIVE.
@@ -115,6 +118,11 @@ Project AppID: 2275430.
   Leave defaults (Touch.*, DataDetectorTypes, ...) to the IDE - a wrong enum
   name stops the form loading.
 - No credentials in source or logs.
+- No paths, user names or machine names from anyone's computers in ANY
+  tracked file (sources, projects, docs, CLAUDE.md test notes): describe test
+  machines generically ("an Apple-silicon Mac", "the PAServer scratch folder").
+  Paths in pasted logs are fine in chat, never in the repository. Paths in
+  projects are relative or use IDE macros ($(BDS), $(PROJECTDIR), ...).
 
 ## Logging and testing
 - Log lines must say exactly what happened (values, results, paths): the
@@ -205,7 +213,25 @@ Next tests, in order:
 1. Linux64 via PAServer - DONE 2026-10-30 (see Known gaps). Windows has not
    been re-run since ShutdownOnSteamExit and the callback-name table changed:
    quick Win64 check of both demos (incl. Steam -> Exit) before or after push.
-2. macOS OSX64 and OSXARM64 - dylib in Contents/MacOS.
+2. macOS - OSXARM64 first on the owner's Apple-silicon Mac (PAServer cannot debug
+   OSXARM64: lldb deployment bug - rely on logs, run from Terminal via
+   .../X.app/Contents/MacOS/X). Then try OSX64 on the M4 under Rosetta 2;
+   fallback: an Intel Mac. dylib goes to Contents/MacOS.
+   2026-10-30: first SteamConsole OSXARM64 build failed at deploy - E0264,
+   plutil "Cannot parse ... zero-length data": the IDE wrote an EMPTY
+   Info.plist because neither demo had macOS VerInfo_Keys (only iOS ones).
+   Added VerInfo_IncludeVerInfo + VerInfo_Keys to Base_OSX64 / Base_OSXARM64
+   in both demo .dproj files and to gen_projects.py (MAC_KEYS) - fixed the
+   build. SteamConsole 60 on OSXARM64 then PASSED (2026-10-30): dylib loaded
+   from Contents/MacOS, SDK 1.65, same 28 versions as Win64 / Linux64,
+   ISteamUtils live data, Steam -> Exit: 704 named Utils+4, SteamAPI shut
+   down 3 ms later, pump stopped early, clean exit, no asserts. (Init took
+   ~2.6 s on that first macOS run, 23 ms on the next - a one-off inside
+   SteamAPI_Init, not ours.)
+   Architecture is now logged ("[info] Platform: ..."). SteamConsole 60 as
+   OSX64 on Apple silicon PASSED (2026-10-30): "macOS x64 build, running under
+   Rosetta 2", same 28 versions, Steam -> Exit clean. An Intel Mac run is
+   optional now. Still to run: SteamDemo OSXARM64 (and OSX64 if wanted).
 3. Android64 - build and deploy only (check the .so is in the APK).
 4. Warning hook - proven on Linux64 (overlay warning from Show info); on
    Windows -debug_steamapi still produced nothing.

@@ -127,6 +127,9 @@ it searches the executable folder and the macOS bundle (`Contents/MacOS`,
 OS error, raises warnings through an event instead of a logging framework, and
 takes symbol names as `string`. Bound pointers dangle once a library is freed,
 so `TSteamAPI.Unload` clears its table before unloading.
+Before loading, the core logs the build target and how it runs
+(`TSteamAPI.PlatformDescription`, e.g. `macOS x64 build, running under
+Rosetta 2`; Windows x86/x64 builds report WOW64 or ARM64 emulation).
 
 ### Initialisation (`TSteamworks.InitMode`)
 * `simAuto` (default): `SteamAPI_InitFlat` when exported (SDK 1.59+), else legacy init.

@@ -71,6 +71,11 @@ DLL = {"Win32": "steam_api.dll", "Win64": "steam_api64.dll", "OSX64": "libsteam_
        "OSXARM64": "libsteam_api.dylib", "Linux64": "libsteam_api.so", "Android64": "libsteam_api.so"}
 REDIST = {"Win32": "", "Win64": "win64\\", "OSX64": "osx\\", "OSXARM64": "osx\\", "Linux64": "linux64\\",
           "Android64": "androidarm64\\"}
+# macOS bundle keys (Info.plist) for apps and console programs
+MAC_KEYS = ("CFBundleName=$(MSBuildProjectName);CFBundleDevelopmentRegion=en;CFBundleDisplayName=$(MSBuildProject"
+            "Name);CFBundleIdentifier=$(MSBuildProjectName);CFBundleInfoDictionaryVersion=6.0;CFBundleVersion=1.0"
+            ".0;CFBundleShortVersionString=1.0.0;CFBundlePackageType=APPL;CFBundleSignature=????;CFBundleAllowMix"
+            "edLocalizations=YES;CFBundleExecutable=$(MSBuildProjectName);NSHighResolutionCapable=true;LSApplicationCategoryType=public.app-category.games")
 # Where the library goes inside the deployed application
 REMOTE_DIR = {"OSX64": "Contents\\MacOS\\", "OSXARM64": "Contents\\MacOS\\", "Linux64": ".\\",
               "Android64": "library\\lib\\arm64-v8a\\"}
@@ -147,6 +152,11 @@ def dproj(p):
     for pl in p["platforms"]:
         a(f"    <PropertyGroup Condition=\"'$(Base_{pl})'!=''\">")
         a(f'        <DCC_Namespace>{NS_PLAT[pl]};$(DCC_Namespace)</DCC_Namespace>')
+        if pl.startswith("OSX") and p["kind"] in ("app", "console"):
+            # Without bundle keys the IDE writes an EMPTY Info.plist and PAServer's
+            # 'plutil -convert binary1' fails (E0264) - seen 2026-10-30, OSXARM64.
+            a('        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>')
+            a(f'        <VerInfo_Keys>{MAC_KEYS}</VerInfo_Keys>')
         if p.get("redist") and pl.startswith("Win"):
             src = f"$(PROJECTDIR)\\..\\..\\redistributable_bin\\{REDIST[pl]}{DLL[pl]}"
             # The IDE re-saves the event as ONE line joined with '&&', and cmd makes
@@ -209,6 +219,9 @@ def dproj(p):
     a('                <Source>')
     a(f'                    <Source Name="MainSource">{main}</Source>')
     a('                </Source>')
+    # Project page: the IDE shows the repository README when the project opens
+    up = "..\\" * (p["dir"].count("\\") + 1)
+    a(f'                <WelcomePageFile Path="{up}README.md"/>')
     a('            </Delphi.Personality>')
     if p.get("redist"):
         a('            <Deployment Version="5">')

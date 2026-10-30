@@ -264,6 +264,18 @@ type
       error messages so the user knows exactly which file to copy. }
     class function RedistributableName: string; static;
 
+    { Compile-time target of this program, e.g. @code('macOS ARM64') or
+      @code('Windows x86'). }
+    class function BuildTarget: string; static;
+    { How the running process relates to the machine, or '' when nothing
+      applies or it cannot be told: on macOS @code('Rosetta 2') when an x64
+      build is translated on Apple silicon; on Windows when an x86 / x64 build
+      is emulated on ARM64 Windows or an x86 build runs under WOW64. }
+    class function ProcessTranslation: string; static;
+    { @link(BuildTarget) and @link(ProcessTranslation) as one log line, e.g.
+      @code('macOS x64 build, running under Rosetta 2'). }
+    class function PlatformDescription: string; static;
+
     { Loads the redistributable and binds the core exports.
       @param(APath  Explicit file; empty = @link(DefaultLibraryName), searched
         as described in @link(TSteamDynLib.CandidatePaths).)
@@ -353,6 +365,25 @@ type
 
 implementation
 
+{$if defined(STEAMWORKS_WINDOWS)}
+uses
+  Windows;
+
+type
+  { IsWow64Process2 (Windows 10 1709+), looked up at run time. }
+  TIsWow64Process2 = function(hProcess: THandle; out ProcessMachine: Word;
+    out NativeMachine: Word): BOOL; stdcall;
+
+const
+  { IMAGE_FILE_MACHINE_ARM64 }
+  MachineArm64 = $AA64;
+{$elseif defined(STEAMWORKS_MACOS)}
+{ libc sysctlbyname; used to ask whether the process is translated (Rosetta). }
+function sysctlbyname(name: PAnsiChar; oldp: Pointer; oldlenp: PNativeUInt;
+  newp: Pointer; newlen: NativeUInt): Integer; cdecl;
+  external {$ifdef FPC}'c'{$else}'/usr/lib/libc.dylib'{$endif} name 'sysctlbyname';
+{$endif}
+
 { TSteamAPI }
 
 class function TSteamAPI.DefaultLibraryName: string;
@@ -370,6 +401,81 @@ begin
 {$else}
   Result := '';
 {$endif}
+end;
+
+class function TSteamAPI.BuildTarget: string;
+var
+  OS, CPU: string;
+begin
+{$if defined(STEAMWORKS_WINDOWS)}
+  OS := 'Windows';
+{$elseif defined(STEAMWORKS_MACOS)}
+  OS := 'macOS';
+{$elseif defined(STEAMWORKS_ANDROID)}
+  OS := 'Android';
+{$elseif defined(STEAMWORKS_LINUX)}
+  OS := 'Linux';
+{$else}
+  OS := 'unsupported OS';
+{$endif}
+{$if defined(STEAMWORKS_CPUARM64)}
+  CPU := 'ARM64';
+{$elseif defined(STEAMWORKS_CPU386)}
+  CPU := 'x86';
+{$elseif defined(STEAMWORKS_CPU64)}
+  CPU := 'x64';
+{$else}
+  CPU := 'unknown CPU';
+{$endif}
+  Result := OS + ' ' + CPU;
+end;
+
+class function TSteamAPI.ProcessTranslation: string;
+{$if defined(STEAMWORKS_WINDOWS)}
+var
+  Fn: TIsWow64Process2;
+  ProcessMachine, NativeMachine: Word;
+begin
+  Result := '';
+  Fn := TIsWow64Process2(GetProcAddress(GetModuleHandle('kernel32.dll'), 'IsWow64Process2'));
+  if not Assigned(Fn) then
+    Exit; // older Windows: cannot tell
+  if not Fn(GetCurrentProcess, ProcessMachine, NativeMachine) then
+    Exit;
+  {$ifndef STEAMWORKS_CPUARM64}
+  if NativeMachine = MachineArm64 then
+    Exit('emulation on ARM64 Windows');
+  {$endif}
+  if ProcessMachine <> 0 then // IMAGE_FILE_MACHINE_UNKNOWN unless WOW64
+    Result := 'WOW64 on 64-bit Windows';
+end;
+{$elseif defined(STEAMWORKS_MACOS)}
+var
+  Translated: Integer;
+  Len: NativeUInt;
+begin
+  Result := '';
+  Translated := 0;
+  Len := SizeOf(Translated);
+  // Fails (ENOENT) on Intel Macs, where nothing is translated
+  if (sysctlbyname('sysctl.proc_translated', @Translated, @Len, nil, 0) = 0) and
+     (Translated = 1) then
+    Result := 'Rosetta 2';
+end;
+{$else}
+begin
+  Result := '';
+end;
+{$endif}
+
+class function TSteamAPI.PlatformDescription: string;
+var
+  T: string;
+begin
+  Result := BuildTarget + ' build';
+  T := ProcessTranslation;
+  if T <> '' then
+    Result := Result + ', running under ' + T;
 end;
 
 class function TSteamAPI.RedistributableName: string;

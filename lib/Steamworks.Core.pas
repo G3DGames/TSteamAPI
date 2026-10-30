@@ -780,6 +780,7 @@ begin
       FState := swsLibraryLoaded;
     Exit(True);
   end;
+  Log(sllInfo, 'Platform: ' + TSteamAPI.PlatformDescription);
   // Before the library loads: its C runtime may snapshot the environment
   ApplyAppIdEnvironment;
   try
