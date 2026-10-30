@@ -104,7 +104,7 @@ tools/
 4. To use the components at design time, for the IDE's platform (Win64 for
    the 64-bit IDE, Win32 for the 32-bit IDE):
    1. **Build** (do not install) the runtime packages `Steamworks`, then
-      `SteamworksFMX`. Their `.dcp` / `.bpl` go to Delphi's default `Dcp` /
+      `SteamworksFMX` and / or `SteamworksVCL`. Their `.dcp` / `.bpl` go to Delphi's default `Dcp` /
       `Bpl` folders, and their compiled units (`.dcu`) go to the same `Dcp`
       folder (`$(BDSCOMMONDIR)\Dcp` for Win32, `$(BDSCOMMONDIR)\Dcp\<platform>`
       otherwise), which is on the IDE's default Library path - so your own
@@ -113,7 +113,8 @@ tools/
       Release) is the one your projects link.
    2. **Install** `dclSteamworks` (the plug-in components: TSteamUtils,
       TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats) and
-      `dclSteamworksFMX` (the FMX TSteamAPI). They appear on the "Steamworks"
+      `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
+      (the VCL TSteamAPI). They appear on the "Steamworks"
       palette page.
 
    Building a design package from the project group builds the runtime
@@ -193,8 +194,11 @@ plug-in unit also declares a component named after the interface -
   `TSteamFriends.OnAvatarImageLoaded` / `TSteamUserStats.OnUserAchievementIconFetched`.
   SteamDemo shows the user's avatar and the app's achievements this way.
 * When Steam cannot start and no `OnInitFailed` handler is assigned,
-  `Active := True` raises `ESteamworksError` with Steam's own message;
-  `Open` returns False instead.
+  `Active := True` shows the error (an `ESteamworksError` with Steam's own
+  message) in the framework's message box and leaves `Active` False - it
+  does not raise, so a failed start in `FormCreate` or in the form file never
+  ends the program. Assign `OnInitFailed` to handle it yourself, or call
+  `Open`, which returns False and shows nothing.
 * Do not free `TSteamAPI` inside one of its own or a plug-in component's
   events (they run from its timer); call `Close` there and free it later.
 
@@ -379,6 +383,53 @@ forward-declared in the public headers). New interfaces are added to the
   `IsRunningUnderProton()`.
 * `ISteamGameSearch` and `ISteamMusicRemote` are gone (no header, not in
   `steam_api.json`, no version string in the redistributables).
+
+## Known issues (that are not really issues)
+Things that look like bugs in the library or the demos but are Steam's, or
+Windows', normal behaviour. Each says why and what to do.
+
+> **Achievement icon is 0 / an image you uploaded never appears.**
+> `GetAchievementIcon` returns 0 both while Steam is still fetching the icon
+> (then `OnUserAchievementIconFetched` brings the real handle) and when the
+> achievement has no icon at all - the callback then says 0 too, and the
+> Steam client shows its own default starburst, which our code cannot get.
+> After adding or changing icons on the partner site (App Admin ->
+> Stats & Achievements): **publish** the change, then **restart the Steam
+> client** - it caches achievement data, including "no icon", until it
+> restarts. Without the restart the old answer comes back however often you
+> ask.
+
+> **SteamDemoVCL looks like Windows 95 and its text is slightly soft.**
+> Deliberately left like this, because every new VCL project made the same
+> way will hit it. A program without an application manifest gets no visual
+> themes, and one that is not DPI-aware is enlarged as a bitmap by Windows on
+> a scaled display. Fix in your project: Project -> Options -> Application ->
+> Manifest (All configurations, each Windows platform): tick **Enable
+> runtime themes**, and pick a **DPI awareness**. With *Per Monitor v2* the
+> text is sharp, but a form built in code with fixed pixel sizes (like the
+> demo's) then appears small - scale its sizes (VCL: `ScaleValue`; LCL:
+> `Scale96ToForm`). Forms designed in the IDE are scaled for you.
+
+> **Steam -> Exit closes the window twice on Windows, never on Linux/macOS.**
+> On Windows Steam sends a close request per top-level window (FormClose
+> runs twice - make it tolerate that); on Linux and macOS it sends callback
+> 704 (`SteamShutdown_t`) and leaves the process running. With
+> `ShutdownOnSteamExit` (default on) the library shuts Steam down cleanly in
+> every case; see [When the Steam client exits](#when-the-steam-client-exits).
+
+> **`F2613 Unit 'Steamworks.Types' not found` in a new project (dcc32).**
+> A new project starts on **Win32**, but the 64-bit IDE only needs - and so
+> you may only have built - the Win64 packages. Your project links the DCUs
+> the runtime packages wrote to Delphi's `Dcp` folder for that platform, so
+> select Win32 as the target platform of `Steamworks` and `SteamworksFMX`
+> (or `SteamworksVCL`) in the Projects window and **Build** them (no install
+> needed), once per platform you target. The editor's Structure panel may
+> meanwhile show `F2063 Could not compile used unit ...`: that is Error
+> Insight saying the same thing.
+
+> **"Optional export SteamAPI_ISteamUtils_IsRunningOnSteamDeck not found".**
+> A debug line, not an error: SDK 1.65 removed that function (see SDK 1.65
+> notes).
 
 ## Building with Free Pascal / Lazarus
 `lib/`, `lcl/` and the console demo are written for FPC 3.2 `{$mode delphi}`

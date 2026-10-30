@@ -478,6 +478,8 @@ begin
         Item.SubItems.Add('');
         Item.SubItems.Add(Friend.ToString);
         UpdateFriend(Item, Friend);
+        AddLog(Format('Friend %d: %s, medium avatar handle %d (-1 = loading, 0 = none)',
+          [I, Item.Caption, Fr.GetMediumFriendAvatar(Friend)]));
       end;
     finally
       FFriendsList.Items.EndUpdate;

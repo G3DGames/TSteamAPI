@@ -7,7 +7,7 @@
         <MainSource>SteamworksVCL.dpk</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <ProjectName Condition="'$(ProjectName)'==''">SteamworksVCL</ProjectName>
         <TargetedPlatforms>3</TargetedPlatforms>
     </PropertyGroup>

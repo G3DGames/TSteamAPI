@@ -54,7 +54,8 @@ type
     procedure PumpStart(AIntervalMs: Integer); override;
     { Stops the FMX timer. }
     procedure PumpStop; override;
-    { Application.HandleException. }
+    { Application.ShowException (Application.HandleException would show
+      ExceptObject, which is nil outside an except block). }
     procedure ShowHandlerException(E: Exception); override;
     { Application.Terminate. }
     procedure TerminateApplication; override;
@@ -194,7 +195,7 @@ end;
 
 procedure TSteamAPI.ShowHandlerException(E: Exception);
 begin
-  Application.HandleException(E);
+  Application.ShowException(E);
 end;
 
 procedure TSteamAPI.TerminateApplication;

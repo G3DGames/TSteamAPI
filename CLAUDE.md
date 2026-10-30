@@ -73,6 +73,10 @@ Project AppID: 2275430.
   plug-in unit, linked to the root through `SteamAPI` ("dropped and linked":
   only what is dropped is linked in). The core flat-export class formerly
   called TSteamAPI is `TSteamLib` (lib/Steamworks.API.pas).
+- Owner's decision 2026-10-30: pitfalls every user will hit (no manifest ->
+  unthemed / DPI-stretched VCL demo, Steam caching achievement icons until
+  a client restart, ...) are NOT hidden in the demos; they are explained in
+  README "Known issues (that are not really issues)". Add new ones there.
 - Owner's direction 2026-10-30: iron out Windows first (largest target) and
   add plug-ins as we go; other platforms are re-tested later in one round.
 - Runtime packages (Steamworks, SteamworksFMX) write their DCUs to
@@ -416,8 +420,9 @@ demos/BasicFormFMX at 15606b0 - a "user's own project" without demo
 conveniences such as the post-build DLL copy):
 the IDE wrote the typed event stub and RequiresUnits added every needed unit;
 it then failed silently because SetAppIdEnvironment was off, no DLL next to
-the exe and no OnInitFailed handler -> TSteamAPI now raises on a failed
-Active := True when OnInitFailed is unassigned (Open still returns False).
+the exe and no OnInitFailed handler -> a failed Active := True without an
+OnInitFailed handler is now reported (shown since 2026-10-30 18:10 - it
+raised at first, see test 4; Open returns False and shows nothing).
 BasicFormFMX fails pasdoc_check (11 IDE form declarations) and its .dproj
 lists the owner's third-party runtime packages and WinARM64EC - offered to
 document / tidy it once the owner stops editing it locally.
@@ -450,6 +455,40 @@ unlock times, callbacks 336 / 304 named, clean shutdown. Local-time
 conversion CONFIRMED against the Steam client's achievements page: all 6
 unlock times match to the minute, including RANK_001 (unlocked in summer
 time, 09:58 in both - UTC would have shown 08:58).
+SteamDemo (FMX) and SteamDemoVCL, Win64, 17:14 / 17:15 (logs checked): all
+5 plug-ins, own large avatar handle 8 at once (cached, so the -1 ->
+OnAvatarImageLoaded path is still unexercised), 1 friend listed, 6
+achievements with local times; RANK_001-004 icons 11-14 at once;
+Played_000001 / _000005 report icon 0 and OnUserAchievementIconFetched
+(1109, 144 bytes, payload check passed) also says 0 = "no image set" per
+Valve; the Steam client shows its default starburst for both. RESOLVED: the
+AppID's achievements are throw-away test data (owner) and those two have no
+icon of their own (confirmed on the partner site) - icon 0 is correct. OnPersonaStateChange $4010
+(GamePlayed + RichPresence) for the own SteamID. Close clean, no leaks (VCL
+Debug). The demos did not log friend avatar handles - now they do.
+17:43 / 17:45 (after icons were added to Played_000001 / _000005, published,
+Steam client restarted): icon FETCH PATH PROVEN - the VCL run got
+OnUserAchievementIconFetched for all 6 (handles 11-16) and showed every
+icon in the right colours (RGBA -> BGRA swap correct). Stop / Start clean.
+Steam -> Exit with components attached (FMX and VCL): as before on
+Windows - two close requests (FormClose twice, the second with Steam running
+False), no 704, SteamAPI shut down once, clean.
+Fresh project, no library paths (test 3): Win64 compiled at once; Win32
+failed F2613 'Steamworks.Types' until the runtime packages were built for
+Win32 (new projects start on Win32) - expected, now in README Known issues.
+The owner works in the 32-bit IDE as well: there the design packages are
+built Win32 and installed separately (each IDE has its own package list).
+No OnInitFailed + Steam not running (test 4, Win32, 18:03): ESteamworksError
+"Steam did not start (result 2): ... Steam is probably not running." shown
+- no silent failure, BUT the app then DIED: Active := True in FormCreate
+raised, and the exception escaped Application.CreateForm. Fixed: a failed
+start with no OnInitFailed is now SHOWN (ShowHandlerException), never raised,
+from code and from the form file alike; Active stays False. Also fixed: FMX
+ShowHandlerException called Application.HandleException(E), which shows
+ExceptObject (nil outside an except block) - now Application.ShowException(E)
+like VCL / LCL. RE-TESTED 18:14 (Demo7, Win32 packages rebuilt): message,
+then the form stays open. (A first re-run still died - stale Win32 DCUs:
+the packages had been rebuilt for Win64 only.)
 Next:
 1. Owner builds everything on Win64 in this order: Steamworks,
    dclSteamworks (install), SteamworksFMX, dclSteamworksFMX (install), both

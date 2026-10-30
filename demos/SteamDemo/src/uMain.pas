@@ -481,6 +481,8 @@ begin
         H := Fr.GetMediumFriendAvatar(Friend);
         if H > 0 then
           SteamImageToBitmap(H, Item.ItemData.Bitmap);
+        AddLog(Format('Friend %d: %s, medium avatar handle %d (-1 = loading, 0 = none)',
+          [I, FriendName, H]));
       end;
     finally
       FFriendsList.EndUpdate;
