@@ -80,7 +80,6 @@ demos/
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form
   SteamConsole/             console smoke test (no framework; FPC-ready)
-  BasicFormFMX/             a "user's own project": a form built in the IDE from the palette
 docs/                       user documentation (Markdown)
   Install-Delphi.md, Install-Lazarus-FPC.md, GameEngineIntegration.md
   components/               TSteamAPI.md + README.md (hand-written),

@@ -56,13 +56,6 @@ PROJECTS = [
          platforms=ALL_PLATFORMS, default="Win64",
          units=[("uConsoleMain", "src\\uConsoleMain.pas")],
          forms=[], search="src", redist=True, depends=["Steamworks"]),
-    # The owner's "user's own project" test: a form made in the IDE from the
-    # palette, no demo conveniences (no post-build copy). Its .dproj is the
-    # IDE's; listed here for the project group and project_check only.
-    dict(name="BasicFormFMX", dir="demos\\BasicFormFMX", kind="app", framework="FMX",
-         platforms=["Win32", "Win64"], default="Win64",
-         units=[], forms=[("BasicFormFMXMain", "BasicFormFMXMain.pas", "Form1")],
-         search="", redist=False, depends=["SteamworksFMX"]),
     # Framework-free runtime package: the whole library, the plug-ins and the
     # shared component layer (TCustomSteamAPI, plug-in components).
     dict(name="Steamworks", dir="packages", kind="runtime", framework="None",

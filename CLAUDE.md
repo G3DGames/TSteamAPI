@@ -144,8 +144,7 @@ Project AppID: 2275430.
   commit SDK binaries (partner licence). `tools/check_redist.py` validates it;
   projects copy / deploy from it (paths set in `tools/gen_projects.py`).
 - `demos/<Name>/` - `<Name>.dpr` + `<Name>.dproj` in the folder, all other
-  sources in `demos/<Name>/src/` (BasicFormFMX, the owner's IDE-made test,
-  keeps its form beside the .dpr). Demos list and search ONLY their own
+  sources in `demos/<Name>/src/`. Demos list and search ONLY their own
   sources: the library comes from the runtime packages' DCUs in Delphi's
   Dcp folder, exactly as for a user's project (owner's decision 2026-10-30).
   So packages build before demos, and library changes need a package
@@ -382,6 +381,15 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
   entries itself. Not yet run on a device.
 
+## Fifth session (2026-10-30, in progress)
+- Push of the fourth session verified as far as GitHub allows (f9c825c):
+  demos/shared gone, .gitignore entries present, group Dependencies and
+  Build / Clean / Make order intact. The file-by-file comparison needs the
+  previous zips (not in the new workspace).
+- BasicFormFMX REMOVED (owner): out of Steamworks.groupproj and
+  gen_projects.py, README layout. Owner runs `git rm -r demos/BasicFormFMX`
+  (zips cannot delete).
+
 ## Handover (2026-10-30, end of fourth session) - READ THIS FIRST
 State: the owner is pushing this session's work on top of 7ffc71e. Zips, in
 order: RepoRename, Threads1-5 (cumulative), then changed-files-only Demos1,
@@ -500,9 +508,8 @@ Next, in order:
    and SteamConsole's FPC build are untested); Android64 still placeholder.
 3. Unexercised: avatar handle -1 -> OnAvatarImageLoaded (own avatar always
    cached); Win32 VCL; Release builds of the packages (share the Dcp folder).
-4. Owner to decide: BasicFormFMX (owner's IDE test) - document as a demo or
-   keep local; it causes pasdoc_check's 11 problems, lists the owner's
-   third-party packages and WinARM64EC.
+4. DECIDED 2026-10-30 (fifth session): BasicFormFMX removed - the
+   component-based demo forms replace it.
 5. Later / optional: Delphi 11.0 compile check (13 recommended, older not
    guaranteed); Lazarus "Execute after" DLL copy; CGE demo (CallbackInterval
    0 + RunCallbacks from the engine loop).
@@ -623,7 +630,8 @@ OnInitFailed handler is now reported (shown since 2026-10-30 18:10 - it
 raised at first, see test 4; Open returns False and shows nothing).
 BasicFormFMX fails pasdoc_check (11 IDE form declarations) and its .dproj
 lists the owner's third-party runtime packages and WinARM64EC - offered to
-document / tidy it once the owner stops editing it locally.
+document / tidy it once the owner stops editing it locally. (Removed
+2026-10-30, fifth session: the component-based demo forms replace it.)
 Added (untested): SteamImageToBitmap (fmx), SteamDemo side panel with the
 user's large avatar and the achievement list (icons via
 OnUserAchievementIconFetched, avatar via OnAvatarImageLoaded when -1),
