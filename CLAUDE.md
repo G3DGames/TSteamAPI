@@ -661,6 +661,72 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   Switch origins. My Switch1 text ("off -> Switch_B") was WRONG; zip
   Switch2 (follows Switch1) replaces it with a table. Visualiser: origin
   -> position must include the Xbox 360 rows even for a Switch pad.
+- JOY-CON PAIR PASSES (log 17:17; the owner's Mac had to be shut down -
+  it kept grabbing the Joy-Cons over Bluetooth): SwitchJoyConPair (8),
+  our layout at once; ButtonA = "B Button" (Switch_B 193) i.e. the
+  BOTTOM button, ButtonB = Switch_A, X / Y likewise swapped = POSITIONAL
+  with Switch-family origins (unlike the Pro with the swap off, which
+  reported Xbox 360 origins); glyphs switchpro_; every button, + / -,
+  L / R, ZL / ZR (digital), sticks, clicks, d-pad, gyro (right Joy-Con:
+  "Right JoyCon Gyro Move" 236 - Steam returns NO glyph path in any
+  style), motion, Home -> inactive -> reloaded. SL / SR and Capture are
+  not in our layout. The pair ran with Steam's "Nintendo layout" option
+  ON (owner, 17:21). Zip JoyCon2 (follows JoyCon1) adds that to the docs.
+  Zip JoyCon1 (follows Switch2): LoadGlyph falls back
+  to GetGlyphForActionOrigin_Legacy; docs note the Joy-Con behaviour.
+- SINGLE JOY-CON (R) (log 17:24): SwitchJoyConSingle (9); no file of
+  ours, but Steam ADAPTED our default (mapping by 0): ButtonA / B / X / Y
+  = Switch_JoyConButton_S / E / W / N (250 / 249 / 251 / 248, positional,
+  EMPTY GetStringForActionOrigin names, glyphs shared_buttons_s/e/w/n),
+  stick -> LeftStick (+Click; values arrived although its origin list was
+  empty), SL / SR -> LeftBumper / RightBumper (origins Switch L / R 196 /
+  197), + -> Start; RightStick, triggers, d-pad, Select, Gyro unbound
+  (motion data still there). Home -> inactive -> reloaded. Zip JoyCon3
+  (follows JoyCon2): banner says "Steam ADAPTED the game's default
+  layout" when the type has no file of ours (it said "OUR default
+  layout"), "no file of ours for this type" instead of "Steam uses its
+  own"; an origin with no name is listed as "(Steam gives no name)";
+  docs paragraph.
+- SINGLE JOY-CON (L) (log 17:26, a build before JoyCon3): the same as
+  the right one - adapted default (mapping by 0), arrow buttons ->
+  ButtonA / B / X / Y via JoyConButton_S / E / W / N, stick -> LeftStick
+  (+Click), - (Minus, 199) -> Start; SL / SR not pressed. Zip JoyCon4
+  (follows JoyCon3): docs sentence. ALL OWNER'S NINTENDO PADS DONE.
+- XBOX 360-EMULATING PAD (log 17:43): XBox360Controller (2), our file
+  exists, "mapping by 0" BUT "uses Steam Input API False" and every
+  action NOT BOUND - Steam Input is off for that pad, so Steam gives the
+  game no action layout; the banner wrongly said "OUR default layout"
+  (it looked only at the creator). Zip Api1 (follows JoyCon4): API False
+  -> "Steam Input is NOT active for this pad ... turn Steam Input on";
+  docs troubleshooting row. Waiting for a run with Steam Input on.
+- XBOX 360-EMULATING PAD PASSES once Steam Input was on for it (log
+  17:53): API True, our layout, Xbox 360 origins (153-180) and glyphs;
+  every button, both sticks, clicks, d-pad, Start / Back, bumpers;
+  triggers DIGITAL (0 / 1 - the pad has no analog triggers); Guide ->
+  inactive -> reloaded. Its face buttons are PRINTED in Nintendo
+  positions but the pad reports Xbox positions, so ButtonA = bottom and
+  the glyph says "A" although the button there is labelled B - nothing
+  the game can detect (the pad lies about itself). Zip Pad360 (follows
+  Api1): this note + a docs sentence.
+- SAME CLONE PAD AS A "PS4" (log 17:59; the pad has several emulation
+  modes): PS4Controller (5), our layout (API True), PS4 origins (X 50,
+  Circle 51, Triangle 52, Square 53, L1 / R1 54 / 55, Options 56, Share
+  57, L2 / R2 79 / 81, touchpad 73 / 74, Gyro 99) with ps_color_ glyphs
+  (64x64) - all positional, all buttons, sticks, clicks, d-pad and
+  Options / Share registered; triggers digital again; NO motion data ever
+  (identity quaternion, zeros) and no touchpad input: the clone claims to
+  be a PS4 but has no gyro / touchpad, so the banner's "motion sensors
+  yes" (it goes by the TYPE) is wrong for it. Every pad the owner has is
+  now tested. Zip PadPS4 (follows Pad360): this note + a docs sentence.
+- SAME CLONE AS A "SWITCH PRO" (log 18:00): SwitchProController (10),
+  our layout - which arrived 5 s AFTER the pad, and the bindings were
+  listed only then (no premature NOT BOUND: the Wait1 logic proven);
+  Switch origins A 192 etc.; every button, sticks, clicks, d-pad, + / -,
+  L / R, ZL / ZR digital; in THIS mode the gyro works (Gyro Move 221,
+  motion data) - it had none as a "PS4". Not yet tested with real
+  hardware: Xbox 360 (genuine), PS4 DualShock 4 (gyro / touchpad),
+  Steam Deck, 2015 Steam Controller, Switch 2 Pro; owner may order some.
+  Zip PadSwitch (follows PadPS4): this note.
 - 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
   Delphi; installed on the owner's machine, and its developer makes
   changes quickly), CGE second (also installed, but updates take far

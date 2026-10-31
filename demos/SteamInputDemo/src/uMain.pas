@@ -214,7 +214,7 @@ type
       and lists them in @link(lbBindings) with Steam's glyphs. }
     procedure LogOrigins(P: TSteamInputPlugin);
     { Loads Steam's glyph of AOrigin into ABitmap, trying light small, light
-      medium, dark and knockout in turn; returns a log text (the path
+      medium, dark and knockout in turn, then the legacy call; returns a log text (the path
       used and every failed attempt, or "NO GLYPH" with all of them). }
     function LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin;
       ABitmap: FMX.Graphics.TBitmap): string;
@@ -831,7 +831,14 @@ begin
   // player or a Steam template
   Text := Format('mapping by %s, revision %d.%d',
     [AData.m_ulMappingCreator.ToString, AData.m_unMajorRevision, AData.m_unMinorRevision]);
-  if AData.m_ulMappingCreator.Value = 0 then
+  // "uses Steam Input API False": Steam gave this pad a layout with no game
+  // actions at all - Steam Input is OFF for it (an Xbox 360-type pad,
+  // owner's log 2026-10-31: mapping by 0 but every action NOT BOUND) or a
+  // plain gamepad / keyboard template was chosen
+  if not AData.m_bUsesSteamInputAPI then
+    Text := 'Steam Input is NOT active for this pad (' + Text + ', uses Steam Input API False) - '
+      + 'turn Steam Input on for this controller / game in the Steam client'
+  else if AData.m_ulMappingCreator.Value = 0 then
     Text := 'Steam loaded OUR default layout (' + Text + ')'
   else
     Text := 'Steam loaded a DIFFERENT layout, not ours (' + Text
@@ -881,7 +888,9 @@ var
   T: ESteamInputType;
   PadName, Info, Layout, Dir, Key, Loaded: string;
   I, Sel: Integer;
+  Ours: Boolean;
 begin
+  Ours := False;
   if FActive = 0 then
     T := k_ESteamInputType_Unknown
   else
@@ -912,17 +921,26 @@ begin
     end;
     Layout := LayoutTypeName(T);
     if T = k_ESteamInputType_SwitchJoyConSingle then
-      Layout := 'layout controller_switch_joycon_left / _right (none of ours - Steam uses its own)'
+      Layout := 'layout controller_switch_joycon_left / _right (no file of ours for this type)'
     else if Layout = '' then
       Layout := 'layout: no controller_type name known'
     else
     begin
       Dir := ExtractFilePath(ManifestPath);
       if (Dir <> '') and TFile.Exists(TPath.Combine(Dir, Layout + '.vdf')) then
-        Layout := 'layout ' + Layout + '.vdf (ours)'
+      begin
+        Layout := 'layout ' + Layout + '.vdf (ours)';
+        Ours := True;
+      end
       else
-        Layout := 'layout ' + Layout + ' (none of ours - Steam uses its own)';
+        Layout := 'layout ' + Layout + ' (no file of ours for this type)';
     end;
+    // Without a file of ours Steam ADAPTS the game's default layout from
+    // another type (a single Joy-Con, owner's log 2026-10-31: mapping by 0,
+    // only the controls the pad has) - say so instead of "OUR layout"
+    if not Ours and StartsText('Steam loaded OUR default layout', Loaded) then
+      Loaded := 'Steam ADAPTED the game''s default layout' + Copy(Loaded, Length('Steam loaded OUR default layout') + 1, MaxInt)
+        + ' - only the controls this pad has are bound';
     Info := Format('Steam type %s (%d) - %s - 3D model %s - motion sensors %s'
       + sLineBreak + '%s',
       [InputTypeId(T), Ord(T), Layout, ModelName(T), MotionText(T), Loaded]);
@@ -1072,6 +1090,19 @@ begin
           Failed := Failed + Format(' [%s: %s could not be loaded: %s]', [StyleNames[I], Path, E.Message]);
       end;
   end;
+  // Last resort: the legacy call (Steam returned no PNG of any style for the
+  // Joy-Con pair's "Right JoyCon Gyro Move", owner's log 2026-10-31)
+  Path := P.GetGlyphForActionOrigin_Legacy(AOrigin);
+  if (Path <> '') and TFile.Exists(Path) then
+    try
+      ABitmap.LoadFromFile(Path);
+      Exit(Format('glyph %s (legacy, %dx%d); failed first:%s', [Path, ABitmap.Width, ABitmap.Height, Failed]));
+    except
+      on E: Exception do
+        Failed := Failed + Format(' [legacy: %s could not be loaded: %s]', [Path, E.Message]);
+    end
+  else
+    Failed := Failed + Format(' [legacy: %s]', [IfThen(Path = '', 'empty path', 'file missing ' + Path)]);
   Result := 'NO GLYPH:' + Failed;
 end;
 
@@ -1080,7 +1111,7 @@ var
   A: TInputAction;
   Origins: TSteamInputOriginArray;
   I: Integer;
-  Text, Glyph: string;
+  Text, Glyph, OriginName: string;
   Item: TListBoxItem;
 begin
   if FOriginsLogged or (FActive = 0) then
@@ -1110,7 +1141,10 @@ begin
       begin
         if Text <> '' then
           Text := Text + ', ';
-        Text := Text + P.GetStringForActionOrigin(Origins[I]) + ' (' + IntToStr(Ord(Origins[I])) + ')';
+        OriginName := P.GetStringForActionOrigin(Origins[I]);
+        if OriginName = '' then
+          OriginName := '(Steam gives no name)';   // e.g. a single Joy-Con's N / E / S / W buttons
+        Text := Text + OriginName + ' (' + IntToStr(Ord(Origins[I])) + ')';
       end;
       if Text = '' then
       begin

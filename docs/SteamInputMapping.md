@@ -307,6 +307,40 @@ controller's settings in Steam). Tested on a Switch Pro, 2026-10-31:
 | on | the button LABELLED A (right) - "A = A, B = B" | Switch family (`Switch_A` ... `Switch_Plus`), Switch glyphs |
 | off | the BOTTOM button (labelled B) - Xbox positions | **Xbox 360 family** (`XBox360_A` ... `XBox360_Start` / `_Back`, d-pad, bumpers, stick clicks) with Xbox glyphs; sticks, ZL / ZR and gyro stay Switch origins |
 
+Joy-Con pair (2026-10-31, same machine, Steam's **Nintendo layout**
+option ON for it): `button_a` was the BOTTOM button, reported with its
+real label (`Switch_B`, "B Button"), Switch-family origins throughout -
+positional like the Pro with the swap off, but WITHOUT the Xbox 360
+origins. The option names differ between the two pads as the owner saw
+them ("swap" for the Pro, "Nintendo layout" for the Joy-Cons); what
+matters for code is the origin reported.
+
+Single Joy-Con (right, held sideways; 2026-10-31): there is no layout
+file of ours for `SwitchJoyConSingle`, yet Steam reported "mapping by 0"
+- it ADAPTED the game's default layout to the one Joy-Con and bound only
+what it has: the face buttons as `ButtonA` / `B` / `X` / `Y` by position
+(origins `Switch_JoyConButton_S` / `E` / `W` / `N`, 250 / 249 / 251 /
+248, for which `GetStringForActionOrigin` returns an empty name; glyphs
+`shared_buttons_s` ...), the stick as `LeftStick` + `LeftStickClick`, SL /
+SR as `LeftBumper` / `RightBumper` (reported as the Switch L / R
+origins), + as `Start`. No gyro binding, although motion data comes
+through. Odd but harmless: `LeftStick` delivered values while its
+origin list was empty. The LEFT Joy-Con alone behaves the same: its four
+arrow buttons become the N / E / S / W face buttons, its stick
+`LeftStick`, and - (Minus) is `Start` (`Switch_Minus`, 199). Its gyro is "Right JoyCon Gyro Move" (origin 236), for which
+Steam has no glyph image in any style.
+
+A third-party pad that emulates an Xbox 360 controller but has its
+buttons PRINTED in Nintendo positions (2026-10-31) is read as an Xbox 360
+pad: `ButtonA` is the bottom button and Steam shows an "A" glyph for it
+although the button there is labelled B. Nothing tells a game about the
+printing; the pad presents itself as an Xbox pad. Such pads often have
+digital triggers (0 or 1 only). The same kind of pad switched to a
+"PS4" mode was reported as `PS4Controller` with PlayStation origins and
+glyphs, Gyro and touchpad bound - but it sent no motion data and no
+touchpad input: a clone can claim a type whose sensors it does not have.
+Treat Gyro / touchpad as present only once they report something.
+
 So on a Switch pad `ButtonA` follows the player's setting, and the
 origins can even come from another controller family than the pad's
 own type. A picture or model must therefore place a button by the ORIGIN
@@ -389,6 +423,7 @@ non-Steam shortcut is a separate entry with layouts of its own.
 | Some controls work on one pad but not on another, or nothing works | Steam loaded a different layout for that pad (see "When Steam keeps loading another layout" above) - a personal one or a Steam template (the demo's banner says so; the log shows "mapping by" a non-zero id). Reset the pad's layout to the game's default in Steam's controller settings. Also: a pad with Steam Input switched off for it (PlayStation / Switch / generic support settings) reaches the game through no layout at all |
 | A middle button (Xbox / Guide, Share) opens the Xbox Game Bar on Windows 11 | Windows' Xbox Game Bar takes those buttons; View and Menu are fine. Turn it off in Settings -> Gaming -> Game Bar to test them - players may have it on |
 | Glyphs load (the log names the file) but nothing shows | The **knockout** style is white detail on a transparent background (only Xbox-style coloured face buttons have colour): invisible on a light background. Use **Light** (black on white) on light UIs, Knockout / Dark on dark ones - SteamInputDemo uses Light |
+| Every action NOT BOUND, log says "mapping by 0" but "uses Steam Input API False" | Steam Input is off for this pad: Steam passes it to the game as a plain gamepad and loads no game-action layout at all (seen with a pad emulating an Xbox 360 controller, 2026-10-31). Turn Steam Input on for the controller (Steam Settings -> Controller, select the pad) or for the game (Properties -> Controller -> Enable Steam Input). SteamInputDemo's banner says "Steam Input is NOT active for this pad" |
 | Layout changes not picked up | Steam keeps a manifest override for the session; `OnSteamInputConfigurationLoaded` reports each new layout - re-read handles and origins then |
 
 Sources: Valve's Steamworks documentation -
