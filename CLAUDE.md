@@ -621,6 +621,46 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   worked. Zip Docs2 (follows Fix1): docs step 5 = wait, restart only if
   needed; View Controller Settings named in step 2; ShowBindingPanel row
   corrected; the demo's hint after the panel says the same.
+- Push 00c67a9 "Steam Controller 2026 Gamepad Passes Testing" verified:
+  all 125 files identical, group Dependencies kept.
+- GORILLA3D 1.5.4.4003 (owner, 16:38, "needed for later"): zip G3D1
+  (follows the push) updates GameEngineIntegration.md 6.5 to it. Viewport
+  behaviour for Steam unchanged; new render resolution (RenderScale,
+  RenderWidth / Height, RenderFit, RenderFilter) noted as harmless.
+  RESOLVED (owner relaying the developer, 16:42): the changelist is
+  right - UseFixedFrameRate now works on Android and Linux too; the
+  viewport guide will be updated. iOS not stated. Zip G3D2 (follows G3D1)
+  says so in GameEngineIntegration.md. For the VISUALISER (from 1.5.3 / 1.5.4 changelists):
+  ResetToBindPose, RecacheAnimations(ByName), DiscardAnimationCache(ByName),
+  HasCurrentAnimation / TryGetCurrentAnimation / IsAnimationPlaying (1.5.3);
+  1.5.4 fixes single-key (pose) clips, rigid non-skinned meshes under a
+  joint, zero-length clips in a crossfade, and - IMPORTANT for pressing
+  several buttons at once - a clip without a track for a node now puts
+  that node in its REST pose instead of keeping the previous clip's pose.
+  Our models have one clip per input, so playing one clip may reset every
+  other input to rest: driving several inputs at once probably needs
+  joint transforms set directly (or per-input clip layering) - ask the
+  developer. SeekTo (1.5.0) places the play head without computing a pose.
+- SWITCH PRO PASSES (log 16:46, owner has Steam's button SWAP on for it):
+  SwitchProController (10), our layout at once (mapping by 0, layout
+  loaded 30 ms after the pad - no premature list); glyphs switchpro_
+  prefix (face buttons shared_button_a..y); ButtonA..Y report Switch A /
+  B / X / Y (192-195) = "Xbox arrangement by letter" because of the swap
+  setting (to confirm once with the swap off: ButtonA should then report
+  Switch_B, the bottom button); every button, + / -, L / R, ZL / ZR
+  (digital 0 / 1), sticks, clicks, d-pad, Gyro (mouse deltas up to ~300
+  on fast swings), motion (|accel| at rest ~17400 - a little above the
+  ~16400 of the others), Home -> inactive 0.3 s -> layout reloaded ->
+  active. Capture and Rumble not exercised. Zip Switch1 (follows G3D2):
+  SteamInputMapping.md section 5 explains the swap (place by ORIGIN).
+  SWAP OFF (log 16:54; owner: "button B on Switch triggers ButtonA"):
+  button_a = the BOTTOM button, and Steam reports XBOX 360 ORIGINS
+  (153-160, 166, 172, 177-180) with Xbox glyphs for face buttons,
+  bumpers, Start / Back, stick clicks and d-pad; sticks, ZL / ZR and gyro
+  stay Switch origins (205, 211, 201, 203, 221). Swap on again = A is A,
+  Switch origins. My Switch1 text ("off -> Switch_B") was WRONG; zip
+  Switch2 (follows Switch1) replaces it with a table. Visualiser: origin
+  -> position must include the Xbox 360 rows even for a Switch pad.
 - 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
   Delphi; installed on the owner's machine, and its developer makes
   changes quickly), CGE second (also installed, but updates take far

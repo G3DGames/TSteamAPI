@@ -392,11 +392,12 @@ Call `StartSteam` from `ApplicationInitialize` (gameinitialize.pas). Notes:
 ### 6.5 Gorilla3D
 
 Gorilla3D is built on FMX, so the FMX `TSteamAPI` works unchanged. What
-matters is how `TGorillaViewport` produces frames (Gorilla3D 1.5.3):
+matters is how `TGorillaViewport` produces frames (Gorilla3D 1.5.4.4003;
+unchanged from 1.5.3 for everything below):
 
 | Member | Declaration | Behaviour |
 |--------|-------------|-----------|
-| `UseFixedFrameRate` | `Boolean`, published | Renders continuously on the viewport's own timer. **Windows and macOS only** (default `True` there). |
+| `UseFixedFrameRate` | `Boolean`, published | Renders continuously on the viewport's own timer. Windows and macOS (default `True` there) and, **since 1.5.4.4003, also Android and Linux** (confirmed by Gorilla3D's author, 2026-10-31; the viewport guide still says Windows / macOS only and is to be updated). iOS: not stated. |
 | `FixedFrameRate` | `Integer`, default 60 | Target rate while `UseFixedFrameRate` is on. |
 | `VSync` | `Boolean`, default `False` | Caps the rate between `FixedFrameRate` and the monitor refresh rate. |
 | `ManualRendering` | `Boolean`, default `False` | Frames only when `RenderManual` is called; effective only while `UseFixedFrameRate` is `False`. |
@@ -404,12 +405,13 @@ matters is how `TGorillaViewport` produces frames (Gorilla3D 1.5.3):
 | `Invalidate` | `procedure Invalidate(); virtual;` | Marks the viewport for redraw. |
 | `OnBeforeRender` | `TGorillaFrameEvent`, published | Per frame, on the main thread, **inside** the render lock. Must not call `RenderManual` or `Application.ProcessMessages`. |
 | `OnAfterRender` | `TGorillaFrameEvent`, published | Per frame, after the render lock is released. |
-| `DeltaTime` | `Double`, read-only | Seconds between the previous and the current frame. |
+| `DeltaTime` | `Double`, read-only | Seconds between the previous and the current frame (wall clock; 0 on the first frame; not clamped - after a pause or breakpoint the first frame reports the whole gap). Also passed to both events as `ADeltaTime`. |
 
-The consequence for Steam: **on Linux, Android and iOS there is no fixed
-frame-rate timer** - frames come only when something invalidates the
-viewport (a changed object, a running animation, `RenderManual`). A still
-scene renders nothing, so anything tied to frames stops too.
+The consequence for Steam: **without `UseFixedFrameRate`** - on iOS, on
+Android / Linux before 1.5.4.4003, or whenever it is switched off - frames
+come only when something invalidates the viewport (a changed object, a
+running animation, `RenderManual`). A still scene renders nothing, so
+anything tied to frames stops too.
 
 Recommended - Steam independent of rendering:
 
@@ -423,8 +425,9 @@ If you want Steam events at a fixed point of the frame instead, use
 **`OnAfterRender`** handler (let the IDE generate it - it creates the
 `TGorillaFrameEvent` signature - and add the one line). Outside the render
 lock a Steam handler may show a message or change the scene. Then make sure
-frames keep coming on every platform: `UseFixedFrameRate` on Windows /
-macOS, and elsewhere `ManualRendering` plus a timer calling `RenderManual`.
+frames keep coming on every platform: `UseFixedFrameRate` on Windows,
+macOS, and (1.5.4.4003+) Android and Linux; elsewhere `ManualRendering`
+plus a timer calling `RenderManual`.
 Do not use `OnBeforeRender` for this: Steam handlers would run inside the
 render lock.
 
@@ -453,8 +456,15 @@ lock.
 The timer default (`sumTimer`) also works with Gorilla; it simply shares the
 UI thread with rendering.
 
-> Sources: Gorilla3D's v1.5 viewport guide and its API reference for
-> `TGorillaViewport` and `TGorillaTimer` (1.5.3).
+New in 1.5.4.4003 and harmless for Steam: the viewport can render at a
+different resolution than its size (`RenderScale`, `RenderWidth` /
+`RenderHeight`, `RenderFit`, `RenderFilter`); picking and
+`ScreenToWorld` / `WorldToScreen` follow it. It changes nothing about when
+frames - and so frame-tied Steam updates - happen.
+
+> Sources: Gorilla3D's v1.5 viewport guide (as of 1.5.4.4003), its API
+> reference for `TGorillaViewport` and `TGorillaTimer` (1.5.3), and the
+> [1.5.4.4003 changelist](https://docs.gorilla3d.de/version/v1.5/page/Getting-Started/Changelist.md#changelist-v1544003).
 
 ### 6.6 Skia4Delphi
 

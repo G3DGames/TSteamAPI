@@ -298,6 +298,21 @@ places:
 | left | `X` | `Square` | `X` | `Y` |
 | top | `Y` | `Triangle` | `Y` | `X` |
 
+**Nintendo pads and Steam's button swap.** Steam has a per-controller
+setting that decides how a Nintendo pad's face buttons are read (in the
+controller's settings in Steam). Tested on a Switch Pro, 2026-10-31:
+
+| Steam's swap setting | `ButtonA` (`button_a`) is | Origins Steam reports for the buttons |
+|---|---|---|
+| on | the button LABELLED A (right) - "A = A, B = B" | Switch family (`Switch_A` ... `Switch_Plus`), Switch glyphs |
+| off | the BOTTOM button (labelled B) - Xbox positions | **Xbox 360 family** (`XBox360_A` ... `XBox360_Start` / `_Back`, d-pad, bumpers, stick clicks) with Xbox glyphs; sticks, ZL / ZR and gyro stay Switch origins |
+
+So on a Switch pad `ButtonA` follows the player's setting, and the
+origins can even come from another controller family than the pad's
+own type. A picture or model must therefore place a button by the ORIGIN
+Steam reports (this table, Xbox 360 rows included), never by the action
+or by the pad's type.
+
 Other inputs per family (SDK 1.65 names):
 
 | Input | Xbox | PlayStation 5 | Steam Controller 2026 |
