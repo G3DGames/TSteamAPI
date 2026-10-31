@@ -13,6 +13,10 @@
 2. Flat signatures: every Flat entry of every generated plug-in against
    steam_api_flat.h - parameter count, and pointer-ness and size of each
    parameter and of the result.
+3. By-value returns: the exports declared by hand because they return a
+   struct by value (tools/plugin_extras/Input.pas.txt) - clang's lowering of
+   each on every target (register / two registers / hidden pointer) must be
+   the one the hand-written declarations assume (BYVALUE below).
 
 Exit code 0 = no differences. Run after every tools/gen_steam_api.py run.
 """
@@ -237,6 +241,97 @@ def check_flat(sdk_dir):
     return bad
 
 
+# Exports that return a struct by value, declared by hand per platform in
+# tools/plugin_extras. For each target: how the C result comes back -
+# "i16" one 16-bit register, "two" two 64-bit registers, "sret" a hidden
+# result pointer (an argument on Windows / x64, X8 on ARM64). Change the
+# extras file and this table together. i686 Linux is listed so the C side of
+# Linux32 is pinned down too (all sret; the FPC side there is unverified).
+# Not visible in the IR: on 32-bit x86 MSVC the caller pops the hidden
+# pointer, i386 System V the callee - checked by hand with clang -S.
+BYVALUE_TARGETS = ["i686-pc-windows-msvc", "x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu",
+                   "x86_64-apple-macos11", "arm64-apple-macos11", "aarch64-linux-android",
+                   "aarch64-unknown-linux-gnu", "i686-unknown-linux-gnu"]
+BYVALUE = {
+    # export: (struct, params after the interface pointer, {target prefix: lowering})
+    "SteamAPI_ISteamInput_GetDigitalActionData": ("InputDigitalActionData_t", 2,
+                                                  {"i686-unknown-linux": "sret", "": "i16"}),
+    "SteamAPI_ISteamInput_GetAnalogActionData": ("InputAnalogActionData_t", 2,
+                                                 {"i686-pc-windows": "sret", "x86_64-pc-windows": "sret", "i686-unknown-linux": "sret",
+                                                  "": "two"}),
+    "SteamAPI_ISteamInput_GetMotionData": ("InputMotionData_t", 1, {"": "sret"}),
+}
+
+
+def check_byvalue(sdk_dir):
+    clang = shutil.which("clang++")
+    if not clang:
+        print("by-value returns: SKIPPED - clang++ not installed")
+        return 0
+    flat = open(os.path.join(sdk_dir, "steam_api_flat.h"), encoding="latin-1").read()
+    bad = 0
+    for name, (struct, nparams, _) in BYVALUE.items():
+        m = re.search(r"S_API\s+(\w+)\s+" + name + r"\s*\(([^)]*)\)", flat)
+        if not m or m.group(1) != struct or len([p for p in m.group(2).split(",") if p.strip()]) != nparams + 1:
+            print(f"by-value {name}: steam_api_flat.h no longer declares it as {struct} with "
+                  f"{nparams} parameters after self - update tools/plugin_extras and BYVALUE")
+            bad += 1
+    if bad:
+        return bad
+    tmp = tempfile.mkdtemp(prefix="steambyval")
+    try:
+        return bad + _byvalue_ir(clang, sdk_dir, tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _byvalue_ir(clang, sdk_dir, tmp):
+    """Compiles a caller of each BYVALUE export per target and compares the
+    lowering clang chose with the table."""
+    bad = 0
+    stub = os.path.join(tmp, "stub")
+    os.makedirs(stub)
+    open(os.path.join(stub, "string.h"), "w").write(
+        "#include <stddef.h>\nvoid *memset(void*,int,size_t); void *memcpy(void*,const void*,size_t);\n"
+        "int memcmp(const void*,const void*,size_t); size_t strlen(const char*);\n"
+        "char *strncpy(char*,const char*,size_t); int strcmp(const char*,const char*);\n")
+    open(os.path.join(stub, "stdio.h"), "w").write(
+        "#include <stddef.h>\nint snprintf(char*,size_t,const char*,...); int sprintf(char*,const char*,...);\n")
+    src = ['#include "steam_api_flat.h"']
+    for i, (name, (struct, nparams, _)) in enumerate(BYVALUE.items()):
+        args = ", ".join(["0"] * nparams)
+        src.append(f"{struct} call{i}(ISteamInput* s) {{ return {name}(s{', ' + args if args else ''}); }}")
+    cpp = os.path.join(tmp, "byval.cpp")
+    open(cpp, "w").write("\n".join(src) + "\n")
+    resdir = subprocess.run([clang, "-print-resource-dir"], capture_output=True, text=True).stdout.strip()
+    n = 0
+    for triple in BYVALUE_TARGETS:
+        r = subprocess.run([clang, "-target", triple, "-std=c++17", "-ffreestanding", "-nostdinc++", "-w",
+                            "-isystem", stub, "-isystem", os.path.join(resdir, "include"),
+                            "-I", sdk_dir, "-I", os.path.dirname(os.path.abspath(sdk_dir)),
+                            "-S", "-emit-llvm", "-o", "-", cpp], capture_output=True, text=True)
+        if r.returncode:
+            print(f"by-value returns: clang failed for {triple}:\n{r.stderr[:2000]}")
+            return 1
+        for name, (struct, _, want) in BYVALUE.items():
+            d = re.search(r"^declare .*@" + name + r"\(.*$", r.stdout, re.M)
+            if not d:
+                print(f"by-value {triple} {name}: no declaration in the IR")
+                bad += 1
+                continue
+            ret = re.match(r"declare (?:\w+ )*?(\{[^}]*\}|\[[^\]]*\]|\w+) @", d.group(0)).group(1)
+            got = ("sret" if "sret(" in d.group(0) else "i16" if ret == "i16" else
+                   "two" if re.fullmatch(r"\{ i64, i\d+ \}|\[2 x i64\]", ret) else ret)
+            exp = next(v for k, v in sorted(want.items(), key=lambda kv: -len(kv[0])) if triple.startswith(k))
+            n += 1
+            if got != exp:
+                bad += 1
+                print(f"by-value {triple} {name}: C returns it as {got} ({d.group(0).strip()}), "
+                      f"the hand-written declaration assumes {exp}")
+    print(f"by-value returns: {n} checked ({len(BYVALUE)} exports x {len(BYVALUE_TARGETS)} targets), {bad} different")
+    return bad
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -246,7 +341,7 @@ def main():
     types = gen.TypesUnit(sdk)
     types.emit()
     names = [n for n in types.struct_order() if n not in types.skipped_structs]
-    bad = check_layouts(sdk_dir, sdk, names) + check_flat(sdk_dir)
+    bad = check_layouts(sdk_dir, sdk, names) + check_flat(sdk_dir) + check_byvalue(sdk_dir)
     print("Result: " + ("OK" if not bad else f"{bad} problem(s)"))
     sys.exit(1 if bad else 0)
 

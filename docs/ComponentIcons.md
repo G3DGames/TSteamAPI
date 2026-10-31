@@ -7,7 +7,7 @@ the generator (`tools/gen_steam_api.py`) will attach each new plug-in's icon
 automatically.
 
 Status: **to do later** (owner, 2026-10-30 - "no point until we're
-finished"). 6 needed now, 20 planned.
+finished"). 11 needed now, 15 more planned.
 
 ## Format
 
@@ -34,6 +34,11 @@ finished"). 6 needed now, 20 planned.
 | `TSteamFriends` | ISteamFriends | two people |
 | `TSteamApps` | ISteamApps | app tile / box |
 | `TSteamUserStats` | ISteamUserStats | trophy (achievements, leaderboards) |
+| `TSteamRemoteStorage` | ISteamRemoteStorage | cloud (Steam Cloud saves) |
+| `TSteamScreenshots` | ISteamScreenshots | camera |
+| `TSteamTimeline` | ISteamTimeline | timeline / markers |
+| `TSteamUGC` | ISteamUGC | puzzle piece / workshop |
+| `TSteamInput` | ISteamInput | gamepad |
 
 ## Planned
 
@@ -43,11 +48,6 @@ generated - this file is updated if so.
 
 | Class | Interface | Suggested symbol |
 |---|---|---|
-| `TSteamRemoteStorage` | ISteamRemoteStorage | cloud (Steam Cloud saves) |
-| `TSteamScreenshots` | ISteamScreenshots | camera |
-| `TSteamTimeline` | ISteamTimeline | timeline / markers |
-| `TSteamUGC` | ISteamUGC | puzzle piece / workshop |
-| `TSteamInput` | ISteamInput | gamepad |
 | `TSteamHTTP` | ISteamHTTP | globe |
 | `TSteamInventory` | ISteamInventory | backpack / chest |
 | `TSteamMatchmaking` | ISteamMatchmaking | lobby / group joining |

@@ -271,7 +271,10 @@ Project AppID: 2275430.
 ## Known gaps / to check
 - Generated binding (2026-10-30, SDK 1.65 headers + steam_api.json from the
   owner): Steamworks.SDKTypes (all typedefs / enums / constants / 209 structs
-  and callback structs) and plug-ins Utils, User, Friends, Apps, UserStats.
+  and callback structs) and plug-ins Utils, User, Friends, Apps, UserStats;
+  RemoteStorage, Screenshots, Timeline, UGC, Input added in the fifth
+  session (Input with a hand-written by-value shim, see the fifth-session
+  notes).
   verify_generated.py: 836 layouts (209 structs x Win64/Win32/Linux64/macOS
   ARM64) and 229 flat signatures identical to the C headers; both checks
   proven to catch deliberate errors. NOT YET COMPILED by Delphi or FPC - the
@@ -387,8 +390,87 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   Build / Clean / Make order intact. The file-by-file comparison needs the
   previous zips (not in the new workspace).
 - BasicFormFMX REMOVED (owner): out of Steamworks.groupproj and
-  gen_projects.py, README layout. Owner runs `git rm -r demos/BasicFormFMX`
-  (zips cannot delete).
+  gen_projects.py, README layout. Pushed and verified (190842b).
+- SDK headers supplied (AllSteamHeaders.zip, public/steam incl. lib/ and
+  steam_api.json). Regeneration reproduced the pushed binding exactly
+  (line endings only) before any change.
+- GENERATOR BATCH 1 (zip Plugins5): RemoteStorage, Screenshots, Timeline,
+  UGC - every method of all four generated (none unsupported); no change to
+  SDKTypes (their structs and callbacks were already there) or to the five
+  older plug-ins. verify_generated.py: 836 layouts, 414 flat signatures (185
+  new) identical. Added to Steamworks.dpk / .dproj, SteamworksLCL.lpk,
+  gen_projects.py; doc_extras + generated pages; README, docs, icons brief.
+  SteamConsole prints a line for each (cloud quota / files, screenshots
+  hooked, a timeline event with string + Single + enum arguments, UGC
+  subscribed counts with a Boolean argument - the narrow-argument case).
+  TESTED 23:18 (owner, Win64 Delphi 13, log checked): all four compile;
+  SteamConsole: 9 plug-ins initialised; RemoteStorage cloud on for the
+  account, OFF for the app, 0 files, quota 102400000 free of 102400000;
+  Screenshots hooked False; Timeline event handle 1 (strings + Single +
+  enum arrived); UGC 0 / 0 / 0 (Boolean argument fine on Win64). Steam
+  Cloud is not enabled for 2275430 on the partner site (writes will fail).
+- Generator rule (new): Valve names already ending in Async (RemoteStorage
+  FileWriteAsync / FileReadAsync) get their handler variant as an OVERLOAD
+  of the same name, never ...AsyncAsync; gen_docs.py classifies async
+  variants by their AHandler parameter, not by name.
+- Not done on purpose: hand wrappers for the raw-pointer methods (UGC 21,
+  RemoteStorage 7, Screenshots 1 - string buffers, id arrays); RemoteStorage
+  Workshop v1 tag arrays stay `var SteamParamStringArray_t` (the header
+  declares them non-const).
+- INPUT (zip Input1, follows Plugins5): ISteamInput generated (47 methods)
+  + tools/plugin_extras/Input.pas.txt. GetDigitalActionData /
+  GetAnalogActionData / GetMotionData return pack(1) structs (2 / 13 / 40
+  bytes) BY VALUE; clang IR per target (checked, now permanent in
+  verify_generated.py section 3, "by-value returns", 3 exports x 7 targets,
+  proven to catch deliberate errors):
+    Digital  i16 in a register everywhere except i386 System V
+    Analog   sret on Windows; two registers on x64 / ARM64 Unix
+    Motion   sret everywhere (X8 on ARM64)
+  MSVC Win32: caller pops the sret pointer ("retl"); i386 Linux: callee
+  pops it ("retl $4"). Shim: Digital read as UInt16; Analog / Motion an
+  explicit first result-pointer parameter on Windows (and Motion on x64
+  Unix), a 16-byte two-UInt64 record for Analog on Unix, the compiler's
+  record return for Motion on ARM64 (X8) and everything on Linux32
+  (UNVERIFIED). Extras: Start / Stop (Init / Shutdown paired; Stop runs in
+  the new //@finalize section, before SteamAPI_Shutdown), ConnectedControllers,
+  Digital / AnalogActionOrigins, STEAM_INPUT_MAX_COUNT / _ORIGINS.
+  EnableActionEventCallbacks stays raw (SteamInputActionEvent_t is a union).
+  Generator: //@finalize extras section; the report lists hand-written
+  methods as such. gen_projects.py: "files" option (copied next to the exe
+  by the Windows post-build, deployed beside the library elsewhere).
+  demos/SteamInputDemo (FMX, desktop platforms): TSteamAPI + TSteamInput on
+  the form, src/steam_input_manifest.vdf (sets InGame: Move / Camera /
+  Throttle / Fire / Jump / Menu, Menu: Select / Back; no default layouts),
+  16 ms poll timer = game loop with explicit RunFrame on the UI thread; logs
+  controllers, button edges, stick moves, first motion data, bindings,
+  Bindings / Rumble results. SteamConsole calls the three shim exports once
+  (handle 0 -> zeros; a wrong ABI would crash). Show info in SteamDemo /
+  VCL / LCL now prints the four plug-ins of batch 1. SteamInputDemo also
+  lists every action's bindings with Steam's glyph
+  (GetGlyphPNGForActionOrigin, Small, Knockout) and logs each glyph path.
+  Independent review (no compiler) found ONE certain error - the FMX
+  SteamDemo Show-info block had landed inside the UserStats except before
+  its `on` handler - fixed; also fixed from it: the GetMotionData body test
+  now mirrors its type declaration (32-bit non-x86 targets), i686 Linux
+  added to the by-value check (all sret; the FPC side stays unverified),
+  verify's temp folder removed on every path, the demo re-resolves ALL
+  handles on a new configuration and logs bindings only once every handle
+  is known, gen_projects "files" no longer needs "redist" (Android would
+  need assets\internal\ - not supported). NOT YET COMPILED.
+- PLANNED (owner, 23:47): commissioned CC0 3D gamepad models - Xbox, PS5,
+  Steam Controller - glTF (.glb), one animation with a rig and bones.
+  Use: a 3D pad visualiser driven by Steam Input (CGE first - FPC 3.2.2,
+  then Gorilla3D). Waiting on the designer for bone / animation names
+  (to map to EInputActionOrigin). Sizes (owner, 23:52): PS5 824 KB, Xbox
+  One 1077 KB, Steam Controller 1709 KB - 3.6 MB together, fine in plain
+  git (no LFS needed). Design
+  note: the visualiser needs PHYSICAL buttons, so give it its own action
+  set with one action per button and use the origins to place them.
+  Steam's glyphs (GetGlyphPNGForActionOrigin) cover 2D prompts; Kenney's
+  CC0 input prompts (kenney.nl) were offered as a fallback for keyboard /
+  mouse and for pads that bypass Steam Input (XInput).
+- Tried: FPC 3.2.2 from Castle Game Engine's GitHub release bundle - GitHub
+  release downloads are blocked by the proxy (403), like apt. No compiler.
 
 ## Handover (2026-10-30, end of fourth session) - READ THIS FIRST
 State: the owner is pushing this session's work on top of 7ffc71e. Zips, in
@@ -446,13 +528,15 @@ the group's Dependencies and Build / Clean / Make target order.
 - TGorillaTimerMode value names (docs describe the queue-once mode only by
   behaviour).
 - Component icons: brief in docs/ComponentIcons.md (.ico, 16/24/32/36/48 px;
-  6 now, 20 planned). Then package them (Delphi .dcr/.res, Lazarus resources
+  11 now, 15 more planned). Then package them (Delphi .dcr/.res, Lazarus resources
   in the .lpk) and generate them for new plug-ins in gen_steam_api.py.
 
 ### Next, in order
 1. Verify the push (above).
 2. Generator batch (owner: "do other plugins as we go"): RemoteStorage,
-   Screenshots, Timeline, UGC, ...; then C unions (Networking*, Input);
+   Screenshots, Timeline, UGC DONE in the fifth session (not yet compiled);
+   Input DONE (shim, demo; not yet compiled); next HTTP, Inventory,
+   Matchmaking, Parties, ...; then C unions (Networking*, Input);
    game-server interfaces last. Needs the SDK's public/steam folder zipped.
    Each new plug-in: add its unit to packages/SteamworksLCL.lpk by hand, run
    tools/gen_docs.py, update docs/ComponentIcons.md if names differ.

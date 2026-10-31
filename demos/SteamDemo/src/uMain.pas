@@ -23,7 +23,8 @@ uses
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.Callbacks, Steamworks.Core, Steamworks.Components,
   Steamworks.FMX,
   Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
-  Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
+  Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage,
+  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC;
 
 const
   { AppID of this project on Steam. }
@@ -240,6 +241,12 @@ end;
 procedure TfrmMain.btnInfoClick(Sender: TObject);
 var
   U: TSteamUtilsPlugin;
+  RS: TSteamRemoteStoragePlugin;
+  Shots: TSteamScreenshotsPlugin;
+  Tl: TSteamTimelinePlugin;
+  Ugc: TSteamUGCPlugin;
+  QuotaTotal, QuotaAvailable: UInt64;
+  TlEvent: TimelineEventHandle_t;
   Usr: TSteamUserPlugin;
   Fr: TSteamFriendsPlugin;
   Apps: TSteamAppsPlugin;
@@ -331,6 +338,48 @@ begin
       [Stats.GetNumAchievements]));
   except
     on E: Exception do AddLog('ISteamUserStats failed: ' + E.Message);
+  end;
+  // Plug-ins added 2026-10-30 (fifth session): one line each, as in SteamConsole
+  try
+    RS := TSteamRemoteStoragePlugin(SteamAPI1.Steam.FindPlugin(TSteamRemoteStoragePlugin));
+    if RS <> nil then
+    begin
+      QuotaTotal := 0;
+      QuotaAvailable := 0;
+      RS.GetQuota(QuotaTotal, QuotaAvailable);
+      AddLog(Format('ISteamRemoteStorage: cloud enabled for account %s / app %s, %d files, quota %s of %s bytes free',
+        [BoolToStr(RS.IsCloudEnabledForAccount, True), BoolToStr(RS.IsCloudEnabledForApp, True),
+         RS.GetFileCount, IntToStr(Int64(QuotaAvailable)), IntToStr(Int64(QuotaTotal))]));
+    end;
+  except
+    on E: Exception do AddLog('ISteamRemoteStorage failed: ' + E.Message);
+  end;
+  try
+    Shots := TSteamScreenshotsPlugin(SteamAPI1.Steam.FindPlugin(TSteamScreenshotsPlugin));
+    if Shots <> nil then
+      AddLog('ISteamScreenshots: hooked by the game ' + BoolToStr(Shots.IsScreenshotsHooked, True));
+  except
+    on E: Exception do AddLog('ISteamScreenshots failed: ' + E.Message);
+  end;
+  try
+    Tl := TSteamTimelinePlugin(SteamAPI1.Steam.FindPlugin(TSteamTimelinePlugin));
+    if Tl <> nil then
+    begin
+      // strings, a Single and an enum in one call; only visible in a recording
+      TlEvent := Tl.AddInstantaneousTimelineEvent('Show info', 'Demo test', 'steam_flag',
+        0, 0, k_ETimelineEventClipPriority_None);
+      AddLog('ISteamTimeline: instantaneous event added, handle ' + IntToStr(Int64(TlEvent)));
+    end;
+  except
+    on E: Exception do AddLog('ISteamTimeline failed: ' + E.Message);
+  end;
+  try
+    Ugc := TSteamUGCPlugin(SteamAPI1.Steam.FindPlugin(TSteamUGCPlugin));
+    if Ugc <> nil then
+      AddLog(Format('ISteamUGC: %d subscribed items (%d incl. locally disabled), %d downloaded',
+        [Ugc.GetNumSubscribedItems(False), Ugc.GetNumSubscribedItems(True), Ugc.GetNumDownloadedItems]));
+  except
+    on E: Exception do AddLog('ISteamUGC failed: ' + E.Message);
   end;
 end;
 

@@ -17,7 +17,7 @@ procedure Register;
 implementation
 
 uses
-  Classes, DesignIntf, DesignEditors, Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
+  Classes, DesignIntf, DesignEditors, Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Steamworks.Plugin.Input;
 
 type
   // Adds the units the IDE-generated event handlers need (record and
@@ -37,7 +37,7 @@ end;
 
 procedure Register;
 begin
-  RegisterComponents('Steamworks', [TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats]);
+  RegisterComponents('Steamworks', [TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput]);
   RegisterSelectionEditor(TSteamPluginComponent, TSteamPluginSelectionEditor);
 end;
 

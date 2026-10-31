@@ -26,8 +26,10 @@ Each plug-in unit has
   * Every export is bound as optional; calling one the loaded library lacks
     raises ESteamworksError naming the export.
 Hand-written additions live in tools/plugin_extras/<Name>.pas.txt (sections
-//@uses //@types //@private //@public //@implementation //@initialize) and
-are merged verbatim. Generated files must never be edited by hand.
+//@uses //@types //@private //@public //@implementation //@initialize
+//@finalize) and are merged verbatim. A method the generator cannot emit (a
+struct returned by value, as in ISteamInput) may be written there by hand
+under its generated name; the report then lists it as hand-written. Generated files must never be edited by hand.
 
 Rules this generator enforces (see CLAUDE.md):
   * ASCII only; doc comment for every declaration (tools/pasdoc_check.py);
@@ -56,6 +58,11 @@ PLUGINS = {
     "ISteamFriends": "Friends",
     "ISteamApps": "Apps",
     "ISteamUserStats": "UserStats",
+    "ISteamRemoteStorage": "RemoteStorage",
+    "ISteamScreenshots": "Screenshots",
+    "ISteamTimeline": "Timeline",
+    "ISteamUGC": "UGC",
+    "ISteamInput": "Input",
 }
 
 # Declared by hand in lib/Steamworks.Types.pas (read at run time as well).
@@ -778,9 +785,25 @@ class PluginUnit:
             ps.append(extra)
         return ("(" + "; ".join(ps) + ")") if ps else ""
 
+    @staticmethod
+    def has_async(m):
+        """True when the method gets a handler variant (a known call result)."""
+        return bool(m["callresult"]) and m["ret_f"] == "SteamAPICall_t"
+
+    @staticmethod
+    def async_name(m):
+        """Name of the handler variant: <Name>Async, or an overload of <Name>
+        itself when Valve's name already ends in Async (FileReadAsync), so it
+        never becomes FileReadAsyncAsync."""
+        return m["name"] if m["name"].endswith("Async") else m["name"] + "Async"
+
+    def overloaded(self, m):
+        """The plain method and its handler variant share one name."""
+        return self.has_async(m) and self.async_name(m) == m["name"]
+
     def header(self, m, async_=False):
         params = self.friendly_params(m, "AHandler: TSteamCallResultEvent" if async_ else None)
-        name = m["name"] + ("Async" if async_ else "")
+        name = self.async_name(m) if async_ else m["name"]
         if async_:
             return f"function {name}{params}: SteamAPICall_t"
         if m["ret_f"] is None:
@@ -875,13 +898,14 @@ class PluginUnit:
         w("")
         for m in self.methods:
             w(doc(self.method_text(m), "    "))
-            w(f"    {self.header(m)};")
-            if m["callresult"] and m["ret_f"] == "SteamAPICall_t":
+            ov = " overload;" if self.overloaded(m) else ""
+            w(f"    {self.header(m)};{ov}")
+            if self.has_async(m):
                 w(doc(f"Calls @link({m['name']}) and registers AHandler for its result "
                       f"(@link({m['callresult']})). The handler's object owns the registration "
                       "(remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, "
                       "or k_uAPICallInvalid when Steam refused the call.)", "    "))
-                w(f"    {self.header(m, True)};")
+                w(f"    {self.header(m, True)};{ov}")
         if self.extras.get("public"):
             w("")
             out.extend(self.extras["public"])
@@ -941,6 +965,7 @@ class PluginUnit:
         w("")
         w(f"procedure {self.cls}.DoFinalize;")
         w("begin")
+        out.extend(self.extras.get("finalize", []))  # runs before SteamAPI_Shutdown
         w("  FIntf := nil;")
         w(f"  FFlat := Default({self.flat_t});")
         w("end;")
@@ -955,7 +980,7 @@ class PluginUnit:
         w("")
         for m in self.methods:
             out.extend(self.body(m))
-            if m["callresult"] and m["ret_f"] == "SteamAPICall_t":
+            if self.has_async(m):
                 out.extend(self.async_body(m))
         if self.extras.get("implementation"):
             out.extend(self.extras["implementation"])
@@ -1080,7 +1105,8 @@ class PluginUnit:
         return lines
 
     def async_body(self, m):
-        hdr = self.header(m, True).replace(f" {m['name']}Async", f" {self.cls}.{m['name']}Async", 1)
+        an = self.async_name(m)
+        hdr = self.header(m, True).replace(f" {an}(", f" {self.cls}.{an}(", 1)
         args = ", ".join(p.pname for p in m["params"])
         return [hdr + ";", "begin",
                 f"  Result := {m['name']}({args});" if args else f"  Result := {m['name']};",
@@ -1135,8 +1161,13 @@ def main():
     for ci, name in PLUGINS.items():
         u = PluginUnit(sdk, by_name[ci], name, types)
         write(f"lib/plugins/Steamworks.Plugin.{name}.pas", u.emit())
+        hand = "\n".join(u.extras.get("public", []))
         for x in u.unsupported:
-            sdk.report.append(f"{ci}: not generated: {x}")
+            short = x.split(":")[0][len(u.prefix):]
+            if re.search(r"\b(function|procedure)\s+" + re.escape(short) + r"\b", hand):
+                sdk.report.append(f"{ci}: {short} hand-written in tools/plugin_extras/{name}.pas.txt")
+            else:
+                sdk.report.append(f"{ci}: not generated: {x}")
         if u.raw_methods:
             sdk.report.append(f"{ci}: {len(u.raw_methods)} methods keep raw pointer parameters "
                               f"(candidates for hand wrappers): {', '.join(u.raw_methods)}")

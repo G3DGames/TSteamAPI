@@ -19,13 +19,18 @@ link to it.
 | [TSteamFriends](TSteamFriends.md) | ISteamFriends | Persona, friends, avatars, overlay dialogs, rich presence |
 | [TSteamApps](TSteamApps.md) | ISteamApps | Ownership, DLC, game language, launch parameters, betas |
 | [TSteamUserStats](TSteamUserStats.md) | ISteamUserStats | Stats, achievements (and icons), leaderboards |
+| [TSteamRemoteStorage](TSteamRemoteStorage.md) | ISteamRemoteStorage | Steam Cloud saves (files synced across machines) |
+| [TSteamScreenshots](TSteamScreenshots.md) | ISteamScreenshots | Taking, supplying and tagging screenshots |
+| [TSteamTimeline](TSteamTimeline.md) | ISteamTimeline | Game recording: events, game phases, game mode |
+| [TSteamUGC](TSteamUGC.md) | ISteamUGC | Workshop: query, create, update, subscribe, install |
+| [TSteamInput](TSteamInput.md) | ISteamInput | Controllers: action sets, digital / analog / motion data, rumble |
 
-More interfaces (RemoteStorage, Screenshots, Timeline, UGC, Input,
-Networking, ...) are generated in later batches; each gets a page here.
+More interfaces (HTTP, Inventory, Matchmaking, Networking, ...) are
+generated in later batches; each gets a page here.
 
 ## How these pages are made
 
-The interface pages (`TSteamUtils.md` ... `TSteamUserStats.md`) are
+The interface pages (`TSteamUtils.md` ... `TSteamUGC.md`) are
 **generated** from the generated units by `tools/gen_docs.py` - every
 method, property, event and payload record is listed, with Valve's SDK
 comments. The overview text at the top of each page comes from

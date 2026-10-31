@@ -54,7 +54,7 @@ Open `Steamworks.groupproj` in Delphi. It contains, in build order:
 | Project | Kind | Contents |
 |---------|------|----------|
 | `Steamworks` | runtime package | the whole framework-free library: core, plug-ins, plug-in components (`lib/`, `lib/plugins/`) |
-| `dclSteamworks` | design package | registers the plug-in components (TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats) |
+| `dclSteamworks` | design package | registers the plug-in components (TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput) |
 | `SteamworksFMX` / `dclSteamworksFMX` | runtime / design | the FMX `TSteamAPI` |
 | `SteamworksVCL` / `dclSteamworksVCL` | runtime / design | the VCL `TSteamAPI` |
 | `SteamDemo`, `SteamDemoVCL`, `SteamConsole` | demos | |

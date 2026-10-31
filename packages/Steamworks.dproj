@@ -195,6 +195,11 @@
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Friends.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Apps.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.UserStats.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.RemoteStorage.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Screenshots.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Timeline.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.UGC.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Input.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

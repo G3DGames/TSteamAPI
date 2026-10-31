@@ -19,11 +19,11 @@ procedure Register;
 implementation
 
 uses
-  Classes, Steamworks.LCL, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
+  Classes, Steamworks.LCL, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Steamworks.Plugin.Input;
 
 procedure Register;
 begin
-  RegisterComponents('Steamworks', [TSteamAPI, TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats]);
+  RegisterComponents('Steamworks', [TSteamAPI, TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput]);
 end;
 
 end.

@@ -58,6 +58,12 @@ lib/                        framework-free library (Delphi + FPC)
     Steamworks.Plugin.Friends.pas    ISteamFriends
     Steamworks.Plugin.Apps.pas       ISteamApps
     Steamworks.Plugin.UserStats.pas  ISteamUserStats (stats, achievements, leaderboards)
+    Steamworks.Plugin.RemoteStorage.pas  ISteamRemoteStorage (Steam Cloud files)
+    Steamworks.Plugin.Screenshots.pas    ISteamScreenshots
+    Steamworks.Plugin.Timeline.pas       ISteamTimeline (game recording markers)
+    Steamworks.Plugin.UGC.pas            ISteamUGC (Workshop)
+    Steamworks.Plugin.Input.pas          ISteamInput (controllers; three methods
+                                         hand-written per platform - by-value structs)
 fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread)
   Steamworks.FMX.Reg.pas    design-time registration of the FMX TSteamAPI
@@ -80,6 +86,8 @@ demos/
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form
   SteamConsole/             console smoke test (no framework; FPC-ready)
+  SteamInputDemo/           Steam Input test (FMX): action manifest in src/, live
+                            digital / analog / motion values, bindings, rumble
 docs/                       user documentation (Markdown)
   Install-Delphi.md, Install-Lazarus-FPC.md, GameEngineIntegration.md
   components/               TSteamAPI.md + README.md (hand-written),
@@ -129,7 +137,9 @@ Step by step, with every alarming-looking message explained:
       target (Win32, Win64, ...); the last configuration built (Debug or
       Release) is the one your projects link.
    2. **Install** `dclSteamworks` (the plug-in components: TSteamUtils,
-      TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats) and
+      TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats,
+      TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC,
+      TSteamInput) and
       `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
       (the VCL TSteamAPI). They appear on the "Steamworks"
       palette page.
@@ -186,8 +196,8 @@ Every framework unit declares a `TSteamAPI` with the same properties and
 events (FMX now; VCL and LCL next), all built on `TCustomSteamAPI` in
 `Steamworks.Components`, which holds the whole lifecycle. Each generated
 plug-in unit also declares a component named after the interface -
-`TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`, `TSteamUserStats`
-- that works with any framework:
+`TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`, `TSteamUserStats`,
+`TSteamRemoteStorage`, `TSteamScreenshots`, `TSteamTimeline`, `TSteamUGC`, `TSteamInput` - that works with any framework:
 
 * `SteamAPI` links it to the root; at run time a component whose owner has
   exactly one `TSteamAPI` links itself.
@@ -431,6 +441,14 @@ forward-declared in the public headers). New interfaces are added to the
 Things that look like bugs in the library or the demos but are Steam's, or
 Windows', normal behaviour. Each says why and what to do.
 
+> **SteamInputDemo lists no controller, or every action stays 0.**
+> Xbox and generic controllers only reach Steam Input when it is enabled for
+> the game in the Steam client (Library -> the game's Properties ->
+> Controller). And with no default layout in the action manifest, the
+> actions are unbound until a layout is chosen or created: press
+> **Bindings...** (needs the overlay) or open the game's controller layout
+> from the Steam client. The log says which actions are "NOT BOUND".
+
 > **Achievement icon is 0 / an image you uploaded never appears.**
 > `GetAchievementIcon` returns 0 both while Steam is still fetching the icon
 > (then `OnUserAchievementIconFetched` brings the real handle) and when the
@@ -510,11 +528,13 @@ python3 tools/gen_docs.py        # regenerates docs/components/TSteam<Name>.md
 * Core (`steam_api.h`, `steam_api_common.h`, `steam_api_internal.h`,
   `isteamclient.h`) done.
 * Generated: all SDK types, and plug-ins for Utils, User, Friends, Apps and
-  UserStats, with one documentation page each (docs/components/).
-* Update modes (timer / worker thread / manual) - written 2026-10-30, not
-  yet compiled or run.
-* Next batches: RemoteStorage, UGC, Screenshots, Timeline, Input, HTTP,
-  Inventory, Matchmaking, Networking* (needs C union support in the
-  generator), HTMLSurface, Video, ParentalSettings, RemotePlay, Music.
-* VCL component (`vcl/`), then Lazarus/FPC component and `.lpi` projects.
+  UserStats, RemoteStorage, Screenshots, Timeline and UGC (tested, Win64),
+  Input (with a hand-written by-value shim and SteamInputDemo; not yet
+  compiled), with one documentation page each (docs/components/).
+* Update modes (timer / worker thread / manual) - tested on Win64 with
+  Delphi 13 and FPC 3.2.2.
+* Components for FMX, VCL and LCL (Lazarus package) - tested on Win64.
+* Next batches: HTTP, Inventory, Matchmaking, Parties, Networking*
+  (needs C union support in the generator), HTMLSurface, Video,
+  ParentalSettings, RemotePlay, Music.
 * Game-server API (`SteamGameServer_*`).

@@ -127,7 +127,8 @@ events - call `Close` there and free it later.
 ## Plug-in components
 
 `TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`,
-`TSteamUserStats` (more as the binding grows) each wrap one Steam interface.
+`TSteamUserStats`, `TSteamRemoteStorage`, `TSteamScreenshots`,
+`TSteamTimeline`, `TSteamUGC`, `TSteamInput` (more as the binding grows) each wrap one Steam interface.
 Link them through their `SteamAPI` property; at run time a component whose
 owner holds exactly one `TSteamAPI` links itself. Only the plug-ins you
 drop or `use` are linked into the program. See [README.md](README.md).

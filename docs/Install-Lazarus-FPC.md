@@ -44,7 +44,8 @@ licensed to Steamworks partners and must never be committed.
 
 `packages/SteamworksLCL.lpk` puts `TSteamAPI` (LCL) and the plug-in
 components (`TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`,
-`TSteamUserStats`) on a **Steamworks** palette page, and lets the form
+`TSteamUserStats`, `TSteamRemoteStorage`, `TSteamScreenshots`,
+`TSteamTimeline`, `TSteamUGC`, `TSteamInput`) on a **Steamworks** palette page, and lets the form
 designer open forms that use them (such as SteamDemoLCL's).
 
 1. **Package -> Open Package File (.lpk)**, choose

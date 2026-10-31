@@ -41,7 +41,9 @@ uses
   SysUtils, Classes, SyncObjs, DateUtils, StrUtils,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
   Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
-  Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats;
+  Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage,
+  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC,
+  Steamworks.Plugin.Input;
 
 const
   { AppID of this project on Steam. }
@@ -119,6 +121,18 @@ var
   Fr: TSteamFriendsPlugin;
   Apps: TSteamAppsPlugin;
   Stats: TSteamUserStatsPlugin;
+  RS: TSteamRemoteStoragePlugin;
+  Shots: TSteamScreenshotsPlugin;
+  Tl: TSteamTimelinePlugin;
+  Ugc: TSteamUGCPlugin;
+  QuotaTotal, QuotaAvailable: UInt64;
+  TlEvent: TimelineEventHandle_t;
+  Inp: TSteamInputPlugin;
+  Pads: TSteamInputHandleArray;
+  Pad: InputHandle_t;
+  Dig: InputDigitalActionData_t;
+  Ana: InputAnalogActionData_t;
+  Mot: InputMotionData_t;
   Achieved: Boolean;
   UnlockTime: UInt32;
   V: string;
@@ -209,6 +223,51 @@ begin
             Say(Format('  %s "%s": locked', [V, Stats.GetAchievementDisplayAttribute(V, 'name')]));
         end;
       end;
+      RS := TSteamRemoteStoragePlugin(Steam.FindPlugin(TSteamRemoteStoragePlugin));
+      if RS <> nil then
+      begin
+        QuotaTotal := 0;
+        QuotaAvailable := 0;
+        RS.GetQuota(QuotaTotal, QuotaAvailable);
+        Say(Format('ISteamRemoteStorage: cloud enabled for account %s / app %s, %d files, quota %s of %s bytes free',
+          [BoolToStr(RS.IsCloudEnabledForAccount, True), BoolToStr(RS.IsCloudEnabledForApp, True),
+           RS.GetFileCount, IntToStr(Int64(QuotaAvailable)), IntToStr(Int64(QuotaTotal))]));
+      end;
+      Shots := TSteamScreenshotsPlugin(Steam.FindPlugin(TSteamScreenshotsPlugin));
+      if Shots <> nil then
+        Say('ISteamScreenshots: hooked by the game ' + BoolToStr(Shots.IsScreenshotsHooked, True));
+      Tl := TSteamTimelinePlugin(Steam.FindPlugin(TSteamTimelinePlugin));
+      if Tl <> nil then
+      begin
+        // strings, a Single and an enum in one call; only visible in a recording
+        TlEvent := Tl.AddInstantaneousTimelineEvent('SteamConsole', 'Smoke test', 'steam_flag',
+          0, 0, k_ETimelineEventClipPriority_None);
+        Say('ISteamTimeline: instantaneous event added, handle ' + IntToStr(Int64(TlEvent)));
+      end;
+      Ugc := TSteamUGCPlugin(Steam.FindPlugin(TSteamUGCPlugin));
+      if Ugc <> nil then
+        Say(Format('ISteamUGC: %d subscribed items (%d incl. locally disabled), %d downloaded',
+          [Ugc.GetNumSubscribedItems(False), Ugc.GetNumSubscribedItems(True), Ugc.GetNumDownloadedItems]));
+      Inp := TSteamInputPlugin(Steam.FindPlugin(TSteamInputPlugin));
+      if (Inp <> nil) and Inp.Start(True) then
+      begin
+        // The three by-value exports (hand-written ABI shim), called once
+        // with action handle 0: Steam returns zeros, a wrong declaration
+        // would crash or corrupt the stack here. The plug-in calls Shutdown.
+        Inp.RunFrame(False);
+        Pads := Inp.ConnectedControllers;
+        Pad := 0;
+        if Length(Pads) > 0 then
+          Pad := Pads[0];
+        Dig := Inp.GetDigitalActionData(Pad, 0);
+        Ana := Inp.GetAnalogActionData(Pad, 0);
+        Mot := Inp.GetMotionData(Pad);
+        Say(Format('ISteamInput: %d controller(s); shim calls returned digital %s/%s, analog %.2f/%.2f/%s, motion quat w %.2f',
+          [Length(Pads), BoolToStr(Dig.bState, True), BoolToStr(Dig.bActive, True), Ana.x, Ana.y,
+           BoolToStr(Ana.bActive, True), Mot.rotQuatW]));
+      end
+      else
+        Say('ISteamInput: not started');
     except
       on E: Exception do
         Say('Plug-in call failed: ' + E.ClassName + ': ' + E.Message);

@@ -313,7 +313,9 @@ def generate(name, sdk):
             continue
         if decl.startswith("property"):
             props.append((d, decl))
-        elif nm.endswith("Async"):
+        elif "AHandler: TSteamCallResultEvent" in decl:
+            # by parameter, not by name: Valve's own FileReadAsync is a plain
+            # method, its handler variant an overload of the same name
             asyncs.append((d, decl))
         elif decl.startswith(("function", "procedure", "class function", "class procedure")):
             methods.append((d, decl))
@@ -365,6 +367,13 @@ def generate(name, sdk):
         w("the same name returns the `SteamAPICall_t` instead, and its result reaches the")
         w("component's event.")
         w("")
+        plain = {member_name(decl) for _, decl in methods}
+        same = sorted({member_name(decl) for _, decl in asyncs} & plain)
+        if same:
+            w("Valve's own " + " / ".join(f"`{n}`" for n in same) + " already end in Async:")
+            w("there the handler variant is an overload of the same name with the extra")
+            w("`AHandler` parameter.")
+            w("")
         emit_list(asyncs)
     else:
         w("None.")

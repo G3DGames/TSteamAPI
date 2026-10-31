@@ -16,7 +16,7 @@
         </SyntaxOptions>
       </Parsing>
     </CompilerOptions>
-    <Description Value="Steamworks SDK 1.65 for Lazarus: the LCL TSteamAPI and the plug-in components (TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats) on the Steamworks palette page. Compiles the library from the repository's lib, lib/plugins and lcl folders."/>
+    <Description Value="Steamworks SDK 1.65 for Lazarus: the LCL TSteamAPI and the plug-in components (TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput) on the Steamworks palette page. Compiles the library from the repository's lib, lib/plugins and lcl folders."/>
     <Version Major="1"/>
     <Files>
       <Item>
@@ -83,6 +83,26 @@
       <Item>
         <Filename Value="../lib/plugins/Steamworks.Plugin.UserStats.pas"/>
         <UnitName Value="Steamworks.Plugin.UserStats"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.RemoteStorage.pas"/>
+        <UnitName Value="Steamworks.Plugin.RemoteStorage"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Screenshots.pas"/>
+        <UnitName Value="Steamworks.Plugin.Screenshots"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Timeline.pas"/>
+        <UnitName Value="Steamworks.Plugin.Timeline"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.UGC.pas"/>
+        <UnitName Value="Steamworks.Plugin.UGC"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Input.pas"/>
+        <UnitName Value="Steamworks.Plugin.Input"/>
       </Item>
       <Item>
         <Filename Value="../lib/Steamworks.inc"/>

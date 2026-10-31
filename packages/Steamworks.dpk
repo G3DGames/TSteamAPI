@@ -23,6 +23,11 @@ contains
   Steamworks.Plugin.User in '..\lib\plugins\Steamworks.Plugin.User.pas',
   Steamworks.Plugin.Friends in '..\lib\plugins\Steamworks.Plugin.Friends.pas',
   Steamworks.Plugin.Apps in '..\lib\plugins\Steamworks.Plugin.Apps.pas',
-  Steamworks.Plugin.UserStats in '..\lib\plugins\Steamworks.Plugin.UserStats.pas';
+  Steamworks.Plugin.UserStats in '..\lib\plugins\Steamworks.Plugin.UserStats.pas',
+  Steamworks.Plugin.RemoteStorage in '..\lib\plugins\Steamworks.Plugin.RemoteStorage.pas',
+  Steamworks.Plugin.Screenshots in '..\lib\plugins\Steamworks.Plugin.Screenshots.pas',
+  Steamworks.Plugin.Timeline in '..\lib\plugins\Steamworks.Plugin.Timeline.pas',
+  Steamworks.Plugin.UGC in '..\lib\plugins\Steamworks.Plugin.UGC.pas',
+  Steamworks.Plugin.Input in '..\lib\plugins\Steamworks.Plugin.Input.pas';
 
 end.
