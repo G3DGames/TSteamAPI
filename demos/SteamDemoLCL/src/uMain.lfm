@@ -1,0 +1,237 @@
+object frmSteamDemo: TfrmSteamDemo
+  Left = 0
+  Height = 902
+  Top = 0
+  Width = 1416
+  Caption = 'Steamworks LCL Demo - AppID 2275430 (SDK 1.65)'
+  ClientHeight = 902
+  ClientWidth = 1416
+  DesignTimePPI = 144
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  object pnlButtons: TPanel
+    Left = 0
+    Height = 72
+    Top = 0
+    Width = 944
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 72
+    ClientWidth = 944
+    TabOrder = 0
+    object btnStart: TButton
+      Left = 12
+      Height = 42
+      Top = 15
+      Width = 165
+      Caption = 'Start Steam'
+      TabOrder = 0
+      OnClick = btnStartClick
+    end
+    object btnInfo: TButton
+      Left = 189
+      Height = 42
+      Top = 15
+      Width = 165
+      Caption = 'Show info'
+      TabOrder = 1
+      OnClick = btnInfoClick
+    end
+    object btnStop: TButton
+      Left = 366
+      Height = 42
+      Top = 15
+      Width = 165
+      Caption = 'Stop Steam'
+      TabOrder = 2
+      OnClick = btnStopClick
+    end
+    object btnCopy: TButton
+      Left = 543
+      Height = 42
+      Top = 15
+      Width = 165
+      Caption = 'Copy log'
+      TabOrder = 3
+      OnClick = btnCopyClick
+    end
+  end
+  object pgcMain: TPageControl
+    Left = 0
+    Height = 553
+    Top = 48
+    Width = 944
+    ActivePage = tsOutput
+    Align = alClient
+    TabIndex = 0
+    TabOrder = 1
+    object tsOutput: TTabSheet
+      Caption = 'Output'
+      ClientHeight = 0
+      ClientWidth = 0
+      object memLog: TMemo
+        Left = 0
+        Height = 523
+        Top = 0
+        Width = 936
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssBoth
+        TabOrder = 0
+        WordWrap = False
+      end
+    end
+    object tsPersonal: TTabSheet
+      Caption = 'Personal'
+      ClientHeight = 0
+      ClientWidth = 0
+      object lblFriends: TLabel
+        Left = 0
+        Height = 15
+        Top = 200
+        Width = 936
+        Align = alTop
+        Caption = ' Friends'
+      end
+      object pnlPersonalTop: TPanel
+        Left = 0
+        Height = 300
+        Top = 0
+        Width = 936
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 300
+        ClientWidth = 936
+        TabOrder = 0
+        object imgAvatar: TImage
+          Left = 0
+          Height = 200
+          Top = 0
+          Width = 300
+          Align = alLeft
+          Center = True
+        end
+        object lvInfo: TListView
+          Left = 200
+          Height = 200
+          Top = 0
+          Width = 736
+          Align = alClient
+          Columns = <          
+            item
+              Caption = 'Item'
+              Width = 240
+            end          
+            item
+              Caption = 'Value'
+              Width = 600
+            end>
+          ReadOnly = True
+          RowSelect = True
+          TabOrder = 0
+          ViewStyle = vsReport
+        end
+      end
+      object lvFriends: TListView
+        Left = 0
+        Height = 308
+        Top = 215
+        Width = 936
+        Align = alClient
+        Columns = <        
+          item
+            Caption = 'Name'
+            Width = 390
+          end        
+          item
+            Caption = 'Status'
+            Width = 210
+          end        
+          item
+            Caption = 'Level'
+            Width = 90
+          end        
+          item
+            Caption = 'SteamID'
+            Width = 240
+          end>
+        ReadOnly = True
+        RowSelect = True
+        SmallImages = ilFriends
+        TabOrder = 1
+        ViewStyle = vsReport
+      end
+    end
+    object tsAchievements: TTabSheet
+      Caption = 'Achievements'
+      ClientHeight = 0
+      ClientWidth = 0
+      object lvAchievements: TListView
+        Left = 0
+        Height = 523
+        Top = 0
+        Width = 936
+        Align = alClient
+        Columns = <        
+          item
+            Caption = 'Achievement'
+            Width = 330
+          end        
+          item
+            Caption = 'Description'
+            Width = 600
+          end        
+          item
+            Caption = 'State'
+            Width = 300
+          end>
+        ReadOnly = True
+        RowSelect = True
+        SmallImages = ilAchievements
+        TabOrder = 0
+        ViewStyle = vsReport
+      end
+    end
+  end
+  object ilFriends: TImageList
+    Height = 64
+    Width = 64
+    Left = 1140
+    Top = 12
+  end
+  object ilAchievements: TImageList
+    Height = 64
+    Width = 64
+    Left = 1260
+    Top = 12
+  end
+  object SteamAPI1: TSteamAPI
+    AppID = 2275430
+    UpdateMode = sumThread
+    OnInitialized = SteamInitialized
+    OnInitFailed = SteamInitFailed
+    OnShutdown = SteamShutdown
+    OnSteamShutdown = SteamClientExit
+    OnLog = SteamLog
+    OnWarning = SteamWarning
+    OnCallback = SteamCallback
+    Left = 780
+    Top = 12
+  end
+  object SteamFriends1: TSteamFriends
+    SteamAPI = SteamAPI1
+    OnPersonaStateChange = FriendPersonaChanged
+    OnAvatarImageLoaded = FriendAvatarLoaded
+    Left = 900
+    Top = 12
+  end
+  object SteamUserStats1: TSteamUserStats
+    SteamAPI = SteamAPI1
+    OnUserStatsReceived = StatsReceived
+    OnUserAchievementIconFetched = AchievementIconFetched
+    Left = 1020
+    Top = 12
+  end
+end
