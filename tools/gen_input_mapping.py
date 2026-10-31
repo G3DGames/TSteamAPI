@@ -46,6 +46,22 @@ OUT = os.path.join(ROOT, "demos", "SteamInputDemo", "src")
 
 TITLE = "SteamInputDemo default layout"
 DESCRIPTION = "Default bindings for the TSteamAPI Steam Input test (AppID 2275430)."
+# Each layout gets its own title: Steam's layout browser lists every
+# official layout of the game together, so identical titles cannot be told
+# apart (owner, 2026-10-31). Every type in CONTROLLERS needs a name here.
+CONTROLLER_NAMES = {
+    "controller_xboxone": "Xbox One / Series",
+    "controller_xbox360": "Xbox 360",
+    "controller_ps5": "PlayStation 5 (DualSense)",
+    "controller_ps4": "PlayStation 4",
+    "controller_switch_pro": "Switch Pro",
+    "controller_neptune": "Steam Deck",
+    "controller_steamcontroller_gordon": "Steam Controller (2015)",
+    "controller_triton": "Steam Controller (2026)",
+    "controller_switch2_pro": "Switch 2 Pro",
+    "controller_switch_joycon_pair": "Joy-Con pair",
+    "controller_generic": "generic gamepad",
+}
 
 # Action sets: name -> (title token, [(kind, action, title token, input_mode)])
 # kind: "stick" (StickPadGyro), "trigger" (AnalogTrigger), "button" (Button)
@@ -113,8 +129,9 @@ LOCALIZATION = {"english": [
     ("Action_DPadLeft", "D-pad left"), ("Action_DPadRight", "D-pad right"),
     ("Action_Start", "Start / Menu / Options (with the right trigger: menu set)"),
     ("Action_Select", "Select / View / Create"),
-    ("Action_BackLeft", "Left back paddle"), ("Action_BackRight", "Right back paddle"),
-    ("Action_BackLeftUpper", "Upper left back paddle"), ("Action_BackRightUpper", "Upper right back paddle"),
+    ("Action_BackLeft", "Left back paddle (lower, L5)"), ("Action_BackRight", "Right back paddle (lower, R5)"),
+    ("Action_BackLeftUpper", "Upper left back paddle (L4)"),
+    ("Action_BackRightUpper", "Upper right back paddle (R4)"),
     ("Action_MenuConfirm", "Confirm"), ("Action_MenuBack", "Back (with Confirm: back to every control)"),
 ]}
 
@@ -183,9 +200,11 @@ TWO_PADS = GYRO + ["left_trackpad", "right_trackpad"]
 PLAYSTATION = GYRO + ["center_trackpad"]
 # controller type -> sources present, optional "replace" (source -> source
 # used instead) and "back" (number of back paddles: 0, 2 = button_back_left
-# / _right, 4 = also the _upper pair). Back paddle names: 2015 Steam
-# Controller from a community guide; Steam Deck / 2026 Steam Controller
-# _upper pair UNCONFIRMED (no export with paddles bound yet).
+# / _right, 4 = also the _upper pair). Back paddle names CONFIRMED on the
+# 2026 Steam Controller (owner's log, 2026-10-31): button_back_left /
+# _right = L5 / R5 (lower), button_back_left_upper / _right_upper = L4 / R4
+# (upper) - Steam Deck naming; the 2015 pad's two grips from a community
+# guide.
 CONTROLLERS = {
     "controller_xboxone": dict(sources=STANDARD),
     "controller_xbox360": dict(sources=STANDARD),
@@ -256,12 +275,12 @@ def write_actions(w):
     w.close()
 
 
-def write_localization(w):
+def write_localization(w, title=TITLE, description=DESCRIPTION):
     w.open("localization")
     for lang, items in LOCALIZATION.items():
         w.open(lang)
-        w.kv("title", TITLE)
-        w.kv("description", DESCRIPTION)
+        w.kv("title", title)
+        w.kv("description", description)
         for k, v in items:
             w.kv(k, v)
         w.close()
@@ -296,7 +315,9 @@ def layout(ctype):
                  ("Timestamp", "0")):
         w.kv(k, v)
     write_actions(w)
-    write_localization(w)
+    write_localization(w, f"SteamInputDemo - {CONTROLLER_NAMES[ctype]}",
+                       f"Default layout for the {CONTROLLER_NAMES[ctype]} - TSteamAPI Steam Input test "
+                       f"(AppID 2275430): one action per physical control.")
     gid = 0
     presets = []
     for set_name, _, _ in SETS:

@@ -2,7 +2,7 @@ object frmInput: TfrmInput
   Left = 0
   Top = 0
   Caption = 'Steam Input test - AppID 2275430 (SDK 1.65)'
-  ClientHeight = 824
+  ClientHeight = 776
   ClientWidth = 1200
   FormFactor.Width = 320
   FormFactor.Height = 480
@@ -10,76 +10,8 @@ object frmInput: TfrmInput
   OnCreate = FormCreate
   OnClose = FormClose
   DesignerMasterStyle = 0
-  object pnlTop: TPanel
-    Align = Top
-    Size.Width = 1200.000000000000000000
-    Size.Height = 48.000000000000000000
-    Size.PlatformDefault = False
-    TabOrder = 0
-    object btnStart: TButton
-      Position.X = 8.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 0
-      Text = 'Start Steam'
-      OnClick = btnStartClick
-    end
-    object btnStop: TButton
-      Position.X = 136.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 1
-      Text = 'Stop Steam'
-      OnClick = btnStopClick
-    end
-    object btnBindings: TButton
-      Position.X = 264.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 2
-      Text = 'Bindings...'
-      OnClick = btnBindingsClick
-    end
-    object btnRumble: TButton
-      Position.X = 392.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 3
-      Text = 'Rumble'
-      OnClick = btnRumbleClick
-    end
-    object btnLogState: TButton
-      Position.X = 520.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 4
-      Text = 'Log state'
-      OnClick = btnLogStateClick
-    end
-    object btnCopy: TButton
-      Position.X = 648.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 5
-      Text = 'Copy log'
-      OnClick = btnCopyClick
-    end
-  end
   object pnlPad: TPanel
     Align = Top
-    Position.Y = 48.000000000000000000
     Size.Width = 1200.000000000000000000
     Size.Height = 84.000000000000000000
     Size.PlatformDefault = False
@@ -104,7 +36,7 @@ object frmInput: TfrmInput
   end
   object layLeft: TLayout
     Align = Left
-    Position.Y = 132.000000000000000000
+    Position.Y = 84.000000000000000000
     Size.Width = 560.000000000000000000
     Size.Height = 692.000000000000000000
     Size.PlatformDefault = False
@@ -174,7 +106,7 @@ object frmInput: TfrmInput
     Cursor = crHSplit
     MinSize = 200.000000000000000000
     Position.X = 560.000000000000000000
-    Position.Y = 132.000000000000000000
+    Position.Y = 84.000000000000000000
     Size.Width = 6.000000000000000000
     Size.Height = 692.000000000000000000
     Size.PlatformDefault = False
@@ -194,12 +126,40 @@ object frmInput: TfrmInput
     Left = 760
     Top = 64
   end
+  object tmStart: TTimer
+    Interval = 100
+    OnTimer = tmStartTimer
+    Left = 760
+    Top = 120
+  end
   object tmRumble: TTimer
     Enabled = False
     Interval = 500
     OnTimer = tmRumbleTimer
     Left = 760
-    Top = 120
+    Top = 176
+  end
+  object MainMenu1: TMainMenu
+    Left = 840
+    Top = 176
+    object mnuFile: TMenuItem
+      Text = 'File'
+      object mnuLayout: TMenuItem
+        Text = 'View Controller Settings...'
+        OnClick = mnuLayoutClick
+      end
+      object mnuRumble: TMenuItem
+        Text = 'Rumble'
+        OnClick = mnuRumbleClick
+      end
+      object mnuSep1: TMenuItem
+        Text = '-'
+      end
+      object mnuExit: TMenuItem
+        Text = 'Exit'
+        OnClick = mnuExitClick
+      end
+    end
   end
   object SteamAPI1: TSteamAPI
     AppID = 2275430

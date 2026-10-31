@@ -90,8 +90,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo default layout"
-			"description"		"Default bindings for the TSteamAPI Steam Input test (AppID 2275430)."
+			"title"		"SteamInputDemo - Xbox 360"
+			"description"		"Default layout for the Xbox 360 - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -119,10 +119,10 @@
 			"Action_DPadRight"		"D-pad right"
 			"Action_Start"		"Start / Menu / Options (with the right trigger: menu set)"
 			"Action_Select"		"Select / View / Create"
-			"Action_BackLeft"		"Left back paddle"
-			"Action_BackRight"		"Right back paddle"
-			"Action_BackLeftUpper"		"Upper left back paddle"
-			"Action_BackRightUpper"		"Upper right back paddle"
+			"Action_BackLeft"		"Left back paddle (lower, L5)"
+			"Action_BackRight"		"Right back paddle (lower, R5)"
+			"Action_BackLeftUpper"		"Upper left back paddle (L4)"
+			"Action_BackRightUpper"		"Upper right back paddle (R4)"
 			"Action_MenuConfirm"		"Confirm"
 			"Action_MenuBack"		"Back (with Confirm: back to every control)"
 		}

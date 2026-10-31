@@ -542,6 +542,85 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   CenterTrackpadClick was not exercised (no press logged). Zip PS5Pass1
   (follows Log1): this note; center_trackpad marked confirmed in the docs
   and the generator comment.
+- Push e0f52f9 "PS5 Gamepad Passes Testing" verified: all 125 files
+  identical (group Dependencies kept this time).
+- XBOX ONE PASSES AGAIN (log 15:35, PS5Pass1 build): every glyph Light
+  style and visible (xbox_ / shared_ / shared_color_ files, all 32x32);
+  Gyro and all trackpad / paddle actions "not bound (optional)"; motion
+  identity + zeros (no sensors); every button, both sticks, both
+  triggers ANALOG (0.29, 0.44, 0.64, 0.69 ... 1.00); Start alone only
+  hints; Guide -> all inactive, layout reloaded (mapping by 0), active
+  again; Guide held -> inactive, then the pad disconnected 10 s later.
+- Owner (15:33): start / stop / bindings / rumble / log state / copy were
+  all tested - SteamInputDemo is now a pad-examining tool, so ALL BUTTONS
+  GO and Steam opens by itself. Zip Auto1 (follows PS5Pass1):
+  pnlTop + six buttons + tmRumble removed; tmStart
+  (100 ms, enabled in the form) opens Steam once the window is up; on
+  OnInitFailed or OnShutdown (Steam client exit) it retries every 5 s
+  (RETRY_MS) unless the window is closing (FClosing). README updated.
+- Steam Controller 2026 first run (15:40): SteamController2026 (17),
+  controller_triton.vdf found, motion works - but Steam loaded a
+  DIFFERENT layout (mapping by 76561198027655094 = the creator of the
+  XInput "Gamepad with Gyro" template the owner exported earlier; uses
+  Steam Input API False) so everything was NOT BOUND. Fix: choose the
+  game's official layout in Steam's controller settings (owner did).
+  Adding the exe as a non-Steam game is NOT needed (SteamAppId already
+  ties the process to 2275430) - owner: "scratch that note". The 2804
+  slot-change callback named the pad's type Steam Deck (14) while
+  GetInputTypeForHandle says 17 - Steam's report, harmless.
+- Steam's layout browser listed all 11 official layouts with the SAME
+  title. Zip Titles1 (follows Auto1): each layout's localized title /
+  description names its controller (CONTROLLER_NAMES in
+  gen_input_mapping.py, e.g. "SteamInputDemo - Steam Controller (2026)").
+- STEAM CONTROLLER 2026 PASSES (log 16:06, after re-selecting the
+  official layout, restarting Steam AND the demo - owner: "horrible", now
+  documented in SteamInputMapping.md "When Steam keeps loading another
+  layout" + README): our layout (mapping by 0); glyphs are Steam Deck art
+  (sd_ prefix: sd_l2, sd_r1, sd_ltrackpad_swipe, sd_button_menu ...;
+  face buttons shared_button_a..y); both sticks, L3 / R3, L1 / R1, both
+  triggers analog, d-pad, Menu / View, A X Y, BOTH TRACKPADS (positions
+  -1..1), gyro (mouse deltas up to ~74), motion, Guide -> inactive /
+  layout reloaded / active. PADDLES CONFIRMED: button_back_left / _right
+  = L5 / R5 (375 / 376), _upper = L4 / R4 (373 / 374) - action titles now
+  say so. Not exercised: ButtonB, trackpad clicks. Zip Triton1 (follows
+  Titles1): docs + README + generator comments / titles.
+- Owner (16:13): add File > View Controller Settings (Steam's layout
+  selector again), Rumble, Exit. Zip Menu2 (follows Triton1): TMainMenu
+  (FMX.Menus) with those three; View Controller Settings calls
+  ShowBindingPanel and, when that returns False (no overlay - the demo is
+  not started by Steam), opens steam://controllerconfig/<AppID> through
+  the OS (ShellExecute / open / xdg-open) - that URL is UNTESTED (could
+  not be confirmed from Valve's docs); then logs that the program needs a
+  restart after a layout change. Rumble = the old 500 ms TriggerVibration
+  (tmRumble back). Owner had not pressed the trackpads (clicks) or B on
+  the 2026 pad.
+- 2026 pad, log 16:14: BOTH TRACKPAD CLICKS CONFIRMED (Left / Right Pad
+  Click 343 / 350; position keeps reporting while clicked). B still not
+  pressed. The pad appeared 5 s BEFORE Steam loaded its layout: the
+  bindings were listed first (all "NOT BOUND" - misleading), then again
+  correctly once the layout arrived - probably what made the owner think
+  a restart was needed. Zip Wait1 (follows Menu2): bindings are listed
+  only once OnSteamInputConfigurationLoaded has named the pad
+  (LayoutLoaded), or after LAYOUT_WAIT_MS (15 s) anyway.
+- Menu2 / Wait1 FAILED TO COMPILE (owner 16:18): E2037 LoadGlyph differs,
+  LoadFromFile / Width / Height undeclared - Winapi.Windows (added to the
+  implementation uses for ShellExecute) declares a TBitmap record that hid
+  FMX.Graphics.TBitmap in the implementation. Zip Fix1 (follows Wait1):
+  Winapi.Windows removed (SW_SHOWNORMAL written as 1), LoadGlyph's
+  parameter written FMX.Graphics.TBitmap in both places. Lesson: in an
+  FMX unit never put Winapi.Windows in a uses clause after FMX.Graphics.
+- STEAM CONTROLLER 2026 COMPLETE (log 16:21, Fix1 build - "everything
+  checks out"): B pressed (last control); layout loaded at once, no
+  premature NOT BOUND list; File > View Controller Settings:
+  ShowBindingPanel returned TRUE from an IDE-started demo (the overlay
+  WAS in the process - the earlier "False from the IDE" note was wrong;
+  steam://controllerconfig fallback still untested and not needed);
+  closing the panel -> actions inactive 2 s, layout reloaded (mapping by
+  0), active again - NO RESTART NEEDED, so the "restart the game" step
+  was wrong too (it was the layout-arrives-late gap). File > Rumble
+  worked. Zip Docs2 (follows Fix1): docs step 5 = wait, restart only if
+  needed; View Controller Settings named in step 2; ShowBindingPanel row
+  corrected; the demo's hint after the panel says the same.
 - 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
   Delphi; installed on the owner's machine, and its developer makes
   changes quickly), CGE second (also installed, but updates take far

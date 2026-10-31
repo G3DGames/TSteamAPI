@@ -217,8 +217,8 @@ leaves one out:
 | `Gyro` *(optional)* | motion sensors, reported as MOUSE MOVEMENT (mode "absolute mouse": tilt the pad, x / y change) | `gyro`, mode `gyro_to_mouse`, always on - every pad that has one. The raw sensors (orientation quaternion, acceleration, rotation speed) are `GetMotionData`, separate from any binding |
 | `LeftTrackpad`, `RightTrackpad` + `...Click` *(optional)* | trackpads: finger position (-1..1 like a stick, 0 when not touched) and press | `left_trackpad`, `right_trackpad`, mode `joystick_move` - Steam Deck, 2026 Steam Controller (on the 2015 one the trackpads ARE its right stick and d-pad) |
 | `CenterTrackpad` + `CenterTrackpadClick` *(optional)* | PlayStation touchpad: position and press | `center_trackpad` (confirmed on a PS5), mode `joystick_move` - PS4, PS5 |
-| `BackLeft`, `BackRight` *(optional)* | back paddles | `switch`: `button_back_left` / `_right` - Steam Controllers, Steam Deck |
-| `BackLeftUpper`, `BackRightUpper` *(optional)* | upper back paddles | `switch`: `button_back_left_upper` / `_right_upper` - Steam Deck, 2026 Steam Controller (names unconfirmed) |
+| `BackLeft`, `BackRight` *(optional)* | lower back paddles - L5 / R5 | `switch`: `button_back_left` / `_right` - Steam Controllers, Steam Deck |
+| `BackLeftUpper`, `BackRightUpper` *(optional)* | upper back paddles - L4 / R4 | `switch`: `button_back_left_upper` / `_right_upper` - Steam Deck, 2026 Steam Controller (confirmed on the 2026 pad) |
 
 `Start` together with `RightTrigger` pulled past 0.25 switches to the
 `Menu` set (`MenuConfirm` = `ButtonA`, `MenuBack` = `ButtonB`); pressing
@@ -328,6 +328,40 @@ a Switch model is planned):
 | `SwitchProController`, `Switch2ProController`, `SwitchJoyConPair` | Switch model when available; the Xbox one meanwhile (positions still match - see the table) |
 | anything else (`GenericGamepad`, the 2015 Steam Controller, ...) | Xbox One |
 
+### When Steam keeps loading another layout
+
+Steam remembers, per game and per controller type, the layout a player
+last chose - a template, a community layout, one of their own. It then
+loads that instead of the game's default, and the game sees few or none
+of its actions. SteamInputDemo's banner says so ("Steam loaded a
+DIFFERENT layout, not ours"; the log shows "mapping by" a SteamID instead
+of 0, and every action NOT BOUND). Choosing a template once - for example
+to export it - is enough to cause this. To get the game's own layout back
+(tested on the 2026 Steam Controller, 2026-10-31):
+
+1. Start the game with the controller connected.
+2. Open the game's controller settings: in SteamInputDemo **File -> View
+   Controller Settings** (the overlay's binding panel - it worked even
+   when the demo was started from the IDE), or in the Steam client the
+   controller icon on the game's page in the Library. Choose to load a
+   different layout; the **Load new Layout** screen opens.
+3. Under **Recommended -> Official Layouts** pick the layout named for
+   your controller (ours: "SteamInputDemo - Steam Controller (2026)",
+   "... - PlayStation 5 (DualSense)", ...).
+4. If the list shows old names or old layouts: exit Steam completely
+   (Steam -> Exit) and start it again - a manifest set with
+   `SetInputActionManifestFilePath` is kept for the whole Steam session.
+5. **Wait a few seconds.** Steam reloads the layout by itself
+   (OnSteamInputConfigurationLoaded); the banner should then read "Steam
+   loaded OUR default layout (mapping by 0)". Restart the game only if it
+   does not. (An earlier note said a restart was always needed - wrong:
+   a controller can appear seconds before its layout, and the demo used to
+   list every action as NOT BOUND in that gap.)
+
+Adding the game's executable to Steam as a non-Steam game does NOT help:
+the game already identifies itself (SteamAppId / steam_appid.txt), and a
+non-Steam shortcut is a separate entry with layouts of its own.
+
 ## 6. When it does not work
 
 | Symptom | Cause |
@@ -335,9 +369,9 @@ a Switch model is planned):
 | No controller listed | Steam Input is off for this game (Xbox / generic pads), or `RunFrame` has not run yet - controllers appear after the first frames |
 | Handles stay 0 | The manifest was not loaded: wrong path (it must be absolute), a VDF syntax error, or Steam Input off for the app |
 | Actions "NOT BOUND", `bActive` False | No default layout for this controller type and none chosen yet - add one (section 2) or bind in the layout screen |
-| `ShowBindingPanel` returns False | The Steam overlay is not running in this process (typical when started from the IDE): edit the layout from the Steam client instead |
+| `ShowBindingPanel` returns False | The Steam overlay is not running in this process: edit the layout from the Steam client instead. (On Windows with Delphi 13 it returned True even for a demo started from the IDE - 2026-10-31.) |
 | Manifest ignored (handles 0, nothing in the configurator) although the path is right | `//` comments in the manifest (section 1), or a VDF syntax error |
-| Some controls work on one pad but not on another | Steam loaded a different layout for that pad - a personal one or a Steam template (the demo's banner says so; the log shows "mapping by" a non-zero id). Reset the pad's layout to the game's default in Steam's controller settings. Also: a pad with Steam Input switched off for it (PlayStation / Switch / generic support settings) reaches the game through no layout at all |
+| Some controls work on one pad but not on another, or nothing works | Steam loaded a different layout for that pad (see "When Steam keeps loading another layout" above) - a personal one or a Steam template (the demo's banner says so; the log shows "mapping by" a non-zero id). Reset the pad's layout to the game's default in Steam's controller settings. Also: a pad with Steam Input switched off for it (PlayStation / Switch / generic support settings) reaches the game through no layout at all |
 | A middle button (Xbox / Guide, Share) opens the Xbox Game Bar on Windows 11 | Windows' Xbox Game Bar takes those buttons; View and Menu are fine. Turn it off in Settings -> Gaming -> Game Bar to test them - players may have it on |
 | Glyphs load (the log names the file) but nothing shows | The **knockout** style is white detail on a transparent background (only Xbox-style coloured face buttons have colour): invisible on a light background. Use **Light** (black on white) on light UIs, Knockout / Dark on dark ones - SteamInputDemo uses Light |
 | Layout changes not picked up | Steam keeps a manifest override for the session; `OnSteamInputConfigurationLoaded` reports each new layout - re-read handles and origins then |

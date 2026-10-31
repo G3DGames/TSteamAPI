@@ -90,7 +90,9 @@ demos/
   SteamConsole/             console smoke test (no framework; FPC-ready)
   SteamInputDemo/           Steam Input test (FMX): action manifest in src/, the
                             connected controller identified at the top, live
-                            digital / analog / motion values, bindings, rumble
+                            digital / analog / motion values, bindings; opens
+                            Steam by itself; File menu: View Controller
+                            Settings, Rumble, Exit
 models/                     CC0 3D gamepad models (glTF .glb, rigged, one clip per
                             input): XBoxOne_Animated, PS5_Animated,
                             SteamController_Animated; LICENSE (CC0, credits)
@@ -456,10 +458,14 @@ Windows', normal behaviour. Each says why and what to do.
 > Switch Pro / Switch 2 Pro / Joy-Con pair, Steam Deck, both Steam
 > Controllers and generic pads (written by tools/gen_input_mapping.py); a
 > pad without one (e.g. a single Joy-Con) is unbound until a layout is
-> chosen: press **Bindings...** (needs the overlay) or open the game's
-> controller layout from the Steam client. The banner at the top says
+> chosen in the game's controller layout in the Steam client. The banner at the top says
 > whether Steam loaded OUR layout for the pad, and the log says which
-> actions are "NOT BOUND".
+> actions are "NOT BOUND". If it says "a DIFFERENT layout", Steam is
+> loading a layout the player chose earlier (even a template picked once
+> to export it): pick the game's official layout again (File -> View
+> Controller Settings in SteamInputDemo), restart Steam if the list is
+> stale, then wait a few seconds for Steam to reload it - step by step in
+> docs/SteamInputMapping.md, "When Steam keeps loading another layout".
 
 > **On Windows 11 some middle buttons of a pad open the Xbox Game Bar
 > instead of reaching the game.** The Xbox (Guide) button and the small

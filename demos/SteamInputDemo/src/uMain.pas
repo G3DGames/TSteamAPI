@@ -2,7 +2,11 @@
 
   Everything is on the form (uMain.fmx): the @code(TSteamAPI) root and a
   @code(TSteamInput) component with its device events wired in the form
-  file. Start opens Steam; @link(TfrmInput.SteamInitialized) then starts
+  file. Steam is opened by itself right after the form is shown (no
+  buttons - this is now a tool for examining pads; the File menu has View
+  Controller Settings, Rumble and Exit),
+  and tried again every few seconds while it fails or after the Steam
+  client exits; @link(TfrmInput.SteamInitialized) then starts
   ISteamInput with an explicit RunFrame, enables device callbacks and points
   Steam at steam_input_manifest.vdf next to the executable (the action sets
   InGame and Menu). A 16 ms timer is the "game loop": RunFrame, the
@@ -19,7 +23,8 @@
   each button press and release, stick / trigger movement (at most four
   lines a second per action), the first non-zero motion data, the bindings
   of every action with the path of Steam's glyph for each (shown in the
-  Bindings list), and the results of Bindings / Rumble. Every line is also
+  Bindings list), motion while the pad turns, and Steam taking the pad
+  away (every action inactive). Every line is also
   appended to SteamInputDemo.log next to the executable. }
 unit uMain;
 
@@ -29,7 +34,7 @@ uses
   System.SysUtils, System.Types, System.UITypes, System.Classes,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
   FMX.Controls.Presentation, FMX.Memo.Types, FMX.ScrollBox, FMX.Memo,
-  FMX.Layouts, FMX.ListBox,
+  FMX.Layouts, FMX.ListBox, FMX.Menus,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.Callbacks, Steamworks.Core, Steamworks.Components,
   Steamworks.FMX, Steamworks.Plugin.Input;
 
@@ -49,20 +54,6 @@ type
 
   { Steam Input test form. }
   TfrmInput = class(TForm)
-    { Toolbar holding the buttons. }
-    pnlTop: TPanel;
-    { Starts Steam (and with it ISteamInput). }
-    btnStart: TButton;
-    { Shuts Steam down. }
-    btnStop: TButton;
-    { Opens Steam's binding panel for the selected controller. }
-    btnBindings: TButton;
-    { Rumbles the selected controller for half a second. }
-    btnRumble: TButton;
-    { Writes the live state and every action's bindings to the log. }
-    btnLogState: TButton;
-    { Copies the log to the clipboard. }
-    btnCopy: TButton;
     { Banner: the controller being read, in large type. }
     pnlPad: TPanel;
     { Name of the controller being read (large, bold). }
@@ -93,8 +84,23 @@ type
     memLog: TMemo;
     { The "game loop": RunFrame and reading the actions. }
     tmPoll: TTimer;
-    { Ends the rumble started by @link(btnRumble). }
+    { Opens Steam once the form is up, and again while it fails / after the
+      Steam client exited. }
+    tmStart: TTimer;
+    { Ends the rumble started by @link(mnuRumble). }
     tmRumble: TTimer;
+    { The menu bar. }
+    MainMenu1: TMainMenu;
+    { File menu. }
+    mnuFile: TMenuItem;
+    { Opens Steam's controller layout screen for the selected controller. }
+    mnuLayout: TMenuItem;
+    { Rumbles the selected controller for half a second. }
+    mnuRumble: TMenuItem;
+    { Separator above @link(mnuExit). }
+    mnuSep1: TMenuItem;
+    { Closes the program. }
+    mnuExit: TMenuItem;
     { The Steam root component. Active is False in the form: Start opens Steam. }
     SteamAPI1: TSteamAPI;
     { ISteamInput component; its events report devices and configurations. }
@@ -103,24 +109,21 @@ type
     procedure FormCreate(Sender: TObject);
     { Stops polling and shuts Steam down while the controls still exist. }
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    { Handler of @link(btnStart). }
-    procedure btnStartClick(Sender: TObject);
-    { Handler of @link(btnStop). }
-    procedure btnStopClick(Sender: TObject);
-    { Handler of @link(btnBindings). }
-    procedure btnBindingsClick(Sender: TObject);
-    { Handler of @link(btnRumble). }
-    procedure btnRumbleClick(Sender: TObject);
-    { Handler of @link(btnLogState). }
-    procedure btnLogStateClick(Sender: TObject);
-    { Handler of @link(btnCopy). }
-    procedure btnCopyClick(Sender: TObject);
     { Another controller was selected. }
     procedure lbControllersChange(Sender: TObject);
     { One frame of the "game loop". }
     procedure tmPollTimer(Sender: TObject);
+    { Opens Steam (see @link(tmStart)). }
+    procedure tmStartTimer(Sender: TObject);
     { Stops the rumble. }
     procedure tmRumbleTimer(Sender: TObject);
+    { File > View Controller Settings: Steam's layout screen (overlay
+      binding panel, else the steam:// link). }
+    procedure mnuLayoutClick(Sender: TObject);
+    { File > Rumble. }
+    procedure mnuRumbleClick(Sender: TObject);
+    { File > Exit. }
+    procedure mnuExitClick(Sender: TObject);
     { SteamAPI1.OnLog: core log messages. }
     procedure SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
     { SteamAPI1.OnInitialized: Steam started - start ISteamInput. }
@@ -182,6 +185,8 @@ type
     FFillingList: Boolean;
     { Exceptions raised by the poll so far (polling stops at 3). }
     FPollErrors: Integer;
+    { The window is closing: Steam is not opened again. }
+    FClosing: Boolean;
     { Text last put into @link(memState). }
     FStateText: string;
     { What the banner shows (handle, type, controller count): it is only
@@ -191,6 +196,8 @@ type
     FConfigHandles: TSteamInputHandleArray;
     { Which layout Steam loaded for each of @link(FConfigHandles). }
     FConfigTexts: array of string;
+    { When the controller now read was first read (see LAYOUT_WAIT_MS). }
+    FActiveSince: TDateTime;
     { Appends a time-stamped line to @link(memLog) and the log file. }
     procedure AddLog(const S: string);
     { The started ISteamInput plug-in, or @nil. }
@@ -209,11 +216,15 @@ type
     { Loads Steam's glyph of AOrigin into ABitmap, trying light small, light
       medium, dark and knockout in turn; returns a log text (the path
       used and every failed attempt, or "NO GLYPH" with all of them). }
-    function LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin; ABitmap: TBitmap): string;
+    function LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin;
+      ABitmap: FMX.Graphics.TBitmap): string;
     { Activates ASet on the active controller (applied at the next RunFrame). }
     procedure SwitchSet(ASet: TInputSet);
     { Names the current action set in the caption of @link(memState). }
     procedure UpdateStateCaption;
+    { Whether Steam has reported a layout for AHandle
+      (OnSteamInputConfigurationLoaded). }
+    function LayoutLoaded(AHandle: InputHandle_t): Boolean;
     { Shows the controller being read in the banner; logs each change.
       Called every frame; cheap unless the controller changed. }
     procedure UpdatePadBanner(P: TSteamInputPlugin);
@@ -234,7 +245,30 @@ implementation
 {$R *.fmx}
 
 uses
-  System.IOUtils, System.DateUtils, System.StrUtils, FMX.Platform;
+  System.IOUtils, System.DateUtils, System.StrUtils
+{$IFDEF MSWINDOWS}
+  , Winapi.ShellAPI   // not Winapi.Windows: its TBitmap would hide FMX's here
+{$ENDIF}
+{$IFDEF POSIX}
+  , Posix.Stdlib
+{$ENDIF}
+  ;
+
+{ Hands AURL (a steam:// link) to the system, which passes it to the Steam
+  client. }
+procedure OpenURL(const AURL: string);
+begin
+{$IFDEF MSWINDOWS}
+  ShellExecute(0, 'open', PChar(AURL), nil, nil, 1 {SW_SHOWNORMAL});
+{$ENDIF}
+{$IFDEF MACOS}
+  _system(PAnsiChar(AnsiString('open "' + AURL + '"')));
+{$ELSE}
+  {$IFDEF POSIX}
+  _system(PAnsiChar(AnsiString('xdg-open "' + AURL + '" &')));
+  {$ENDIF}
+{$ENDIF}
+end;
 
 const
   { Manifest file name, next to the executable. }
@@ -286,6 +320,11 @@ const
   { How far RightTrigger must be pulled while Start is pressed to open the
     Menu set (see @link(TfrmInput.ReadActions)). }
   MENU_TRIGGER_MIN = 0.25;
+  { How long to wait for Steam's layout of a new controller before its
+    bindings are listed anyway. }
+  LAYOUT_WAIT_MS = 15000;
+  { Milliseconds between attempts to open Steam while it fails. }
+  RETRY_MS = 5000;
   { Fewest milliseconds between two log lines of one analog action. }
   ANALOG_LOG_MS = 250;
   { Rotation speed (largest axis, raw units) above which motion is logged -
@@ -485,15 +524,19 @@ begin
       + '(the post-build event copies it from src\)');
   AddLog('Hold the right trigger past ' + F2(MENU_TRIGGER_MIN) + ' and press Start to open the '
     + 'Menu set; ButtonB returns. Start alone is just a button here.');
-  AddLog('Press Start Steam, then use a controller. Steam Input must be enabled '
+  AddLog('Steam is opened automatically; then use a controller. Steam Input must be enabled '
     + 'for this game in the Steam client for Xbox / generic controllers.');
+  // tmStart (enabled in the form, short interval) opens Steam once the
+  // window is up, so the first log lines are visible before Steam starts
 end;
 
 procedure TfrmInput.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(SteamAPI1.IsRunning, True)]));
-  tmPoll.Enabled := False;
+  FClosing := True;
+  tmStart.Enabled := False;
   tmRumble.Enabled := False;
+  tmPoll.Enabled := False;
   SteamAPI1.Close;
 end;
 
@@ -567,50 +610,45 @@ begin
   FStateText := '';
 end;
 
-procedure TfrmInput.btnStartClick(Sender: TObject);
-begin
-  AddLog('Start pressed');
-  if SteamAPI1.Open then
-    AddLog('Open returned True: Steam is running')
-  else
-    AddLog('Open returned False: Steam did not start');
-end;
-
-procedure TfrmInput.btnStopClick(Sender: TObject);
-begin
-  AddLog('Stop pressed');
-  SteamAPI1.Close;
-end;
-
-procedure TfrmInput.btnBindingsClick(Sender: TObject);
+procedure TfrmInput.mnuLayoutClick(Sender: TObject);
 var
   P: TSteamInputPlugin;
+  URL: string;
 begin
   P := Input;
   if (P = nil) or (FActive = 0) then
   begin
-    AddLog('Bindings: no controller selected (press Start, connect a controller)');
+    AddLog('View Controller Settings: no controller (Steam not running or no pad connected)');
     Exit;
   end;
+  // The binding panel is part of the Steam overlay, which is only in the
+  // process when the game was started by Steam; otherwise ask the Steam
+  // client through its steam:// link (UNTESTED - see the log)
   try
     if P.ShowBindingPanel(FActive) then
-      AddLog('ShowBindingPanel: True (the Steam overlay shows the binding panel)')
-    else
-      AddLog('ShowBindingPanel: False - the overlay is not available to this process. '
-        + 'Edit the layout in the Steam client instead: Library > this game > controller icon');
+    begin
+      AddLog('ShowBindingPanel: True - the Steam overlay shows the layout screen');
+      Exit;
+    end;
+    URL := 'steam://controllerconfig/' + IntToStr(SteamAPI1.AppID);
+    AddLog('ShowBindingPanel: False (no Steam overlay in this process); asking the Steam client: ' + URL);
+    OpenURL(URL);
   except
-    on E: Exception do AddLog('ShowBindingPanel failed: ' + E.Message);
+    on E: Exception do AddLog('View Controller Settings failed: ' + E.Message);
   end;
+  AddLog('After choosing a layout, wait for "OnSteamInputConfigurationLoaded" and the banner '
+    + 'to show it; restart only if it does not (docs/SteamInputMapping.md, '
+    + '"When Steam keeps loading another layout")');
 end;
 
-procedure TfrmInput.btnRumbleClick(Sender: TObject);
+procedure TfrmInput.mnuRumbleClick(Sender: TObject);
 var
   P: TSteamInputPlugin;
 begin
   P := Input;
   if (P = nil) or (FActive = 0) then
   begin
-    AddLog('Rumble: no controller selected');
+    AddLog('Rumble: no controller');
     Exit;
   end;
   try
@@ -638,41 +676,21 @@ begin
   end;
 end;
 
-procedure TfrmInput.btnLogStateClick(Sender: TObject);
-var
-  P: TSteamInputPlugin;
-  L: TStringList;
-  I: Integer;
+procedure TfrmInput.mnuExitClick(Sender: TObject);
 begin
-  P := Input;
-  if P = nil then
-  begin
-    AddLog('Log state: Steam Input is not running - press Start first');
-    Exit;
-  end;
-  L := TStringList.Create;
-  try
-    L.Text := FStateText;
-    AddLog('--- state ---');
-    for I := 0 to L.Count - 1 do
-      AddLog('  ' + L[I]);
-  finally
-    L.Free;
-  end;
-  FOriginsLogged := False;
-  if FActive <> 0 then
-    LogOrigins(P);
+  Close;
 end;
 
-procedure TfrmInput.btnCopyClick(Sender: TObject);
-var
-  Svc: IFMXClipboardService;
+procedure TfrmInput.tmStartTimer(Sender: TObject);
 begin
-  if TPlatformServices.Current.SupportsPlatformService(IFMXClipboardService, Svc) then
-  begin
-    Svc.SetClipboard(memLog.Text);
-    AddLog('Log copied to clipboard');
-  end;
+  tmStart.Enabled := False;
+  if FClosing or SteamAPI1.IsRunning then
+    Exit;
+  AddLog('Opening Steam');
+  if SteamAPI1.Open then
+    AddLog('Open returned True: Steam is running')
+  else
+    AddLog('Open returned False: Steam did not start');
 end;
 
 procedure TfrmInput.lbControllersChange(Sender: TObject);
@@ -691,6 +709,7 @@ begin
   FOriginsLogged := False;
   FMotionLogged := False;
   FSetActiveState := -1;
+  FActiveSince := Now;
   AddLog('Reading ' + ControllerText(P, FActive));
 end;
 
@@ -740,6 +759,13 @@ end;
 procedure TfrmInput.SteamInitFailed(Sender: TObject; AResult: Integer; const AMessage: string);
 begin
   AddLog(Format('OnInitFailed: result %d: %s', [AResult, AMessage]));
+  if not FClosing then
+  begin
+    // try again later (Steam not running yet, or still starting)
+    tmStart.Interval := RETRY_MS;
+    tmStart.Enabled := True;
+    AddLog(Format('Trying again in %d s', [RETRY_MS div 1000]));
+  end;
 end;
 
 procedure TfrmInput.SteamShutdown(Sender: TObject);
@@ -757,8 +783,15 @@ begin
   memState.Text := 'Steam is not running.';
   FPadKey := '';
   lblPadName.Text := 'No controller';
-  lblPadInfo.Text := 'Steam is not running - press Start Steam.';
+  lblPadInfo.Text := 'Steam is not running - waiting for it.';
   AddLog('OnShutdown: Steam shut down (ISteamInput was shut down first)');
+  if not FClosing then
+  begin
+    // the Steam client exited (or failed): open again once it is back
+    tmStart.Interval := RETRY_MS;
+    tmStart.Enabled := True;
+    AddLog(Format('Trying to open Steam again in %d s', [RETRY_MS div 1000]));
+  end;
 end;
 
 procedure TfrmInput.SteamClientExit(Sender: TObject);
@@ -831,6 +864,16 @@ begin
   AddLog(Format('OnSteamInputGamepadSlotChange: handle %s, %s, slot %d -> %d',
     [UIntToStr(AData.m_ulDeviceHandle), InputTypeName(AData.m_eDeviceType),
      AData.m_nOldGamepadSlot, AData.m_nNewGamepadSlot]));
+end;
+
+function TfrmInput.LayoutLoaded(AHandle: InputHandle_t): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to High(FConfigHandles) do
+    if FConfigHandles[I] = AHandle then
+      Exit(True);
 end;
 
 procedure TfrmInput.UpdatePadBanner(P: TSteamInputPlugin);
@@ -986,11 +1029,13 @@ begin
     FOriginsLogged := False;
     FMotionLogged := False;
     FSetActiveState := -1;
+    FActiveSince := Now;
     AddLog('Reading ' + ControllerText(P, FActive));
   end;
 end;
 
-function TfrmInput.LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin; ABitmap: TBitmap): string;
+function TfrmInput.LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin;
+  ABitmap: FMX.Graphics.TBitmap): string;
 const
   { Attempts in order. Light first: black detail on a white background,
     visible on the list's light background. Knockout (the old choice) draws
@@ -1277,9 +1322,14 @@ begin
           ResolveHandles(P);
         if FSetHandles[FCurrentSet] <> 0 then
           P.ActivateActionSet(FActive, FSetHandles[FCurrentSet]);
-        // bindings once every handle is known (and again after a new layout
-        // or another controller)
-        if FResolved and not FOriginsLogged then
+        // bindings once every handle is known AND Steam has loaded a layout
+        // for this controller (and again after a new layout or another
+        // controller). A pad can appear seconds before its layout: listing
+        // the bindings then showed every action "NOT BOUND" although the
+        // right layout arrived 5 s later (2026 Steam Controller, owner's
+        // log 16:14). After LAYOUT_WAIT_MS they are listed anyway.
+        if FResolved and not FOriginsLogged
+          and (LayoutLoaded(FActive) or (MilliSecondsBetween(Now, FActiveSince) >= LAYOUT_WAIT_MS)) then
           LogOrigins(P);
         Text := ReadActions(P);
       end;
