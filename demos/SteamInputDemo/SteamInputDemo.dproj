@@ -321,6 +321,7 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="src\FmxLinuxMenu.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmInput</Form>
             <FormType>fmx</FormType>

@@ -456,6 +456,14 @@ forward-declared in the public headers). New interfaces are added to the
 Things that look like bugs in the library or the demos but are Steam's, or
 Windows', normal behaviour. Each says why and what to do.
 
+> **FMX menus on Linux show only first letters ("F" for "File").**
+> That is FMX's native GTK menu bar on Linux, not this library. SteamInputDemo
+> and LogReceiver replace their TMainMenu with an FMX TMenuBar at start-up
+> (unit `FmxLinuxMenu`, `ReplaceMainMenu`, first thing in `OnCreate`); copy
+> that unit into your own FMX programs. Do not simply move the menu items to a
+> TMenuBar and free the TMainMenu - that crashes in libgobject or floods the
+> terminal with GTK-CRITICAL warnings (the unit explains why).
+
 > **SteamInputDemo lists no controller, or every action stays 0.**
 > Xbox and generic controllers only reach Steam Input when it is enabled for
 > the game in the Steam client (Library -> the game's Properties ->

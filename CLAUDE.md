@@ -818,13 +818,64 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   set in Steam first (layout selection, as on Windows). Remote logging
   ACROSS MACHINES PROVEN: started with the pad combo (DPadUp + Y +
   LeftBumper) on Linux, discovered the LogReceiver on Windows, log
-  received there. The Linux x64 two-register Analog shim is therefore
-  very likely right (sticks / triggers worked) - the owner's log was not
-  pasted here, so values were not checked line by line. Next: a real
+  received there. LOG CHECKED (owner's LogReceiver file, 21:10): Linux
+  x64 shim PROVEN - Analog two-register return (LeftStick -0.16 / -0.99,
+  Left / Right / Center trackpads +-1, gyro mouse deltas up to ~41),
+  Motion via sret (|accel| ~16300 at rest = 1 g, quaternions), Digital;
+  every glyph from Steam's linux64/../controller_base/images/api/light;
+  layouts loaded within 25 ms (PS5, triton: mapping by 0). Combo: first
+  try found no receiver (LogReceiver not yet on OK), second found it at
+  the chosen LAN address, accepted 5 s later. One MISLEADING output: a
+  configuration callback for the OTHER pad re-listed the PS5's bindings
+  while the PS5 was disconnecting (gone 5 s later) - every action "NOT
+  BOUND ... Steam is using a different layout". Zip LinuxLog1 (follows
+  LinuxPass1): LogOrigins first checks whether ANY required action has an
+  origin; if none, ONE line says the pad may be disconnecting or uses a
+  layout without our actions (list detail "NO BINDINGS (see log)").
+  CORRECTION (owner, 21:12): the PS5 was not "disconnecting" by itself -
+  the owner was changing its Steam controller settings (most likely
+  Steam Input turned off for it, which also drops it from the game's
+  list). The one-line message names both causes, so it stands.
+  LINUX MENUS (owner, 21:13, from his GDEMFetch project, Delphi 13 /
+  Ubuntu GTK 3): FMX's native GTK menu bar shows only FIRST LETTERS.
+  Moving the items to a TMenuBar and freeing the TMainMenu crashes
+  (libgobject g_object_ref) or gives GTK-CRITICAL warnings; freeing a
+  TMainMenu that still has items leaves GTK's bar showing. Tested method:
+  COPY the items to a TMenuBar (owned like the originals), free the
+  originals ONE BY ONE, RecreateOSMenu, free the TMainMenu, then give the
+  copies the originals' names (re-points the form's published fields).
+  Zip LinuxMenu1 (follows LinuxLog1): FmxLinuxMenu.pas (ReplaceMainMenu,
+  Linux-only body, no-op elsewhere) in demos/SteamInputDemo/src AND
+  RemoteLogging/LogReceiver/src - two IDENTICAL copies (projects use only
+  their own sources); project_check.py reports any difference (proven
+  with a deliberate one). Called first in both FormCreates. Our items use
+  only Text / OnClick (+ '-' separator). Rules: never keep a reference to
+  a designed menu item from before the swap; add run-time items after it.
+  README Known issues entry. NOT YET RUN on Linux: check from a terminal
+  that no GTK-CRITICAL lines appear and File shows full names. Next: a real
   Steam deployment test (depot: executable with exec bit,
   libsteam_api.so, steam_input_manifest.vdf + 11 controller_*.vdf,
   probably libfmux.so; Release build; launched through Steam, ideally on
   the Steam Deck, to see whether the Steam Linux runtime has GTK 3).
+- macOS RELEASE BUILD of SteamInputDemo (owner, 21:34) printed at exit
+  "objc[...]: objc_disposeClassPair: class 'FMXWindow' still has
+  subclasses, including 'NSKVONotifying_FMXWindow'!" - FMX disposing its
+  run-time window class while macOS's KVO subclass of it exists (made
+  whenever something observes the window: system, Steam overlay).
+  Harmless at exit; not our code. Only worth chasing if it appears while
+  running or with a crash on quit.
+- macOS SIGNING for Steam (owner asked, 21:27): Steam installs carry no
+  quarantine attribute, so Gatekeeper does not block unsigned games
+  launched from Steam; ARM64 code still needs at least an ad-hoc
+  signature (PAServer deploy does that). For Developer ID + hardened
+  runtime + notarization a Steam game needs the entitlements
+  com.apple.security.cs.disable-library-validation (libsteam_api.dylib
+  is signed by Valve's team) and com.apple.security.cs.allow-dyld-
+  environment-variables (the overlay is injected via DYLD_*; without it
+  no overlay, so no ShowBindingPanel). Goes in Entitlement.TemplateOSX.xml.
+  OPEN: our .vdf files deploy to Contents/MacOS, which codesign treats
+  as code and rejects - move them to Contents/Resources (and look for the
+  manifest there on macOS) before a Developer ID build. Not done yet.
 - Switch 2 Pro (owner, 2026-10-31): will NOT be bought or tested -
   controller_switch2_pro.vdf stays "generated, not tested on hardware".
 - GORILLA3D author's notes (16:58-17:29): since 1.5.4 UseFixedFrameRate
@@ -855,7 +906,192 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   Anything Gorilla3D lacks (seeking a clip, driving a joint) is a
   request to its developer, not a workaround.
 
-## Handover (2026-10-31, end of fifth session) - READ THIS FIRST
+## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
+State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to
+LinuxPass1 (117 files identical ignoring CRLF / BOM; the IDE re-saved
+SteamConsole / Steamworks / SteamworksFMX / SteamInputDemo / LogReceiver
+.dproj files - units, search paths and all .vdf DeployFile entries
+survived - and added SteamInputDemo's info.plist.TemplateOSX.xml and
+Entitlement.TemplateOSX.xml: keep them). NOT in that push: LinuxLog1 and
+LinuxMenu1, and RemoteLog4's deletion. All three are folded into zip
+Handover2 (follows the push) together with this file; the owner must
+`git rm demos/SteamInputDemo/src/uRemoteLogTarget.pas
+demos/SteamInputDemo/src/uRemoteLogTarget.fmx`. Handover2 carries the
+pushed (IDE-saved) SteamInputDemo.dproj / LogReceiver.dproj with only the
+FmxLinuxMenu DCCReference added.
+NEXT SESSION FIRST: verify the Handover2 push as in "Syncing safely"
+(every file of Handover2 identical; uRemoteLogTarget.* gone;
+FmxLinuxMenu.pas in both places; project_check.py and pasdoc_check.py
+report 0 problems).
+
+### Done this session (details in "Sixth session" above)
+1. Steam Input demo became a pad-examining tool: one action per physical
+   control, default layouts for 11 controller types (generated), banner
+   naming the pad / layout / model, glyphs (Light style), File menu (View
+   Controller Settings, Rumble, Send log to receiver, Exit), auto-start
+   of Steam with retry. PASSED on Windows with Xbox One, PS5, Steam
+   Controller 2026, Switch Pro (swap on / off), Joy-Con pair and singles,
+   a clone pad as Xbox 360 / PS4 / Switch Pro; on LINUX64 (Ubuntu) with
+   Xbox One, PS5, Steam Controller 2026 - the Linux x64 Input shim
+   (Analog two-register, Motion sret) is PROVEN.
+2. RemoteLogging/ (optional, nothing to do with Steam): LogReceiver
+   (choose network, OK, File > Exit; Accept prompt; files in
+   Documents/LogReceiver) + RemoteLog.Sender (TRemoteLogSender,
+   TRemoteLogDiscovery). Auto-discovery; SteamInputDemo starts it from
+   File > Send log to receiver or DPadUp + ButtonY + LeftBumper. PROVEN
+   Linux -> Windows across machines.
+3. Linux FMX menu fix (FmxLinuxMenu.ReplaceMainMenu) - delivered, NOT
+   YET RUN on Linux.
+4. Gorilla3D 1.5.4.4003 notes and the author's parallel animator API.
+
+### NEXT: the 3D pad visualiser in Gorilla3D (owner, 2026-10-31 21:41)
+A multi-platform FMX program (Windows, macOS, Linux; later Android)
+showing the 3D model of the connected pad, animated live by the real pad
+through Steam Input. Gorilla3D first, CGE later. Ask the owner at the
+start: (a) the project name / folder (suggestion: demos/PadVisualiser);
+(b) where TGorillaParallelAnimator comes from now - in 1.5.4.4003 itself
+or still only the author's separate unit (Gorilla.Animation.Parallel +
+sample ParallelAnimation, his copyrighted code: NEVER copy it into this
+repo; reference it from the Gorilla3D install or the owner's folder);
+(c) whether the Switch model exists yet.
+
+Build on SteamInputDemo - it already solves everything except the 3D:
+- Same Steam Input setup: TSteamAPI + TSteamInput on the form, explicit
+  RunFrame from a 16 ms timer on the UI thread, the SAME manifest and
+  layouts (InGame set: one action per physical control - LeftStick,
+  RightStick, Gyro, Left/Right/CenterTrackpad (+Click), Left/RightTrigger,
+  ButtonA..Y (by POSITION: A bottom, B right, X left, Y top),
+  Left/RightBumper, Left/RightStickClick, DPadUp/Down/Left/Right, Start,
+  Select, BackLeft/Right (L5 / R5), BackLeft/RightUpper (L4 / R4)).
+  Generated by tools/gen_input_mapping.py; decide with the owner whether
+  it writes the files into the new demo's src as well (one table, two
+  output folders) - projects use only their own files.
+- Copy from uMain.pas: handle resolution on every
+  OnSteamInputConfigurationLoaded, LayoutLoaded + LAYOUT_WAIT_MS (layouts
+  can arrive seconds after the pad), ControllerText / InputTypeName /
+  LayoutTypeName / ModelName (type -> model), the "API False" and "NO
+  BINDINGS" banners, remote logging (FSender, FDiscovery, the pad combo),
+  auto-start of Steam (tmStart, RETRY_MS), the log file next to the exe.
+- Polling: ReadActions in uMain.pas reads digital / analog / motion per
+  frame - feed those values to the animator instead of the text panel.
+
+Gorilla3D facts (GameEngineIntegration.md 6.5 has the long form):
+- 1.5.4.4003 installed on the owner's machine. UseFixedFrameRate works
+  and defaults to True on Windows, macOS, Linux, Android; iOS is event
+  based. On Linux / Android the timer only paces - frames are drawn in
+  FMX's paint cycle (shared GL context), so heavy form painting lowers
+  the frame rate: keep the form simple.
+- TGorillaTimer.OnTimer is synchronised to the main thread (author).
+  The TSteamAPI default (timer update mode) is right for this program.
+- MULTI-INPUT ANIMATION: since 1.5.4 a clip with no track for a node puts
+  that node in its REST pose, so playing one clip per input resets every
+  other input. The author's TGorillaParallelAnimator solves it: extracts
+  only the joints each clip moves and adds running clips on top of the
+  rest pose. API: Model := (load the .glb with animation caching []),
+  Press(clip) (holds at the detected peak), Release(clip), Play,
+  PlayLoop, SetValue(clip, 0..1) for triggers, SetAxis(negClip, posClip,
+  -1..1) for sticks, StopAll, IsAnyActive, Update / AutoUpdate,
+  OnClipFinished. The model's own AnimationManager must NOT play at the
+  same time. His sample loads our three .glb from a TSteamAPI checkout.
+- Anything Gorilla3D lacks is a request to its developer (he answers
+  fast), not a workaround.
+
+The models (models/, CC0, Quaternius; glTF 2.0, one skin, 30 fps):
+- XBoxOne_Animated.glb, 17 joints: Root, Body, A, B, X, Y, Trigger_Left,
+  Shoulder_Left, Guide, Menu, Profile, Stick_Right, DPad, Stick_Left,
+  View, Trigger_Right, Shoulder_Right. 33 clips: A_Press, B_Press,
+  X_Press, Y_Press, DPad_Up / _Down / _Left / _Right, Guide_Press,
+  Menu_Press, View_Press, Profile_Press, Shoulder_Left_Press,
+  Shoulder_Right_Press, Stick_Left_Up / _Down / _Left / _Right / _Press /
+  _Spin_CW / _Spin_CC, the same for Stick_Right, Trigger_Left_Press_Full /
+  _Soft, Trigger_Right_Press_Full / _Soft, EmptyAction.
+- PS5_Animated.glb, 16 joints (no Guide joint, no back-grip joints).
+  37 clips: PS NAMES for the face buttons - X_Press (Cross = joint A,
+  bottom), Circle_Press (B, right), Square_Press (X, left),
+  Triangle_Press (Y, top) - plus the Xbox-named rest, Guide_Press and
+  L4 / L5 / R4 / R5_Press although the model has no Guide or back-grip
+  joint (check what those clips move before using them).
+- SteamController_Animated.glb, 21 joints: the Xbox 17 + BackGrip4.R,
+  BackGrip5.R, BackGrip4.L, BackGrip5.L. 37 clips: Xbox names +
+  L4_Press, L5_Press, R4_Press, R5_Press.
+- NO joints or clips for trackpads (Steam Controller's two, PS5
+  touchpad) or for motion: show trackpad positions some other way (a dot
+  on the surface) and rotate the WHOLE model by GetMotionData's rotQuat
+  (Steam's axes vs Gorilla3D's are unknown - test; |accel| ~16384 = 1 g,
+  gyro raw, see the motion notes above).
+- Timings: presses 0.5 s, peak ~0.2 s; sticks / D-pad out by 0.3 s,
+  held to 0.4 s (stick tilt ~27 deg, D-pad 5 deg); triggers peak 0.23 s,
+  Soft = ~59 % of Full - use Full with SetValue(analog value).
+- Guide / PS / Steam button: reserved by Steam (no action, no origin) -
+  Guide_Press can only be shown from "every action inactive" (the demo
+  logs that change), not from an input. Xbox Share (Profile) is bindable
+  (XBoxOne_Share) but not in our manifest yet - optional action to add.
+- Type -> model (docs/SteamInputMapping.md section 5, "Which picture or
+  model for which pad"): Xbox 360 / One / generic -> Xbox, PS4 / PS5 ->
+  PS5, Steam Controller 2015 / 2026 / Deck -> Steam Controller; Switch
+  types have no model yet (owner: in the works).
+
+Action -> animator mapping (first draft, per model):
+  ButtonA/B/X/Y   Press / Release the face clip of that POSITION (Xbox &
+                  Steam Controller A/B/X/Y_Press; PS5 X(Cross)/Circle/
+                  Square/Triangle_Press)
+  Left/RightBumper   Shoulder_Left/Right_Press
+  Left/RightTrigger  SetValue(Trigger_Left/Right_Press_Full, x)
+  Left/RightStick    SetAxis(Stick_?_Left, Stick_?_Right, x) and
+                     SetAxis(Stick_?_Down, Stick_?_Up, y) - check y's sign
+  Left/RightStickClick  Stick_Left/Right_Press
+  DPadUp/Down/Left/Right  DPad_Up/Down/Left/Right
+  Start / Select  Menu_Press / View_Press
+  BackLeft/Right  L5_Press / R5_Press; BackLeft/RightUpper L4 / R4_Press
+CAUTION - positions: our layouts are positional, so ButtonA = bottom on
+Xbox, PlayStation, Steam Controller, Joy-Con pair and the Switch Pro
+with Steam's swap OFF (which then reports Xbox 360 origins). With the
+swap ON the Switch Pro reports Switch A/B/X/Y by LETTER (ButtonA = the
+right button). For a Switch model decide the joint from the ORIGIN
+(docs/SteamInputMapping.md section 5 table), not from the action name.
+
+Multi-platform rules for the new program:
+- LINUX MENUS: a TMainMenu shows only first letters on Linux (GTK). Use
+  FmxLinuxMenu.ReplaceMainMenu(Self, MainMenu1) FIRST in OnCreate (see
+  the LINUX MENUS note above for why only that method works). Add a
+  THIRD identical copy of FmxLinuxMenu.pas to the new project's src and
+  add its path to COPIES in tools/project_check.py. Keep no reference to
+  a designed menu item from before the swap; items use Text / OnClick
+  only (copy any other property the new form uses in CopyItem).
+  LinuxMenu1 is not yet run on Linux - run it from a terminal (no
+  GTK-CRITICAL lines, full names) before relying on it.
+- FMX units: never put Winapi.Windows in a uses clause after FMX.Graphics
+  (its TBitmap hides FMX's - Menu2 failed on that); write
+  FMX.Graphics.TBitmap where it matters.
+- Fields before methods in every visibility section (E2169 in
+  RemoteLog1); nothing after a unit's initialization section (E2029 in
+  RemoteLog3).
+- Files next to the executable: Windows post-build copy, DeployFile
+  entries for macOS (Contents/MacOS - see the signing note: .vdf / .glb
+  belong in Contents/Resources for a Developer ID build) and Linux64;
+  gen_projects.py "files" writes both. The .glb models must be deployed
+  the same way (or loaded from a known folder).
+- Linux depot: executable (exec bit), libsteam_api.so (the game ships it;
+  Steam does NOT provide it), manifest + layouts, models, probably
+  libfmux.so; GTK 3 + OpenGL from the system. SteamOS shows every main
+  window full screen - the pad combo exists for that reason.
+- macOS: the objc_disposeClassPair FMXWindow line at exit is harmless;
+  signing entitlements in the note above.
+
+### Still open (owner)
+- Steam deployment test (Linux depot, ideally on a Steam Deck); macOS
+  .vdf to Contents/Resources before a Developer ID build.
+- uNetworks.pas (LogReceiver's network list): the Windows
+  GetAdaptersAddresses records were written from memory; the owner's run
+  listened on the chosen LAN address and was found, so the list works -
+  check once that the adapter names shown are right.
+- Real hardware still untested: genuine Xbox 360, PS4 DualShock 4, Steam
+  Deck, 2015 Steam Controller; Switch 2 Pro will not be tested.
+- From earlier sessions (fifth-session handover below): models/LICENSE
+  name, PS5 logo material name, Steam Cloud off for 2275430, generator
+  batch 2, component icons.
+
+## Handover (2026-10-31, end of fifth session)
 State: pushed and verified up to 1467094 "More plugins inc imput" (Plugins5
 + Input1 + the owner's models/ and .gitattributes). Delivered since, NOT yet
 pushed when the session ended: MappingDoc1, InputMapping1 (tested locally

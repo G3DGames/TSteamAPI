@@ -63,7 +63,8 @@ PROJECTS = [
     # (Windows post-build) or deployed beside the library (macOS / Linux).
     dict(name="SteamInputDemo", dir="demos\\SteamInputDemo", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
-         units=[],
+         # FmxLinuxMenu: Linux shows FMX's menu bar, not GTK's (one-letter menus)
+         units=[("FmxLinuxMenu", "src\\FmxLinuxMenu.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmInput")],
          # ..\\..\\RemoteLogging\\src: the optional log sender (File menu)
          search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
@@ -78,7 +79,8 @@ PROJECTS = [
     # receiver app. Senders (SteamInputDemo) use RemoteLogging\src directly.
     dict(name="LogReceiver", dir="RemoteLogging\\LogReceiver", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
-         units=[("uNetworks", "src\\uNetworks.pas")],
+         # FmxLinuxMenu: same file as SteamInputDemo's (Linux menu bar fix)
+         units=[("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"), ("uNetworks", "src\\uNetworks.pas")],
          forms=[("uReceiver", "src\\uReceiver.pas", "frmReceiver")],
          search="src;..\\src", depends=[]),
     # Framework-free runtime package: the whole library, the plug-ins and the

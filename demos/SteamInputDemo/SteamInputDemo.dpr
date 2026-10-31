@@ -9,6 +9,7 @@ program SteamInputDemo;
 uses
   System.StartUpCopy,
   FMX.Forms,
+  FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   uMain in 'src\uMain.pas' {frmInput};
 
 begin

@@ -165,7 +165,7 @@ implementation
 
 uses
   System.IOUtils, System.StrUtils, System.IniFiles, FMX.DialogService.Sync,
-  IdGlobal, IdStack, IdSocketHandle, RemoteLog.Protocol;
+  IdGlobal, IdStack, IdSocketHandle, RemoteLog.Protocol, FmxLinuxMenu;
 
 type
   { An Accept question shared by a worker thread and the main thread. An
@@ -298,6 +298,9 @@ var
   Last: string;
   Ini: TMemIniFile;
 begin
+  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
+  // (FmxLinuxMenu). FIRST, before anything touches a menu item.
+  ReplaceMainMenu(Self, MainMenu1);
   FLock := TCriticalSection.Create;
   FSessions := TObjectList<TLogSession>.Create(True);
   FContexts := TDictionary<TIdContext, TLogSession>.Create;

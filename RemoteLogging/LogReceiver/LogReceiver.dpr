@@ -8,6 +8,7 @@ program LogReceiver;
 uses
   System.StartUpCopy,
   FMX.Forms,
+  FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   uNetworks in 'src\uNetworks.pas',
   uReceiver in 'src\uReceiver.pas' {frmReceiver};
 

@@ -231,6 +231,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="src\FmxLinuxMenu.pas"/>
         <DCCReference Include="src\uNetworks.pas"/>
         <DCCReference Include="src\uReceiver.pas">
             <Form>frmReceiver</Form>

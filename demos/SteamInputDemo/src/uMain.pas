@@ -279,7 +279,7 @@ implementation
 {$R *.fmx}
 
 uses
-  System.IOUtils, System.DateUtils, System.StrUtils
+  System.IOUtils, System.DateUtils, System.StrUtils, FmxLinuxMenu
 {$IFDEF MSWINDOWS}
   , Winapi.ShellAPI   // not Winapi.Windows: its TBitmap would hide FMX's here
 {$ENDIF}
@@ -515,6 +515,9 @@ end;
 
 procedure TfrmInput.FormCreate(Sender: TObject);
 begin
+  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
+  // (FmxLinuxMenu). FIRST, before anything touches a menu item.
+  ReplaceMainMenu(Self, MainMenu1);
   FLogFile := TPath.Combine(ExpandFileName(ExtractFilePath(ParamStr(0))), 'SteamInputDemo.log');
   try
     TFile.WriteAllText(FLogFile, '');
@@ -1242,11 +1245,34 @@ var
   I: Integer;
   Text, Glyph, OriginName: string;
   Item: TListBoxItem;
+  NoneBound: Boolean;
 begin
   if FOriginsLogged or (FActive = 0) then
     Exit;
   FOriginsLogged := True;
+  // Steam returns no origins at all for a pad that is going away (Linux
+  // run 20:59: every PS5 action "NOT BOUND", the PS5 disconnected 5 s
+  // later). Then "a different layout" would be wrong: say it once instead.
+  NoneBound := True;
+  for A := Low(TInputAction) to High(TInputAction) do
+    if not ActionOptional[A] and (FActionHandles[A] <> 0) and (FSetHandles[ActionSet[A]] <> 0) then
+    begin
+      if ActionAnalog[A] then
+        Origins := P.AnalogActionOrigins(FActive, FSetHandles[ActionSet[A]], FActionHandles[A])
+      else
+        Origins := P.DigitalActionOrigins(FActive, FSetHandles[ActionSet[A]], FActionHandles[A]);
+      if Length(Origins) > 0 then
+      begin
+        NoneBound := False;
+        Break;
+      end;
+    end;
   AddLog('Bindings on ' + ControllerText(P, FActive) + ':');
+  if NoneBound then
+    AddLog('  NO action has a binding on this pad right now - Steam reports this while a pad is '
+      + 'disconnecting (switched off, Bluetooth lost) or when it uses a layout without our actions '
+      + 'at all; if the pad stays, choose the game''s official layout in Steam (File > View '
+      + 'Controller Settings)');
   lbBindings.BeginUpdate;
   try
     lbBindings.Clear;
@@ -1283,6 +1309,8 @@ begin
           AddLog(Format('  %s.%s: not bound (optional: not every pad has it)',
             [SetNames[ActionSet[A]], ActionNames[A]]));
         end
+        else if NoneBound then
+          Item.ItemData.Detail := 'NO BINDINGS (see log)'
         else
         begin
           Item.ItemData.Detail := 'NOT BOUND';
