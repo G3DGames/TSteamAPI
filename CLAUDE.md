@@ -449,6 +449,43 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   inconsistency); optional actions unbound show "not on this controller",
   other unbound ones "NOT BOUND ... Steam is using a different layout".
   NOT YET COMPILED.
+- Push 34c252b (13:45) accidentally deleted CLAUDE.md, demos/, docs/,
+  tools/ (70 files); restored by zip Restore1 (whole folders from the
+  working copy) and pushed as 5399be8 - all 125 files verified identical.
+- TESTED 13:50 (owner, Win64, Xbox One pad, Bind1): banner "Xbox One /
+  Series controller", XBoxOneController (3), layout controller_xboxone.vdf
+  (ours), "Steam loaded OUR default layout (mapping by 0, revision 0.0)";
+  handles resolved for all 25 actions; every non-optional action bound
+  with the expected origin and glyph; Gyro and the four back paddles "not
+  bound (optional)" - correct for an Xbox pad.
+- Zip Layout1 (follows Bind1): owner found the layout bad even full
+  screen. Left column 560 wide; memState Align Top (440) + splState
+  (TSplitter, Top) + lbBindings Align Client; splLeft (TSplitter, Left)
+  between the left column and the log; window 1200 x 824.
+- Owner (14:09), for readers: on Windows 11 the Xbox Game Bar takes the
+  pad's middle Xbox and Share / options buttons (View and Menu are fine);
+  disable it in Settings -> Gaming -> Game Bar to test them. Zip Notes1
+  (follows Layout1): README Known issues entry + SteamInputMapping.md
+  troubleshooting row; README's "no controller" entry brought up to date
+  (layouts for every pad type, banner).
+- Owner (14:15): the Xbox pad responds correctly to all Bind1 mappings
+  (Microsoft's View = our Select, Menu = our Start). Start alone switched
+  the set and emptied the Live state panel. Zip Combo1 (follows Notes1):
+  the Menu set now opens only on Start while RightTrigger > 0.25
+  (MENU_TRIGGER_MIN in uMain.pas); Start alone is logged with a hint;
+  MenuBack (ButtonB) still returns. Reason (owner asked for it to be
+  explained): bad for a game, right for a pad-testing tool - Start must
+  stay an ordinary button to watch, and a set switch must never happen by
+  accident. Manifest title of Start and SteamInputMapping.md updated.
+- Owner (14:27-14:28): Combo1 works (Start registers as a button);
+  XBOX PASSES. Seen in the Menu set: the caption still said "(action set,
+  actions, motion)"; the Xbox button turned MenuConfirm / MenuBack "active
+  False" (Steam overlay / Game Bar has the pad - expected); B switched
+  back at once so MenuBack could not be watched. Zip Menu1 (follows
+  Combo1): lblState names the set (UpdateStateCaption); leaving the Menu
+  set takes MenuConfirm + MenuBack (A + B) together; a change of the set's
+  actions to all-inactive and back is logged once each way
+  (FSetActiveState). MenuBack title regenerated into all layouts.
 - 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
   Delphi; installed on the owner's machine, and its developer makes
   changes quickly), CGE second (also installed, but updates take far

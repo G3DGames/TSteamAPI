@@ -101,11 +101,11 @@ LOCALIZATION = {"english": [
     ("Action_LeftStickClick", "Left stick press"), ("Action_RightStickClick", "Right stick press"),
     ("Action_DPadUp", "D-pad up"), ("Action_DPadDown", "D-pad down"),
     ("Action_DPadLeft", "D-pad left"), ("Action_DPadRight", "D-pad right"),
-    ("Action_Start", "Start / Menu / Options (opens the menu set)"),
+    ("Action_Start", "Start / Menu / Options (with the right trigger: menu set)"),
     ("Action_Select", "Select / View / Create"),
     ("Action_BackLeft", "Left back paddle"), ("Action_BackRight", "Right back paddle"),
     ("Action_BackLeftUpper", "Upper left back paddle"), ("Action_BackRightUpper", "Upper right back paddle"),
-    ("Action_MenuConfirm", "Confirm"), ("Action_MenuBack", "Back to the game"),
+    ("Action_MenuConfirm", "Confirm"), ("Action_MenuBack", "Back (with Confirm: back to every control)"),
 ]}
 
 # Default bindings per set: (source, input or None, action). input None =

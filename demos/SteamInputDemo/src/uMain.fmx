@@ -2,8 +2,8 @@ object frmInput: TfrmInput
   Left = 0
   Top = 0
   Caption = 'Steam Input test - AppID 2275430 (SDK 1.65)'
-  ClientHeight = 764
-  ClientWidth = 900
+  ClientHeight = 824
+  ClientWidth = 1200
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
@@ -12,7 +12,7 @@ object frmInput: TfrmInput
   DesignerMasterStyle = 0
   object pnlTop: TPanel
     Align = Top
-    Size.Width = 900.000000000000000000
+    Size.Width = 1200.000000000000000000
     Size.Height = 48.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 0
@@ -80,7 +80,7 @@ object frmInput: TfrmInput
   object pnlPad: TPanel
     Align = Top
     Position.Y = 48.000000000000000000
-    Size.Width = 900.000000000000000000
+    Size.Width = 1200.000000000000000000
     Size.Height = 84.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 3
@@ -88,7 +88,7 @@ object frmInput: TfrmInput
       Align = Top
       Margins.Left = 8.000000000000000000
       Position.X = 8.000000000000000000
-      Size.Width = 892.000000000000000000
+      Size.Width = 1192.000000000000000000
       Size.Height = 36.000000000000000000
       Size.PlatformDefault = False
       Text = 'No controller'
@@ -96,7 +96,7 @@ object frmInput: TfrmInput
     object lblPadInfo: TLabel
       Align = Client
       Margins.Left = 8.000000000000000000
-      Size.Width = 892.000000000000000000
+      Size.Width = 1192.000000000000000000
       Size.Height = 48.000000000000000000
       Size.PlatformDefault = False
       Text = 'Press Start Steam, then connect a controller.'
@@ -105,13 +105,13 @@ object frmInput: TfrmInput
   object layLeft: TLayout
     Align = Left
     Position.Y = 132.000000000000000000
-    Size.Width = 420.000000000000000000
-    Size.Height = 632.000000000000000000
+    Size.Width = 560.000000000000000000
+    Size.Height = 692.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 1
     object lblControllers: TLabel
       Align = Top
-      Size.Width = 420.000000000000000000
+      Size.Width = 560.000000000000000000
       Size.Height = 24.000000000000000000
       Size.PlatformDefault = False
       Text = ' Controllers (the selected one is read)'
@@ -119,52 +119,71 @@ object frmInput: TfrmInput
     object lbControllers: TListBox
       Align = Top
       Position.Y = 24.000000000000000000
-      Size.Width = 420.000000000000000000
-      Size.Height = 110.000000000000000000
+      Size.Width = 560.000000000000000000
+      Size.Height = 72.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 0
       OnChange = lbControllersChange
     end
     object lblState: TLabel
       Align = Top
-      Position.Y = 134.000000000000000000
-      Size.Width = 420.000000000000000000
+      Position.Y = 96.000000000000000000
+      Size.Width = 560.000000000000000000
       Size.Height = 24.000000000000000000
       Size.PlatformDefault = False
       Text = ' Live state (action set, actions, motion)'
     end
     object memState: TMemo
       ReadOnly = True
-      Align = Client
-      Size.Width = 420.000000000000000000
-      Size.Height = 230.000000000000000000
+      Align = Top
+      Position.Y = 120.000000000000000000
+      Size.Width = 560.000000000000000000
+      Size.Height = 440.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 1
     end
+    object splState: TSplitter
+      Align = Top
+      Cursor = crVSplit
+      MinSize = 60.000000000000000000
+      Position.Y = 560.000000000000000000
+      Size.Width = 560.000000000000000000
+      Size.Height = 6.000000000000000000
+      Size.PlatformDefault = False
+    end
     object lblBindings: TLabel
-      Align = Bottom
-      Position.Y = 388.000000000000000000
-      Size.Width = 420.000000000000000000
+      Align = Top
+      Position.Y = 566.000000000000000000
+      Size.Width = 560.000000000000000000
       Size.Height = 24.000000000000000000
       Size.PlatformDefault = False
       Text = ' Bindings (Steam'#39's glyph of the first button)'
     end
     object lbBindings: TListBox
-      Align = Bottom
-      Position.Y = 412.000000000000000000
-      Size.Width = 420.000000000000000000
-      Size.Height = 220.000000000000000000
+      Align = Client
+      Size.Width = 560.000000000000000000
+      Size.Height = 102.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 2
       ItemHeight = 40.000000000000000000
       DefaultItemStyles.ItemStyle = 'listboxitembottomdetail'
     end
   end
+  object splLeft: TSplitter
+    Align = Left
+    Cursor = crHSplit
+    MinSize = 200.000000000000000000
+    Position.X = 560.000000000000000000
+    Position.Y = 132.000000000000000000
+    Size.Width = 6.000000000000000000
+    Size.Height = 692.000000000000000000
+    Size.PlatformDefault = False
+  end
   object memLog: TMemo
     ReadOnly = True
     Align = Client
-    Size.Width = 480.000000000000000000
-    Size.Height = 632.000000000000000000
+    Size.Width = 634.000000000000000000
+    Size.Height = 692.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 2
   end

@@ -77,11 +77,16 @@ type
     lblState: TLabel;
     { Live values of every action, refreshed by @link(tmPoll). }
     memState: TMemo;
+    { Drag to share the left column between @link(memState) and
+      @link(lbBindings). }
+    splState: TSplitter;
     { Caption of @link(lbBindings). }
     lblBindings: TLabel;
     { One row per action: the buttons bound to it, with Steam's glyph of the
       first one. }
     lbBindings: TListBox;
+    { Drag to change the width of the left column against the log. }
+    splLeft: TSplitter;
     { The log. }
     memLog: TMemo;
     { The "game loop": RunFrame and reading the actions. }
@@ -141,6 +146,10 @@ type
     FActionHandles: array[TInputAction] of UInt64;
     { The action set activated on the controller. }
     FCurrentSet: TInputSet;
+    { Whether the current set's actions were active in the last frame: -1
+      not known yet, 0 all inactive, 1 at least one active. A change is
+      logged (Steam or Windows taking the controller shows up here). }
+    FSetActiveState: Integer;
     { Controllers seen in the last frame. }
     FControllers: TSteamInputHandleArray;
     { The controller read (0 = none). }
@@ -198,13 +207,16 @@ type
     function LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin; ABitmap: TBitmap): string;
     { Activates ASet on the active controller (applied at the next RunFrame). }
     procedure SwitchSet(ASet: TInputSet);
+    { Names the current action set in the caption of @link(memState). }
+    procedure UpdateStateCaption;
     { Shows the controller being read in the banner; logs each change.
       Called every frame; cheap unless the controller changed. }
     procedure UpdatePadBanner(P: TSteamInputPlugin);
     { "Xbox One controller (handle ..., gamepad index ...)". }
     function ControllerText(P: TSteamInputPlugin; AHandle: InputHandle_t): string;
     { Reads every action of the current set; logs edges and movement;
-      returns the live-state text. }
+      opens the Menu set on Start + RightTrigger past MENU_TRIGGER_MIN and
+      returns from it on MenuBack; returns the live-state text. }
     function ReadActions(P: TSteamInputPlugin): string;
   end;
 
@@ -258,6 +270,9 @@ const
   SetNames: array[TInputSet] of string = ('InGame', 'Menu');
   { Analog change that is logged (stick units, -1..1). }
   ANALOG_LOG_STEP = 0.2;
+  { How far RightTrigger must be pulled while Start is pressed to open the
+    Menu set (see @link(TfrmInput.ReadActions)). }
+  MENU_TRIGGER_MIN = 0.25;
   { Fewest milliseconds between two log lines of one analog action. }
   ANALOG_LOG_MS = 250;
 
@@ -450,6 +465,8 @@ begin
   else
     AddLog('Action manifest ' + MANIFEST_FILE + ' NOT FOUND next to the executable '
       + '(the post-build event copies it from src\)');
+  AddLog('Hold the right trigger past ' + F2(MENU_TRIGGER_MIN) + ' and press Start to open the '
+    + 'Menu set; ButtonB returns. Start alone is just a button here.');
   AddLog('Press Start Steam, then use a controller. Steam Input must be enabled '
     + 'for this game in the Steam client for Xbox / generic controllers.');
 end;
@@ -517,6 +534,8 @@ begin
     FLoggedAt[A] := 0;
   end;
   FCurrentSet := isInGame;
+  FSetActiveState := -1;
+  UpdateStateCaption;
   FControllers := nil;
   FConfigHandles := nil;
   FConfigTexts := nil;
@@ -653,6 +672,7 @@ begin
     FPressed[A] := False;
   FOriginsLogged := False;
   FMotionLogged := False;
+  FSetActiveState := -1;
   AddLog('Reading ' + ControllerText(P, FActive));
 end;
 
@@ -947,6 +967,7 @@ begin
     FActive := FControllers[Sel];
     FOriginsLogged := False;
     FMotionLogged := False;
+    FSetActiveState := -1;
     AddLog('Reading ' + ControllerText(P, FActive));
   end;
 end;
@@ -1040,9 +1061,23 @@ begin
   if ASet = FCurrentSet then
     Exit;
   FCurrentSet := ASet;
+  FSetActiveState := -1;
   for A := Low(TInputAction) to High(TInputAction) do
     FPressed[A] := False;
+  UpdateStateCaption;
   AddLog('Action set -> ' + SetNames[ASet] + ' (active from the next frame)');
+end;
+
+procedure TfrmInput.UpdateStateCaption;
+begin
+  case FCurrentSet of
+    isInGame:
+      lblState.Text := ' Live state - action set InGame (every control; RightTrigger + Start '
+        + 'opens Menu), motion';
+  else
+    lblState.Text := ' Live state - action set MENU (MenuConfirm = A, MenuBack = B; A + B '
+      + 'together returns), motion';
+  end;
 end;
 
 function TfrmInput.ReadActions(P: TSteamInputPlugin): string;
@@ -1052,7 +1087,11 @@ var
   An: InputAnalogActionData_t;
   M: InputMotionData_t;
   Lines: TStringList;
+  RightTrigger: Single;
+  AnyActive: Boolean;
 begin
+  RightTrigger := 0;
+  AnyActive := False;
   Lines := TStringList.Create;
   try
     Lines.Add('Controller: ' + ControllerText(P, FActive));
@@ -1072,6 +1111,9 @@ begin
       if ActionAnalog[A] then
       begin
         An := P.GetAnalogActionData(FActive, FActionHandles[A]);
+        if A = iaRightTrigger then
+          RightTrigger := An.x;   // read before Start: analog actions come first
+        AnyActive := AnyActive or An.bActive;
         Lines.Add(Format('%-15s x %s  y %s  %s, active %s',
           [ActionNames[A], F2(An.x), F2(An.y), SourceModeName(An.eMode), BoolToStr(An.bActive, True)]));
         if ((Abs(An.x - FLoggedX[A]) >= ANALOG_LOG_STEP) or (Abs(An.y - FLoggedY[A]) >= ANALOG_LOG_STEP)
@@ -1088,6 +1130,7 @@ begin
       else
       begin
         D := P.GetDigitalActionData(FActive, FActionHandles[A]);
+        AnyActive := AnyActive or D.bActive;
         Lines.Add(Format('%-15s %s, active %s',
           [ActionNames[A], IfThen(D.bState, 'PRESSED', 'up'), BoolToStr(D.bActive, True)]));
         if D.bState <> FPressed[A] then
@@ -1095,13 +1138,46 @@ begin
           FPressed[A] := D.bState;
           AddLog(Format('%s %s (active %s)',
             [ActionNames[A], IfThen(D.bState, 'pressed', 'released'), BoolToStr(D.bActive, True)]));
+          // Opening the Menu set takes a COMBINATION: Start while RightTrigger
+          // is pulled past MENU_TRIGGER_MIN. Bad design for a game, right for
+          // this tool: Start alone must stay an ordinary button that can be
+          // pressed and watched like every other one, and a set switch empties
+          // the Live state panel (only the Menu set's actions are read there).
+          // A deliberate two-handed combination cannot happen by accident
+          // while a pad is being tested.
           if D.bState and (A = iaStart) then
-            SwitchSet(isMenu)
-          else if D.bState and (A = iaMenuBack) then
+          begin
+            if RightTrigger > MENU_TRIGGER_MIN then
+            begin
+              AddLog(Format('Start + RightTrigger %s: opening the Menu set', [F2(RightTrigger)]));
+              SwitchSet(isMenu);
+            end
+            else
+              AddLog(Format('(Start alone does not open the Menu set: hold RightTrigger past %s '
+                + 'and press Start; RightTrigger is %s)', [F2(MENU_TRIGGER_MIN), F2(RightTrigger)]));
+          end
+          // Leaving the Menu set is a combination too (MenuConfirm + MenuBack,
+          // A + B, held together), so each of them alone can be watched.
+          else if D.bState and (A in [iaMenuConfirm, iaMenuBack])
+            and FPressed[iaMenuConfirm] and FPressed[iaMenuBack] then
+          begin
+            AddLog('MenuConfirm + MenuBack together: back to the InGame set');
             SwitchSet(isInGame);
+          end;
         end;
       end;
     end;
+    // Steam reports every action inactive while something else has the
+    // controller - e.g. the Guide / Xbox button opened Steam's overlay or
+    // Windows' Game Bar. Log the change, once each way.
+    if (FSetActiveState >= 0) and (Ord(AnyActive) <> FSetActiveState) then
+      if AnyActive then
+        AddLog('Actions active again')
+      else
+        AddLog('Every action of the set is now INACTIVE (active False): Steam reports this while '
+          + 'something else has the controller - the Guide / Xbox button (Steam overlay, Xbox '
+          + 'Game Bar) or another window');
+    FSetActiveState := Ord(AnyActive);
     M := P.GetMotionData(FActive);
     Lines.Add('');
     Lines.Add(Format('Motion   quat %s %s %s %s', [F2(M.rotQuatX), F2(M.rotQuatY), F2(M.rotQuatZ), F2(M.rotQuatW)]));

@@ -453,11 +453,21 @@ Windows', normal behaviour. Each says why and what to do.
 > Xbox and generic controllers only reach Steam Input when it is enabled for
 > the game in the Steam client (Library -> the game's Properties ->
 > Controller). The demo ships default layouts for Xbox, PlayStation,
-> Switch Pro, Steam Deck and the 2015 Steam Controller (written by
-> tools/gen_input_mapping.py); a pad without one (e.g. the 2026 Steam
-> Controller) is unbound until a layout is chosen: press **Bindings...**
-> (needs the overlay) or open the game's controller layout from the Steam
-> client. The log says which actions are "NOT BOUND".
+> Switch Pro / Switch 2 Pro / Joy-Con pair, Steam Deck, both Steam
+> Controllers and generic pads (written by tools/gen_input_mapping.py); a
+> pad without one (e.g. a single Joy-Con) is unbound until a layout is
+> chosen: press **Bindings...** (needs the overlay) or open the game's
+> controller layout from the Steam client. The banner at the top says
+> whether Steam loaded OUR layout for the pad, and the log says which
+> actions are "NOT BOUND".
+
+> **On Windows 11 some middle buttons of a pad open the Xbox Game Bar
+> instead of reaching the game.** The Xbox (Guide) button and the small
+> middle Share / options button trigger Windows' Xbox Game Bar, which makes
+> them hard to test; View and Menu (left and right) are not affected.
+> Turn the Game Bar off in Windows Settings -> Gaming -> Game Bar if you
+> need those buttons - but remember your players may have it on (and may
+> want it). The Guide button can never be bound anyway: Steam reserves it.
 
 > **Achievement icon is 0 / an image you uploaded never appears.**
 > `GetAchievementIcon` returns 0 both while Steam is still fetching the icon

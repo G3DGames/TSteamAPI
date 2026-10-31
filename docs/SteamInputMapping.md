@@ -218,8 +218,14 @@ leaves one out:
 | `BackLeft`, `BackRight` *(optional)* | back paddles | `switch`: `button_back_left` / `_right` - Steam Controllers, Steam Deck |
 | `BackLeftUpper`, `BackRightUpper` *(optional)* | upper back paddles | `switch`: `button_back_left_upper` / `_right_upper` - Steam Deck, 2026 Steam Controller (names unconfirmed) |
 
-`Start` switches to the `Menu` set (`MenuConfirm` = `ButtonA`, `MenuBack`
-= `ButtonB`, which returns). The Guide / PS / Home / Steam button is
+`Start` together with `RightTrigger` pulled past 0.25 switches to the
+`Menu` set (`MenuConfirm` = `ButtonA`, `MenuBack` = `ButtonB`); pressing
+both together returns. Combinations are bad design for a game but right for
+a tool that tests pads: `Start`, `A` and `B` alone stay ordinary buttons to
+watch, and a set switch replaces what the Live state panel shows, so it
+must never happen by accident. While the Guide / Xbox button has opened
+Steam's overlay or the Xbox Game Bar, Steam reports every action inactive
+(`bActive` False) - the demo logs that change. The Guide / PS / Home / Steam button is
 reserved by Steam and can never be bound.
 
 SteamInputDemo shows the controller it reads at the top: its type, the
@@ -330,6 +336,7 @@ a Switch model is planned):
 | `ShowBindingPanel` returns False | The Steam overlay is not running in this process (typical when started from the IDE): edit the layout from the Steam client instead |
 | Manifest ignored (handles 0, nothing in the configurator) although the path is right | `//` comments in the manifest (section 1), or a VDF syntax error |
 | Some controls work on one pad but not on another | Steam loaded a different layout for that pad - a personal one or a Steam template (the demo's banner says so; the log shows "mapping by" a non-zero id). Reset the pad's layout to the game's default in Steam's controller settings. Also: a pad with Steam Input switched off for it (PlayStation / Switch / generic support settings) reaches the game through no layout at all |
+| A middle button (Xbox / Guide, Share) opens the Xbox Game Bar on Windows 11 | Windows' Xbox Game Bar takes those buttons; View and Menu are fine. Turn it off in Settings -> Gaming -> Game Bar to test them - players may have it on |
 | Layout changes not picked up | Steam keeps a manifest override for the session; `OnSteamInputConfigurationLoaded` reports each new layout - re-read handles and origins then |
 
 Sources: Valve's Steamworks documentation -
