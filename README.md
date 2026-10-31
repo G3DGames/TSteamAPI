@@ -88,7 +88,8 @@ demos/
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form
   SteamConsole/             console smoke test (no framework; FPC-ready)
-  SteamInputDemo/           Steam Input test (FMX): action manifest in src/, live
+  SteamInputDemo/           Steam Input test (FMX): action manifest in src/, the
+                            connected controller identified at the top, live
                             digital / analog / motion values, bindings, rumble
 models/                     CC0 3D gamepad models (glTF .glb, rigged, one clip per
                             input): XBoxOne_Animated, PS5_Animated,
