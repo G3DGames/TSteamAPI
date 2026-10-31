@@ -1,0 +1,20 @@
+object frmGamepad: TfrmGamepad
+  Left = 0
+  Top = 0
+  Caption = 'Virtual Gamepad - AppID 2275430 (SDK 1.65)'
+  ClientHeight = 600
+  ClientWidth = 800
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  DesignerMasterStyle = 0
+  object lblInfo: TLabel
+    Align = Client
+    Size.Width = 800.000000000000000000
+    Size.Height = 600.000000000000000000
+    Size.PlatformDefault = False
+    TextSettings.HorzAlign = Center
+    Text = 'Virtual Gamepad - skeleton (3D view to come)'
+    TabOrder = 0
+  end
+end

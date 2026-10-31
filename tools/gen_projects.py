@@ -36,6 +36,14 @@ DESKTOP_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64"]
 def lib_units(rel):   # rel = path from project dir to repo root
     return [(u, f"{rel}lib\\{u}.pas") for u in LIB]
 
+# Steam Input manifest + one default layout per controller type, all
+# written by tools/gen_input_mapping.py into every Steam Input demo's src
+# (keep this list in step with its CONTROLLERS table)
+INPUT_FILES = ["src\\steam_input_manifest.vdf"] + [
+    f"src\\controller_{t}.vdf" for t in ("xboxone", "xbox360", "ps5", "ps4", "switch_pro",
+                                         "neptune", "steamcontroller_gordon", "triton",
+                                         "switch2_pro", "switch_joycon_pair", "generic")]
+
 PROJECTS = [
     # The demos use the library like any user project: its DCUs come from the
     # runtime packages' output in Delphi's Dcp folder (default Library path),
@@ -68,13 +76,17 @@ PROJECTS = [
          forms=[("uMain", "src\\uMain.pas", "frmInput")],
          # ..\\..\\RemoteLogging\\src: the optional log sender (File menu)
          search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
-         # manifest + one default layout per controller type, all written
-         # by tools/gen_input_mapping.py (keep this list in step with its
-         # CONTROLLERS table)
-         files=["src\\steam_input_manifest.vdf"] + [
-             f"src\\controller_{t}.vdf" for t in ("xboxone", "xbox360", "ps5", "ps4", "switch_pro",
-                                                  "neptune", "steamcontroller_gordon", "triton",
-                                                  "switch2_pro", "switch_joycon_pair", "generic")]),
+         files=INPUT_FILES),
+    # 3D gamepad visualiser (Gorilla3D, FMX, desktop; Android later): the
+    # model of the connected pad animated live through Steam Input. Same
+    # manifest + layouts as SteamInputDemo (gen_input_mapping.py writes
+    # both). SKELETON so far (owner 2026-10-31: in the project group).
+    dict(name="VirtualGamepad", dir="demos\\VirtualGamepad", kind="app", framework="FMX",
+         platforms=DESKTOP_PLATFORMS, default="Win64",
+         units=[],
+         forms=[("uMain", "src\\uMain.pas", "frmGamepad")],
+         search="src", redist=True, depends=["SteamworksFMX"],
+         files=INPUT_FILES),
     # OPTIONAL remote logging (RemoteLogging/, nothing to do with Steam): the
     # receiver app. Senders (SteamInputDemo) use RemoteLogging\src directly.
     dict(name="LogReceiver", dir="RemoteLogging\\LogReceiver", kind="app", framework="FMX",

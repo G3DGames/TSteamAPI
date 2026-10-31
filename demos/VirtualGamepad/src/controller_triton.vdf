@@ -1,0 +1,671 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"revision"		"1"
+	"title"		"#title"
+	"description"		"#description"
+	"controller_type"		"controller_triton"
+	"major_revision"		"0"
+	"minor_revision"		"0"
+	"Timestamp"		"0"
+	"actions"
+	{
+		"InGame"
+		{
+			"title"		"#Set_InGame"
+			"StickPadGyro"
+			{
+				"LeftStick"
+				{
+					"title"		"#Action_LeftStick"
+					"input_mode"		"joystick_move"
+				}
+				"RightStick"
+				{
+					"title"		"#Action_RightStick"
+					"input_mode"		"joystick_move"
+				}
+				"Gyro"
+				{
+					"title"		"#Action_Gyro"
+					"input_mode"		"absolute_mouse"
+				}
+				"LeftTrackpad"
+				{
+					"title"		"#Action_LeftTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"RightTrackpad"
+				{
+					"title"		"#Action_RightTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"CenterTrackpad"
+				{
+					"title"		"#Action_CenterTrackpad"
+					"input_mode"		"joystick_move"
+				}
+			}
+			"AnalogTrigger"
+			{
+				"LeftTrigger"		"#Action_LeftTrigger"
+				"RightTrigger"		"#Action_RightTrigger"
+			}
+			"Button"
+			{
+				"ButtonA"		"#Action_ButtonA"
+				"ButtonB"		"#Action_ButtonB"
+				"ButtonX"		"#Action_ButtonX"
+				"ButtonY"		"#Action_ButtonY"
+				"LeftBumper"		"#Action_LeftBumper"
+				"RightBumper"		"#Action_RightBumper"
+				"LeftStickClick"		"#Action_LeftStickClick"
+				"RightStickClick"		"#Action_RightStickClick"
+				"DPadUp"		"#Action_DPadUp"
+				"DPadDown"		"#Action_DPadDown"
+				"DPadLeft"		"#Action_DPadLeft"
+				"DPadRight"		"#Action_DPadRight"
+				"Start"		"#Action_Start"
+				"Select"		"#Action_Select"
+				"BackLeft"		"#Action_BackLeft"
+				"BackRight"		"#Action_BackRight"
+				"BackLeftUpper"		"#Action_BackLeftUpper"
+				"BackRightUpper"		"#Action_BackRightUpper"
+				"LeftTrackpadClick"		"#Action_LeftTrackpadClick"
+				"RightTrackpadClick"		"#Action_RightTrackpadClick"
+				"CenterTrackpadClick"		"#Action_CenterTrackpadClick"
+			}
+		}
+		"Menu"
+		{
+			"title"		"#Set_Menu"
+			"Button"
+			{
+				"MenuConfirm"		"#Action_MenuConfirm"
+				"MenuBack"		"#Action_MenuBack"
+			}
+		}
+	}
+	"localization"
+	{
+		"english"
+		{
+			"title"		"SteamInputDemo - Steam Controller (2026)"
+			"description"		"Default layout for the Steam Controller (2026) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
+			"Set_InGame"		"Every control"
+			"Set_Menu"		"Menu"
+			"Action_LeftStick"		"Left stick"
+			"Action_RightStick"		"Right stick"
+			"Action_Gyro"		"Gyro (motion sensors, reported as mouse movement)"
+			"Action_LeftTrackpad"		"Left trackpad"
+			"Action_RightTrackpad"		"Right trackpad"
+			"Action_CenterTrackpad"		"Touchpad (PlayStation)"
+			"Action_LeftTrackpadClick"		"Left trackpad press"
+			"Action_RightTrackpadClick"		"Right trackpad press"
+			"Action_CenterTrackpadClick"		"Touchpad press (PlayStation)"
+			"Action_LeftTrigger"		"Left trigger"
+			"Action_RightTrigger"		"Right trigger"
+			"Action_ButtonA"		"Bottom face button (A / Cross / Nintendo B)"
+			"Action_ButtonB"		"Right face button (B / Circle / Nintendo A)"
+			"Action_ButtonX"		"Left face button (X / Square / Nintendo Y)"
+			"Action_ButtonY"		"Top face button (Y / Triangle / Nintendo X)"
+			"Action_LeftBumper"		"Left shoulder"
+			"Action_RightBumper"		"Right shoulder"
+			"Action_LeftStickClick"		"Left stick press"
+			"Action_RightStickClick"		"Right stick press"
+			"Action_DPadUp"		"D-pad up"
+			"Action_DPadDown"		"D-pad down"
+			"Action_DPadLeft"		"D-pad left"
+			"Action_DPadRight"		"D-pad right"
+			"Action_Start"		"Start / Menu / Options (with the right trigger: menu set)"
+			"Action_Select"		"Select / View / Create"
+			"Action_BackLeft"		"Left back paddle (lower, L5)"
+			"Action_BackRight"		"Right back paddle (lower, R5)"
+			"Action_BackLeftUpper"		"Upper left back paddle (L4)"
+			"Action_BackRightUpper"		"Upper right back paddle (R4)"
+			"Action_MenuConfirm"		"Confirm"
+			"Action_MenuBack"		"Back (with Confirm: back to every control)"
+		}
+	}
+	"group"
+	{
+		"id"		"0"
+		"mode"		"switches"
+		"inputs"
+		{
+			"left_bumper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame LeftBumper"
+						}
+					}
+				}
+			}
+			"right_bumper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame RightBumper"
+						}
+					}
+				}
+			}
+			"button_escape"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame Start"
+						}
+					}
+				}
+			}
+			"button_menu"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame Select"
+						}
+					}
+				}
+			}
+			"button_back_left"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackLeft"
+						}
+					}
+				}
+			}
+			"button_back_right"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackRight"
+						}
+					}
+				}
+			}
+			"button_back_left_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackLeftUpper"
+						}
+					}
+				}
+			}
+			"button_back_right_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackRightUpper"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame ButtonA"
+						}
+					}
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame ButtonB"
+						}
+					}
+				}
+			}
+			"button_x"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame ButtonX"
+						}
+					}
+				}
+			}
+			"button_y"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame ButtonY"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"trigger"
+		"inputs"
+		{
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"LeftTrigger"
+		}
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"trigger"
+		"inputs"
+		{
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"RightTrigger"
+		}
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame LeftStickClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"LeftStick"
+		}
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame RightStickClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"RightStick"
+		}
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame DPadUp"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame DPadDown"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame DPadLeft"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame DPadRight"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"7"
+		"mode"		"gyro_to_mouse"
+		"inputs"
+		{
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"Gyro"
+		}
+	}
+	"group"
+	{
+		"id"		"8"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame LeftTrackpadClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"LeftTrackpad"
+		}
+	}
+	"group"
+	{
+		"id"		"9"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame RightTrackpadClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"RightTrackpad"
+		}
+	}
+	"group"
+	{
+		"id"		"10"
+		"mode"		"switches"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"11"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuConfirm"
+						}
+					}
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuBack"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"12"
+		"mode"		"trigger"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"13"
+		"mode"		"trigger"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"14"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"15"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"16"
+		"mode"		"dpad"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"17"
+		"mode"		"gyro_to_mouse"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"18"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"19"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"InGame"
+		"group_source_bindings"
+		{
+			"0"		"switch active"
+			"1"		"button_diamond active"
+			"2"		"left_trigger active"
+			"3"		"right_trigger active"
+			"4"		"joystick active"
+			"5"		"right_joystick active"
+			"6"		"dpad active"
+			"7"		"gyro active"
+			"8"		"left_trackpad active"
+			"9"		"right_trackpad active"
+		}
+	}
+	"preset"
+	{
+		"id"		"1"
+		"name"		"Menu"
+		"group_source_bindings"
+		{
+			"10"		"switch active"
+			"11"		"button_diamond active"
+			"12"		"left_trigger active"
+			"13"		"right_trigger active"
+			"14"		"joystick active"
+			"15"		"right_joystick active"
+			"16"		"dpad active"
+			"17"		"gyro active"
+			"18"		"left_trackpad active"
+			"19"		"right_trackpad active"
+		}
+	}
+	"settings"
+	{
+	}
+}

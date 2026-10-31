@@ -95,6 +95,10 @@ demos/
                             Settings, Rumble, Send log to receiver (optional,
                             see RemoteLogging/; also DPadUp + Y + LeftBumper
                             together on the pad, for SteamOS), Exit
+  VirtualGamepad/           3D gamepad visualiser (FMX + Gorilla3D, in progress -
+                            skeleton only): the connected pad's model from
+                            models/, animated live through Steam Input; same
+                            manifest and layouts as SteamInputDemo
 RemoteLogging/              OPTIONAL, nothing to do with Steam: LogReceiver app +
                             RemoteLog.Sender unit to stream a program's log to a
                             desk machine (e.g. from a Steam Deck); see its README
@@ -109,7 +113,7 @@ docs/                       user documentation (Markdown)
 tools/
   pasdoc_check.py           PasDoc coverage, ASCII and comment-nesting check
   gen_docs.py               generates docs/components/TSteam<Name>.md from the plug-in units
-  gen_input_mapping.py      writes SteamInputDemo's Steam Input manifest and default layouts
+  gen_input_mapping.py      writes the Steam Input manifest and default layouts (SteamInputDemo, VirtualGamepad)
   doc_extras/               hand-written overview text merged into those pages
   check_redist.py           validates all seven redistributables (type, CPU, SDK level)
   project_check.py          .dproj BOM / XML / unit-list agreement check
@@ -561,7 +565,7 @@ FPC / Lazarus build output (`*.o`, `*.ppu`, `lib/<cpu>-<os>/`, `backup/`,
 python3 tools/pasdoc_check.py
 python3 tools/project_check.py
 python3 tools/gen_docs.py        # regenerates docs/components/TSteam<Name>.md
-python3 tools/gen_input_mapping.py  # SteamInputDemo's manifest + default layouts
+python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (both demos)
 ```
 
 ## Status / next steps
