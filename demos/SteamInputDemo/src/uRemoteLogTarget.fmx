@@ -1,0 +1,98 @@
+object frmRemoteLogTarget: TfrmRemoteLogTarget
+  Left = 0
+  Top = 0
+  Caption = 'Send log to receiver'
+  ClientHeight = 360
+  ClientWidth = 560
+  Position = OwnerFormCenter
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnDestroy = FormDestroy
+  DesignerMasterStyle = 0
+  object lblHint: TLabel
+    Align = Top
+    Margins.Left = 12.000000000000000000
+    Margins.Top = 8.000000000000000000
+    Margins.Right = 12.000000000000000000
+    Margins.Bottom = 4.000000000000000000
+    Size.Width = 536.000000000000000000
+    Size.Height = 56.000000000000000000
+    Size.PlatformDefault = False
+    Text = 'Receivers'
+  end
+  object lbFound: TListBox
+    Align = Client
+    Margins.Left = 12.000000000000000000
+    Margins.Right = 12.000000000000000000
+    Margins.Bottom = 4.000000000000000000
+    Size.Width = 536.000000000000000000
+    Size.Height = 196.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 0
+    OnChange = lbFoundChange
+    OnDblClick = lbFoundDblClick
+  end
+  object layAddress: TLayout
+    Align = Bottom
+    Margins.Left = 12.000000000000000000
+    Margins.Right = 12.000000000000000000
+    Margins.Bottom = 4.000000000000000000
+    Size.Width = 536.000000000000000000
+    Size.Height = 32.000000000000000000
+    Size.PlatformDefault = False
+    object lblAddress: TLabel
+      Align = Left
+      Size.Width = 180.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Receiver address (IP:port)'
+    end
+    object edtAddress: TEdit
+      Align = Client
+      TabOrder = 1
+      Size.Width = 356.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+    end
+  end
+  object layButtons: TLayout
+    Align = Bottom
+    Margins.Left = 12.000000000000000000
+    Margins.Right = 12.000000000000000000
+    Margins.Bottom = 12.000000000000000000
+    Size.Width = 536.000000000000000000
+    Size.Height = 36.000000000000000000
+    Size.PlatformDefault = False
+    object btnSearch: TButton
+      Align = Left
+      Size.Width = 140.000000000000000000
+      Size.Height = 36.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 2
+      Text = 'Search again'
+      OnClick = btnSearchClick
+    end
+    object btnCancel: TButton
+      Align = Right
+      Cancel = True
+      ModalResult = 2
+      Size.Width = 110.000000000000000000
+      Size.Height = 36.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 4
+      Text = 'Cancel'
+    end
+    object btnConnect: TButton
+      Align = Right
+      Default = True
+      Margins.Right = 8.000000000000000000
+      Size.Width = 110.000000000000000000
+      Size.Height = 36.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 3
+      Text = 'Connect'
+      OnClick = btnConnectClick
+    end
+  end
+end

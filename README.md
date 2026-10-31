@@ -92,7 +92,12 @@ demos/
                             connected controller identified at the top, live
                             digital / analog / motion values, bindings; opens
                             Steam by itself; File menu: View Controller
-                            Settings, Rumble, Exit
+                            Settings, Rumble, Send log to receiver (optional,
+                            see RemoteLogging/; also DPadUp + Y + LeftBumper
+                            together on the pad, for SteamOS), Exit
+RemoteLogging/              OPTIONAL, nothing to do with Steam: LogReceiver app +
+                            RemoteLog.Sender unit to stream a program's log to a
+                            desk machine (e.g. from a Steam Deck); see its README
 models/                     CC0 3D gamepad models (glTF .glb, rigged, one clip per
                             input): XBoxOne_Animated, PS5_Animated,
                             SteamController_Animated; LICENSE (CC0, credits)

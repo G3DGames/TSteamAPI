@@ -160,6 +160,14 @@ Project AppID: 2275430.
   apps) - gen_projects.py writes both. The IDE dropped the group's
   Dependencies once already, and may rewrite the target lists in display
   order when it re-saves - check both after it does.
+- `RemoteLogging/` (owner, 2026-10-31) - OPTIONAL, NOTHING TO DO WITH
+  STEAM: LogReceiver (FMX app in the group, gen_projects entry, no
+  dependencies) + src/RemoteLog.Protocol.pas + src/RemoteLog.Sender.pas
+  (Indy; Delphi only). No Steam unit may use it and lib/ / packages never
+  reference it. EXCEPTION to "demos search only their own sources":
+  SteamInputDemo has ..\..\RemoteLogging\src on its search path for
+  File > Send log to receiver. Its README must keep saying it is 100%
+  optional. pasdoc_check.py scans it too.
 - `packages/` - runtime and design-time packages.
 - `Steamworks.groupproj` at the root lists every project.
 - `tools/` - Python helpers.
@@ -727,6 +735,116 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   hardware: Xbox 360 (genuine), PS4 DualShock 4 (gyro / touchpad),
   Steam Deck, 2015 Steam Controller, Switch 2 Pro; owner may order some.
   Zip PadSwitch (follows PadPS4): this note.
+- Push 2b8777d "Last Gamepads Passes Testing" verified: all 125 files
+  identical.
+- REMOTE LOGGING (owner 18:14-18:48; zip RemoteLog1 follows the push):
+  web server + MySQL design dropped; Delphi App Tethering has no Linux,
+  so a roll-your-own LAN protocol: receiver announces on UDP 47811
+  (TSTEAMAPI-LOGRECEIVER 1 <port> <name>), sender connects TCP 47812,
+  "HELLO app|platform|machine|session", receiver ASKS THE USER (Accept)
+  -> OK / NO, then plain UTF-8 lines; a known session id reconnects
+  without asking. The Accept prompt is QUEUED to the main thread and the
+  Indy worker waits on an event (200 ms polls of FClosing / connected), so
+  closing the window cannot deadlock. Files: Documents/LogReceiver/
+  <session>_<app>_<machine>.log, UTF-8 without BOM (own append routine -
+  TFile.AppendAllText may write a BOM each time). Sender: queue + thread,
+  reconnect every 3 s keeping unsent lines, Stop flushes up to 1 s.
+  SteamInputDemo: File > Send log to receiver... (2.5 s discovery, then
+  InputQuery IP:port prefilled) / Stop sending log; the backlog is sent
+  first. NOT YET COMPILED (Indy calls written from memory: TIdUDPClient
+  ReceiveString / Broadcast, TIdStackLocalAddressList, TIdContext.Binding).
+  Owner may publish a release build of LogReceiver. Independent review
+  (no compiler): no compile errors found; fixed from it - Stop no longer
+  blocks up to 2 min (handshake ReadLn in 500 ms slices), a refused
+  sender stops queueing (Active = thread not finished; the demo resets
+  its menu), list rebuild no longer fires OnChange / loses the
+  selection / duplicates lines (FUpdatingList), files opened
+  fmShareDenyNone for append and view, reconnect keeps "connected"
+  (ContainsValue), dead-sender check via CheckForDataOnSource(0),
+  OnChange / queued status guarded after FormClose.
+  Owner's first build (19:25): E2169 in SteamInputDemo uMain.pas - the
+  RemoteLogStatus method declaration sat between private FIELDS (fields
+  must come before methods in a visibility section); moved. Owner:
+  "More robust is better (always)" - the receiver now tries TCP 47812 ..
+  47821 (RL_PORT_TRIES) and announces the port it got. Zip RemoteLog2.
+  Owner (19:39): "I thought we were doing auto-discovery?" (the demo still
+  asked for the address), the question must be a FORM, modal, centred on
+  the main window, and SteamOS opens every main window full screen, so a
+  pad combination starts it: DPadUp + ButtonY + LeftBumper together.
+  Zip RemoteLog3 (follows RemoteLog2): TRemoteLogDiscovery (RemoteLog.
+  Sender: Discover on a thread, result queued to the main thread; never
+  free it inside its handler); the demo searches in the background and
+  connects AT ONCE when exactly one receiver answers; none / several ->
+  src/uRemoteLogTarget (TfrmRemoteLogTarget, Position OwnerFormCenter:
+  list, address box, Search again, Connect, Cancel) - REMOVED again in
+  RemoteLog4 (below). The combo fires when
+  the last of the three goes down; while sending or searching it is
+  ignored (logged). Owner (19:42) asked why LogReceiver listed four
+  addresses (a VPN adapter, the LAN, two virtual adapters): the
+  server binds to every adapter and the line lists each IPv4 address -
+  VPN / virtual-machine adapters included. Real problem found from it:
+  Windows sends 255.255.255.255 out of ONE adapter, possibly the VPN, so
+  the announcement now also goes to each adapter's directed broadcast
+  (from TIdStackLocalAddressIPv4.SubNetMask - written from memory, not
+  yet compiled). Top line reworded.
+  Owner (19:49): LogReceiver must ASK which IP to listen on, ordered by
+  network size (10.x last), the machine's real IP first if it can be
+  told, OK starts listening, File > Exit; SteamInputDemo needs NO modal
+  any more (auto-discovery: File menu or the pad combo just connect).
+  Zip RemoteLog4 (follows RemoteLog3; DELETE demos/SteamInputDemo/src/
+  uRemoteLogTarget.pas and .fmx): LogReceiver/src/uNetworks.pas -
+  LocalNetworks: Windows GetAdaptersAddresses (own declarations of the
+  _LH records up to FirstGatewayAddress, natural alignment - written from
+  memory, NOT checked against iptypes.h: no Windows headers here) gives
+  friendly name, IfType, OperStatus, prefix length, gateways; "real" =
+  up + Ethernet / Wi-Fi + IPv4 gateway + no virtual word in name /
+  description (VIRTUAL_WORDS); other systems: Indy's list (SubNetMask),
+  nothing real. Order: real, then 192.168 / 172.16-31 / 10 / other /
+  169.254 (owner's "network size" read as the private RANGE size - a VPN
+  is often a /32, so the real prefix would have put it first). Receiver:
+  layChoose row (cbNetwork + OK), binds the TCP server and the announcer
+  (BoundIP) to the chosen IP only, announces to its directed broadcast +
+  255.255.255.255, remembers the choice (Documents/LogReceiver/
+  LogReceiver.ini, preselected next time), File > Exit. Demo: no dialog -
+  connects to the first receiver found; none -> log line.
+  Owner's build (20:15): E2029 in RemoteLog.Sender - RemoteLog3 had
+  appended TRemoteLogDiscovery's methods AFTER the unit's initialization
+  section (I replaced the final "end." blindly). Moved; zip RemoteLog5.
+  Lesson: when appending to a unit, check for initialization /
+  finalization first.
+- SteamInputDemo FIRST LINUX64 RUN PASSED (owner, 21:05; Ubuntu with
+  Steam, RemoteLog5 build): Xbox One (USB), PS5 (Bluetooth) and Steam
+  Controller 2026 (USB) all tested successfully; the gamepad had to be
+  set in Steam first (layout selection, as on Windows). Remote logging
+  ACROSS MACHINES PROVEN: started with the pad combo (DPadUp + Y +
+  LeftBumper) on Linux, discovered the LogReceiver on Windows, log
+  received there. The Linux x64 two-register Analog shim is therefore
+  very likely right (sticks / triggers worked) - the owner's log was not
+  pasted here, so values were not checked line by line. Next: a real
+  Steam deployment test (depot: executable with exec bit,
+  libsteam_api.so, steam_input_manifest.vdf + 11 controller_*.vdf,
+  probably libfmux.so; Release build; launched through Steam, ideally on
+  the Steam Deck, to see whether the Steam Linux runtime has GTK 3).
+- Switch 2 Pro (owner, 2026-10-31): will NOT be bought or tested -
+  controller_switch2_pro.vdf stays "generated, not tested on hardware".
+- GORILLA3D author's notes (16:58-17:29): since 1.5.4 UseFixedFrameRate
+  works and defaults to True on Windows, macOS, Linux and Android; iOS
+  has no timer (event based). On Linux / Android the timer only paces:
+  frames are drawn in the FMX paint cycle (shared GL context), so slow
+  form painting lowers the rate. GameEngineIntegration.md 6.5 updated.
+  MULTI-INPUT ANIMATION: he wrote Gorilla.Animation.Parallel
+  (TGorillaParallelAnimator, sample ParallelAnimation - his copyrighted
+  code, NOT in this repo, kept outside): extracts only the joints each
+  clip moves and combines running clips ADDITIVELY on the rest pose.
+  API: Model := (load with caching []), Press(clip) holds at the detected
+  PeakTime, Release, Play, PlayLoop, SetValue(clip, 0..1) for triggers,
+  SetAxis(negClip, posClip, -1..1) for sticks, StopAll, IsAnyActive,
+  Update / AutoUpdate, OnClipFinished; the model's own AnimationManager
+  must not play at the same time. Clip names as in our models
+  (X_Press, Circle_Press, Trigger_Right_Press_Full, Stick_Left_Up / _Down
+  / _Left / _Right, Stick_Left_Press, ...). His sample loads our three
+  .glb from the TSteamAPI checkout. This is the visualiser's animation
+  layer: map Steam actions -> Press / Release / SetValue / SetAxis.
 - 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
   Delphi; installed on the owner's machine, and its developer makes
   changes quickly), CGE second (also installed, but updates take far

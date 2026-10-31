@@ -4,7 +4,9 @@
   @code(TSteamInput) component with its device events wired in the form
   file. Steam is opened by itself right after the form is shown (no
   buttons - this is now a tool for examining pads; the File menu has View
-  Controller Settings, Rumble and Exit),
+  Controller Settings, Rumble, Send log to receiver and Exit; DPadUp +
+  ButtonY + LeftBumper together also start the log sending, for SteamOS
+  where the window is full screen),
   and tried again every few seconds while it fails or after the Steam
   client exits; @link(TfrmInput.SteamInitialized) then starts
   ISteamInput with an explicit RunFrame, enables device callbacks and points
@@ -36,7 +38,9 @@ uses
   FMX.Controls.Presentation, FMX.Memo.Types, FMX.ScrollBox, FMX.Memo,
   FMX.Layouts, FMX.ListBox, FMX.Menus,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.Callbacks, Steamworks.Core, Steamworks.Components,
-  Steamworks.FMX, Steamworks.Plugin.Input;
+  Steamworks.FMX, Steamworks.Plugin.Input,
+  // optional remote logging (RemoteLogging\src, nothing to do with Steam)
+  RemoteLog.Sender;
 
 type
   { The actions of steam_input_manifest.vdf: in InGame one per physical
@@ -97,6 +101,9 @@ type
     mnuLayout: TMenuItem;
     { Rumbles the selected controller for half a second. }
     mnuRumble: TMenuItem;
+    { Streams the log to a LogReceiver app on the network (optional), or
+      stops doing so. }
+    mnuRemoteLog: TMenuItem;
     { Separator above @link(mnuExit). }
     mnuSep1: TMenuItem;
     { Closes the program. }
@@ -124,6 +131,8 @@ type
     procedure mnuRumbleClick(Sender: TObject);
     { File > Exit. }
     procedure mnuExitClick(Sender: TObject);
+    { File > Send log to receiver / Stop sending log. }
+    procedure mnuRemoteLogClick(Sender: TObject);
     { SteamAPI1.OnLog: core log messages. }
     procedure SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
     { SteamAPI1.OnInitialized: Steam started - start ISteamInput. }
@@ -192,12 +201,35 @@ type
     { What the banner shows (handle, type, controller count): it is only
       rebuilt when this changes, so the poll does no file checks per frame. }
     FPadKey: string;
+    { Streams every log line to a LogReceiver while assigned (optional, see
+      RemoteLogging/README.md). }
+    FSender: TRemoteLogSender;
+    { The last search for receivers (kept until the next one or the end:
+      it must not be freed from its own result handler). }
+    FDiscovery: TRemoteLogDiscovery;
+    { From the start of a search until its result is handled: a second
+      start is ignored. }
+    FRemoteBusy: Boolean;
     { Controllers Steam has loaded a layout for (OnSteamInputConfigurationLoaded). }
     FConfigHandles: TSteamInputHandleArray;
     { Which layout Steam loaded for each of @link(FConfigHandles). }
     FConfigTexts: array of string;
     { When the controller now read was first read (see LAYOUT_WAIT_MS). }
     FActiveSince: TDateTime;
+    { Status messages of @link(FSender), written to the log. }
+    procedure RemoteLogStatus(Sender: TObject; const AText: string);
+    { Starts sending the log: searches for receivers in the background
+      (@link(RemoteLogDiscovered) goes on). AWhy names what asked (menu or
+      the controller shortcut) in the log. Ignored while sending or
+      searching. }
+    procedure StartRemoteLog(const AWhy: string);
+    { Result of the search: connects to the receiver found (the first one
+      if several answered); none -> logs what to do. No questions here -
+      LogReceiver itself asks its user to Accept. }
+    procedure RemoteLogDiscovered(Sender: TObject; const AFound: TRemoteLogReceiverArray;
+      const AError: string);
+    { Creates @link(FSender), sends the log so far and connects. }
+    procedure ConnectRemoteLog(const AHost: string; APort: Word);
     { Appends a time-stamped line to @link(memLog) and the log file. }
     procedure AddLog(const S: string);
     { The started ISteamInput plug-in, or @nil. }
@@ -232,7 +264,9 @@ type
     function ControllerText(P: TSteamInputPlugin; AHandle: InputHandle_t): string;
     { Reads every action of the current set; logs edges and movement;
       opens the Menu set on Start + RightTrigger past MENU_TRIGGER_MIN and
-      returns from it on MenuBack; returns the live-state text. }
+      returns from it on MenuBack + MenuConfirm; DPadUp + ButtonY +
+      LeftBumper together start sending the log (@link(StartRemoteLog));
+      returns the live-state text. }
     function ReadActions(P: TSteamInputPlugin): string;
   end;
 
@@ -524,6 +558,8 @@ begin
       + '(the post-build event copies it from src\)');
   AddLog('Hold the right trigger past ' + F2(MENU_TRIGGER_MIN) + ' and press Start to open the '
     + 'Menu set; ButtonB returns. Start alone is just a button here.');
+  AddLog('Send the log to a LogReceiver on another machine (optional): File > Send log to '
+    + 'receiver..., or hold DPadUp + ButtonY (top face button) + LeftBumper together.');
   AddLog('Steam is opened automatically; then use a controller. Steam Input must be enabled '
     + 'for this game in the Steam client for Xbox / generic controllers.');
   // tmStart (enabled in the form, short interval) opens Steam once the
@@ -538,6 +574,10 @@ begin
   tmRumble.Enabled := False;
   tmPoll.Enabled := False;
   SteamAPI1.Close;
+  // a search still running ends within 2.5 s; its result is dropped
+  FreeAndNil(FDiscovery);
+  // last: the shutdown lines above are still sent (Stop waits briefly)
+  FreeAndNil(FSender);
 end;
 
 procedure TfrmInput.AddLog(const S: string);
@@ -547,6 +587,8 @@ begin
   Line := FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S;
   memLog.Lines.Add(Line);
   memLog.GoToTextEnd;
+  if FSender <> nil then
+    FSender.Send(Line);
   if FLogFile <> '' then
   try
     TFile.AppendAllText(FLogFile, Line + sLineBreak);
@@ -673,6 +715,93 @@ begin
     AddLog('Rumble stopped: TriggerVibration(0, 0)');
   except
     on E: Exception do AddLog('TriggerVibration failed: ' + E.Message);
+  end;
+end;
+
+procedure TfrmInput.mnuRemoteLogClick(Sender: TObject);
+begin
+  if FSender <> nil then
+  begin
+    AddLog('[remote log] stopped by the user');
+    FreeAndNil(FSender);
+    mnuRemoteLog.Text := 'Send log to receiver...';
+    Exit;
+  end;
+  StartRemoteLog('File > Send log to receiver');
+end;
+
+procedure TfrmInput.StartRemoteLog(const AWhy: string);
+begin
+  if FClosing then
+    Exit;
+  if FSender <> nil then
+  begin
+    AddLog('[remote log] ' + AWhy + ': already sending (File > Stop sending log ends it)');
+    Exit;
+  end;
+  if FRemoteBusy then
+  begin
+    AddLog('[remote log] ' + AWhy + ': already looking for a receiver');
+    Exit;
+  end;
+  FRemoteBusy := True;
+  // the previous search has delivered its result (FRemoteBusy was False)
+  FreeAndNil(FDiscovery);
+  AddLog('[remote log] ' + AWhy + ': looking for LogReceiver apps on the network (2.5 s)...');
+  // in the background: the window and the controller poll keep running
+  FDiscovery := TRemoteLogDiscovery.Create(2500, RemoteLogDiscovered);
+end;
+
+procedure TfrmInput.RemoteLogDiscovered(Sender: TObject; const AFound: TRemoteLogReceiverArray;
+  const AError: string);
+var
+  I: Integer;
+begin
+  // FDiscovery is NOT freed here (it is the caller of this handler)
+  FRemoteBusy := False;
+  if FClosing or (FSender <> nil) then
+    Exit;
+  if AError <> '' then
+  begin
+    AddLog('[remote log] could not search the network: ' + AError);
+    Exit;
+  end;
+  if Length(AFound) = 0 then
+  begin
+    AddLog('[remote log] no LogReceiver answered within 2.5 s - start LogReceiver on a machine '
+      + 'on this network, click OK there, then try again');
+    Exit;
+  end;
+  for I := 0 to High(AFound) do
+    AddLog(Format('[remote log] found %s at %s:%d', [AFound[I].Name, AFound[I].Host, AFound[I].Port]));
+  if Length(AFound) > 1 then
+    AddLog(Format('[remote log] %d receivers answered - using the first (%s); close the others '
+      + 'to send elsewhere', [Length(AFound), AFound[0].Name]));
+  ConnectRemoteLog(AFound[0].Host, AFound[0].Port);
+end;
+
+procedure TfrmInput.ConnectRemoteLog(const AHost: string; APort: Word);
+var
+  I: Integer;
+begin
+  FSender := TRemoteLogSender.Create;
+  FSender.OnStatus := RemoteLogStatus;
+  // the log so far first, so the receiver gets the whole run
+  for I := 0 to memLog.Lines.Count - 1 do
+    FSender.Send(memLog.Lines[I]);
+  FSender.Start(AHost, APort, 'SteamInputDemo');
+  mnuRemoteLog.Text := 'Stop sending log';
+  AddLog(Format('[remote log] sending to %s:%d - click Yes in LogReceiver', [AHost, APort]));
+end;
+
+procedure TfrmInput.RemoteLogStatus(Sender: TObject; const AText: string);
+begin
+  AddLog('[remote log] ' + AText);
+  // refused / no answer: the sender has given up - offer to start again
+  if (FSender <> nil) and not FSender.Active then
+  begin
+    FreeAndNil(FSender);
+    mnuRemoteLog.Text := 'Send log to receiver...';
   end;
 end;
 
@@ -1284,6 +1413,17 @@ begin
           begin
             AddLog('MenuConfirm + MenuBack together: back to the InGame set');
             SwitchSet(isInGame);
+          end;
+          // Remote log shortcut for SteamOS / handhelds (every main window is
+          // full screen there, the File menu is awkward): DPadUp + ButtonY +
+          // LeftBumper held together. Checked on each press, so it fires
+          // once, when the last of the three goes down (in one frame too:
+          // the last of them read sees the other two already pressed).
+          if D.bState and (A in [iaDPadUp, iaButtonY, iaLeftBumper])
+            and FPressed[iaDPadUp] and FPressed[iaButtonY] and FPressed[iaLeftBumper] then
+          begin
+            AddLog('DPadUp + ButtonY + LeftBumper together: remote log shortcut');
+            StartRemoteLog('Controller shortcut');
           end;
         end;
       end;

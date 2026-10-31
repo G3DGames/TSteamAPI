@@ -152,6 +152,10 @@ object frmInput: TfrmInput
         Text = 'Rumble'
         OnClick = mnuRumbleClick
       end
+      object mnuRemoteLog: TMenuItem
+        Text = 'Send log to receiver...'
+        OnClick = mnuRemoteLogClick
+      end
       object mnuSep1: TMenuItem
         Text = '-'
       end

@@ -397,7 +397,7 @@ unchanged from 1.5.3 for everything below):
 
 | Member | Declaration | Behaviour |
 |--------|-------------|-----------|
-| `UseFixedFrameRate` | `Boolean`, published | Renders continuously on the viewport's own timer. Windows and macOS (default `True` there) and, **since 1.5.4.4003, also Android and Linux** (confirmed by Gorilla3D's author, 2026-10-31; the viewport guide still says Windows / macOS only and is to be updated). iOS: not stated. |
+| `UseFixedFrameRate` | `Boolean`, published | Renders continuously on the viewport's own timer. **Since 1.5.4: Windows, macOS, Linux and Android, default `True` on all of them; iOS has no fixed-rate timer and always renders event based** (Gorilla3D's author, 2026-10-31; before 1.5.4 the property was silently ignored on Linux and Android). On Linux and Android the timer only *paces* rendering: each tick requests a paint and the frame is drawn inside the normal FMX paint cycle (the FMX canvas shares the GL context there), so a form that takes longer than one tick to paint lowers the frame rate below `FixedFrameRate`. |
 | `FixedFrameRate` | `Integer`, default 60 | Target rate while `UseFixedFrameRate` is on. |
 | `VSync` | `Boolean`, default `False` | Caps the rate between `FixedFrameRate` and the monitor refresh rate. |
 | `ManualRendering` | `Boolean`, default `False` | Frames only when `RenderManual` is called; effective only while `UseFixedFrameRate` is `False`. |
@@ -408,7 +408,7 @@ unchanged from 1.5.3 for everything below):
 | `DeltaTime` | `Double`, read-only | Seconds between the previous and the current frame (wall clock; 0 on the first frame; not clamped - after a pause or breakpoint the first frame reports the whole gap). Also passed to both events as `ADeltaTime`. |
 
 The consequence for Steam: **without `UseFixedFrameRate`** - on iOS, on
-Android / Linux before 1.5.4.4003, or whenever it is switched off - frames
+Android / Linux before 1.5.4, or whenever it is switched off - frames
 come only when something invalidates the viewport (a changed object, a
 running animation, `RenderManual`). A still scene renders nothing, so
 anything tied to frames stops too.
@@ -425,8 +425,8 @@ If you want Steam events at a fixed point of the frame instead, use
 **`OnAfterRender`** handler (let the IDE generate it - it creates the
 `TGorillaFrameEvent` signature - and add the one line). Outside the render
 lock a Steam handler may show a message or change the scene. Then make sure
-frames keep coming on every platform: `UseFixedFrameRate` on Windows,
-macOS, and (1.5.4.4003+) Android and Linux; elsewhere `ManualRendering`
+frames keep coming on every platform: `UseFixedFrameRate` (the default
+since 1.5.4) on Windows, macOS, Linux and Android; on iOS `ManualRendering`
 plus a timer calling `RenderManual`.
 Do not use `OnBeforeRender` for this: Steam handlers would run inside the
 render lock.
