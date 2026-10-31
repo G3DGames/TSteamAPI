@@ -30,6 +30,21 @@
 					"title"		"#Action_Gyro"
 					"input_mode"		"absolute_mouse"
 				}
+				"LeftTrackpad"
+				{
+					"title"		"#Action_LeftTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"RightTrackpad"
+				{
+					"title"		"#Action_RightTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"CenterTrackpad"
+				{
+					"title"		"#Action_CenterTrackpad"
+					"input_mode"		"joystick_move"
+				}
 			}
 			"AnalogTrigger"
 			{
@@ -56,6 +71,9 @@
 				"BackRight"		"#Action_BackRight"
 				"BackLeftUpper"		"#Action_BackLeftUpper"
 				"BackRightUpper"		"#Action_BackRightUpper"
+				"LeftTrackpadClick"		"#Action_LeftTrackpadClick"
+				"RightTrackpadClick"		"#Action_RightTrackpadClick"
+				"CenterTrackpadClick"		"#Action_CenterTrackpadClick"
 			}
 		}
 		"Menu"
@@ -78,7 +96,13 @@
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
 			"Action_RightStick"		"Right stick"
-			"Action_Gyro"		"Gyro"
+			"Action_Gyro"		"Gyro (motion sensors, reported as mouse movement)"
+			"Action_LeftTrackpad"		"Left trackpad"
+			"Action_RightTrackpad"		"Right trackpad"
+			"Action_CenterTrackpad"		"Touchpad (PlayStation)"
+			"Action_LeftTrackpadClick"		"Left trackpad press"
+			"Action_RightTrackpadClick"		"Right trackpad press"
+			"Action_CenterTrackpadClick"		"Touchpad press (PlayStation)"
 			"Action_LeftTrigger"		"Left trigger"
 			"Action_RightTrigger"		"Right trigger"
 			"Action_ButtonA"		"Bottom face button (A / Cross / Nintendo B)"
@@ -444,6 +468,64 @@
 	"group"
 	{
 		"id"		"8"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame LeftTrackpadClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"LeftTrackpad"
+		}
+	}
+	"group"
+	{
+		"id"		"9"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame RightTrackpadClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"RightTrackpad"
+		}
+	}
+	"group"
+	{
+		"id"		"10"
 		"mode"		"switches"
 		"inputs"
 		{
@@ -451,7 +533,7 @@
 	}
 	"group"
 	{
-		"id"		"9"
+		"id"		"11"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -485,24 +567,8 @@
 	}
 	"group"
 	{
-		"id"		"10"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"11"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
 		"id"		"12"
-		"mode"		"joystick_move"
+		"mode"		"trigger"
 		"inputs"
 		{
 		}
@@ -510,7 +576,7 @@
 	"group"
 	{
 		"id"		"13"
-		"mode"		"joystick_move"
+		"mode"		"trigger"
 		"inputs"
 		{
 		}
@@ -518,7 +584,7 @@
 	"group"
 	{
 		"id"		"14"
-		"mode"		"dpad"
+		"mode"		"joystick_move"
 		"inputs"
 		{
 		}
@@ -526,7 +592,39 @@
 	"group"
 	{
 		"id"		"15"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"16"
+		"mode"		"dpad"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"17"
 		"mode"		"gyro_to_mouse"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"18"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"19"
+		"mode"		"joystick_move"
 		"inputs"
 		{
 		}
@@ -545,6 +643,8 @@
 			"5"		"right_joystick active"
 			"6"		"dpad active"
 			"7"		"gyro active"
+			"8"		"left_trackpad active"
+			"9"		"right_trackpad active"
 		}
 	}
 	"preset"
@@ -553,14 +653,16 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"8"		"switch active"
-			"9"		"button_diamond active"
-			"10"		"left_trigger active"
-			"11"		"right_trigger active"
-			"12"		"joystick active"
-			"13"		"right_joystick active"
-			"14"		"dpad active"
-			"15"		"gyro active"
+			"10"		"switch active"
+			"11"		"button_diamond active"
+			"12"		"left_trigger active"
+			"13"		"right_trigger active"
+			"14"		"joystick active"
+			"15"		"right_joystick active"
+			"16"		"dpad active"
+			"17"		"gyro active"
+			"18"		"left_trackpad active"
+			"19"		"right_trackpad active"
 		}
 	}
 	"settings"

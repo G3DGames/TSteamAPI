@@ -3,35 +3,35 @@
         <ProjectGuid>{E0575766-15F2-4138-B820-78E738F222D7}</ProjectGuid>
     </PropertyGroup>
     <ItemGroup>
+        <Projects Include="demos\SteamDemo\SteamDemo.dproj">
+            <Dependencies>packages\SteamworksFMX.dproj</Dependencies>
+        </Projects>
+        <Projects Include="demos\SteamDemoVCL\SteamDemoVCL.dproj">
+            <Dependencies>packages\SteamworksVCL.dproj</Dependencies>
+        </Projects>
+        <Projects Include="demos\SteamConsole\SteamConsole.dproj">
+            <Dependencies>packages\Steamworks.dproj</Dependencies>
+        </Projects>
+        <Projects Include="demos\SteamInputDemo\SteamInputDemo.dproj">
+            <Dependencies>packages\SteamworksFMX.dproj</Dependencies>
+        </Projects>
         <Projects Include="packages\Steamworks.dproj">
             <Dependencies/>
         </Projects>
         <Projects Include="packages\SteamworksFMX.dproj">
-            <Dependencies/>
+            <Dependencies>packages\Steamworks.dproj</Dependencies>
         </Projects>
         <Projects Include="packages\SteamworksVCL.dproj">
-            <Dependencies/>
+            <Dependencies>packages\Steamworks.dproj</Dependencies>
         </Projects>
         <Projects Include="packages\dclSteamworks.dproj">
-            <Dependencies/>
+            <Dependencies>packages\Steamworks.dproj</Dependencies>
         </Projects>
         <Projects Include="packages\dclSteamworksFMX.dproj">
-            <Dependencies/>
+            <Dependencies>packages\SteamworksFMX.dproj</Dependencies>
         </Projects>
         <Projects Include="packages\dclSteamworksVCL.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="demos\SteamDemo\SteamDemo.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="demos\SteamDemoVCL\SteamDemoVCL.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="demos\SteamConsole\SteamConsole.dproj">
-            <Dependencies/>
-        </Projects>
-        <Projects Include="demos\SteamInputDemo\SteamInputDemo.dproj">
-            <Dependencies/>
+            <Dependencies>packages\SteamworksVCL.dproj</Dependencies>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>
@@ -41,6 +41,42 @@
             <Default.Personality/>
         </BorlandProject>
     </ProjectExtensions>
+    <Target Name="SteamDemo">
+        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj"/>
+    </Target>
+    <Target Name="SteamDemo:Clean">
+        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamDemo:Make">
+        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SteamDemoVCL">
+        <MSBuild Projects="demos\SteamDemoVCL\SteamDemoVCL.dproj"/>
+    </Target>
+    <Target Name="SteamDemoVCL:Clean">
+        <MSBuild Projects="demos\SteamDemoVCL\SteamDemoVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamDemoVCL:Make">
+        <MSBuild Projects="demos\SteamDemoVCL\SteamDemoVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SteamConsole">
+        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj"/>
+    </Target>
+    <Target Name="SteamConsole:Clean">
+        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamConsole:Make">
+        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SteamInputDemo">
+        <MSBuild Projects="demos\SteamInputDemo\SteamInputDemo.dproj"/>
+    </Target>
+    <Target Name="SteamInputDemo:Clean">
+        <MSBuild Projects="demos\SteamInputDemo\SteamInputDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SteamInputDemo:Make">
+        <MSBuild Projects="demos\SteamInputDemo\SteamInputDemo.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Steamworks">
         <MSBuild Projects="packages\Steamworks.dproj"/>
     </Target>
@@ -94,42 +130,6 @@
     </Target>
     <Target Name="dclSteamworksVCL:Make">
         <MSBuild Projects="packages\dclSteamworksVCL.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="SteamDemo">
-        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj"/>
-    </Target>
-    <Target Name="SteamDemo:Clean">
-        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="SteamDemo:Make">
-        <MSBuild Projects="demos\SteamDemo\SteamDemo.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="SteamDemoVCL">
-        <MSBuild Projects="demos\SteamDemoVCL\SteamDemoVCL.dproj"/>
-    </Target>
-    <Target Name="SteamDemoVCL:Clean">
-        <MSBuild Projects="demos\SteamDemoVCL\SteamDemoVCL.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="SteamDemoVCL:Make">
-        <MSBuild Projects="demos\SteamDemoVCL\SteamDemoVCL.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="SteamConsole">
-        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj"/>
-    </Target>
-    <Target Name="SteamConsole:Clean">
-        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="SteamConsole:Make">
-        <MSBuild Projects="demos\SteamConsole\SteamConsole.dproj" Targets="Make"/>
-    </Target>
-    <Target Name="SteamInputDemo">
-        <MSBuild Projects="demos\SteamInputDemo\SteamInputDemo.dproj"/>
-    </Target>
-    <Target Name="SteamInputDemo:Clean">
-        <MSBuild Projects="demos\SteamInputDemo\SteamInputDemo.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="SteamInputDemo:Make">
-        <MSBuild Projects="demos\SteamInputDemo\SteamInputDemo.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
         <CallTarget Targets="Steamworks;SteamworksFMX;SteamworksVCL;dclSteamworks;dclSteamworksFMX;dclSteamworksVCL;SteamDemo;SteamDemoVCL;SteamConsole;SteamInputDemo"/>

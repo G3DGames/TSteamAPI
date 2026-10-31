@@ -37,10 +37,12 @@ type
   { The actions of steam_input_manifest.vdf: in InGame one per physical
     control, named by position with the Xbox letters (iaButtonA = the bottom
     face button on every pad), so every pad reports the same actions. }
-  TInputAction = (iaLeftStick, iaRightStick, iaGyro, iaLeftTrigger, iaRightTrigger,
+  TInputAction = (iaLeftStick, iaRightStick, iaGyro,
+    iaLeftTrackpad, iaRightTrackpad, iaCenterTrackpad, iaLeftTrigger, iaRightTrigger,
     iaButtonA, iaButtonB, iaButtonX, iaButtonY, iaLeftBumper, iaRightBumper,
     iaLeftStickClick, iaRightStickClick, iaDPadUp, iaDPadDown, iaDPadLeft, iaDPadRight,
     iaStart, iaSelect, iaBackLeft, iaBackRight, iaBackLeftUpper, iaBackRightUpper,
+    iaLeftTrackpadClick, iaRightTrackpadClick, iaCenterTrackpadClick,
     iaMenuConfirm, iaMenuBack);
   { The action sets of steam_input_manifest.vdf. }
   TInputSet = (isInGame, isMenu);
@@ -172,6 +174,8 @@ type
     FOriginsLogged: Boolean;
     { The first non-zero motion data was logged. }
     FMotionLogged: Boolean;
+    { When motion was last logged while the pad was turning. }
+    FMotionLoggedAt: TDateTime;
     { Guards @link(tmPollTimer) against re-entry. }
     FPolling: Boolean;
     { Guards @link(lbControllersChange) while the list is refilled. }
@@ -202,8 +206,9 @@ type
     { Logs the bindings (origins) of every action on the active controller
       and lists them in @link(lbBindings) with Steam's glyphs. }
     procedure LogOrigins(P: TSteamInputPlugin);
-    { Loads Steam's glyph of AOrigin into ABitmap; returns a log text (path
-      and result). }
+    { Loads Steam's glyph of AOrigin into ABitmap, trying light small, light
+      medium, dark and knockout in turn; returns a log text (the path
+      used and every failed attempt, or "NO GLYPH" with all of them). }
     function LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin; ABitmap: TBitmap): string;
     { Activates ASet on the active controller (applied at the next RunFrame). }
     procedure SwitchSet(ASet: TInputSet);
@@ -238,33 +243,41 @@ const
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
   { Action names as in the manifest. }
   ActionNames: array[TInputAction] of string =
-    ('LeftStick', 'RightStick', 'Gyro', 'LeftTrigger', 'RightTrigger',
+    ('LeftStick', 'RightStick', 'Gyro',
+     'LeftTrackpad', 'RightTrackpad', 'CenterTrackpad', 'LeftTrigger', 'RightTrigger',
      'ButtonA', 'ButtonB', 'ButtonX', 'ButtonY', 'LeftBumper', 'RightBumper',
      'LeftStickClick', 'RightStickClick', 'DPadUp', 'DPadDown', 'DPadLeft', 'DPadRight',
      'Start', 'Select', 'BackLeft', 'BackRight', 'BackLeftUpper', 'BackRightUpper',
+     'LeftTrackpadClick', 'RightTrackpadClick', 'CenterTrackpadClick',
      'MenuConfirm', 'MenuBack');
   { Analog actions (StickPadGyro / AnalogTrigger); the rest are buttons. }
   ActionAnalog: array[TInputAction] of Boolean =
-    (True, True, True, True, True,
+    (True, True, True,
+     True, True, True, True, True,
      False, False, False, False, False, False,
      False, False, False, False, False, False,
      False, False, False, False, False, False,
+     False, False, False,
      False, False);
-  { Actions only some pads have (gyro, back paddles): unbound is normal
+  { Actions only some pads have (gyro, trackpads, back paddles): unbound is normal
     there. Every other action is bound on every pad by our layouts
     (tools/gen_input_mapping.py, OPTIONAL). }
   ActionOptional: array[TInputAction] of Boolean =
-    (False, False, True, False, False,
+    (False, False, True,
+     True, True, True, False, False,
      False, False, False, False, False, False,
      False, False, False, False, False, False,
      False, False, True, True, True, True,
+     True, True, True,
      False, False);
   { The set each action belongs to. }
   ActionSet: array[TInputAction] of TInputSet =
-    (isInGame, isInGame, isInGame, isInGame, isInGame,
+    (isInGame, isInGame, isInGame,
+     isInGame, isInGame, isInGame, isInGame, isInGame,
      isInGame, isInGame, isInGame, isInGame, isInGame, isInGame,
      isInGame, isInGame, isInGame, isInGame, isInGame, isInGame,
      isInGame, isInGame, isInGame, isInGame, isInGame, isInGame,
+     isInGame, isInGame, isInGame,
      isMenu, isMenu);
   { Action set names as in the manifest. }
   SetNames: array[TInputSet] of string = ('InGame', 'Menu');
@@ -275,6 +288,11 @@ const
   MENU_TRIGGER_MIN = 0.25;
   { Fewest milliseconds between two log lines of one analog action. }
   ANALOG_LOG_MS = 250;
+  { Rotation speed (largest axis, raw units) above which motion is logged -
+    about 30 deg/s if the range is +-2000 deg/s over +-32767. }
+  MOTION_LOG_ROTVEL = 500;
+  { Fewest milliseconds between two motion log lines. }
+  MOTION_LOG_MS = 1000;
 
 { Fixed-format number for the log and the state (invariant decimal point). }
 function F2(V: Single): string;
@@ -973,23 +991,43 @@ begin
 end;
 
 function TfrmInput.LoadGlyph(P: TSteamInputPlugin; AOrigin: EInputActionOrigin; ABitmap: TBitmap): string;
+const
+  { Attempts in order. Light first: black detail on a white background,
+    visible on the list's light background. Knockout (the old choice) draws
+    everything except Xbox-coloured face buttons WHITE on a transparent
+    background - invisible on a light list: the PS5 glyphs "did not show"
+    although every one loaded (owner's log, 2026-10-31 15:06), and on Xbox
+    only A / B were visible. Then the others in case Steam has no file. }
+  Styles: array[0..3] of ESteamInputGlyphStyle = (ESteamInputGlyphStyle_Light,
+    ESteamInputGlyphStyle_Light, ESteamInputGlyphStyle_Dark, ESteamInputGlyphStyle_Knockout);
+  Sizes: array[0..3] of ESteamInputGlyphSize = (k_ESteamInputGlyphSize_Small,
+    k_ESteamInputGlyphSize_Medium, k_ESteamInputGlyphSize_Small, k_ESteamInputGlyphSize_Small);
+  StyleNames: array[0..3] of string = ('light small', 'light medium', 'dark small', 'knockout small');
 var
-  Path: string;
+  Path, Failed: string;
+  I: Integer;
 begin
-  // Knockout: transparent background, coloured face buttons - readable on
-  // light and dark styles alike
-  Path := P.GetGlyphPNGForActionOrigin(AOrigin, k_ESteamInputGlyphSize_Small, ESteamInputGlyphStyle_Knockout);
-  if Path = '' then
-    Exit('no glyph (empty path)');
-  if not TFile.Exists(Path) then
-    Exit('glyph file missing: ' + Path);
-  try
-    ABitmap.LoadFromFile(Path);
-    Result := Format('glyph %s (%dx%d)', [Path, ABitmap.Width, ABitmap.Height]);
-  except
-    on E: Exception do
-      Result := 'glyph ' + Path + ' could not be loaded: ' + E.Message;
+  Failed := '';
+  for I := Low(Styles) to High(Styles) do
+  begin
+    Path := P.GetGlyphPNGForActionOrigin(AOrigin, Sizes[I], UInt32(Styles[I]));
+    if Path = '' then
+      Failed := Failed + Format(' [%s: empty path]', [StyleNames[I]])
+    else if not TFile.Exists(Path) then
+      Failed := Failed + Format(' [%s: file missing %s]', [StyleNames[I], Path])
+    else
+      try
+        ABitmap.LoadFromFile(Path);
+        Result := Format('glyph %s (%s, %dx%d)', [Path, StyleNames[I], ABitmap.Width, ABitmap.Height]);
+        if Failed <> '' then
+          Result := Result + '; failed first:' + Failed;
+        Exit;
+      except
+        on E: Exception do
+          Failed := Failed + Format(' [%s: %s could not be loaded: %s]', [StyleNames[I], Path, E.Message]);
+      end;
   end;
+  Result := 'NO GLYPH:' + Failed;
 end;
 
 procedure TfrmInput.LogOrigins(P: TSteamInputPlugin);
@@ -1116,8 +1154,12 @@ begin
         AnyActive := AnyActive or An.bActive;
         Lines.Add(Format('%-15s x %s  y %s  %s, active %s',
           [ActionNames[A], F2(An.x), F2(An.y), SourceModeName(An.eMode), BoolToStr(An.bActive, True)]));
+        // logged: a change of ANALOG_LOG_STEP, a return to zero, and ANY
+        // move away from zero (Gyro and trackpads report small mouse-like
+        // values that may never reach the step)
         if ((Abs(An.x - FLoggedX[A]) >= ANALOG_LOG_STEP) or (Abs(An.y - FLoggedY[A]) >= ANALOG_LOG_STEP)
-            or ((An.x = 0) and (An.y = 0) and ((FLoggedX[A] <> 0) or (FLoggedY[A] <> 0))))
+            or ((An.x = 0) and (An.y = 0) and ((FLoggedX[A] <> 0) or (FLoggedY[A] <> 0)))
+            or ((FLoggedX[A] = 0) and (FLoggedY[A] = 0) and ((An.x <> 0) or (An.y <> 0))))
           and (MilliSecondsBetween(Now, FLoggedAt[A]) >= ANALOG_LOG_MS) then
         begin
           AddLog(Format('%s: x %s, y %s (%s, active %s)',
@@ -1190,6 +1232,18 @@ begin
       AddLog(Format('First motion data: quat %s %s %s %s, accel %s %s %s, gyro %s %s %s',
         [F2(M.rotQuatX), F2(M.rotQuatY), F2(M.rotQuatZ), F2(M.rotQuatW),
          F2(M.posAccelX), F2(M.posAccelY), F2(M.posAccelZ), F2(M.rotVelX), F2(M.rotVelY), F2(M.rotVelZ)]));
+    end;
+    // while the pad turns, one motion line a second (the raw values are the
+    // evidence for units and axes)
+    if ((Abs(M.rotVelX) > MOTION_LOG_ROTVEL) or (Abs(M.rotVelY) > MOTION_LOG_ROTVEL)
+        or (Abs(M.rotVelZ) > MOTION_LOG_ROTVEL))
+      and (MilliSecondsBetween(Now, FMotionLoggedAt) >= MOTION_LOG_MS) then
+    begin
+      FMotionLoggedAt := Now;
+      AddLog(Format('Motion: quat %s %s %s %s, accel %.0f %.0f %.0f, gyro %.0f %.0f %.0f',
+        [F2(M.rotQuatX), F2(M.rotQuatY), F2(M.rotQuatZ), F2(M.rotQuatW),
+         M.posAccelX, M.posAccelY, M.posAccelZ, M.rotVelX, M.rotVelY, M.rotVelZ],
+        TFormatSettings.Invariant));
     end;
     Result := Lines.Text;
   finally

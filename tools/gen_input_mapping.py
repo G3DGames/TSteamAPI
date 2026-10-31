@@ -61,6 +61,9 @@ SETS = [
         ("stick", "LeftStick", "#Action_LeftStick", "joystick_move"),
         ("stick", "RightStick", "#Action_RightStick", "joystick_move"),
         ("stick", "Gyro", "#Action_Gyro", "absolute_mouse"),
+        ("stick", "LeftTrackpad", "#Action_LeftTrackpad", "joystick_move"),
+        ("stick", "RightTrackpad", "#Action_RightTrackpad", "joystick_move"),
+        ("stick", "CenterTrackpad", "#Action_CenterTrackpad", "joystick_move"),
         ("trigger", "LeftTrigger", "#Action_LeftTrigger", None),
         ("trigger", "RightTrigger", "#Action_RightTrigger", None),
         ("button", "ButtonA", "#Action_ButtonA", None),
@@ -81,6 +84,9 @@ SETS = [
         ("button", "BackRight", "#Action_BackRight", None),
         ("button", "BackLeftUpper", "#Action_BackLeftUpper", None),
         ("button", "BackRightUpper", "#Action_BackRightUpper", None),
+        ("button", "LeftTrackpadClick", "#Action_LeftTrackpadClick", None),
+        ("button", "RightTrackpadClick", "#Action_RightTrackpadClick", None),
+        ("button", "CenterTrackpadClick", "#Action_CenterTrackpadClick", None),
     ]),
     ("Menu", "#Set_Menu", [
         ("button", "MenuConfirm", "#Action_MenuConfirm", None),
@@ -91,7 +97,11 @@ SETS = [
 LOCALIZATION = {"english": [
     ("Set_InGame", "Every control"), ("Set_Menu", "Menu"),
     ("Action_LeftStick", "Left stick"), ("Action_RightStick", "Right stick"),
-    ("Action_Gyro", "Gyro"),
+    ("Action_Gyro", "Gyro (motion sensors, reported as mouse movement)"),
+    ("Action_LeftTrackpad", "Left trackpad"), ("Action_RightTrackpad", "Right trackpad"),
+    ("Action_CenterTrackpad", "Touchpad (PlayStation)"),
+    ("Action_LeftTrackpadClick", "Left trackpad press"), ("Action_RightTrackpadClick", "Right trackpad press"),
+    ("Action_CenterTrackpadClick", "Touchpad press (PlayStation)"),
     ("Action_LeftTrigger", "Left trigger"), ("Action_RightTrigger", "Right trigger"),
     ("Action_ButtonA", "Bottom face button (A / Cross / Nintendo B)"),
     ("Action_ButtonB", "Right face button (B / Circle / Nintendo A)"),
@@ -138,6 +148,12 @@ BINDINGS = {
         ("switch", "button_back_right", "BackRight"),
         ("switch", "button_back_left_upper", "BackLeftUpper"),
         ("switch", "button_back_right_upper", "BackRightUpper"),
+        ("left_trackpad", None, "LeftTrackpad"),
+        ("left_trackpad", "click", "LeftTrackpadClick"),
+        ("right_trackpad", None, "RightTrackpad"),
+        ("right_trackpad", "click", "RightTrackpadClick"),
+        ("center_trackpad", None, "CenterTrackpad"),
+        ("center_trackpad", "click", "CenterTrackpadClick"),
     ],
     "Menu": [
         ("button_diamond", "button_a", "MenuConfirm"),
@@ -145,16 +161,26 @@ BINDINGS = {
     ],
 }
 
-# Actions that only some pads have. Every OTHER action must be bound on every
-# controller below - layout() checks it, so no pad silently lacks a control.
-OPTIONAL = {"Gyro": "gyro", "BackLeft": 2, "BackRight": 2, "BackLeftUpper": 4, "BackRightUpper": 4}
+# Actions that only some pads have: the source they need, or the number of
+# back paddles. Every OTHER action must be bound on every controller below -
+# layout() checks it, so no pad silently lacks a control. A trackpad that
+# stands in for a missing stick / d-pad ("replace", 2015 Steam Controller)
+# is not ALSO bound as a trackpad.
+OPTIONAL = {"Gyro": "gyro", "BackLeft": 2, "BackRight": 2, "BackLeftUpper": 4, "BackRightUpper": 4,
+            "LeftTrackpad": "left_trackpad", "LeftTrackpadClick": "left_trackpad",
+            "RightTrackpad": "right_trackpad", "RightTrackpadClick": "right_trackpad",
+            "CenterTrackpad": "center_trackpad", "CenterTrackpadClick": "center_trackpad"}
 
 # Group mode of each source when a layout is generated
 MODES = {"joystick": "joystick_move", "right_joystick": "joystick_move", "button_diamond": "four_buttons",
          "left_trigger": "trigger", "right_trigger": "trigger", "switch": "switches", "dpad": "dpad",
-         "left_trackpad": "dpad", "right_trackpad": "joystick_move", "gyro": "gyro_to_mouse"}
+         "left_trackpad": "joystick_move", "right_trackpad": "joystick_move",
+         "center_trackpad": "joystick_move", "gyro": "gyro_to_mouse"}
 STANDARD = ["switch", "button_diamond", "left_trigger", "right_trigger", "joystick", "right_joystick", "dpad"]
 GYRO = STANDARD + ["gyro"]
+TWO_PADS = GYRO + ["left_trackpad", "right_trackpad"]
+# PlayStation touchpad: source name center_trackpad (confirmed on a PS5, 2026-10-31)
+PLAYSTATION = GYRO + ["center_trackpad"]
 # controller type -> sources present, optional "replace" (source -> source
 # used instead) and "back" (number of back paddles: 0, 2 = button_back_left
 # / _right, 4 = also the _upper pair). Back paddle names: 2015 Steam
@@ -163,18 +189,19 @@ GYRO = STANDARD + ["gyro"]
 CONTROLLERS = {
     "controller_xboxone": dict(sources=STANDARD),
     "controller_xbox360": dict(sources=STANDARD),
-    "controller_ps5": dict(sources=GYRO),
-    "controller_ps4": dict(sources=GYRO),
+    "controller_ps5": dict(sources=PLAYSTATION),
+    "controller_ps4": dict(sources=PLAYSTATION),
     "controller_switch_pro": dict(sources=GYRO),
-    "controller_neptune": dict(sources=GYRO, back=4),
+    "controller_neptune": dict(sources=TWO_PADS, back=4),
     "controller_steamcontroller_gordon": dict(
         sources=["switch", "button_diamond", "left_trigger", "right_trigger", "joystick",
                  "left_trackpad", "right_trackpad", "gyro"],
-        replace={"right_joystick": "right_trackpad", "dpad": "left_trackpad"}, back=2),
+        replace={"right_joystick": "right_trackpad", "dpad": "left_trackpad"}, back=2,
+        modes={"left_trackpad": "dpad"}),
     # the 2026 Steam Controller (type string from the owner's export,
-    # 2026-10-31; not in Valve's documented list). Its trackpads are left
-    # unbound (it has sticks and a d-pad as well).
-    "controller_triton": dict(sources=GYRO, back=4),
+    # 2026-10-31; not in Valve's documented list): sticks, d-pad AND two
+    # trackpads, like the Steam Deck.
+    "controller_triton": dict(sources=TWO_PADS, back=4),
     # A single Joy-Con (controller_switch_joycon_left / _right) has one
     # stick and no standard source set - not generated. Generic pads (many
     # "PS4 compatible" ones report GenericGamepad) get no gyro.
@@ -261,6 +288,7 @@ def manifest():
 def layout(ctype):
     cfg = CONTROLLERS[ctype]
     sources, replace, back = cfg["sources"], cfg.get("replace", {}), cfg.get("back", 0)
+    modes = dict(MODES, **cfg.get("modes", {}))
     w = W()
     w.open("controller_mappings")
     for k, v in (("version", "3"), ("revision", "1"), ("title", "#title"), ("description", "#description"),
@@ -276,7 +304,7 @@ def layout(ctype):
         for s, i, a in BINDINGS.get(set_name, []):
             s = replace.get(s, s)
             need = OPTIONAL.get(a)
-            if need == "gyro" and "gyro" not in sources:
+            if isinstance(need, str) and (need not in sources or need in replace.values()):
                 continue
             if isinstance(need, int) and back < need:
                 continue
@@ -294,7 +322,7 @@ def layout(ctype):
             mine = [(i, a) for s, i, a in binds if s == src]
             w.open("group")
             w.kv("id", str(gid))
-            w.kv("mode", MODES[src])
+            w.kv("mode", modes[src])
             w.open("inputs")
             for inp, act in mine:
                 if inp is None:
@@ -310,6 +338,7 @@ def layout(ctype):
                 w.close()
             w.close()
             whole = [a for i, a in mine if i is None]
+            assert len(whole) <= 1, f"{ctype}: {src} drives two analog actions {whole}"
             if whole:
                 w.open("settings")
                 w.kv("virtual_mode", "1")

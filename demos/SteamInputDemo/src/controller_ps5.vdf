@@ -30,6 +30,21 @@
 					"title"		"#Action_Gyro"
 					"input_mode"		"absolute_mouse"
 				}
+				"LeftTrackpad"
+				{
+					"title"		"#Action_LeftTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"RightTrackpad"
+				{
+					"title"		"#Action_RightTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"CenterTrackpad"
+				{
+					"title"		"#Action_CenterTrackpad"
+					"input_mode"		"joystick_move"
+				}
 			}
 			"AnalogTrigger"
 			{
@@ -56,6 +71,9 @@
 				"BackRight"		"#Action_BackRight"
 				"BackLeftUpper"		"#Action_BackLeftUpper"
 				"BackRightUpper"		"#Action_BackRightUpper"
+				"LeftTrackpadClick"		"#Action_LeftTrackpadClick"
+				"RightTrackpadClick"		"#Action_RightTrackpadClick"
+				"CenterTrackpadClick"		"#Action_CenterTrackpadClick"
 			}
 		}
 		"Menu"
@@ -78,7 +96,13 @@
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
 			"Action_RightStick"		"Right stick"
-			"Action_Gyro"		"Gyro"
+			"Action_Gyro"		"Gyro (motion sensors, reported as mouse movement)"
+			"Action_LeftTrackpad"		"Left trackpad"
+			"Action_RightTrackpad"		"Right trackpad"
+			"Action_CenterTrackpad"		"Touchpad (PlayStation)"
+			"Action_LeftTrackpadClick"		"Left trackpad press"
+			"Action_RightTrackpadClick"		"Right trackpad press"
+			"Action_CenterTrackpadClick"		"Touchpad press (PlayStation)"
 			"Action_LeftTrigger"		"Left trigger"
 			"Action_RightTrigger"		"Right trigger"
 			"Action_ButtonA"		"Bottom face button (A / Cross / Nintendo B)"
@@ -392,6 +416,35 @@
 	"group"
 	{
 		"id"		"8"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame CenterTrackpadClick"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"CenterTrackpad"
+		}
+	}
+	"group"
+	{
+		"id"		"9"
 		"mode"		"switches"
 		"inputs"
 		{
@@ -399,7 +452,7 @@
 	}
 	"group"
 	{
-		"id"		"9"
+		"id"		"10"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -433,14 +486,6 @@
 	}
 	"group"
 	{
-		"id"		"10"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
 		"id"		"11"
 		"mode"		"trigger"
 		"inputs"
@@ -450,7 +495,7 @@
 	"group"
 	{
 		"id"		"12"
-		"mode"		"joystick_move"
+		"mode"		"trigger"
 		"inputs"
 		{
 		}
@@ -466,7 +511,7 @@
 	"group"
 	{
 		"id"		"14"
-		"mode"		"dpad"
+		"mode"		"joystick_move"
 		"inputs"
 		{
 		}
@@ -474,7 +519,23 @@
 	"group"
 	{
 		"id"		"15"
+		"mode"		"dpad"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"16"
 		"mode"		"gyro_to_mouse"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"17"
+		"mode"		"joystick_move"
 		"inputs"
 		{
 		}
@@ -493,6 +554,7 @@
 			"5"		"right_joystick active"
 			"6"		"dpad active"
 			"7"		"gyro active"
+			"8"		"center_trackpad active"
 		}
 	}
 	"preset"
@@ -501,14 +563,15 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"8"		"switch active"
-			"9"		"button_diamond active"
-			"10"		"left_trigger active"
-			"11"		"right_trigger active"
-			"12"		"joystick active"
-			"13"		"right_joystick active"
-			"14"		"dpad active"
-			"15"		"gyro active"
+			"9"		"switch active"
+			"10"		"button_diamond active"
+			"11"		"left_trigger active"
+			"12"		"right_trigger active"
+			"13"		"joystick active"
+			"14"		"right_joystick active"
+			"15"		"dpad active"
+			"16"		"gyro active"
+			"17"		"center_trackpad active"
 		}
 	}
 	"settings"

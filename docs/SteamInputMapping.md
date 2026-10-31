@@ -214,7 +214,9 @@ leaves one out:
 | `LeftBumper`, `RightBumper` | shoulders | `switch`: `left_bumper`, `right_bumper` |
 | `DPadUp` / `Down` / `Left` / `Right` | d-pad | `dpad` (2015 Steam Controller: `left_trackpad` as a d-pad) |
 | `Start`, `Select` | Start / Menu / Options / +, Select / View / Create / - | `switch`: `button_escape`, `button_menu` |
-| `Gyro` *(optional)* | motion sensors | `gyro`, mode `gyro_to_mouse`, always on - every pad that has one |
+| `Gyro` *(optional)* | motion sensors, reported as MOUSE MOVEMENT (mode "absolute mouse": tilt the pad, x / y change) | `gyro`, mode `gyro_to_mouse`, always on - every pad that has one. The raw sensors (orientation quaternion, acceleration, rotation speed) are `GetMotionData`, separate from any binding |
+| `LeftTrackpad`, `RightTrackpad` + `...Click` *(optional)* | trackpads: finger position (-1..1 like a stick, 0 when not touched) and press | `left_trackpad`, `right_trackpad`, mode `joystick_move` - Steam Deck, 2026 Steam Controller (on the 2015 one the trackpads ARE its right stick and d-pad) |
+| `CenterTrackpad` + `CenterTrackpadClick` *(optional)* | PlayStation touchpad: position and press | `center_trackpad` (confirmed on a PS5), mode `joystick_move` - PS4, PS5 |
 | `BackLeft`, `BackRight` *(optional)* | back paddles | `switch`: `button_back_left` / `_right` - Steam Controllers, Steam Deck |
 | `BackLeftUpper`, `BackRightUpper` *(optional)* | upper back paddles | `switch`: `button_back_left_upper` / `_right_upper` - Steam Deck, 2026 Steam Controller (names unconfirmed) |
 
@@ -337,6 +339,7 @@ a Switch model is planned):
 | Manifest ignored (handles 0, nothing in the configurator) although the path is right | `//` comments in the manifest (section 1), or a VDF syntax error |
 | Some controls work on one pad but not on another | Steam loaded a different layout for that pad - a personal one or a Steam template (the demo's banner says so; the log shows "mapping by" a non-zero id). Reset the pad's layout to the game's default in Steam's controller settings. Also: a pad with Steam Input switched off for it (PlayStation / Switch / generic support settings) reaches the game through no layout at all |
 | A middle button (Xbox / Guide, Share) opens the Xbox Game Bar on Windows 11 | Windows' Xbox Game Bar takes those buttons; View and Menu are fine. Turn it off in Settings -> Gaming -> Game Bar to test them - players may have it on |
+| Glyphs load (the log names the file) but nothing shows | The **knockout** style is white detail on a transparent background (only Xbox-style coloured face buttons have colour): invisible on a light background. Use **Light** (black on white) on light UIs, Knockout / Dark on dark ones - SteamInputDemo uses Light |
 | Layout changes not picked up | Steam keeps a manifest override for the session; `OnSteamInputConfigurationLoaded` reports each new layout - re-read handles and origins then |
 
 Sources: Valve's Steamworks documentation -

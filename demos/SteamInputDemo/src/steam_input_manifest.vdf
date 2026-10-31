@@ -102,6 +102,21 @@
 					"title"		"#Action_Gyro"
 					"input_mode"		"absolute_mouse"
 				}
+				"LeftTrackpad"
+				{
+					"title"		"#Action_LeftTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"RightTrackpad"
+				{
+					"title"		"#Action_RightTrackpad"
+					"input_mode"		"joystick_move"
+				}
+				"CenterTrackpad"
+				{
+					"title"		"#Action_CenterTrackpad"
+					"input_mode"		"joystick_move"
+				}
 			}
 			"AnalogTrigger"
 			{
@@ -128,6 +143,9 @@
 				"BackRight"		"#Action_BackRight"
 				"BackLeftUpper"		"#Action_BackLeftUpper"
 				"BackRightUpper"		"#Action_BackRightUpper"
+				"LeftTrackpadClick"		"#Action_LeftTrackpadClick"
+				"RightTrackpadClick"		"#Action_RightTrackpadClick"
+				"CenterTrackpadClick"		"#Action_CenterTrackpadClick"
 			}
 		}
 		"Menu"
@@ -150,7 +168,13 @@
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
 			"Action_RightStick"		"Right stick"
-			"Action_Gyro"		"Gyro"
+			"Action_Gyro"		"Gyro (motion sensors, reported as mouse movement)"
+			"Action_LeftTrackpad"		"Left trackpad"
+			"Action_RightTrackpad"		"Right trackpad"
+			"Action_CenterTrackpad"		"Touchpad (PlayStation)"
+			"Action_LeftTrackpadClick"		"Left trackpad press"
+			"Action_RightTrackpadClick"		"Right trackpad press"
+			"Action_CenterTrackpadClick"		"Touchpad press (PlayStation)"
 			"Action_LeftTrigger"		"Left trigger"
 			"Action_RightTrigger"		"Right trigger"
 			"Action_ButtonA"		"Bottom face button (A / Cross / Nintendo B)"

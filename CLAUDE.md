@@ -486,6 +486,62 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   set takes MenuConfirm + MenuBack (A + B) together; a change of the set's
   actions to all-inactive and back is logged once each way
   (FSetActiveState). MenuBack title regenerated into all layouts.
+- Push 4cbb8fe "XBox One Gamepad Passes Testing" (14:40, Menu1 + the
+  rest; pushed for the Gorilla3D developer): all 125 files match except
+  the IDE re-saves - SteamInputDemo.dproj gained Android / iOS platform
+  sections (accepted; every .vdf still in post-build + 6 DeployFile
+  entries), Steamworks.groupproj LOST ITS DEPENDENCIES AGAIN and listed
+  packages first (Build / Clean / Make targets intact) - restored from the
+  working copy in zip Pads1.
+- PS5 run (14:40): "almost passes" - motion shown, quaternion follows the
+  pad; the Gyro action (mouse-like, absolute mouse) confused the owner,
+  who asked for it to be called Trackpad. It IS the gyro (tilting moves
+  it); kept the name, explained it (title "Gyro (motion sensors, reported
+  as mouse movement)"), and added REAL trackpad actions instead.
+  PS5 glyphs: "only fail" - cause unknown; LoadGlyph now tries knockout
+  small / medium, light, dark and logs every failed attempt ("NO GLYPH:
+  ..."); waiting for that log line.
+- Zip Pads1 (follows Menu1): optional actions LeftTrackpad / RightTrackpad
+  (+Click; Steam Deck, triton; not on the 2015 pad, whose trackpads are
+  its right stick / d-pad) and CenterTrackpad (+Click; PS4 / PS5 touchpad,
+  source name center_trackpad UNCONFIRMED). Trackpads use joystick_move
+  (finger position -1..1). Generator: OPTIONAL maps action -> source or
+  paddle count; per-controller "modes"; asserts one analog action per
+  group. Owner has an ROG Ally-like handheld with two trackpads - its
+  type is unknown until the banner shows it.
+- PS5 log 15:06 (a build BEFORE Pads1): PS5Controller (13), our layout,
+  every action bound with PS origins (Cross 258, Circle 259, Options 264,
+  Create 265, L2 / R2 "soft" 79 / 81, Gyro Move 99) and EVERY glyph
+  loaded (32x32) - yet none showed. Cause: the KNOCKOUT style is white on
+  transparent (only Xbox face buttons are coloured), invisible on the
+  light list; the Xbox run showed only A / B too. Zip Glyph1 (follows
+  Pads1): LoadGlyph tries Light (black on white) first, then light medium,
+  dark, knockout. Motion raw values: accel (-462, -2557, 16016) at rest -
+  magnitude ~16200, so probably raw sensor counts with ~16384 = 1 g
+  (assumption, unconfirmed).
+- PS5 log 15:19 (Pads1 + Glyph1): our layout; CENTER_TRACKPAD CONFIRMED
+  (CenterTrackpad = "Center Pad Swipe" 73, Click = "Center Pad Click"
+  283); every glyph Light style and visible ("plentiful and good" - owner;
+  the PS face buttons' _sm files are 64x64, the rest 32x32). Logged: A B
+  X Y, d-pad, L1 / R1, both sticks to +-1, both triggers ANALOG (0.20,
+  0.34, 0.46, 0.78 ... 1.00 - the old Throttle question is answered).
+  NOT logged although the owner pressed "all the buttons" and waved the
+  pad: Start (Options), Select (Create), stick clicks, touchpad, Gyro.
+  Open: were they pressed? Gyro may move by less than the 0.2 log step.
+  Zip Log1 (follows Glyph1): analog actions also logged on ANY move away
+  from zero; motion logged once a second while rotation speed > 500 raw.
+- PS5 PASSES (log 15:26, Log1 build; with the 15:19 run): Options =
+  Start (hint shown, no set switch without the trigger), Create = Select,
+  L3 / R3, touchpad position (CenterTrackpad -1..1, back to 0 on
+  release), GYRO WORKS (gyro_to_mouse group feeds the absolute_mouse
+  action: per-frame deltas up to ~9.6, 0 at rest - the Gyro1 doubt is
+  settled), the PS button made every action inactive and Steam reloaded
+  our layout (mapping by 0) twice - all as designed. Motion while waving:
+  accel up to ~17300, rotation speed up to ~4550 raw (~280 deg/s if
+  +-2000 deg/s full scale); at rest |accel| ~16200 = 1 g. Only
+  CenterTrackpadClick was not exercised (no press logged). Zip PS5Pass1
+  (follows Log1): this note; center_trackpad marked confirmed in the docs
+  and the generator comment.
 - 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
   Delphi; installed on the owner's machine, and its developer makes
   changes quickly), CGE second (also installed, but updates take far
