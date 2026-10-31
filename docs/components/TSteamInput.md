@@ -17,6 +17,8 @@ binding panel, and the game reads the actions, never raw buttons.
 
 `demos/SteamInputDemo` is a complete test: action manifest, live values of
 every action, controller list, bindings, rumble.
+[SteamInputMapping.md](../SteamInputMapping.md) explains the manifest,
+shipping default layouts, and mapping origins to physical buttons.
 
 ### Starting
 
@@ -90,8 +92,11 @@ end;
 * Xbox and generic controllers reach Steam Input only when it is enabled for
   the game: Steam client, Library, the game's Properties, Controller.
   PlayStation, Switch and Steam controllers usually are by default.
-* With no default layout in the manifest, choose or create one in the
-  binding panel the first time.
+* A controller type without a default layout in the manifest is unbound
+  until a layout is chosen in the binding panel. SteamInputDemo ships
+  layouts for Xbox, PlayStation, Switch Pro, Steam Deck and the 2015 Steam
+  Controller, written by `tools/gen_input_mapping.py`.
+* The manifest must not contain `//` comments.
 
 ### Three methods written by hand
 

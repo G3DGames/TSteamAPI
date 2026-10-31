@@ -66,7 +66,12 @@ PROJECTS = [
          units=[],
          forms=[("uMain", "src\\uMain.pas", "frmInput")],
          search="src", redist=True, depends=["SteamworksFMX"],
-         files=["src\\steam_input_manifest.vdf"]),
+         # manifest + one default layout per controller type, all written
+         # by tools/gen_input_mapping.py (keep this list in step with its
+         # CONTROLLERS table)
+         files=["src\\steam_input_manifest.vdf"] + [
+             f"src\\controller_{t}.vdf" for t in ("xboxone", "xbox360", "ps5", "ps4", "switch_pro",
+                                                  "neptune", "steamcontroller_gordon")]),
     # Framework-free runtime package: the whole library, the plug-ins and the
     # shared component layer (TCustomSteamAPI, plug-in components).
     dict(name="Steamworks", dir="packages", kind="runtime", framework="None",

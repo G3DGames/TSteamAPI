@@ -1,0 +1,307 @@
+# Steam Input mapping
+
+How a game's actions reach real buttons with Steam Input, and how to ship
+default layouts so they work the moment a player picks up a controller.
+For the API itself see [components/TSteamInput.md](components/TSteamInput.md);
+`demos/SteamInputDemo` is a complete working example of everything here.
+
+## The chain
+
+```
+game code            action manifest           layout (per controller type)        the pad
+"Jump" handle  ->    InGame / Button "Jump" -> Jump = A button (XBoxOne_A)      -> bottom face button
+```
+
+* The **game** only knows actions ("Jump", "Move") and action sets
+  ("InGame", "Menu"). It never reads raw buttons.
+* The **action manifest** (a VDF file) declares those actions and names a
+  **default layout** for each controller type.
+* A **layout** binds actions to the pad's inputs. Steam ships the default
+  one from the manifest; players can change it, and community layouts can
+  replace it.
+* Steam reports where an action is bound as **origins**
+  (`k_EInputActionOrigin_XBoxOne_A`, ...), which name a physical input on a
+  specific kind of pad - for button prompts, glyphs and (below) 3D models.
+
+## 1. The action manifest
+
+One VDF file, three sections:
+
+```
+"Action Manifest"
+{
+	"configurations"	{ ... }
+	"actions"		{ ... }
+	"localization"		{ ... }
+}
+```
+
+`configurations` names the default layout per controller type (section 2),
+`actions` the action sets and their actions, `localization` the display
+names per language.
+
+**No comments in the file.** A manifest that began with `//` comment lines
+did not work (2026-10-31), and neither Valve's sample nor shipped games'
+manifests contain any. Keep notes elsewhere.
+
+`demos/SteamInputDemo/src/steam_input_manifest.vdf` is a complete example,
+written by `tools/gen_input_mapping.py` (section 2).
+The `actions` and `localization` sections use Valve's In-Game Actions
+format:
+
+* **Action sets** are objects inside `actions`, each with a unique name and
+  a `"title"` (a `#` localisation token). A game activates one set per
+  controller at a time (`ActivateActionSet`): typically one for playing,
+  one for menus, one for driving, ...
+* Inside a set, up to three blocks:
+  * `"StickPadGyro"` - two-axis analog actions (sticks, trackpads, gyro).
+    Each is an object with `"title"` and `"input_mode"`: `"joystick_move"`
+    (deflection from the centre: movement) or `"absolute_mouse"` (cameras,
+    cursors - Valve: when in doubt, use this). An `absolute_mouse` action can
+    add `"os_mouse" "1"` to move the OS mouse as well.
+  * `"AnalogTrigger"` - one-axis analog actions: `"Throttle" "#Action_Throttle"`.
+  * `"Button"` - digital actions: `"Jump" "#Action_Jump"`.
+* **Action set layers** (a separate top-level `"action_layers"` section in
+  the In-Game Actions format) overlay changes on the active set - aiming,
+  a modifier held - without switching sets.
+* `"localization"` holds one block per Steam language code (`"english"`,
+  `"german"`, `"schinese"`, ...) mapping the tokens, without the `#`, to
+  text. English is required.
+
+The names in the manifest are what the code looks up:
+`GetActionSetHandle('InGame')`, `GetDigitalActionHandle('Jump')`,
+`GetAnalogActionHandle('Move')`.
+
+## 2. Default layouts
+
+Without a default layout every action is unbound until the player builds
+one - SteamInputDemo's log then shows "NOT BOUND". Ship one layout per
+controller type you support, in the manifest's `configurations` section:
+
+```
+	"configurations"
+	{
+		"controller_xboxone"
+		{
+			"0"
+			{
+				"path"		"controller_xboxone.vdf"
+			}
+		}
+		"controller_ps5"
+		{
+			"0"
+			{
+				"path"		"controller_ps5.vdf"
+			}
+		}
+	}
+```
+
+* Keys `"0"`, `"1"`, ... list layouts per type in priority order; `"path"`
+  is relative to the manifest file.
+* Controller type strings (Valve's list): `controller_xboxone`,
+  `controller_xboxelite`, `controller_xbox360`, `controller_ps5`,
+  `controller_ps5_edge`, `controller_ps4`, `controller_ps3`,
+  `controller_switch_pro`, `controller_switch2_pro`,
+  `controller_switch_joycon_pair`, `controller_switch_joycon_left`,
+  `controller_switch_joycon_right`, `controller_neptune` (Steam Deck),
+  `controller_steamcontroller_gordon` (the 2015 Steam Controller),
+  `controller_mobile_touch` (Remote Play touch), `controller_generic`.
+  Valve's list does not yet name the 2026 Steam Controller (SDK 1.65 has
+  its origins, `SteamController2026_*`); an exported layout of it shows the
+  string Steam uses.
+
+### The layout file format
+
+Learned from layouts Steam exports (Valve's SpaceWar sample and a shipped
+game); text VDF, tabs:
+
+```
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"#title"			// tokens from "localization"
+	"description"		"#description"
+	"controller_type"		"controller_ps5"
+	"actions"		{ ... }			// copies of the manifest's sections
+	"localization"		{ ... }
+	"group"					// one per physical source per action set
+	{
+		"id"		"3"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame Fire"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"					// an analog action drives a whole source
+	{
+		"id"		"4"
+		"mode"		"joystick_move"
+		"inputs"		{ }
+		"gameactions"
+		{
+			"InGame"		"Move"
+		}
+	}
+	"preset"				// one per action set: group -> source
+	{
+		"id"		"0"
+		"name"		"InGame"
+		"group_source_bindings"
+		{
+			"3"		"button_diamond active"
+			"4"		"joystick active"
+		}
+	}
+}
+```
+
+(The `//` notes are for this page only; real files have none.)
+
+Physical sources and their inputs use the **same names on every pad**, and
+they are positional - `button_a` is the bottom face button on Xbox,
+PlayStation and Switch alike:
+
+| Source | Group mode (typical) | Inputs |
+|---|---|---|
+| `button_diamond` | `four_buttons` | `button_a` (bottom), `button_b` (right), `button_x` (left), `button_y` (top) |
+| `switch` | `switches` | `left_bumper`, `right_bumper`, `button_escape` (Start / Menu / Options), `button_menu` (Back / View / Create), `button_back_left` / `_right` (+ `_upper`: back grips) |
+| `left_trigger`, `right_trigger` | `trigger` | `edge` (full pull), `click`; or `gameactions` for an analog trigger action |
+| `joystick`, `right_joystick` | `joystick_move` | `click` (stick press); or `gameactions` for a stick action |
+| `dpad` | `dpad` | `dpad_north`, `dpad_south`, `dpad_east`, `dpad_west` |
+| `left_trackpad`, `right_trackpad` | `dpad`, `absolute_mouse`, ... | Steam Controller, Steam Deck; `center_trackpad` on PlayStation |
+| `gyro` | `joystick_move`, `absolute_mouse`, ... | pads with motion sensors |
+
+Activators other than `Full_Press` exist (`Soft_Press` on triggers, ...).
+
+### Generating layouts: tools/gen_input_mapping.py
+
+`tools/gen_input_mapping.py` writes SteamInputDemo's manifest and one
+layout per controller type (Xbox One / 360, PS5 / PS4, Switch Pro, Steam
+Deck, the 2015 Steam Controller) from one table of sets, actions and
+`(source, input, action)` bindings. It is the core of the planned mapping
+tool, where the table comes from the user pressing buttons.
+
+### Making a layout file with Steam
+
+Steam can also write these files from bindings made in its configurator:
+
+1. Big Picture -> Settings -> System: enable **Developer mode**. In the new
+   Developer section enable **Steam Input Layout Dev Mode**.
+2. Run the game with the manifest active (section 3) and one controller
+   connected; open its controller layout (`ShowBindingPanel`, or the game's
+   controller settings in the Steam client) and bind every action of every
+   set.
+3. Gear icon -> **Export layout**; give it a title and description.
+4. Write it to disk - Windows: `start steam://dumpcontrollerconfig?appid=<AppID>`
+   (the file appears in the Documents folder); Linux / SteamOS desktop:
+   `xdg-open steam://dumpcontrollerconfig?appid=<AppID>` (written to `/tmp`).
+5. Copy it next to the manifest and add it to `configurations`.
+6. Repeat per controller type.
+
+## 3. Development and shipping
+
+* **Development:** `SetInputActionManifestFilePath(<absolute path>)`
+  after `Start` makes Steam use a local manifest instead of the one from
+  the game's depots - for builds run outside Steam, or to try changes.
+  Valve: the override lasts for the rest of the Steam session.
+  SteamInputDemo does this with the manifest copied next to its
+  executable.
+* **Shipping:** put the manifest and its layout files into the game's depot
+  and configure Steam Input for the app on the partner site; the game then
+  does not call `SetInputActionManifestFilePath` at all.
+* Steam Input must be enabled for the game for Xbox and generic
+  controllers to reach it (PlayStation, Switch and Steam controllers
+  normally are by default); a player can still switch it off per game.
+
+## 4. Reading actions in code
+
+* Action set and action handles are **0 until Steam has loaded the
+  manifest** - look them up again (once a second is plenty) until they are
+  not, and again after `OnSteamInputConfigurationLoaded` (a new layout).
+* Activate the set on each controller every frame
+  (`ActivateActionSet(Pad, Set)`); it takes effect at the next `RunFrame`.
+* `GetDigitalActionData` / `GetAnalogActionData` per controller and action:
+  `bActive` is False when the action is not in the active set or not bound.
+* `DigitalActionOrigins` / `AnalogActionOrigins` (helpers on
+  `TSteamInputPlugin`) list the origins an action is bound to; per origin,
+  `GetStringForActionOrigin` gives a localised name and
+  `GetGlyphPNGForActionOrigin` / `GetGlyphSVGForActionOrigin` the path of
+  Steam's image for "press (A)" prompts - always matching the player's pad
+  and current layout.
+
+## 5. From origins to physical buttons
+
+Origins are per controller family: the same action bound to "the bottom face
+button" reports `XBoxOne_A` on an Xbox pad, `PS5_X` (Cross) on a DualSense,
+`SteamController2026_A` on the 2026 Steam Controller. Anything that has to
+show the *physical* button - a pad picture, a 3D model - maps origins to
+positions, not to letters, because Nintendo uses the same letters in other
+places:
+
+| Position | Xbox (`XBoxOne_`) | PlayStation 5 (`PS5_`) | Steam Controller 2026 (`SteamController2026_`) | Switch (`Switch_`) |
+|---|---|---|---|---|
+| bottom | `A` | `X` (Cross) | `A` | `B` |
+| right | `B` | `Circle` | `B` | `A` |
+| left | `X` | `Square` | `X` | `Y` |
+| top | `Y` | `Triangle` | `Y` | `X` |
+
+Other inputs per family (SDK 1.65 names):
+
+| Input | Xbox | PlayStation 5 | Steam Controller 2026 |
+|---|---|---|---|
+| shoulders | `LeftBumper`, `RightBumper` | `LeftBumper`, `RightBumper` | `L1`, `R1` |
+| triggers, analog / full press | `LeftTrigger_Pull` / `_Click` | `LeftTrigger_Pull` / `_Click` | `L2_SoftPull` / `L2` (two levels) |
+| sticks, click | `LeftStick_Move`, `LeftStick_Click` | `LeftStick_Move`, `LeftStick_Click` | `LeftStick_Move`, `L3` |
+| d-pad | `DPad_North` ... `DPad_Move` | `DPad_North` ... | `DPad_North` ... `DPad_Move` |
+| centre buttons | `View`, `Menu`, `Share` | `Create`, `Option`, `Mute` | `View`, `Menu` |
+| extras | `LeftGrip_Upper` / `_Lower` ... (Elite paddles) | `CenterPad_Click`, `LeftPad_Touch` ... (touchpad), gyro | `L4` `L5` `R4` `R5` (back grips), `LeftPad` / `RightPad` (trackpads), `LGrip` / `RGrip` (grip sensors), gyro |
+
+**Reserved by Steam:** the Guide / PS / Steam button and the Steam
+Controller's Quick Access ("...") button have no origins - Steam uses them
+itself, so a game can never bind them.
+
+### Which picture or model for which pad
+
+`GetInputTypeForHandle(Pad)` gives each pad's type
+(`ESteamInputType`); SteamInputDemo logs it. For a game with its own pad
+art - such as the CC0 models in `models/` (Xbox One, PS5, Steam Controller;
+a Switch model is planned):
+
+| `ESteamInputType` | Model |
+|---|---|
+| `XBoxOneController`, `XBox360Controller` | Xbox One |
+| `PS5Controller` (`PS4Controller` as a close match) | PS5 |
+| `SteamController2026` | Steam Controller |
+| `SwitchProController`, `Switch2ProController`, `SwitchJoyConPair` | Switch model when available; the Xbox one meanwhile (positions still match - see the table) |
+| anything else (`GenericGamepad`, the 2015 Steam Controller, ...) | Xbox One |
+
+## 6. When it does not work
+
+| Symptom | Cause |
+|---|---|
+| No controller listed | Steam Input is off for this game (Xbox / generic pads), or `RunFrame` has not run yet - controllers appear after the first frames |
+| Handles stay 0 | The manifest was not loaded: wrong path (it must be absolute), a VDF syntax error, or Steam Input off for the app |
+| Actions "NOT BOUND", `bActive` False | No default layout for this controller type and none chosen yet - add one (section 2) or bind in the layout screen |
+| `ShowBindingPanel` returns False | The Steam overlay is not running in this process (typical when started from the IDE): edit the layout from the Steam client instead |
+| Manifest ignored (handles 0, nothing in the configurator) although the path is right | `//` comments in the manifest (section 1), or a VDF syntax error |
+| Layout changes not picked up | Steam keeps a manifest override for the session; `OnSteamInputConfigurationLoaded` reports each new layout - re-read handles and origins then |
+
+Sources: Valve's Steamworks documentation -
+[action manifest file](https://partner.steamgames.com/doc/features/steam_controller/action_manifest_file),
+[In-Game Actions file](https://partner.steamgames.com/doc/features/steam_controller/iga_file);
+origin and type names from the SDK 1.65 headers (`isteaminput.h`).
