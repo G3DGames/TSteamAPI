@@ -3,8 +3,9 @@
 Bug report for Embarcadero (FireMonkey for Linux / FMXLinux).
 
 **Status (2026-11-01):** the cause is proven by a symbol trace of the full
-application. Two items are **not yet confirmed** and are marked below: the
-minimal one-control repro, and the workaround.
+application, and the workaround below is proven: with it the application
+starts in Steam Linux Runtime 3.0 under Ubuntu. Still **not confirmed**:
+the minimal one-control repro (marked below).
 
 ## Summary
 
@@ -151,7 +152,7 @@ already has it open), not with `RTLD_DEFAULT`, or open GTK with
 calling it. A missing optional function should degrade (for example, no
 gesture controller) rather than call address 0.
 
-## Workaround (not yet confirmed)
+## Workaround (proven)
 
 Short version for game developers: [fmx-steamos-gtk3-bug-fix.md](fmx-steamos-gtk3-bug-fix.md).
 
@@ -168,9 +169,9 @@ initialization
 {$ENDIF}
 ```
 
-TSteamAPI ships this as the unit `FmxLinuxGtkGlobal.pas` in
-`demos/SteamInputDemo/src`. Update this section when it's tested in Steam
-Linux Runtime 3.0.
+With it, the application that crashed starts and runs in Steam Linux
+Runtime 3.0 (Ubuntu 26.04 host, 2026-11-01). TSteamAPI ships it as
+`FmxLinuxGtkGlobal.pas` in each FMX program's `src` folder.
 
 ## Notes for anyone reproducing this
 

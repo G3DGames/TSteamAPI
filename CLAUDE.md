@@ -1305,6 +1305,86 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
     without errors in our demos, full names / no GTK-CRITICAL still
     unconfirmed on screen. In docs/README.md. Zip BugDoc3 (follows
     BugDoc2).
+  * OWNER (18:01): "Linux fixed" - with FmxLinuxGtkGlobal (LinuxRT6)
+    SteamInputDemo starts from Steam in Runtime 3.0 on Ubuntu. "SteamOS
+    has additional issues" - details asked. Zip GtkAll1 (follows
+    BugDoc3): FmxLinuxGtkGlobal.pas copied to VirtualGamepad and
+    LogReceiver (.dpr / .dproj / gen_projects); project_check.py checks
+    BOTH shared units (FmxLinuxMenu, FmxLinuxGtkGlobal) in all three
+    src folders (COPY_DIRS; proven with a deliberate difference); unit
+    doc says PROVEN + the copies; bug report and fix doc: workaround
+    proven, minimal repro still unconfirmed, SteamOS open.
+- STEAMOS (ROG Ally, owner 18:23-19:17): from Steam (Game Mode and
+  Desktop) with Runtime 3.0 it showed a launch graphic and returned;
+  stderr ended before ANY program output. Konsole on the Ally:
+  * outside the runtime (steam_appid.txt): WORKS fully (exit 0) -
+    FMX, GTK fix, menu fix, Steam, Steam Input all fine on SteamOS.
+  * inside sniper (".../SteamLinuxRuntime_sniper/run -- ./prog"): exit
+    139 (SIGSEGV), no output at all, ~/.fmxlinux not even created.
+  * LD_DEBUG=libs: "libicuuc.so.78: undefined symbol: u_strToUTF8",
+    "./SteamInputDemo: undefined symbol: ucol_open_78 / ucol_close_78".
+    In the container: pressure-vessel/overrides has the HOST's
+    libicuuc.so.78 + libicudata.so.78 (brought in for the graphics
+    drivers) but NO libicui18n.so.78; sniper's own /usr/lib has a
+    COMPLETE ICU 67.
+  * CAUSE, from the owner's Delphi 13 RTL source (kept in the
+    scratchpad, Embarcadero's - not in the repo): System's
+    initialization calls InitICU (source/rtl/sys/ICU.inc). OpenICU_Lib
+    tries the UNVERSIONED name, then 99 downto 40; libicuuc -> .78 and
+    REMEMBERS 78, so libicui18n is tried ONLY as .78 -> handle 0; then
+    ucol_open := dlsym(0 = global scope, 'ucol_open_78') = nil,
+    unchecked; SetUTF8CompareLocale -> GetNewLocalICU calls it, still
+    inside System's init -> signal 11 before any unit of ours. Not
+    fixable from program code. System.Internal.ICU also never checks
+    its dlsym results. SECOND EMBARCADERO BUG.
+  * FIX PROVEN BY HAND (19:13): in sniper, links /tmp/icu67/libicuuc.so
+    -> /usr/lib/x86_64-linux-gnu/libicuuc.so.67 and libicui18n.so ->
+    ...67 with LD_LIBRARY_PATH=/tmp/icu67 - the unversioned names are
+    tried FIRST, so Delphi takes the complete 67 pair: program ran,
+    Steam + Steam Input up, exit 0 (log file WAS written here).
+  * Controller: callback 2801 "Xbox One connected" but never
+    "Connected controllers" (0 handles) in BOTH Konsole runs (inside
+    and outside the runtime) - most likely because Steam did not launch
+    it, so Steam routes no pad to it. Needs a launch FROM Steam.
+  Zip IcuFix1 (follows GtkAll1): src/SteamInputDemo.sh - POSIX sh
+  launcher: newest version N with BOTH libicuuc.so.N and libicui18n.so.N
+  in /usr/lib/x86_64-linux-gnu, links in $XDG_RUNTIME_DIR (or /tmp)/
+  delphi-icu-N, prepends it to LD_LIBRARY_PATH, execs the program;
+  no complete pair (normal desktop) -> unchanged. Named <prog>.sh it
+  starts <prog>; named <prog> it starts <prog>.bin (test without
+  touching Steam's settings). Logic tested here with fake libraries
+  (67 complete + 78 half -> 67; both naming modes; none -> unchanged).
+  Deployed Linux64 only (gen_projects key linux_files; .dproj edited by
+  hand, matches a --force run). .gitattributes: *.sh eol=lf.
+  NEXT: owner tests from Steam in Game Mode via the rename trick; then
+  the depot's Linux launch command -> SteamInputDemo.sh on the partner
+  site; docs (ICU report + fix) once proven from Steam.
+- ICU LAUNCHER PROVEN FROM STEAM (owner, ROG Ally, Game Mode, Runtime
+  3.0, 19:35; rename trick: SteamInputDemo.bin + script as
+  SteamInputDemo; log via LogReceiver - remote logging + pad combo
+  PROVEN on SteamOS too): started, Steam + Steam Input up, every button,
+  analog triggers, motion. Layout: first "mapping by 76561198027655094"
+  (= the OWNER's account: a layout left over from his October testing of
+  a DIFFERENT, unrelated build under this AppID, synced to the Ally by
+  Steam; uses Steam Input API False -> nothing bound) - File > View
+  Controller Settings (ShowBindingPanel True in Game Mode) -> official
+  layout, mapping by 0, all bound. Owner-specific: a player does not
+  inherit it. (The same creator ID on 2026-10-31 was that leftover too.)
+  ROG Ally facts: type XBoxOneController (3) -> our banner says Xbox One,
+  controller_xboxone.vdf loads; BUT button origins are LENOVO LEGION GO
+  ones (A 410, B 411, X 412, Y 413, LB 414, RB 415, Menu 416, View 417,
+  LS 437, RS 443, Y1 448, Y2 449, D-pad 451-454; sd_ glyphs for
+  Menu / View), sticks / triggers XBoxOne origins (122 / 124 / 126 /
+  132). Back buttons arrive as Legion Go Y1 / Y2 and Steam put them on
+  ButtonX / ButtonA by itself. It HAS a gyro (motion data) - our Xbox
+  layout binds no Gyro and MotionText says "no" (wrong for it). Its
+  accel is ~9.8 at rest (m/s^2) where PS5 / Steam Controller give
+  ~16400 = 1 g: the visualiser must not assume one unit.
+  Zip IcuDoc1 (follows IcuFix1): docs/fmx-steamos-icu-bug.md (report)
+  + docs/fmx-steamos-icu-bug-fix.md (short, script); GTK fix doc status
+  points at it; docs/README.md lists both.
+  Owner (19:54): ALL public-release settings already done on the partner
+  site (no TO DO left there).
 
 ## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
 State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to

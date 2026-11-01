@@ -15,6 +15,7 @@ program VirtualGamepad;
 uses
   System.StartUpCopy,
   FMX.Forms,
+  FmxLinuxGtkGlobal in 'src\FmxLinuxGtkGlobal.pas',
   FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   Sprite3DCamera in 'src\Sprite3DCamera.pas',
   Gorilla.Animation.Parallel in 'src\Gorilla.Animation.Parallel.pas',

@@ -1,1 +1,4 @@
 *.glb binary
+# Shell scripts run on Linux: always LF, also in a Windows checkout
+# (a CRLF script fails with "/bin/sh^M: bad interpreter")
+*.sh text eol=lf

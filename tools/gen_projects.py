@@ -82,6 +82,9 @@ PROJECTS = [
          forms=[("uMain", "src\\uMain.pas", "frmInput")],
          # ..\\..\\RemoteLogging\\src: the optional log sender (File menu)
          search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
+         # Linux launcher: steers Delphi's runtime to a complete ICU in Steam's
+         # Linux runtime (docs/fmx-steamos-icu-bug.md); Linux64 deployment only
+         linux_files=["src\\SteamInputDemo.sh"],
          files=INPUT_FILES),
     # 3D gamepad visualiser (Gorilla3D, FMX, desktop; Android later): the
     # model of the connected pad animated live through Steam Input. Same
@@ -94,7 +97,9 @@ PROJECTS = [
          # Sprite3DCamera: unchanged copy of the owner's Sprite3D orbit camera
          # Gorilla.Animation.Parallel: written for this project by Gorilla3D's
          # author, in the repository with his permission
-         units=[("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"),
+         # FmxLinuxGtkGlobal: same file as SteamInputDemo's (Steam Linux runtime)
+         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"),
                 ("Sprite3DCamera", "src\\Sprite3DCamera.pas"),
                 ("Gorilla.Animation.Parallel", "src\\Gorilla.Animation.Parallel.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmGamepad")],
@@ -107,8 +112,10 @@ PROJECTS = [
     # receiver app. Senders (SteamInputDemo) use RemoteLogging\src directly.
     dict(name="LogReceiver", dir="RemoteLogging\\LogReceiver", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
-         # FmxLinuxMenu: same file as SteamInputDemo's (Linux menu bar fix)
-         units=[("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"), ("uNetworks", "src\\uNetworks.pas")],
+         # FmxLinuxMenu, FmxLinuxGtkGlobal: same files as SteamInputDemo's
+         # (Linux menu bar fix; GTK for Steam's Linux runtime)
+         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"), ("uNetworks", "src\\uNetworks.pas")],
          forms=[("uReceiver", "src\\uReceiver.pas", "frmReceiver")],
          search="src;..\\src", depends=[]),
     # Framework-free runtime package: the whole library, the plug-ins and the
@@ -362,6 +369,15 @@ def dproj(p):
                     a(f'                <DeployFile LocalName="{f}" Configuration="{cfg}" Class="File">')
                     a(f'                    <Platform Name="{pl}">')
                     a(f'                        <RemoteDir>{data_remote}</RemoteDir>')
+                    a(f'                        <RemoteName>{f.split(chr(92))[-1]}</RemoteName>')
+                    a('                        <Overwrite>true</Overwrite>')
+                    a('                    </Platform>')
+                    a('                </DeployFile>')
+                # Linux-only files (the ICU launcher script) beside the program
+                for f in (p.get("linux_files", []) if pl == "Linux64" else []):
+                    a(f'                <DeployFile LocalName="{f}" Configuration="{cfg}" Class="File">')
+                    a(f'                    <Platform Name="{pl}">')
+                    a(f'                        <RemoteDir>{remote}</RemoteDir>')
                     a(f'                        <RemoteName>{f.split(chr(92))[-1]}</RemoteName>')
                     a('                        <Overwrite>true</Overwrite>')
                     a('                    </Platform>')

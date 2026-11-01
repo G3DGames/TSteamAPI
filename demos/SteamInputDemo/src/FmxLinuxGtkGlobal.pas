@@ -16,8 +16,12 @@
   a normal desktop this changes nothing. The result is written to stderr.
   On every other platform the unit is empty.
 
-  To be reported to Embarcadero; remove this unit once FMX checks those
-  lookups or finds them in GTK itself. }
+  PROVEN: with it SteamInputDemo starts in Steam Linux Runtime 3.0 (owner,
+  2026-11-01). Reported to Embarcadero (docs/fmx-steamos-gtk3-bug.md);
+  remove this unit once FMX checks those lookups or finds them in GTK
+  itself. Three identical copies (demos/SteamInputDemo/src,
+  demos/VirtualGamepad/src, RemoteLogging/LogReceiver/src - projects use
+  only their own sources); tools/project_check.py reports any difference. }
 unit FmxLinuxGtkGlobal;
 
 interface

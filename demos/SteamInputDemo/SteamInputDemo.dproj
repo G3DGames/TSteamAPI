@@ -429,6 +429,20 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="src\SteamInputDemo.sh" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>SteamInputDemo.sh</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="src\SteamInputDemo.sh" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>SteamInputDemo.sh</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="src\controller_generic.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
                         <RemoteDir>.\</RemoteDir>

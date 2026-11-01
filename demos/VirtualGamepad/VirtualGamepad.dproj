@@ -297,6 +297,7 @@ copy /Y "$(PROJECTDIR)\..\..\models\SteamController_Animated.glb" "$(OUTPUTDIR)"
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="src\FmxLinuxGtkGlobal.pas"/>
         <DCCReference Include="src\FmxLinuxMenu.pas"/>
         <DCCReference Include="src\Sprite3DCamera.pas"/>
         <DCCReference Include="src\Gorilla.Animation.Parallel.pas"/>

@@ -4,9 +4,9 @@ Steam starts native Linux games inside its own runtime container. Two
 things are needed for a Delphi FMX game to start there. The full analysis
 is in [fmx-steamos-gtk3-bug.md](fmx-steamos-gtk3-bug.md).
 
-> **Status (2026-11-01):** step 1 is proven. Step 2 addresses the proven
-> cause but has not yet been run in the runtime. Update this note when it
-> has.
+> **Status (2026-11-01):** both steps are proven in Steam Linux Runtime
+> 3.0, on Ubuntu 26.04 and on SteamOS (ROG Ally). **SteamOS also needs the
+> ICU launcher:** [fmx-steamos-icu-bug-fix.md](fmx-steamos-icu-bug-fix.md).
 
 ## 1. Use Steam Linux Runtime 3.0 (sniper), not 4.0
 
@@ -58,9 +58,9 @@ uses
   Unit1 in 'Unit1.pas' {Form1};
 ```
 
-On Windows and macOS the unit compiles to nothing.
-`demos/SteamInputDemo/src/FmxLinuxGtkGlobal.pas` is the same unit, plus
-a line on stderr reporting whether each library was opened.
+On Windows and macOS the unit compiles to nothing. TSteamAPI's FMX
+programs carry the same unit as `src/FmxLinuxGtkGlobal.pas`, which also
+writes a line to stderr saying whether each library was opened.
 
 ## Checking a launch
 
