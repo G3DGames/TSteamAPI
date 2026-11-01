@@ -1385,6 +1385,17 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   points at it; docs/README.md lists both.
   Owner (19:54): ALL public-release settings already done on the partner
   site (no TO DO left there).
+- Push dda6ff5 "SteamDeck+ Linux fixes" (after 8997113) VERIFIED: 21 of
+  22 files delivered since d11e7e9 identical; SteamInputDemo.dproj =
+  IDE re-save (default platform Linux64, entries reordered, both
+  SteamInputDemo.sh DeployFile entries + FmxLinuxGtkGlobal kept -
+  accepted). Steamworks.groupproj: the IDE DROPPED THE DEPENDENCIES
+  AGAIN (all <Dependencies/>) and listed packages first - restored from
+  the working copy in zip Group3. demos/DummyTest/ (owner's blank-form
+  sniper test, SteamInputDemo.dpr + Unit1) came along in 8997113 - not
+  in the group; pasdoc_check reports its Unit1 (3 problems) - owner
+  asked whether to keep it. SteamInputDemo.sh is mode 100644 in git
+  (Steam's install made every file executable anyway).
 
 ## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
 State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to
