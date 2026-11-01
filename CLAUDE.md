@@ -1180,6 +1180,131 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   gen_projects. .gitignore keeps only Gorilla.Platforms.inc ignored.
   Sample Unit1.pas stays outside the repo (not asked). If a Gorilla3D
   release ships the unit, delete ours and use his.
+- Push d11e7e9 "Getting there" (15:05) VERIFIED: all 13 files delivered
+  since 99021ef (Deploy1, Visual1-9, Anim1, Cam1, Path1, Local1, Anim2)
+  identical ignoring CRLF / BOM; Sprite3DCamera.pas byte-identical to
+  Sprite3D's; pasdoc / project checks 0 problems; VirtualGamepad search
+  path "src" only; group Dependencies intact. Owner removed Gorilla3D's
+  GAMEPACKAGE\lib\instance folder; no tracked file refers to it.
+  NEXT: owner's run of Anim2 with the Xbox pad (buttons / sticks /
+  triggers on the model, framing) and the Steam Controller / PS5 (gyro
+  through SetModelRotation, untested with the pivot); the Windows
+  post-build copies (manifest / layouts / models never arrived in
+  Win64\Debug - Output with the "Steamworks post-build" lines needed).
+- STEAM DEPLOYMENT of SteamInputDemo (owner, 2026-11-01): Release
+  depots for Windows, macOS ARM and Linux64 uploaded; Windows and macOS
+  ARM WORK from Steam. Linux64 (Ubuntu 26.04, Wayland desktop) starts
+  and quits. Findings:
+  * Run by hand, a Release build relaunches through Steam and exits
+    (RestartIfNecessary True) - expected; steam_appid.txt next to the
+    exe stops that for a terminal test (never ship it).
+  * Terminal run (15:27, steam_appid.txt) WORKS: libsteam_api.so beside
+    the exe, Steam Input + manifest, window, clean close.
+  * libfmux: NOT a depot file - FMXLinux carries it inside the
+    executable (14 MB) and unpacks ~/.fmxlinux/libfmux-1.0dev.so at
+    start (proven: deleted, run, recreated). It needs libgtk-3.so.0,
+    libgdk-3.so.0, libgdk_pixbuf-2.0.so.0 (versioned names).
+  * Under Steam (stderr via Launch Options
+    "%command% > /tmp/sid-steam.txt 2>&1"; the gameoverlayrenderer.so
+    "wrong ELF class" lines are harmless):
+    - Steam Linux Runtime 4.0 (Steam's default here): "GTK 3 is required
+      to be installed." + runtime error 217 - no usable GTK 3 in 4.0.
+    - Steam Linux Runtime 3.0 (sniper): GTK loads (canberra-gtk-module
+      messages), then EAccessViolation calling address 0, BEFORE the
+      log was written - with and without GDK_BACKEND=x11.
+  * Our suspect in sniper: FormCreate ran ReplaceMainMenu (FmxLinuxMenu)
+    BEFORE creating the log, so a crash there leaves no log. Zip
+    LinuxRT1 (follows Sync3): both demos create the log FIRST, log
+    "FormCreate started", then ReplaceMainMenu, then "Main menu ready".
+    Next run in sniper: no log at all = FMX / unit initialisation;
+    only "FormCreate started" = our menu swap; both lines = later.
+  * Not yet done: a blank FMX app in sniper (isolates FMXLinux), a
+    backtrace, the scout / LD_LIBRARY_PATH question. If FMX itself
+    fails in sniper -> Embarcadero bug report (FMXLinux in Steam Linux
+    Runtime 3.0 / 4.0), with this evidence.
+  * LinuxRT1 build in sniper (16:08): STILL NO LOG -> the crash is
+    before FormCreate. BLANK FMX FORM (owner, Release, copied over the
+    Steam exe, 16:18): FAILS under 4.0 (no GTK 3 - expected), WORKS
+    under 3.0 sniper. So FMXLinux runs in sniper and something of
+    SteamInputDemo's crashes before OnCreate: unit initialisation (our
+    Steamworks units, Indy via RemoteLog.Sender) or form streaming in
+    CreateForm (prime suspect TMainMenu - the native GTK menu bar the
+    blank form lacks; TSteamAPI / TSteamInput constructors next).
+    Zip LinuxRT2 (follows LinuxRT1): both .dpr files write POSIX-only
+    stderr markers "start-up: units initialised" / "application
+    initialised, creating the main form" / "main form created" (stderr
+    is what %command% > file 2>&1 captures). With the log's "FormCreate
+    started" that places the crash between two lines.
+    Linux runtime for the app: 3.0 sniper (4.0 has no GTK 3) - set on
+    the partner site once the crash is fixed.
+  * LinuxRT2 in sniper (16:22): "units initialised", "creating the
+    main form", "main form CREATED", then the AV at 0. So OnCreate
+    (menu swap included) completed and the crash is in the running
+    program - first suspect tmStart -> SteamAPI1.Open. Yet NO log file
+    although FormCreate ran: creating it next to the exe FAILED (game
+    folder not writable inside the runtime; the failure was silent).
+    Zip LinuxRT3 (follows LinuxRT2): AddLog writes every line to stderr
+    first and flushes (POSIX only), so the whole log - Steam's core log
+    lines included - reaches the launch-options capture; a failed log
+    file is reported with its path and error. LATER: a shipped game
+    must log / save under the user's folders (XDG / AppData / Library),
+    never next to the executable.
+  * LinuxRT3 in sniper (16:27): the same three markers, then the AV -
+    and NO AddLog line at all ("FormCreate started" missing). CORRECTION:
+    my reading of LinuxRT2 was WRONG - FMX's Application.CreateForm only
+    QUEUES the form; FMX creates it inside Application.Run, so "main form
+    created" printed before the form existed (marker renamed in LinuxRT4:
+    "Application.Run (FMX creates the queued forms now)"). Correct
+    reading: the crash is while FMX STREAMS uMain.fmx, before OnCreate;
+    the blank form passes, so a component of ours: prime suspect
+    TMainMenu (FMX's native GTK menu bar on Linux), then TSteamAPI /
+    TSteamInput, then the rest. Asked the owner: blank form + TMainMenu
+    in sniper. If TMainMenu: Embarcadero bug, and on Linux the form must
+    not stream a TMainMenu at all (FmxLinuxMenu replaces it anyway).
+  * Owner (16:39-16:42): blank form + TMainMenu RUNS in sniper (from
+    Steam; "M" = the first-letter GTK menu bar; atk-bridge warning
+    harmless) - TMainMenu cleared. TSteamAPI / TSteamInput constructors
+    read: harmless at load (a timer, defaults, linking; nothing loaded).
+    Owner: "maybe the FMX menu fix?" - ReplaceMainMenu runs in FormCreate
+    and his test form did not have it; whether FormCreate was reached
+    depends on that build having LinuxRT3's uMain.pas (unconfirmed).
+    Zip LinuxRT5 (follows LinuxRT4): SteamInputDemo's form traces its own
+    load on stderr (POSIX): constructor start / end, "creating a <class>"
+    per streamed component (TReader.OnCreateComponent, previous handler
+    chained, restored after), Loaded before / after; FormCreate's lines
+    follow. The last line before the AV names the culprit, the menu swap
+    included ("FormCreate started" without "Main menu ready").
+  * LinuxRT5 in sniper (16:46): Panel, Label, Label, Layout, Label, then
+    "creating a TListBox" -> AV. Not our code, not the menu fix. Owner's
+    LD_DEBUG=symbols trace (17:03): just before the AV the program looked
+    up gtk_event_controller_set_propagation_phase and
+    gtk_event_controller_handle_event in the GLOBAL scope only (exe,
+    overlay, libc / libm / libdl / librt / libpthread, GL, X11 / xcb) -
+    libgtk-3 NOT in it - found nothing, called nil. Both exist in GTK
+    3.24 (sniper's): inside pressure-vessel libgtk-3 is loaded privately
+    (RTLD_LOCAL) so FMX's global dlsym misses it; FMX calls the result
+    unchecked. EMBARCADERO BUG (FMX Linux, TListBox creation in Steam
+    Linux Runtime 3.0). Zip LinuxRT6 (follows LinuxRT5): SteamInputDemo
+    unit src/FmxLinuxGtkGlobal.pas (Linux-only initialization:
+    dlopen libgtk-3.so.0 and libgdk-3.so.0 with RTLD_LAZY|RTLD_GLOBAL,
+    result on stderr) in .dpr / .dproj / gen_projects. If it fixes
+    sniper: copy it to VirtualGamepad and LogReceiver (COPIES in
+    project_check.py, like FmxLinuxMenu) and report the bug.
+  * Owner (17:07): bug report written - docs/fmx-steamos-gtk3-bug.md
+    (listed in docs/README.md). It marks two items NOT YET CONFIRMED:
+    the one-TListBox minimal repro and the RTLD_GLOBAL workaround -
+    update it when the owner has run them. Zip BugDoc1 (follows LinuxRT6).
+  * Owner (17:19): short fix doc - docs/fmx-steamos-gtk3-bug-fix.md
+    (owner wrote "fmx-steamos.gtx-bug-fix.md"; named to pair with the
+    report - rename if he meant otherwise): Runtime 3.0 not 4.0, the
+    RTLD_GLOBAL unit + .dpr example, checking a launch. Marked "step 2
+    not yet run in the runtime". Zip BugDoc2 (follows BugDoc1).
+  * Owner (17:21): docs/fmx-menu-bug-fix.md - the Linux first-letter
+    menu fix (FmxLinuxMenu.ReplaceMainMenu): usage, the core of the unit,
+    what does not work, rules; status: method proven in GDEMFetch, runs
+    without errors in our demos, full names / no GTK-CRITICAL still
+    unconfirmed on screen. In docs/README.md. Zip BugDoc3 (follows
+    BugDoc2).
 
 ## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
 State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to

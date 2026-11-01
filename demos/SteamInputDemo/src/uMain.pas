@@ -152,6 +152,9 @@ type
     { SteamInput1.OnSteamInputGamepadSlotChange (callback 2804). }
     procedure InputGamepadSlotChange(Sender: TObject; const AData: SteamInputGamepadSlotChange_t);
   private
+    { The reader's OnCreateComponent before @link(ReadState) hooked
+      @link(TraceCreateComponent) in (called on, normally nil). }
+    FPrevCreateComponent: TCreateComponentEvent;
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
     { Action set handles (0 until Steam has loaded the manifest). }
@@ -268,6 +271,19 @@ type
       LeftBumper together start sending the log (@link(StartRemoteLog));
       returns the live-state text. }
     function ReadActions(P: TSteamInputPlugin): string;
+    { Start-up trace (POSIX): names each component on stderr as the form
+      file creates it, so a crash while the form loads names its culprit
+      (Steam's Linux runtime crashed SteamInputDemo there, 2026-11-01). }
+    procedure TraceCreateComponent(Reader: TReader; ComponentClass: TComponentClass;
+      var Component: TComponent);
+  protected
+    { Hooks @link(TraceCreateComponent) into the form file's reader. }
+    procedure ReadState(Reader: TReader); override;
+    { Traces "form file read" (before OnCreate). }
+    procedure Loaded; override;
+  public
+    { Traces the start and end of the form's construction. }
+    constructor Create(AOwner: TComponent); override;
   end;
 
 var
@@ -513,17 +529,79 @@ begin
   end;
 end;
 
-procedure TfrmInput.FormCreate(Sender: TObject);
+{ Writes one start-up trace line to stderr (Linux / macOS; a Windows GUI
+  program has no stderr), flushed so it survives a crash.
+  @param(S The text.) }
+procedure StartupTrace(const S: string);
 begin
-  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
-  // (FmxLinuxMenu). FIRST, before anything touches a menu item.
-  ReplaceMainMenu(Self, MainMenu1);
+{$IFDEF POSIX}
+  WriteLn(ErrOutput, 'start-up: ' + S);
+  Flush(ErrOutput);
+{$ENDIF}
+end;
+
+constructor TfrmInput.Create(AOwner: TComponent);
+begin
+  StartupTrace('constructing the main form (reading uMain.fmx)');
+  inherited Create(AOwner);
+  StartupTrace('main form constructed');
+end;
+
+procedure TfrmInput.ReadState(Reader: TReader);
+begin
+  FPrevCreateComponent := Reader.OnCreateComponent;
+  Reader.OnCreateComponent := TraceCreateComponent;
+  try
+    inherited ReadState(Reader);
+  finally
+    Reader.OnCreateComponent := FPrevCreateComponent;
+  end;
+end;
+
+procedure TfrmInput.TraceCreateComponent(Reader: TReader; ComponentClass: TComponentClass;
+  var Component: TComponent);
+begin
+  StartupTrace('creating a ' + ComponentClass.ClassName);
+  // a handler that was there before still runs; with none, Component stays
+  // nil and the reader creates the component as usual
+  if Assigned(FPrevCreateComponent) then
+    FPrevCreateComponent(Reader, ComponentClass, Component);
+end;
+
+procedure TfrmInput.Loaded;
+begin
+  StartupTrace('form file read, components loading');
+  inherited Loaded;
+  StartupTrace('form file loaded (OnCreate next)');
+end;
+
+procedure TfrmInput.FormCreate(Sender: TObject);
+var
+  LogFileError: string;
+begin
+  LogFileError := '';
+  // The log file FIRST, so a crash in anything below (the Linux menu swap
+  // included) still leaves a line saying how far the start got - under
+  // Steam's Linux runtimes the program died before the log was written
+  // (owner's runs 2026-11-01), and stderr is all there was
   FLogFile := TPath.Combine(ExpandFileName(ExtractFilePath(ParamStr(0))), 'SteamInputDemo.log');
   try
     TFile.WriteAllText(FLogFile, '');
   except
-    FLogFile := '';
+    on E: Exception do
+    begin
+      // say why (in Steam's Linux runtime the game folder is not writable)
+      LogFileError := FLogFile + ': ' + E.Message;
+      FLogFile := '';
+    end;
   end;
+  AddLog('FormCreate started');
+  if LogFileError <> '' then
+    AddLog('Log file NOT written: ' + LogFileError);
+  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
+  // (FmxLinuxMenu). Before anything else touches a menu item.
+  ReplaceMainMenu(Self, MainMenu1);
+  AddLog('Main menu ready (on Linux: replaced by FMX''s own menu bar)');
   // A form file cannot depend on the build configuration, so this is here:
 {$IFDEF DEBUG}
   SteamAPI1.SetAppIdEnvironment := True;   // no steam_appid.txt needed
@@ -588,6 +666,13 @@ var
   Line: string;
 begin
   Line := FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S;
+{$IFDEF POSIX}
+  // Every line on stderr too, FIRST and flushed: inside Steam's Linux
+  // runtime the log file could not be written and the program crashed
+  // (owner's runs 2026-11-01) - stderr is what the launch options capture
+  WriteLn(ErrOutput, Line);
+  Flush(ErrOutput);
+{$ENDIF}
   memLog.Lines.Add(Line);
   memLog.GoToTextEnd;
   if FSender <> nil then

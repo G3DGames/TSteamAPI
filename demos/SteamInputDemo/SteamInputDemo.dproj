@@ -7,9 +7,8 @@
         <MainSource>SteamInputDemo.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Linux64</Platform>
         <TargetedPlatforms>135299</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">SteamInputDemo</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -321,6 +320,7 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="src\FmxLinuxGtkGlobal.pas"/>
         <DCCReference Include="src\FmxLinuxMenu.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmInput</Form>
@@ -403,6 +403,12 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                     <Platform Name="OSXARM64">
                         <RemoteDir>Contents\MacOS\</RemoteDir>
                         <RemoteName>libsteam_api.dylib</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="Linux64\Release\SteamInputDemo" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="Linux64">
+                        <RemoteName>SteamInputDemo</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

@@ -74,8 +74,11 @@ PROJECTS = [
     # (Windows post-build) or deployed beside the library (macOS / Linux).
     dict(name="SteamInputDemo", dir="demos\\SteamInputDemo", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
-         # FmxLinuxMenu: Linux shows FMX's menu bar, not GTK's (one-letter menus)
-         units=[("FmxLinuxMenu", "src\\FmxLinuxMenu.pas")],
+         # FmxLinuxMenu: Linux shows FMX's menu bar, not GTK's (one-letter menus);
+         # FmxLinuxGtkGlobal: GTK 3 in the global symbol scope (FMX crashed in
+         # Steam's Linux runtime without it)
+         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmInput")],
          # ..\\..\\RemoteLogging\\src: the optional log sender (File menu)
          search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],

@@ -543,16 +543,32 @@ begin
 end;
 
 procedure TfrmGamepad.FormCreate(Sender: TObject);
+var
+  LogFileError: string;
 begin
-  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
-  // (FmxLinuxMenu). FIRST, before anything touches a menu item.
-  ReplaceMainMenu(Self, MainMenu1);
+  LogFileError := '';
+  // The log file FIRST, so a crash in anything below (the Linux menu swap
+  // included) still leaves a line saying how far the start got - under
+  // Steam's Linux runtimes the program died before the log was written
+  // (owner's runs 2026-11-01), and stderr is all there was
   FLogFile := TPath.Combine(ExpandFileName(ExtractFilePath(ParamStr(0))), 'VirtualGamepad.log');
   try
     TFile.WriteAllText(FLogFile, '');
   except
-    FLogFile := '';
+    on E: Exception do
+    begin
+      // say why (in Steam's Linux runtime the game folder is not writable)
+      LogFileError := FLogFile + ': ' + E.Message;
+      FLogFile := '';
+    end;
   end;
+  AddLog('FormCreate started');
+  if LogFileError <> '' then
+    AddLog('Log file NOT written: ' + LogFileError);
+  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
+  // (FmxLinuxMenu). Before anything else touches a menu item.
+  ReplaceMainMenu(Self, MainMenu1);
+  AddLog('Main menu ready (on Linux: replaced by FMX''s own menu bar)');
   // A form file cannot depend on the build configuration, so this is here:
 {$IFDEF DEBUG}
   SteamAPI1.SetAppIdEnvironment := True;   // no steam_appid.txt needed
@@ -602,6 +618,13 @@ var
   Line: string;
 begin
   Line := FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S;
+{$IFDEF POSIX}
+  // Every line on stderr too, FIRST and flushed: inside Steam's Linux
+  // runtime the log file could not be written and the program crashed
+  // (owner's runs 2026-11-01) - stderr is what the launch options capture
+  WriteLn(ErrOutput, Line);
+  Flush(ErrOutput);
+{$ENDIF}
   memLog.Lines.Add(Line);
   memLog.GoToTextEnd;
   if FLogFile <> '' then
