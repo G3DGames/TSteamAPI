@@ -84,10 +84,11 @@ for dirpath, _, files in os.walk(os.path.join(ROOT, "demos")):
                 problems.append(f"{os.path.relpath(path, ROOT)}: includes Steamworks.inc "
                                 "(demos have no path to lib/ - use {$ifdef FPC}{$mode delphi}{$endif})")
 
-# FmxLinuxMenu.pas exists twice (projects use only their own sources): the
-# copies must stay identical (line endings aside).
+# FmxLinuxMenu.pas exists three times (projects use only their own
+# sources): the copies must stay identical (line endings aside).
 COPIES = ["demos/SteamInputDemo/src/FmxLinuxMenu.pas",
-          "RemoteLogging/LogReceiver/src/FmxLinuxMenu.pas"]
+          "RemoteLogging/LogReceiver/src/FmxLinuxMenu.pas",
+          "demos/VirtualGamepad/src/FmxLinuxMenu.pas"]
 texts = []
 for c in COPIES:
     path = os.path.join(ROOT, *c.split("/"))

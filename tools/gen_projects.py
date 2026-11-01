@@ -44,6 +44,9 @@ INPUT_FILES = ["src\\steam_input_manifest.vdf"] + [
                                          "neptune", "steamcontroller_gordon", "triton",
                                          "switch2_pro", "switch_joycon_pair", "generic")]
 
+# The CC0 3D pad models (models/, glTF 2.0) a 3D program loads at run time
+MODEL_FILES = [f"..\\..\\models\\{m}_Animated.glb" for m in ("XBoxOne", "PS5", "SteamController")]
+
 PROJECTS = [
     # The demos use the library like any user project: its DCUs come from the
     # runtime packages' output in Delphi's Dcp folder (default Library path),
@@ -80,13 +83,23 @@ PROJECTS = [
     # 3D gamepad visualiser (Gorilla3D, FMX, desktop; Android later): the
     # model of the connected pad animated live through Steam Input. Same
     # manifest + layouts as SteamInputDemo (gen_input_mapping.py writes
-    # both). SKELETON so far (owner 2026-10-31: in the project group).
+    # both). Owner 2026-10-31: in the project group, multi-platform.
     dict(name="VirtualGamepad", dir="demos\\VirtualGamepad", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
-         units=[],
+         # FmxLinuxMenu: same file as SteamInputDemo's (Linux menu bar fix);
+         # Gorilla3D comes from its own install (IDE library path)
+         # Sprite3DCamera: unchanged copy of the owner's Sprite3D orbit camera
+         # Gorilla.Animation.Parallel: written for this project by Gorilla3D's
+         # author, in the repository with his permission
+         units=[("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"),
+                ("Sprite3DCamera", "src\\Sprite3DCamera.pas"),
+                ("Gorilla.Animation.Parallel", "src\\Gorilla.Animation.Parallel.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmGamepad")],
          search="src", redist=True, depends=["SteamworksFMX"],
-         files=INPUT_FILES),
+         # models next to the program as well; on macOS every data file goes
+         # to Contents/Resources (codesign treats Contents/MacOS as code and
+         # rejects data there) - the program looks there on macOS
+         files=INPUT_FILES + MODEL_FILES, mac_data="Contents\\Resources\\"),
     # OPTIONAL remote logging (RemoteLogging/, nothing to do with Steam): the
     # receiver app. Senders (SteamInputDemo) use RemoteLogging\src directly.
     dict(name="LogReceiver", dir="RemoteLogging\\LogReceiver", kind="app", framework="FMX",
@@ -339,10 +352,13 @@ def dproj(p):
                     a('                        <Overwrite>true</Overwrite>')
                     a('                    </Platform>')
                     a('                </DeployFile>')
+                # data files: beside the library, except where the project
+                # names its own macOS data folder (mac_data)
+                data_remote = p.get("mac_data", remote) if pl.startswith("OSX") else remote
                 for f in p.get("files", []):
                     a(f'                <DeployFile LocalName="{f}" Configuration="{cfg}" Class="File">')
                     a(f'                    <Platform Name="{pl}">')
-                    a(f'                        <RemoteDir>{remote}</RemoteDir>')
+                    a(f'                        <RemoteDir>{data_remote}</RemoteDir>')
                     a(f'                        <RemoteName>{f.split(chr(92))[-1]}</RemoteName>')
                     a('                        <Overwrite>true</Overwrite>')
                     a('                    </Platform>')

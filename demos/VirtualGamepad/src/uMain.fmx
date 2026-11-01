@@ -2,19 +2,126 @@ object frmGamepad: TfrmGamepad
   Left = 0
   Top = 0
   Caption = 'Virtual Gamepad - AppID 2275430 (SDK 1.65)'
-  ClientHeight = 600
-  ClientWidth = 800
+  ClientHeight = 800
+  ClientWidth = 1100
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnClose = FormClose
   DesignerMasterStyle = 0
-  object lblInfo: TLabel
-    Align = Client
-    Size.Width = 800.000000000000000000
-    Size.Height = 600.000000000000000000
+  object pnlPad: TPanel
+    Align = Top
+    Size.Width = 1100.000000000000000000
+    Size.Height = 108.000000000000000000
     Size.PlatformDefault = False
-    TextSettings.HorzAlign = Center
-    Text = 'Virtual Gamepad - skeleton (3D view to come)'
     TabOrder = 0
+    object lblPadName: TLabel
+      Align = Top
+      Margins.Left = 8.000000000000000000
+      Position.X = 8.000000000000000000
+      Size.Width = 1092.000000000000000000
+      Size.Height = 36.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'No controller'
+    end
+    object lblPadInfo: TLabel
+      Align = Top
+      Margins.Left = 8.000000000000000000
+      Position.X = 8.000000000000000000
+      Position.Y = 36.000000000000000000
+      Size.Width = 1092.000000000000000000
+      Size.Height = 44.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Steam is opened automatically.'
+    end
+    object lblLive: TLabel
+      Align = Client
+      Margins.Left = 8.000000000000000000
+      Size.Width = 1092.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Live: -'
+    end
+  end
+  object memLog: TMemo
+    ReadOnly = True
+    Align = Bottom
+    Position.Y = 650.000000000000000000
+    Size.Width = 1100.000000000000000000
+    Size.Height = 150.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+  end
+  object splLog: TSplitter
+    Align = Bottom
+    Cursor = crVSplit
+    MinSize = 60.000000000000000000
+    Position.Y = 644.000000000000000000
+    Size.Width = 1100.000000000000000000
+    Size.Height = 6.000000000000000000
+    Size.PlatformDefault = False
+  end
+  object tmPoll: TTimer
+    Enabled = False
+    Interval = 16
+    OnTimer = tmPollTimer
+    Left = 760
+    Top = 160
+  end
+  object tmStart: TTimer
+    Interval = 100
+    OnTimer = tmStartTimer
+    Left = 760
+    Top = 216
+  end
+  object MainMenu1: TMainMenu
+    Left = 840
+    Top = 272
+    object mnuFile: TMenuItem
+      Text = 'File'
+      object mnuLayout: TMenuItem
+        Text = 'View Controller Settings...'
+        OnClick = mnuLayoutClick
+      end
+      object mnuSep1: TMenuItem
+        Text = '-'
+      end
+      object mnuExit: TMenuItem
+        Text = 'Exit'
+        OnClick = mnuExitClick
+      end
+    end
+    object mnuView: TMenuItem
+      Text = 'View'
+      object mnuMotion: TMenuItem
+        Text = 'Follow pad motion: on'
+        OnClick = mnuMotionClick
+      end
+      object mnuRecenter: TMenuItem
+        Text = 'Recenter motion'
+        OnClick = mnuRecenterClick
+      end
+      object mnuShowBack: TMenuItem
+        Text = 'Show back'
+        OnClick = mnuShowBackClick
+      end
+    end
+  end
+  object SteamAPI1: TSteamAPI
+    AppID = 2275430
+    OnInitialized = SteamInitialized
+    OnInitFailed = SteamInitFailed
+    OnShutdown = SteamShutdown
+    OnSteamShutdown = SteamClientExit
+    OnLog = SteamLog
+    Left = 840
+    Top = 160
+  end
+  object SteamInput1: TSteamInput
+    SteamAPI = SteamAPI1
+    OnSteamInputConfigurationLoaded = InputConfigurationLoaded
+    Left = 840
+    Top = 216
   end
 end

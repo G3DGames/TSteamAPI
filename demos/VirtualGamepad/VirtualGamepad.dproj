@@ -222,7 +222,13 @@ copy /Y "$(PROJECTDIR)\src\controller_switch2_pro.vdf" "$(OUTPUTDIR)" || (echo E
 echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)
 copy /Y "$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf" "$(OUTPUTDIR)" || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable & exit /b 1)
 echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)
-copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR: could not copy controller_generic.vdf next to the executable & exit /b 1)]]></PostBuildEvent>
+copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR: could not copy controller_generic.vdf next to the executable & exit /b 1)
+echo Steamworks post-build: copying XBoxOne_Animated.glb to $(OUTPUTDIR)
+copy /Y "$(PROJECTDIR)\..\..\models\XBoxOne_Animated.glb" "$(OUTPUTDIR)" || (echo ERROR: could not copy XBoxOne_Animated.glb next to the executable & exit /b 1)
+echo Steamworks post-build: copying PS5_Animated.glb to $(OUTPUTDIR)
+copy /Y "$(PROJECTDIR)\..\..\models\PS5_Animated.glb" "$(OUTPUTDIR)" || (echo ERROR: could not copy PS5_Animated.glb next to the executable & exit /b 1)
+echo Steamworks post-build: copying SteamController_Animated.glb to $(OUTPUTDIR)
+copy /Y "$(PROJECTDIR)\..\..\models\SteamController_Animated.glb" "$(OUTPUTDIR)" || (echo ERROR: could not copy SteamController_Animated.glb next to the executable & exit /b 1)]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
@@ -252,7 +258,13 @@ copy /Y "$(PROJECTDIR)\src\controller_switch2_pro.vdf" "$(OUTPUTDIR)" || (echo E
 echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)
 copy /Y "$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf" "$(OUTPUTDIR)" || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable & exit /b 1)
 echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)
-copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR: could not copy controller_generic.vdf next to the executable & exit /b 1)]]></PostBuildEvent>
+copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR: could not copy controller_generic.vdf next to the executable & exit /b 1)
+echo Steamworks post-build: copying XBoxOne_Animated.glb to $(OUTPUTDIR)
+copy /Y "$(PROJECTDIR)\..\..\models\XBoxOne_Animated.glb" "$(OUTPUTDIR)" || (echo ERROR: could not copy XBoxOne_Animated.glb next to the executable & exit /b 1)
+echo Steamworks post-build: copying PS5_Animated.glb to $(OUTPUTDIR)
+copy /Y "$(PROJECTDIR)\..\..\models\PS5_Animated.glb" "$(OUTPUTDIR)" || (echo ERROR: could not copy PS5_Animated.glb next to the executable & exit /b 1)
+echo Steamworks post-build: copying SteamController_Animated.glb to $(OUTPUTDIR)
+copy /Y "$(PROJECTDIR)\..\..\models\SteamController_Animated.glb" "$(OUTPUTDIR)" || (echo ERROR: could not copy SteamController_Animated.glb next to the executable & exit /b 1)]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
@@ -285,6 +297,9 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="src\FmxLinuxMenu.pas"/>
+        <DCCReference Include="src\Sprite3DCamera.pas"/>
+        <DCCReference Include="src\Gorilla.Animation.Parallel.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmGamepad</Form>
             <FormType>fmx</FormType>
@@ -378,14 +393,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_generic.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_generic.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -399,14 +414,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_generic.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_generic.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -420,14 +435,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -441,14 +456,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -462,14 +477,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -483,14 +498,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -504,14 +519,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -525,14 +540,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -546,14 +561,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -567,14 +582,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -588,14 +603,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -609,14 +624,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -630,14 +645,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -651,14 +666,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -672,14 +687,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -693,14 +708,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -714,14 +729,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_triton.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_triton.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -735,14 +750,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_triton.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_triton.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -756,14 +771,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -777,14 +792,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -798,14 +813,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -819,14 +834,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -840,14 +855,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\steam_input_manifest.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>steam_input_manifest.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\steam_input_manifest.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>steam_input_manifest.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -861,14 +876,14 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 </DeployFile>
                 <DeployFile LocalName="src\steam_input_manifest.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>steam_input_manifest.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="src\steam_input_manifest.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\MacOS\</RemoteDir>
+                        <RemoteDir>Contents\Resources\</RemoteDir>
                         <RemoteName>steam_input_manifest.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -1835,6 +1850,132 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64x" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="WinARM64EC" Name="$(PROJECTNAME)"/>
+                <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>XBoxOne_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>PS5_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>SteamController_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>XBoxOne_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>PS5_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>SteamController_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>XBoxOne_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>PS5_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>SteamController_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>XBoxOne_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>PS5_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteName>SteamController_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>XBoxOne_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>PS5_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>SteamController_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>XBoxOne_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>PS5_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>SteamController_Animated.glb</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
             </Deployment>
             <Platforms>
                 <Platform value="Android">False</Platform>
@@ -1858,7 +1999,7 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying XBoxOne_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\XBoxOne_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy XBoxOne_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying PS5_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\PS5_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy PS5_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying SteamController_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\SteamController_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy SteamController_Animated.glb next to the executable &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
@@ -1866,7 +2007,7 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying XBoxOne_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\XBoxOne_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy XBoxOne_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying PS5_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\PS5_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy PS5_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying SteamController_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\SteamController_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy SteamController_Animated.glb next to the executable &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win32'">
@@ -1874,7 +2015,7 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying XBoxOne_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\XBoxOne_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy XBoxOne_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying PS5_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\PS5_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy PS5_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying SteamController_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\SteamController_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy SteamController_Animated.glb next to the executable &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
@@ -1882,7 +2023,7 @@ copy /Y "$(PROJECTDIR)\src\controller_generic.vdf" "$(OUTPUTDIR)" || (echo ERROR
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying steam_input_manifest.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\steam_input_manifest.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_input_manifest.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xboxone.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xboxone.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xboxone.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_xbox360.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_xbox360.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_xbox360.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps5.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps5.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps5.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_ps4.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_ps4.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_ps4.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_neptune.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_neptune.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_neptune.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_steamcontroller_gordon.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_steamcontroller_gordon.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_steamcontroller_gordon.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_triton.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_triton.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_triton.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch2_pro.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch2_pro.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch2_pro.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_switch_joycon_pair.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_switch_joycon_pair.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_switch_joycon_pair.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying controller_generic.vdf to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\src\controller_generic.vdf&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy controller_generic.vdf next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying XBoxOne_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\XBoxOne_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy XBoxOne_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying PS5_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\PS5_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy PS5_Animated.glb next to the executable &amp; exit /b 1)&amp;&amp;echo Steamworks post-build: copying SteamController_Animated.glb to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\models\SteamController_Animated.glb&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy SteamController_Animated.glb next to the executable &amp; exit /b 1)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
 </Project>

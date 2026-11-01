@@ -61,3 +61,7 @@ docs/html/
 
 # Python bytecode of the tools
 __pycache__/
+
+# Gorilla3D's own include (its source tree): VirtualGamepad's copy of the
+# parallel animator no longer needs it, but a local copy may still be here
+demos/VirtualGamepad/Gorilla.Platforms.inc

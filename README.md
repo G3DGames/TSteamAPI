@@ -95,10 +95,30 @@ demos/
                             Settings, Rumble, Send log to receiver (optional,
                             see RemoteLogging/; also DPadUp + Y + LeftBumper
                             together on the pad, for SteamOS), Exit
-  VirtualGamepad/           3D gamepad visualiser (FMX + Gorilla3D, in progress -
-                            skeleton only): the connected pad's model from
-                            models/, animated live through Steam Input; same
-                            manifest and layouts as SteamInputDemo
+  VirtualGamepad/           3D gamepad visualiser (FMX + Gorilla3D 1.5.4, in
+                            progress): the model of the connected pad (Xbox,
+                            PS5 or Steam Controller from models/, by Steam's
+                            type), turned live by the pad's motion sensors,
+                            mouse orbits the camera; banner + live line of
+                            every pressed control; same manifest and layouts
+                            as SteamInputDemo. Every button, stick and trigger
+                            moves on the model, any number at once, through
+                            TGorillaParallelAnimator (unit
+                            src/Gorilla.Animation.Parallel.pas, written for this
+                            project by Gorilla3D's author and included with his
+                            permission until a Gorilla3D release carries it).
+                            The camera is Sprite3D's orbit camera
+                            (src/Sprite3DCamera.pas, an unchanged copy from
+                            github.com/peardox/Sprite3D): it frames the pad
+                            exactly; drag orbits, wheel zooms, right-click
+                            resets.
+                            Data next to the executable (Windows, Linux) or in
+                            the bundle's Contents/Resources (macOS - codesign
+                            rejects data files in Contents/MacOS); the log
+                            says "Deployment OK" or what is missing.
+                            Gorilla3D on Linux: X11 only, OpenGL 4.3+, needs
+                            libsk4d.so; on macOS: Intel x64 (Apple silicon not
+                            native yet, per Gorilla3D's docs)
 RemoteLogging/              OPTIONAL, nothing to do with Steam: LogReceiver app +
                             RemoteLog.Sender unit to stream a program's log to a
                             desk machine (e.g. from a Steam Deck); see its README

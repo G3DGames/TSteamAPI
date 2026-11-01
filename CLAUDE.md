@@ -929,6 +929,257 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   after SteamInputDemo with SteamworksFMX dependency, its three targets,
   Build / Clean / Make lists. README layout + tools lines. NOT YET
   COMPILED. FmxLinuxMenu copy waits until the form gets a menu.
+- Owner's video (bandicam, 19:05; kept outside the repo): the author's
+  ParallelAnimation sample on our PS5_Animated.glb, 60 FPS, both sticks
+  dragged independently at once, keyboard "any number at once", Demo
+  (many at once) / Stop all, clip list; Gorilla3D Developer Edition
+  (watermark). Its panel says "31 clips, 14 moving parts" where these
+  notes say 37 clips / 16 joints - check against the .glb (it may skip
+  Root / Body and clips without a joint).
+- Push 99021ef "Start VirtualGamepad" verified: all 21 files of VGen1 +
+  VGroup1 identical except VirtualGamepad.dproj, re-saved by the IDE
+  (iOS / Android sections, post-build repeated per configuration, 3
+  standard DeployFile entries) - units, search path, welcome page, every
+  post-build copy and all 39 DeployFile entries survived.
+- Zip Deploy1 (follows the push; owner: "multi-platform, make sure
+  deployment is taken care of"): VirtualGamepad ships the 3 models
+  (MODEL_FILES = ..\..\models\*_Animated.glb in gen_projects.py):
+  Windows post-build copies (all 6 events: the generator's 2 CDATA ones
+  and the IDE's 4 per-configuration ones, '&&'-joined), Linux64 beside
+  the executable; macOS data (.vdf + .glb) goes to Contents\Resources\
+  (gen_projects.py key mac_data; the library stays in Contents\MacOS),
+  which closes the codesign problem FOR THIS PROJECT (SteamInputDemo
+  still deploys .vdf to Contents/MacOS). The IDE-saved .dproj was edited
+  by hand; a --force run in a scratch copy gives the same DeployFile set
+  and post-build copies. DataFolder in uMain.pas = exe folder, or
+  ../Resources on macOS; the skeleton shows "Deployment OK / INCOMPLETE",
+  the folder, manifest, layouts n of 11, models n of 3 (names) - one
+  build per platform tests deployment. NOT YET COMPILED. Android: not a
+  target yet (data would go to assets\internal\). Unknown: whether
+  Gorilla3D needs files of its own deployed on macOS / Linux - check
+  when it is added.
+- Owner (22:10): "do the 3D visuals" (and pointed to Gorilla3D's v1.5
+  docs, gorilla3d.de/doc/v3/version/v1.5, and his PasDoc of 1.5.3,
+  peardox.com/G3D/). Zip Visual1 (follows Deploy1): VirtualGamepad is a
+  real program. Steam Input copied from SteamInputDemo (InGame set only,
+  same TInputAction order minus the Menu actions; explicit RunFrame from
+  tmPoll; tmStart / RETRY_MS auto-start; configuration callback texts;
+  ShowBindingPanel from File > View Controller Settings; the FIRST
+  connected pad is shown). 3D built IN CODE (no Gorilla objects in the
+  .fmx): TGorillaViewport (Align Client), TGorillaSmoothCameraController
+  (cnpOrbit, Orbiting) with a TGorillaCamera child at distance 6, a
+  directional TGorillaLight child of the camera, the model by type
+  (ModelFileFor: PS3/4/5 -> PS5, Steam Controller 2015 / 2026 / Deck ->
+  Steam Controller, else Xbox) loaded with LoadNewModelFromFile(viewport,
+  nil, path, []) - no caching, as the author's animator needs - and
+  AnimationManager.Current.Stop (the manager has NO StopAnimation - the
+  v1.5 Models page shows one, the reference / PasDoc do not; Stop jumps
+  to the clip's last frame = rest pose). Motion: the pad's rotQuat relative to the
+  first reading (View > Recenter motion resets; View > Follow pad motion
+  toggles, menu TEXT changes - no IsChecked, FmxLinuxMenu copies only
+  Text / OnClick) applied as FModel.TransformMatrix := Scale(3) *
+  QuatToMatrix (FMX row-vector convention). Banner + lblLive (pressed
+  buttons, non-zero analog values); presses / releases logged; log file
+  VirtualGamepad.log. FmxLinuxMenu: THIRD identical copy (COPIES in
+  project_check.py), in .dpr / .dproj / gen_projects.py. Gorilla units
+  from the IDE library path (no project path). Sources of each Gorilla
+  call: v1.5 docs Viewport / Camera (smooth controller code) / Light
+  (CreateLight example) / Models (LoadNewModelFromFile, StopAnimation),
+  PasDoc TGorillaModel (TransformMatrix, AnimationManager). NOT YET
+  COMPILED. UNKNOWN until run: Steam's motion axes vs Gorilla's (the
+  model may turn the wrong way round an axis - fix in ApplyMotion), glTF
+  Y-up vs FMX Y-down (model may be upside down), whether TransformMatrix
+  survives the controller / animation updates, model centre (it sits
+  0..0.6 above its origin, so a little off-centre).
+  Gorilla3D platform facts (v1.5 docs): Windows - no extra DLLs unless
+  physics (Jolt) / audio (FMOD); Linux - libsk4d.so (Skia4Delphi) must be
+  deployed or installed in /usr/local/lib, X11 only (no Wayland), OpenGL
+  4.3+; macOS - Metal, Intel x64 only (Apple silicon "on the roadmap"),
+  ad-hoc signing for development. libsk4d.so is NOT in the .dproj yet:
+  its path on the owner's machine is unknown (asked).
+  Independent review (no compiler) of Visual1 found and fixed: the
+  StopAnimation call above, and FMX.Graphics missing from the uses
+  (TStyledSetting - SteamInputDemo has it); LightType written
+  FMX.Types3D.TLightType.Directional in case a Gorilla unit declares its
+  own. Verified against the docs: every other Gorilla identifier,
+  TMatrix3D, the Steam Input calls, the .fmx events.
+- VIRTUALGAMEPAD FIRST RUN (owner, 23:20, Win64 Debug, Visual1): COMPILED
+  and ran. Steam: DLL loaded, SDK 1.65, ISteamInput started, manifest
+  found ONLY through the src\ fallback; 3D scene created (no Gorilla
+  error); Steam Controller 2026 identified (type 17), our layout
+  (mapping by 0) 35 ms later, 29 handles resolved, first motion quat
+  +0.06 +0.02 -0.00 +1.00. BUT "Deployment INCOMPLETE": no .vdf and no
+  .glb in Win64\Debug although steam_api64.dll is there - the post-build
+  event that made this build did not run (the manifest copy follows the
+  DLL copy in the same event). The delivered events are complete (16
+  copies, ~4000 chars, same CR + && format as SteamInputDemo's working
+  ones). Asked for the build's Output messages. Zip Visual2 (follows
+  Visual1): ModelPath falls back to <repo>\models when run from
+  <project>\<platform>\<config> without the copy (logged as such), like
+  ManifestPath's src\ fallback; the deployment check still reports it.
+- Owner's 23:26 run (Visual2): both models LOADED from <repo>\models
+  (Gorilla3D reads our .glb, no error); the model switched Xbox -> Steam
+  Controller when the 2026 pad was identified; first motion quat -0.15
+  +0.16 -0.68 +0.70 (~90 deg about Z). Post-build copies still not run
+  (0 of 11 layouts) - build Output asked for again. Screenshot 23:28:
+  "way too close" - the model filled the whole view (MODEL_SCALE 3 at
+  distance 6 should have fitted a 0.95-wide model: Gorilla's import or
+  the controller changes the size / distance). Zip Visual3 (follows
+  Visual2): MODEL_SCALE 1; FitCamera after each load - the controller's
+  own fit (Target := model, AutoAdjustCameraToTarget, AdjustCameraTo
+  Target(True); PasDoc TGorillaSmoothCameraController) and a log line
+  with GetAnimatedBoundingBox (size + centre, evidence for the scale);
+  Target := nil before a model is freed.
+- Owner's 23:31 screenshot (Visual3): camera fit WORKS ("Camera fitted
+  to the model: True"); Gorilla imports at file scale (bounding box 0.94
+  x 0.65 x 0.39, centre 0 0.31 0.02 = the .glb's own numbers - so the
+  23:28 "too close" was our 3x at a fixed distance). We saw the BACK
+  (L4 / L5 / R4 / R5 paddles toward the camera, upright); the paddle
+  labels looked MIRRORED - unresolved: real handedness mirror or an
+  artefact of the back view; the front view will show (D-pad / left stick
+  should be on the left, text readable). Zip Visual4 (follows Visual3):
+  the model gets half a turn about Y before the pad's rotation
+  (QUAT_HALF_TURN_Y, face to the camera); View > Show back / Show face
+  toggles it (FShowBack, FLastMotion redraws at once).
+- Owner's 23:35 screenshot (Visual4): the FACE, but UPSIDE DOWN
+  (trackpads at the top, ABXY bottom-left, "A" read as an inverted A) -
+  every label ROTATED half a turn, none mirrored: no handedness flip, the
+  import just has glTF Y-up against FMX Y-down (the 23:31 back view was
+  upside down too). Zip Visual5 (follows Visual4): base turn = half a
+  turn about X for the face (= half about Y, then half about Z), half
+  about Z for the back (QUAT_HALF_TURN_X / _Z).
+- Owner's REFERENCE (23:35, his own model viewer, kept outside the repo):
+  Steam Controller face-on, D-pad top left, ABXY top right, sticks in
+  the middle, trackpads at the bottom, pad about 3/4 of the view wide -
+  Visual5's orientation should match it. Zip Visual6 (follows Visual5):
+  MODEL_SCALE 2.5 after the fit (the fit left it ~1/4 wide).
+- Owner's 23:38 screenshot (Visual6, pad switched off): the Xbox model
+  RIGHT WAY UP and face-on (Visual5's base turn confirmed on a second
+  model) but still ~1/4 of the view wide - the fit INCLUDES the model's
+  scale, so 2.5 changed nothing; back to 1. Owner: with no controller the
+  placeholder Xbox model "doesn't look like No controller". Zip Visual7
+  (follows Visual6): no model at start; RemoveModel when FActive is 0
+  (banner) and on Steam shutdown; a model only once Steam reports a pad.
+  OPEN: the size - the fit's distance is too large for the owner's taste
+  (reference: ~3/4 wide); mouse wheel zoom untested.
+- Owner's 23:42 screenshot (Visual7, maximised): Steam Controller
+  upright and face-on like the reference; A / B presses logged. The pad
+  sat ABOVE the view's centre: the models' origin is their bottom edge
+  (bounding-box centre y 0.31) - also the pivot of the pad's rotation.
+  Zip Visual8 (follows Visual7): FModelCentre (GetAnimatedBoundingBox
+  centre, model units - the box is untransformed: its centre stayed
+  +0.31 under the base half turn) moved to the origin in the transform
+  (T * S * R) before the fit. Size still ~1/5 of the window.
+- Owner's 23:49 run (Visual8, Xbox One pad): log CLEAN - our layout,
+  29 handles, every button press / release (A B X Y, two D-pad
+  directions at once, Start / Select, RightBumper). Screenshot: still
+  ~1/4 wide and still a little above centre. OWNER (23:52): the motion
+  part came first; the MAIN job is the model REPLAYING THE BUTTONS AND
+  STICKS (the Xbox pad has no gyro). That needs TGorillaParallelAnimator
+  - asked AGAIN for Gorilla.Animation.Parallel.pas (+ his sample), to be
+  kept in the scratchpad, never committed; writing against the CLAUDE.md
+  summary alone would repeat the StopAnimation mistake. Zip Visual9
+  (follows Visual8): the camera is fitted ONCE at scale 1 with
+  AutoAdjustCameraToTarget OFF (FFitting), then the model is shown at
+  VIEW_SCALE 3 - with auto adjust on, the controller re-fitted to every
+  scale. MODEL_SCALE gone.
+- Owner (23:54) ATTACHED the author's ParallelAnimation zip (kept in the
+  scratchpad, NEVER in the repo): Gorilla.Animation.Parallel.pas (1489
+  lines; includes .\..\Gorilla.Platforms.inc; his sample references it
+  as ..\..\lib\instance\ - so it lives in Gorilla3D's lib\instance\,
+  on the owner's Library path) + sample Unit1.pas. API read from the
+  SOURCE: Model := (extracts clips, bind pose, stops AnimationManager),
+  FindClip, ClipCount, Joints, Press / Release / Play / PlayLoop /
+  SetValue / SetAxis(neg, pos, v) / Stop (Boolean, False if no clip),
+  StopAll, IsAnyActive, Update, AutoUpdate (default True, own ticker).
+  Sample scene: design camera Position.Z := -24, point TGorillaLight on
+  it, TDummy pivot, LoadNewModelFromFile(pivot, nil, file, []), Scale :=
+  8 / largest side of GetAbsoluteBoundingBox, RotationAngle.X := 180,
+  pivot := -absolute box centre; sticks SetAxis with BOTH axes negated
+  (the clips tilt opposite to their names in that view); triggers
+  SetValue(Trigger_*_Press_Full, 0..1); PS model detected by
+  FindClip('Circle_Press'); ClipOf table = our ButtonClip.
+  Owner's 23:55 screenshot (Visual9): model huge and off-centre - the 3x
+  after the fit and the centring through TransformMatrix were GUESSES
+  (owner: "You're guessing"); the translation part of TransformMatrix had
+  no visible effect. Zip Anim1 (follows Visual9): scene = the sample's,
+  verbatim (PlaceModel); my own camera controller / fit / FModelCentre
+  gone; TransformMatrix (scale * rotation, no translation) written ONLY
+  for pad motion and Show back (never on an Xbox pad) - not yet seen on
+  screen with the pivot, and its rotation pivots about the model's origin
+  (bottom edge), not its centre. Animation: AnimateButton (Press /
+  Release on edges, ButtonClip positional table incl. PS names, paddles
+  L5 / R5 lower, L4 / R4 upper), AnimateAnalog (sticks SetAxis -x / -y,
+  triggers SetValue x; only on change), ResetAnimState (StopAll) on a new
+  model / controller / Steam stop. Gyro and trackpads: no clips.
+  System.Math listed BEFORE System.StrUtils (string IfThen must win).
+  NOT YET COMPILED.
+- Owner (23:58): "look at the camera handling in github.com/peardox/
+  Sprite3D - that's how to do it". Its src/lib/Sprite3DCamera.pas
+  (TSprite3DCamera: three single-axis TDummy pivots, Azimuth /
+  PolarAngle / Roll / Distance, FitToBounds / FitToBoundsMax reading the
+  frustum from Gorilla's GetProjectionMatrix, boxes carried through
+  LocalToAbsolute3D) depends only on RTL / FMX / Gorilla. OWNER'S
+  DECISION (2026-11-01): VENDOR IT UNCHANGED - demos/VirtualGamepad/src/
+  Sprite3DCamera.pas, byte-for-byte (UTF-8 BOM, //** comments, private
+  members without PasDoc); pasdoc_check.py skips the files in VENDORED
+  (path -> origin). Re-copy it, never edit it, when Sprite3D changes.
+  Zip Cam1 (follows Anim1): camera as in Sprite3D's main form -
+  UsingDesignCamera False, TSprite3DCamera.Create(viewport) (the rig
+  parents itself), FOV 45, point light child of the camera at its origin;
+  FitView = FitToBounds(model, 0.08) then Distance * FZoom, after each
+  load, resize, Show back and orbit step; left drag orbits (azimuth and
+  polar), wheel zooms (1.1 per notch), right / Ctrl-click resets. Model
+  placement stays the author's sample (pivot, scale, X 180). In .dpr /
+  .dproj / gen_projects. NOT YET COMPILED.
+  Owner's build Output (00:00, Anim1): F2613 Gorilla.Animation.Parallel
+  not found - expected: the unit is on no path yet. His Win64 library
+  path has only Gorilla3D's DCU folder (Public Documents\Gorilla3D\37.0\
+  Win64\Release); the unit is SOURCE and includes .\..\Gorilla.
+  Platforms.inc, so it must sit one folder below that include (the
+  author's tree: lib\instance\, include in lib\). Asked where
+  Gorilla.Platforms.inc is on his machine; if Gorilla3D's install has no
+  sources / include, the author has to ship the unit (or a DCU) - a
+  request to him, not ours to work round. (The Output also showed no
+  post-build lines: compile failed first, so the copy question is still
+  open.)
+- Owner's builds 00:12-00:23: Gorilla.Platforms.inc is in Gorilla3D's
+  GAMEPACKAGE\lib (Public Documents\Gorilla3D\37.0 - that folder holds
+  Gorilla3D SOURCES: with it on the path dcc recompiled Gorilla.* from
+  source, so it must NOT be on a search path); F2613 persisted. Owner:
+  "it was in the zip I gave you" - I handed the unit back laid out as
+  instance\Gorilla.Animation.Parallel.pas (GorillaParallel-instance.zip,
+  extract into GAMEPACKAGE\lib; not a repo file). Owner: "put the path in
+  the dproj". Zip Path1 (follows Cam1): VirtualGamepad's search path =
+  src;$(PUBLIC)\Documents\Gorilla3D\$(PRODUCTVERSION)\GAMEPACKAGE\lib\
+  instance - macros only (PUBLIC = Windows public profile env var,
+  PRODUCTVERSION as in the UserTools.proj import), so no machine path in
+  the tracked file; gen_projects.py + README the same.
+- Owner (00:32): F2613 again; "the far simpler solution is to just stick
+  it in the same folder as uMain" - did that, IT COMPILED. Zip Local1
+  (follows Path1): Path1's $(PUBLIC) search path removed again (back to
+  "src"); .gitignore ignores demos/VirtualGamepad/src/Gorilla.Animation.
+  Parallel.pas and demos/VirtualGamepad/Gorilla.Platforms.inc (the
+  include one folder up, should he have put it there) so the author's
+  code can never be pushed; pasdoc_check.py skips them (LOCAL_ONLY).
+  README: copy the unit next to uMain.pas. FIRST COMPILE of the animator
+  code, ButtonClip / AnimateAnalog, PlaceModel and the Sprite3D camera
+  (Cam1): no errors.
+- Owner (00:34): the author wrote Gorilla.Animation.Parallel.pas
+  SPECIFICALLY for this project. AUTHOR'S ANSWER (relayed 14:55): "fine
+  for me if you want to push it to the repo, because the next G3D version
+  might take a while. Just remove the licensing." This replaces the
+  earlier rule "his code, never in this repo" for THIS unit only. Zip
+  Anim2 (follows Local1): demos/VirtualGamepad/src/Gorilla.Animation.
+  Parallel.pas IN THE REPO - his 10-line copyright header removed, and
+  {$I .\..\Gorilla.Platforms.inc} (Gorilla3D's source tree, not covered
+  and not in a clone) replaced by the one constant it declares for
+  Delphi 10.3+ (pfidAllGorillaPlatforms = pidAllPlatforms) - the ONLY two
+  changes; otherwise his file as sent (scratchpad copy). In VENDORED
+  (pasdoc_check skips it, origin noted); in .dpr / .dproj /
+  gen_projects. .gitignore keeps only Gorilla.Platforms.inc ignored.
+  Sample Unit1.pas stays outside the repo (not asked). If a Gorilla3D
+  release ships the unit, delete ours and use his.
 
 ## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
 State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to
@@ -1091,10 +1342,9 @@ Multi-platform rules for the new program:
   RemoteLog1); nothing after a unit's initialization section (E2029 in
   RemoteLog3).
 - Files next to the executable: Windows post-build copy, DeployFile
-  entries for macOS (Contents/MacOS - see the signing note: .vdf / .glb
-  belong in Contents/Resources for a Developer ID build) and Linux64;
-  gen_projects.py "files" writes both. The .glb models must be deployed
-  the same way (or loaded from a known folder).
+  entries for Linux64 and macOS - DONE for VirtualGamepad (zip Deploy1):
+  .vdf and .glb in Contents/Resources on macOS (mac_data), found through
+  DataFolder in uMain.pas; gen_projects.py "files" writes all of it.
 - Linux depot: executable (exec bit), libsteam_api.so (the game ships it;
   Steam does NOT provide it), manifest + layouts, models, probably
   libfmux.so; GTK 3 + OpenGL from the system. SteamOS shows every main

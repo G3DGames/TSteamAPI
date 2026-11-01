@@ -20,6 +20,9 @@ and RemoteLogging/:
     attaches them to the following item).
 
 Enumeration values, record variant parts and parameter lists are not checked.
+Files in VENDORED are not checked at all: unchanged copies of the owner's
+units from other projects, kept byte-for-byte so they can be compared with
+their source (owner's decision 2026-11-01).
 Exit code 0 = clean, 1 = problems found (listed as file:line: message).
 """
 
@@ -30,6 +33,23 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAN_DIRS = ["lib", "fmx", "vcl", "lcl", "design", "packages", "demos", "RemoteLogging"]
 SOURCE_EXT = (".pas", ".inc", ".dpr", ".dpk")
+# Unchanged copies of the owner's units from his other repositories - not
+# checked (they keep their own style: UTF-8 BOM, //** comments, private
+# members without PasDoc). Path from the repository root -> where it comes from.
+VENDORED = {
+    "demos/VirtualGamepad/src/Sprite3DCamera.pas":
+        "github.com/peardox/Sprite3D src/lib/Sprite3DCamera.pas (orbit camera, unchanged)",
+    "demos/VirtualGamepad/src/Gorilla.Animation.Parallel.pas":
+        "Gorilla3D's author, written for this project; in the repository with his "
+        "permission (2026-11-01): licence header removed as he asked, its "
+        "Gorilla.Platforms.inc include replaced by the one constant it declares",
+}
+# Third-party units the owner copies in LOCALLY (git-ignored, never in the
+# repository) - not ours to check.
+LOCAL_ONLY = {
+    "demos/VirtualGamepad/Gorilla.Platforms.inc":
+        "Gorilla3D's include, needed one folder above the animator",
+}
 
 DECL_KEYWORDS = re.compile(
     r"^(class\s+)?(function|procedure|constructor|destructor|property|operator)\b", re.I)
@@ -220,6 +240,9 @@ class Checker:
                     if not f.lower().endswith(SOURCE_EXT):
                         continue
                     path = os.path.join(dirpath, f)
+                    rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+                    if rel in VENDORED or rel in LOCAL_ONLY:
+                        continue
                     with open(path, "rb") as fh:
                         data = fh.read()
                     self.check_ascii(path, data)
