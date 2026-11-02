@@ -31,7 +31,8 @@
       value -1..1 - stick axes.)
   )
   Clips go out and back in the file (rest, peak, rest); only the part up
-  to the peak is used. }
+  to the peak is used. LINEAR and STEP samplers are played; a CUBICSPLINE
+  sampler (three values per key) is skipped. }
 unit PadAnimator;
 
 {$mode delphi}{$H+}
@@ -615,6 +616,11 @@ begin
         Node := JsonItem(Nodes, NodeIndex);
         Samp := JsonItem(Samps, JsonInt(Chan, 'sampler', -1));
         if (Node = nil) or (Samp = nil) then
+          Continue;
+        // CUBICSPLINE stores three values per key (in-tangent, value,
+        // out-tangent): reading it as plain keys would animate garbage.
+        // Blender exports LINEAR / STEP; such a channel is skipped.
+        if JsonStr(Samp, 'interpolation') = 'CUBICSPLINE' then
           Continue;
         if Path = 'rotation' then
           NV := 4

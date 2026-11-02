@@ -1799,16 +1799,40 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   3.2.2 Win64). (09:28) the details are confirmed too - see the
   handover's "Next / open".
 
+## Ninth session (2026-11-02, in progress)
+- Push b29fab4 "Handover" (09:30) checked against the clone (zips not
+  here): pasdoc / project checks 0 problems; gen_input_mapping.py,
+  gen_docs.py reproduce every committed file (CRLF only); .gitignore
+  entries for VirtualGamepadLCL present, no Lazarus output / *.lps /
+  backup/ tracked (189 files); group Dependencies kept (12).
+- Review of the eighth-session units (owner: "run a PR over
+  everything", then "fix things"). Zip Review1 (follows Handover6):
+  * PadAnimator: a CUBICSPLINE sampler (three values per key) is now
+    SKIPPED instead of being read as plain keys (Blender exports LINEAR /
+    STEP, so no current model is affected). Unit header says so.
+  * RemoteLog.SenderFPC: Discover also sets SO_REUSEPORT ($0200) under
+    DARWIN - BSD needs it besides SO_REUSEADDR for two listeners on UDP
+    47811 on the same Mac (LogReceiver + the demo). Its other Unix paths
+    were checked against the FPC 3.2.2 RTL (BaseUnix TTimeVal / UtsName /
+    fpUname, SO_RCVTIMEO, MSG_NOSIGNAL $4000, SO_NOSIGPIPE $1022): no
+    change needed. NOT YET COMPILED on macOS.
+  * CLAUDE.md: the doubled seventh-session handover heading removed.
+  * Checked, nothing to do: lib/Steamworks.API.pas and Steamworks.Core.pas
+    (the lib/ units using Windows) have no other unqualified call to a
+    name FPC's Windows unit also declares.
+  * Noted (no change): on macOS Lazarus builds an .app bundle, so
+    ParamStr(0) is inside Contents/MacOS/ and VirtualGamepadLCL's ../src
+    and ../../../models fallbacks will not resolve - part of the open
+    "no deployment" item.
+
 ## Handover (2026-11-02, end of eighth session) - READ THIS FIRST
-State: last verified push aae5991 "Handover". Delivered since, in order,
-the owner pushing them after this file: CGE1 (follows Handover4), Fpc1,
-Fpc2, FpcLog1, Handover5, Handover6 (this file; replaces Handover5's
-CLAUDE.md). Nothing to delete.
-NEXT SESSION FIRST: verify the push as in "Syncing safely" - every file
-of those five zips identical (ignoring CRLF / BOM); the .gitignore
-entries /demos/VirtualGamepadLCL/*-*/ and /lib/ present (no Lazarus
-output, *.lps or backup/ pushed); pasdoc_check.py / project_check.py 0
-problems.
+State: last verified push b29fab4 "Handover" (= CGE1, Fpc1, Fpc2,
+FpcLog1, Handover5, Handover6; verified 2026-11-02 09:35 against the
+clone, see "Ninth session"). Delivered since: Review1 (follows
+Handover6; this file replaces Handover6's CLAUDE.md). Nothing to delete.
+NEXT SESSION FIRST: verify the Review1 push as in "Syncing safely"
+(3 files: CLAUDE.md, RemoteLog.SenderFPC.pas, PadAnimator.pas;
+pasdoc_check.py / project_check.py 0 problems).
 
 ### Done this session (details in "Eighth session" above)
 1. demos/VirtualGamepadLCL: the visualiser for Lazarus / FPC 3.2.2 with
@@ -1842,10 +1866,12 @@ problems.
   (RemoteLog.SenderFPC proven on Windows), the overlay with several
   pads.
 - VirtualGamepadLCL on Linux / macOS: untested (FPC sender's Unix paths:
-  timeval SO_RCVTIMEO, MSG_NOSIGNAL / SO_NOSIGPIPE, fpUname). Data files
-  must sit next to a deployed executable (no deployment set up - Lazarus
-  copies nothing; run from <project>/<cpu>-<os>/ uses ../src and
-  ../../../models).
+  timeval SO_RCVTIMEO, MSG_NOSIGNAL / SO_NOSIGPIPE / SO_REUSEPORT,
+  fpUname). Data files must sit next to a deployed executable (no
+  deployment set up - Lazarus copies nothing; run from
+  <project>/<cpu>-<os>/ uses ../src and ../../../models; on macOS the
+  executable is inside the .app bundle, so those fallbacks do not
+  resolve there).
 - Everything still open from the seventh-session handover below
   ("Next / open"): VirtualGamepad remote logging and non-Windows builds,
   Steam Controller menu log, Steamworks package rebuild for Linux64 /
@@ -1854,7 +1880,6 @@ problems.
   models/LICENSE <your name>, devices on order, launcher (END of the
   project).
 
-## Handover (2026-11-02, end of seventh session)
 ## Handover (2026-11-02, end of seventh session)
 State: pushed and verified c3d4bf1 "Better Virtualpad" (see the last
 note above). Nothing delivered after it except this file (zip Handover3,

@@ -150,6 +150,9 @@ const
   {$IFDEF DARWIN}
   { macOS socket option: no SIGPIPE when the peer has closed. }
   SO_NOSIGPIPE_OPT = $1022;
+  { macOS socket option: several listeners on one UDP port (BSD needs
+    this as well as SO_REUSEADDR - e.g. LogReceiver on the same Mac). }
+  SO_REUSEPORT_OPT = $0200;
   {$ENDIF}
 
 { Sets how long a blocking receive on S may wait.
@@ -428,6 +431,9 @@ begin
   try
     One := 1;
     fpSetSockOpt(S, SOL_SOCKET, SO_REUSEADDR, @One, SizeOf(One));
+    {$IFDEF DARWIN}
+    fpSetSockOpt(S, SOL_SOCKET, SO_REUSEPORT_OPT, @One, SizeOf(One));
+    {$ENDIF}
     FillChar(Addr, SizeOf(Addr), 0);
     Addr.sin_family := AF_INET;
     Addr.sin_port := htons(RL_DISCOVERY_PORT);
