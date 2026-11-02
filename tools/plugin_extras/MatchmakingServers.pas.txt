@@ -62,7 +62,9 @@ type
     Index: Integer;
     { sekServerListComplete: how the refresh ended. }
     Response: EMatchMakingServerResponse;
-    { Ping / player / rule events: the query (from StartPing, StartPlayerDetails, StartServerRules). }
+    { Ping / player / rule events: the query id StartPing, StartPlayerDetails
+      or StartServerRules returned (the plug-in's own, never reused - not
+      Steam's handle, whose numbers Steam reuses). }
     Query: HServerQuery;
     { sekPlayerAdded: the player's score. }
     Score: Integer;
@@ -95,7 +97,10 @@ type
     Kind: Integer;
     { Lists: the request handle (nil until the request call returned). }
     Request: HServerListRequest;
-    { Queries: the query handle (HSERVERQUERY_INVALID until the call returned). }
+    { Queries: STEAM's query handle (HSERVERQUERY_INVALID until the call
+      returned). Steam reuses these numbers, even while an earlier query with
+      the same number still has answers on the way, so the program never
+      sees them: it gets @link(Serial) as the query id. }
     Query: HServerQuery;
     { Who gets the events. }
     Handler: TSteamServerEventHandler;
@@ -163,6 +168,10 @@ type
     procedure FillServer(ARequest: HServerListRequest; AIndex: Integer; var AEvent: TSteamServerEvent);
     { Stops everything and frees every response object (Steam stopping). }
     procedure CloseResponses;
+    { After a query call: stores Steam's handle AQuery in AObj (marks AObj
+      cancelled when Steam refused) and replaces AQuery with the query id
+      the program gets (AObj^.Serial). }
+    procedure StoreQuery(AObj: PSteamServerResponse; var AQuery: HServerQuery);
 //@public
     { Creates the bookkeeping for the response objects. }
     constructor Create; override;
@@ -193,20 +202,25 @@ type
     procedure StopServerList(ARequest: HServerListRequest);
     { Pings one server (IP in host order, e.g. gameserveritem_t.m_NetAdr.m_unIP,
       and its QUERY port); one answer: sekPingResponded with the details or
-      sekPingFailedToRespond. @returns(The query, HSERVERQUERY_INVALID when
-      Steam refused.) }
+      sekPingFailedToRespond. @returns(The query id (the plug-in's own,
+      never reused, carried by the events as TSteamServerEvent.Query), or
+      HSERVERQUERY_INVALID when Steam refused.) }
     function StartPing(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
     { Asks one server for its players: sekPlayerAdded per player (AText =
       name), then sekPlayersComplete - or sekPlayersFailedToRespond.
-      @returns(The query, HSERVERQUERY_INVALID when Steam refused.) }
+      @returns(The query id (as for @link(StartPing)), HSERVERQUERY_INVALID
+      when Steam refused.) }
     function StartPlayerDetails(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
     { Asks one server for its rules: sekRuleResponded per rule (AText =
       name, AValue = value), then sekRulesComplete - or
-      sekRulesFailedToRespond. @returns(The query, HSERVERQUERY_INVALID when
-      Steam refused.) }
+      sekRulesFailedToRespond. @returns(The query id (as for
+      @link(StartPing)), HSERVERQUERY_INVALID when Steam refused.) }
     function StartServerRules(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
-    { Stops a ping / players / rules query (CancelServerQuery): no more
-      events for it. Harmless for a query that has ended. }
+    { Stops a ping / players / rules query of StartPing, StartPlayerDetails
+      or StartServerRules (by the query id they returned; CancelServerQuery):
+      no more events for it. Harmless for a query that has ended. A raw
+      query of the generated PingServer & co. is stopped with the generated
+      CancelServerQuery. }
     procedure StopServerQuery(AQuery: HServerQuery);
     { Stops every request and query whose handler belongs to AOwner. Called
       automatically when a TComponent owner is freed. }
@@ -634,6 +648,10 @@ begin
   FServerLock.Enter;
   try
     Sweep;
+    // 1..MaxInt: the serial is also the query id (an HServerQuery, so it
+    // stays positive and never meets HSERVERQUERY_INVALID)
+    if FLastSerial >= Cardinal(High(Int32)) then
+      FLastSerial := 0;
     Inc(FLastSerial);
     Result^.Serial := FLastSerial;
     FObjects.Add(Result);
@@ -804,7 +822,7 @@ begin
         Live := not Obj^.Cancelled;
         Handler := Obj^.Handler;
         if Obj^.Kind <> SRK_LIST then
-          Hdr.Event.Query := Obj^.Query;
+          Hdr.Event.Query := HServerQuery(Obj^.Serial);   // the query id, see StartPing
       end;
     end;
   finally
@@ -987,14 +1005,7 @@ begin
   try
     Result := FFlat.PingServer(FIntf, AIP, AQueryPort, Obj);
   finally
-    FServerLock.Enter;
-    try
-      Obj^.Query := Result;
-      if Result = HSERVERQUERY_INVALID then
-        MarkCancelled(Obj);
-    finally
-      FServerLock.Leave;
-    end;
+    StoreQuery(Obj, Result);
   end;
 end;
 
@@ -1009,14 +1020,7 @@ begin
   try
     Result := FFlat.PlayerDetails(FIntf, AIP, AQueryPort, Obj);
   finally
-    FServerLock.Enter;
-    try
-      Obj^.Query := Result;
-      if Result = HSERVERQUERY_INVALID then
-        MarkCancelled(Obj);
-    finally
-      FServerLock.Leave;
-    end;
+    StoreQuery(Obj, Result);
   end;
 end;
 
@@ -1031,14 +1035,22 @@ begin
   try
     Result := FFlat.ServerRules(FIntf, AIP, AQueryPort, Obj);
   finally
-    FServerLock.Enter;
-    try
-      Obj^.Query := Result;
-      if Result = HSERVERQUERY_INVALID then
-        MarkCancelled(Obj);
-    finally
-      FServerLock.Leave;
-    end;
+    StoreQuery(Obj, Result);
+  end;
+end;
+
+procedure TSteamMatchmakingServersPlugin.StoreQuery(AObj: PSteamServerResponse;
+  var AQuery: HServerQuery);
+begin
+  FServerLock.Enter;
+  try
+    AObj^.Query := AQuery;   // Steam's handle (StopInSteam cancels with it)
+    if AQuery = HSERVERQUERY_INVALID then
+      MarkCancelled(AObj)
+    else
+      AQuery := HServerQuery(AObj^.Serial);   // the program gets the query id
+  finally
+    FServerLock.Leave;
   end;
 end;
 
@@ -1046,46 +1058,32 @@ procedure TSteamMatchmakingServersPlugin.StopServerQuery(AQuery: HServerQuery);
 var
   I: Integer;
   Obj, Found: PSteamServerResponse;
-  Known: Boolean;
 begin
   Need(Assigned(FFlat.CancelServerQuery), 'CancelServerQuery');
   if AQuery = HSERVERQUERY_INVALID then
     Exit;
   Found := nil;
-  Known := False;
   FServerLock.Enter;
   try
-    // Steam may reuse query numbers: the RUNNING query with that number
-    // first, then one that has ended (only marked, nothing to cancel)
+    // AQuery is a query id (the object's Serial), unique in this plug-in
     for I := 0 to FObjects.Count - 1 do
     begin
       Obj := FObjects[I];
-      if (Obj^.Kind <> SRK_LIST) and (Obj^.Query = AQuery) then
+      if (Obj^.Kind <> SRK_LIST) and (HServerQuery(Obj^.Serial) = AQuery) then
       begin
-        Known := True;
-        if not (Obj^.Cancelled or Obj^.Finished) then
-        begin
-          Found := Obj;
-          Break;
-        end;
+        if MarkCancelled(Obj) and not Obj^.Finished then
+          Found := Obj;   // still running: Steam must stop it too
+        Break;
       end;
     end;
-    if Found <> nil then
-      MarkCancelled(Found)
-    else
-      for I := 0 to FObjects.Count - 1 do
-      begin
-        Obj := FObjects[I];
-        if (Obj^.Kind <> SRK_LIST) and (Obj^.Query = AQuery) then
-          MarkCancelled(Obj);   // ended: no more events, no Steam call
-      end;
   finally
     FServerLock.Leave;
   end;
   if Found <> nil then
     StopInSteam(Found)
-  else if not Known then
-    FFlat.CancelServerQuery(FIntf, AQuery);   // a raw query of the generated methods
+  else
+    Log(sllDebug, Format('StopServerQuery: query %d has ended or is not a query of StartPing / ' +
+      'StartPlayerDetails / StartServerRules (raw queries: CancelServerQuery)', [AQuery]));
 end;
 
 procedure TSteamMatchmakingServersPlugin.StopOwner(AOwner: TObject);

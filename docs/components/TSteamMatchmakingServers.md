@@ -53,6 +53,14 @@ either, no more events arrive for it. IP addresses are in host order and
 the port is the server's QUERY port - both straight from
 `gameserveritem_t.m_NetAdr` (`m_unIP`, `m_usQueryPort`).
 
+`StartPing`, `StartPlayerDetails` and `StartServerRules` return a QUERY
+ID that the events carry as `AQuery` and `StopServerQuery` takes. It is
+the plug-in's own number, unique and never reused, not Steam's
+`HServerQuery` handle: Steam reuses its handle numbers, even while answers
+for an earlier query with the same number are still arriving, so two
+queries at once (a ping of one server, the rules of another) could not
+be told apart by Steam's handle.
+
 Filters are name / value pairs (two arrays of the same length; `''` for
 filters without a value): `map`, `gamedir`, `dedicated`, `secure`,
 `notfull`, `hasplayers`, `noplayers`, `linux`, `gametagsand`,

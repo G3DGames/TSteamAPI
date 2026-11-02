@@ -416,6 +416,10 @@ type
     procedure CreateClientIntf;
     { The client part of @link(DoShutdownLocked): plug-ins, SteamAPI_Shutdown. }
     procedure ShutdownClientLocked;
+    { Removes the warning hook and frees the ISteamClient wrapper; called
+      BEFORE the last SteamAPI_Shutdown / SteamGameServer_Shutdown (after it
+      steamclient is unloaded and ISteamClient calls crash). }
+    procedure ReleaseClientIntf;
     { The game-server part of the shutdown: plug-ins, SteamGameServer_Shutdown,
       @link(OnGameServerStopped). Caller holds @link(FShutdownLock). }
     procedure StopGameServerLocked;
@@ -1960,6 +1964,10 @@ begin
   FServerDispatcher.ClearQueue;
   FinalizePlugins(True);
   FServerDispatcher.Clear;
+  // The last part of Steam going: ISteamClient (warning hook) first - after
+  // the shutdown steamclient is unloaded and the call would crash
+  if not FClientUp then
+    ReleaseClientIntf;
   if Assigned(TSteamLib.SteamGameServer_Shutdown) then
     TSteamLib.SteamGameServer_Shutdown();
   FServerUp := False;
@@ -1997,6 +2005,13 @@ begin
   end;
 end;
 
+procedure TSteamworks.ReleaseClientIntf;
+begin
+  if FClient <> nil then
+    FClient.SetWarningMessageHook(nil);
+  FreeAndNil(FClient);
+end;
+
 procedure TSteamworks.ShutdownClientLocked;
 begin
   if not FClientUp then
@@ -2005,6 +2020,11 @@ begin
   FinalizePlugins(False);
   FDispatcher.Unsubscribe(FShutdownSub);
   FDispatcher.Clear;
+  // The last part of Steam going: ISteamClient (warning hook) first - after
+  // SteamAPI_Shutdown steamclient is unloaded and the call would crash
+  // (owner's GS1 build, 18:53: access violation in steam_api64 on close)
+  if not FServerUp then
+    ReleaseClientIntf;
   TSteamLib.SteamAPI_Shutdown();
   FClientUp := False;
   FPipe := 0;
@@ -2025,9 +2045,7 @@ begin
   // client's process; Valve's samples shut it down first too)
   StopGameServerLocked;
   ShutdownClientLocked;
-  if FClient <> nil then
-    FClient.SetWarningMessageHook(nil);
-  FreeAndNil(FClient);
+  ReleaseClientIntf;   // normally done already, before the last Steam shutdown
   FManualDispatch := False;
   FState := swsLibraryLoaded;
   FWarningLock.Enter;

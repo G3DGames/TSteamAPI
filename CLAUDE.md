@@ -1070,6 +1070,50 @@ Project AppID: 2275430.
   gen_projects.py; README. All three demos now keep the previous run's log
   as SteamDemo.previous.log instead of wiping it at start. NO PACKAGE
   REBUILD. NOT YET COMPILED.
+- PUSH e379b52 "Batch2d" (18:45) VERIFIED against a separate clone: all
+  82 files delivered since 8f5e38b (Setup1, Pair1, Pair2, GS1, RLog1)
+  identical ignoring CRLF / BOM; nothing else pushed; group Dependencies
+  kept (10); pasdoc / project checks 0 problems. Working copy reset to
+  origin/main (this note goes out with the next zip).
+- GS1 FIRST RUN (owner, 18:53, packages rebuilt, SteamDemo FMX Win64
+  Debug, Auto Start on, closed with [X]): ACCESS VIOLATION in steam_api64
+  right after steamclient64 unloaded. CAUSE (mine, GS1): DoShutdownLocked
+  called FClient.SetWarningMessageHook(nil) AFTER SteamAPI_Shutdown (GS1
+  moved the ISteamClient release behind ShutdownClientLocked; before GS1
+  it ran first). Zip Fix13 (follows RLog1): ReleaseClientIntf - the hook
+  is removed and the wrapper freed BEFORE whichever shutdown is the last
+  one (SteamAPI_Shutdown without a server, SteamGameServer_Shutdown
+  without a client). REBUILD STEAMWORKS (+ dependants).
+- TWO-PC RUN (owner, 19:00, FMX on both, GS1 + RLog1 + Fix13, accounts
+  NOT friends, the guest a new limited account): component test 30/30 on
+  BOTH (RulesResponded fired: tsapi_test = 1 read back; server auth
+  validated; GameServerStats OK on the host, Fail on the guest); pair
+  test guest 8/8, host 7/8 - Friends: the host never got the guest's
+  rich presence (re-requested 60 s) while the guest read the host's at
+  once; likely the limited account (to retry as friends). The guest's
+  rules query of the host's PUBLIC IP failed: NAT, informational. Remote
+  log connected on the 3rd manual try.
+  BUG FOUND: Steam REUSES HServerQuery numbers while answers of an earlier
+  query with the same number are still arriving (own-server ping got 1
+  while the CS2 ping 1 ran; the test matched the CS2 answer to its own
+  ping). Zip Fix14 (follows Fix13): MatchmakingServers plug-in -
+  StartPing / StartPlayerDetails / StartServerRules return the PLUG-IN'S
+  OWN query id (the response object's Serial, 1..MaxInt, never reused),
+  events carry it, StopServerQuery takes it (StoreQuery keeps Steam's
+  handle in Obj^.Query for the cancel; an unknown id is only logged - a
+  raw query of the generated PingServer & co. is cancelled with the
+  generated CancelServerQuery). Pair test logs SetRichPresence's result
+  and the value read back, and its Friends note hints at the limited
+  account. DemoRemoteLog searches up to 3 x 2.5 s by itself (earlier
+  searches kept in FSpent, freed by the next Toggle / destructor: a retry
+  starts inside the previous search's handler). REBUILD STEAMWORKS (+
+  dependants). NOT YET COMPILED.
+- OWNER (19:12): docs/ComponentIcons.md was out of date. Zip Fix14b
+  (follows Fix14): it lists all 34 registered components (TSteamAPI, 24
+  client, 9 game server - TSteamNetworking now included, "planned" section
+  gone). The 7 server copies can be supplied as their own .ico files or as
+  one server badge composited onto the client icons. docs/README.md line
+  updated. NO PACKAGE REBUILD.
 - OWNER (18:15): the FMX SteamDemo SWITCHES TO THE SHARED
   demos/Shared/SteamComponentTest.pas (no more FMX copy of the test; the
   test's plug-in components leave its form); the DEDICATED server is

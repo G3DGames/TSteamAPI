@@ -34,9 +34,19 @@ type
     FPlatform: string;
     { The sender while connected / sending (@nil otherwise). }
     FSender: TRemoteLogSender;
-    { The last network search; freed by the next one or by Shutdown, never
-      inside its own handler. }
+    { The running (or last) network search; never freed inside its own
+      handler. }
     FDiscovery: TRemoteLogDiscovery;
+    { Earlier searches of this Toggle (a retry starts inside the handler of
+      the previous one, which cannot free itself there); freed by the next
+      Toggle and the destructor. }
+    FSpent: TList;
+    { Searches made for this Toggle (1..SEARCH_TRIES). }
+    FTries: Integer;
+    { Frees the searches in FSpent and FDiscovery (never from a handler). }
+    procedure FreeSearches;
+    { Starts search number FTries. }
+    procedure StartSearch;
     { @true while a search runs. }
     FBusy: Boolean;
     { @true once Shutdown ran (late search results are ignored). }
@@ -61,8 +71,8 @@ type
     constructor Create(AOwner: TComponent; const AAppName, APlatform: string); reintroduce;
     { Stops sending and frees everything. }
     destructor Destroy; override;
-    { Not sending: searches the network (2.5 s, in the background) and
-      connects to the first LogReceiver that answers, sending ABacklog (the
+    { Not sending: searches the network (2.5 s, in the background, up to 3
+      times while nothing answers) and connects to the first LogReceiver that answers, sending ABacklog (the
       log so far) first. Sending: stops. }
     procedure Toggle(ABacklog: TStrings);
     { Sends one log line while connected (queued; never blocks); during the
@@ -85,6 +95,9 @@ implementation
 const
   { How long a network search waits for LogReceiver answers. }
   SEARCH_MS = 2500;
+  { Searches per Toggle while no receiver answers (a LogReceiver that was
+    just started, or a lost broadcast, often misses the first one). }
+  SEARCH_TRIES = 3;
 
 constructor TDemoRemoteLog.Create(AOwner: TComponent; const AAppName, APlatform: string);
 begin
@@ -92,12 +105,14 @@ begin
   FAppName := AAppName;
   FPlatform := APlatform;
   FBacklog := TStringList.Create;
+  FSpent := TList.Create;
 end;
 
 destructor TDemoRemoteLog.Destroy;
 begin
   Shutdown;
-  FreeAndNil(FDiscovery);
+  FreeSearches;
+  FSpent.Free;
   FBacklog.Free;
   inherited;
 end;
@@ -112,6 +127,27 @@ procedure TDemoRemoteLog.Changed;
 begin
   if Assigned(FOnChanged) then
     FOnChanged(Self);
+end;
+
+procedure TDemoRemoteLog.FreeSearches;
+var
+  I: Integer;
+begin
+  for I := 0 to FSpent.Count - 1 do
+    TObject(FSpent[I]).Free;
+  FSpent.Clear;
+  FreeAndNil(FDiscovery);
+end;
+
+procedure TDemoRemoteLog.StartSearch;
+begin
+  if FDiscovery <> nil then
+    FSpent.Add(FDiscovery);   // may be the caller (Discovered): freed later
+  FDiscovery := nil;
+  FBusy := True;
+  Log(Format('looking for LogReceiver apps on the network (%.1f s, try %d of %d)...',
+    [SEARCH_MS / 1000, FTries, SEARCH_TRIES]));
+  FDiscovery := TRemoteLogDiscovery.Create(SEARCH_MS, Discovered);
 end;
 
 function TDemoRemoteLog.Sending: Boolean;
@@ -147,10 +183,9 @@ begin
   FBacklog.Clear;
   if ABacklog <> nil then
     FBacklog.Assign(ABacklog);
-  FBusy := True;
-  FreeAndNil(FDiscovery);   // the previous search has delivered its result
-  Log(Format('looking for LogReceiver apps on the network (%.1f s)...', [SEARCH_MS / 1000]));
-  FDiscovery := TRemoteLogDiscovery.Create(SEARCH_MS, Discovered);
+  FreeSearches;   // the previous searches have delivered their results
+  FTries := 1;
+  StartSearch;
 end;
 
 procedure TDemoRemoteLog.Discovered(Sender: TObject; const AFound: TRemoteLogReceiverArray;
@@ -169,8 +204,15 @@ begin
   end;
   if Length(AFound) = 0 then
   begin
-    Log(Format('no LogReceiver answered within %.1f s - start LogReceiver on a machine on this ' +
-      'network, click OK there, then try again', [SEARCH_MS / 1000]));
+    if FTries < SEARCH_TRIES then
+    begin
+      Inc(FTries);
+      StartSearch;   // FBusy again: log lines keep joining the backlog
+    end
+    else
+      Log(Format('no LogReceiver answered in %d searches of %.1f s - start LogReceiver on a machine on ' +
+        'this network, click OK there, check its firewall (UDP broadcast), then try again',
+        [SEARCH_TRIES, SEARCH_MS / 1000]));
     Exit;
   end;
   for I := 0 to High(AFound) do

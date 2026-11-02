@@ -781,6 +781,7 @@ var
   Data: TBytes;
   Buf: array[0..2047] of Byte;
   Size: UInt32;
+  OK: Boolean;
 begin
   FPhase := ppRunning;
   FPairedTicks := PairTicks;
@@ -816,11 +817,22 @@ begin
   // non-friend Steam answers each request once and pushes no updates
   FMyStatus := 'TSteamAPI pair test ' + IDText(FMe);
   FPeerStatus := 'TSteamAPI pair test ' + IDText(FPeer);
-  FFriends.Plugin.SetRichPresence('status', FMyStatus);
+  // SetRichPresence's result and the value read back are logged: when the
+  // PEER never sees ours, this side's log says whether Steam took it (a
+  // new limited account - no purchase, level 0 - may not publish it to
+  // non-friends; the test is then worth a run with the two as friends)
+  OK := FFriends.Plugin.SetRichPresence('status', FMyStatus);
+  AddLog(Format('Friends: SetRichPresence("status") -> %s; read back "%s"',
+    [BoolToStr(OK, True), FFriends.Plugin.GetFriendRichPresence(FMe, 'status')]));
   FFriends.Plugin.RequestFriendRichPresence(FPeer);
   FPresenceTicks := PairTicks;
-  RowNote(PT_FRIENDS, Format('peer persona "%s"; rich presence set, the peer''s requested',
-    [FFriends.Plugin.GetFriendPersonaName(FPeer)]));
+  if OK then
+    RowNote(PT_FRIENDS, Format('peer persona "%s"; rich presence set, the peer''s requested ' +
+      '(not friends: a limited new account may never show it - try as friends)',
+      [FFriends.Plugin.GetFriendPersonaName(FPeer)]))
+  else
+    RowNote(PT_FRIENDS, Format('peer persona "%s"; SetRichPresence returned False here, the peer''s requested',
+      [FFriends.Plugin.GetFriendPersonaName(FPeer)]));
   // Lobby chat
   if SendChat('HELLO', FFriends.Plugin.GetPersonaName) then
     RowNote(PT_CHAT, 'HELLO sent - waiting for the other''s')
