@@ -305,6 +305,8 @@ type
     FPending: array of TComponentTestPending;
     { @true from Start until every answer arrived or timed out. }
     FTestsRunning: Boolean;
+    { TestTicks when the running test started. }
+    FStartTicks: UInt64;
     { Auth ticket the User test asked for (0 = none). }
     FAuthTicket: HAuthTicket;
     { Workshop query the UGC test sent (k_UGCQueryHandleInvalid = none). }
@@ -1173,8 +1175,16 @@ begin
     AddLog('Test components: Steam is not running - press Start first');
     Exit;
   end;
+  // A second press while the test runs is ignored: restarting cut the
+  // answers still on their way and failed their rows (owner's 19:24 run on
+  // a slow tablet: three presses, two runs reported FAILs that were only
+  // the restart)
   if FTestsRunning then
-    Finish('restarted by Test components');
+  begin
+    AddLog(Format('Test components: already running (started %.1f s ago) - press ignored; ' +
+      'every row has its verdict within %d s', [(TestTicks - FStartTicks) / 1000, TEST_TIMEOUT_MS div 1000]));
+    Exit;
+  end;
   FAppID := SteamAPI1.AppID;
   for I := 0 to CT_COUNT - 1 do
   begin
@@ -1191,6 +1201,7 @@ begin
   end;
   SetLength(FPending, 0);
   FTestsRunning := True;
+  FStartTicks := TestTicks;
   AddLog(Format('Component test started: %d components, answers expected within %d ms',
     [CT_COUNT, TEST_TIMEOUT_MS]));
   TestUtils;
@@ -1228,7 +1239,8 @@ begin
     Exit;
   NowTicks := TestTicks;
   for I := High(FPending) downto 0 do
-    if NowTicks - FPending[I].Sent >= TEST_TIMEOUT_MS then
+    // (NowTicks > Sent first: UInt64, a later Sent must not wrap to a time-out)
+    if (NowTicks > FPending[I].Sent) and (NowTicks - FPending[I].Sent >= TEST_TIMEOUT_MS) then
     begin
       Key := FPending[I].Key;
       PendingToMissing(I);

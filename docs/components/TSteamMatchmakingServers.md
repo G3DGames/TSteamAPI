@@ -190,9 +190,9 @@ single out-values `var`; buffers and NULL-able pointers stay `Pointer`.
 | [`StartServerList`](#startserverlist) | Asks Steam for a server list; the servers arrive one by one through AHandler (sekServerResponded with the details / sekServerFailedToRespond), then ... |
 | [`StopServerList`](#stopserverlist) | Releases a request of `StartServerList` (ReleaseRequest): no more events for it. Raw requests (made with the generated methods) are released too. |
 | [`StartPing`](#startping) | Pings one server (IP in host order, e.g. gameserveritem_t.m_NetAdr.m_unIP, and its QUERY port); one answer: sekPingResponded with the details or ... |
-| [`StartPlayerDetails`](#startplayerdetails) | Asks one server for its players: sekPlayerAdded per player (AText = name), then sekPlayersComplete - or sekPlayersFailedToRespond. Returns: (The query, ... |
+| [`StartPlayerDetails`](#startplayerdetails) | Asks one server for its players: sekPlayerAdded per player (AText = name), then sekPlayersComplete - or sekPlayersFailedToRespond. Returns: (The query id ... |
 | [`StartServerRules`](#startserverrules) | Asks one server for its rules: sekRuleResponded per rule (AText = name, AValue = value), then sekRulesComplete - or sekRulesFailedToRespond. Returns: (The ... |
-| [`StopServerQuery`](#stopserverquery) | Stops a ping / players / rules query (CancelServerQuery): no more events for it. Harmless for a query that has ended. |
+| [`StopServerQuery`](#stopserverquery) | Stops a ping / players / rules query of StartPing, StartPlayerDetails or StartServerRules (by the query id they returned; CancelServerQuery): no more events ... |
 | [`StopOwner`](#stopowner) | Stops every request and query whose handler belongs to AOwner. Called automatically when a TComponent owner is freed. |
 | [`ActiveCount`](#activecount) | Requests and queries still running (not ended, not stopped). |
 
@@ -362,7 +362,7 @@ Releases a request of `StartServerList` (ReleaseRequest): no more events for it.
 function StartPing(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
 ```
 
-Pings one server (IP in host order, e.g. gameserveritem_t.m_NetAdr.m_unIP, and its QUERY port); one answer: sekPingResponded with the details or sekPingFailedToRespond. Returns: (The query, HSERVERQUERY_INVALID when Steam refused.)
+Pings one server (IP in host order, e.g. gameserveritem_t.m_NetAdr.m_unIP, and its QUERY port); one answer: sekPingResponded with the details or sekPingFailedToRespond. Returns: (The query id (the plug-in's own, never reused, carried by the events as TSteamServerEvent.Query), or HSERVERQUERY_INVALID when Steam refused.)
 
 #### StartPlayerDetails
 
@@ -370,7 +370,7 @@ Pings one server (IP in host order, e.g. gameserveritem_t.m_NetAdr.m_unIP, and i
 function StartPlayerDetails(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
 ```
 
-Asks one server for its players: sekPlayerAdded per player (AText = name), then sekPlayersComplete - or sekPlayersFailedToRespond. Returns: (The query, HSERVERQUERY_INVALID when Steam refused.)
+Asks one server for its players: sekPlayerAdded per player (AText = name), then sekPlayersComplete - or sekPlayersFailedToRespond. Returns: (The query id (as for `StartPing`), HSERVERQUERY_INVALID when Steam refused.)
 
 #### StartServerRules
 
@@ -378,7 +378,7 @@ Asks one server for its players: sekPlayerAdded per player (AText = name), then 
 function StartServerRules(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
 ```
 
-Asks one server for its rules: sekRuleResponded per rule (AText = name, AValue = value), then sekRulesComplete - or sekRulesFailedToRespond. Returns: (The query, HSERVERQUERY_INVALID when Steam refused.)
+Asks one server for its rules: sekRuleResponded per rule (AText = name, AValue = value), then sekRulesComplete - or sekRulesFailedToRespond. Returns: (The query id (as for `StartPing`), HSERVERQUERY_INVALID when Steam refused.)
 
 #### StopServerQuery
 
@@ -386,7 +386,7 @@ Asks one server for its rules: sekRuleResponded per rule (AText = name, AValue =
 procedure StopServerQuery(AQuery: HServerQuery);
 ```
 
-Stops a ping / players / rules query (CancelServerQuery): no more events for it. Harmless for a query that has ended.
+Stops a ping / players / rules query of StartPing, StartPlayerDetails or StartServerRules (by the query id they returned; CancelServerQuery): no more events for it. Harmless for a query that has ended. A raw query of the generated PingServer & co. is stopped with the generated CancelServerQuery.
 
 #### StopOwner
 

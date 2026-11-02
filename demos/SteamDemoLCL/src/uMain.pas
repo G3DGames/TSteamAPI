@@ -173,21 +173,21 @@ type
   private
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
-    { The component test (creates its own 21 components). }
+    { The component test (creates its own components). }
     FTest: TSteamComponentTest;
     { The two-user test (creates its own six components). }
     FPair: TSteamPairTest;
     { File > Send log to receiver (demos/Shared/DemoRemoteLog.pas; optional,
       nothing to do with Steam); every log line goes to it. }
     FRemote: TDemoRemoteLog;
-    { FRemote.OnChanged: shows its state in @link(mnuRemoteLog)'s caption. }
-    procedure RemoteLogChanged(Sender: TObject);
     { Auto Start Steam setting, saved in @link(FSettingsFile). }
     FAutoStart: Boolean;
     { SteamDemo.ini in DemoSettingsFolder('SteamDemo') ('' = unknown). }
     FSettingsFile: string;
     { TestTicks when FormCreate ran (logged by the auto start). }
     FCreateTicks: UInt64;
+    { FRemote.OnChanged: shows its state in @link(mnuRemoteLog)'s caption. }
+    procedure RemoteLogChanged(Sender: TObject);
     { Starts Steam (Start button or Auto Start Steam) and logs AWhy. }
     procedure StartSteam(const AWhy: string);
     { Enables the buttons / menu items that make sense now. }
@@ -322,6 +322,7 @@ begin
   FTest.OnScreenshotRequested := TestScreenshotRequested;
   FillTestList;
   FPair := TSteamPairTest.Create(Self, SteamAPI1);
+  FPair.AppName := 'SteamDemoLCL';
   FPair.OnLog := TestLog;
   FPair.OnRowChanged := PairRow;
   FillPairList;

@@ -19,12 +19,23 @@ own game, use your AppID and your own item definitions.
 * A second Steam account that owns the app (a key or a developer comp).
 * A second PC (or virtual machine) with Steam logged in to that account -
   one PC cannot run two Steam accounts at once.
-* The SAME build of SteamDemo (FMX, VCL or LCL - they pair with each other)
-  on both machines. Debug builds set the AppID themselves; Release builds
+* A build of SteamDemo (FMX, VCL or LCL - they pair with each other) from
+  the SAME sources on both machines. Debug builds set the AppID themselves; Release builds
   need to be started from Steam.
+* Mixed pairs are worth a run: SteamDemoLCL (Lazarus / FPC) on one side
+  and SteamDemo (FMX) or SteamDemoVCL (Delphi) on the other proves the FPC
+  and Delphi bindings agree on everything that crosses the wire (lobby
+  data, chat lines, auth tickets, P2P payloads). Each copy publishes its
+  program, compiler and platform in the lobby, and both logs name the
+  other side's ("the other copy: ...", and the "finished as" line).
 * The two accounts do NOT need to be Steam friends: the demos find each
   other through a lobby (Matchmaking), tagged so that only the test joins
-  it.
+  it. EXCEPT for the rich-presence row: Steam does not show a new, limited
+  account's rich presence to a non-friend (seen 2026-11-02 in every role
+  and framework pairing), so that row passes only once the accounts are
+  friends or both are full accounts. As friends it passed at once (both
+  sides read the other's within a second), and the whole pair test took
+  about 10 s instead of waiting out the 60 s time-out.
 * Both PCs need internet access; P2P connections go through Steam's relay
   network when a direct path is not possible.
 * The host's listen server (game-server row) uses UDP 27215 (game) and

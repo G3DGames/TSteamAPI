@@ -68,6 +68,8 @@ type
     MainMenu1: TMainMenu;
     { File. }
     mnuFile: TMenuItem;
+    { File > Clear Log. }
+    mnuClearLog: TMenuItem;
     { File > Exit. }
     mnuExit: TMenuItem;
     { The "listen on" row, shown until listening starts. }
@@ -104,6 +106,9 @@ type
     procedure lbSessionsChange(Sender: TObject);
     { OK: starts listening on the network chosen in @link(cbNetwork). }
     procedure btnListenClick(Sender: TObject);
+    { File > Clear Log: empties the lines shown (the session's file keeps
+      them; selecting another session and back reloads it). }
+    procedure mnuClearLogClick(Sender: TObject);
     { File > Exit. }
     procedure mnuExitClick(Sender: TObject);
   private
@@ -445,6 +450,14 @@ begin
   except
     // only a convenience
   end;
+end;
+
+procedure TfrmReceiver.mnuClearLogClick(Sender: TObject);
+begin
+  // only the view: new lines keep arriving below, and the session's log
+  // file still has every line (selecting another session and back reloads it)
+  memLines.Lines.Clear;
+  SetStatus('log view cleared - the session''s log file keeps every line');
 end;
 
 procedure TfrmReceiver.mnuExitClick(Sender: TObject);

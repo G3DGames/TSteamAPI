@@ -381,6 +381,7 @@ begin
   FTest.OnScreenshotRequested := TestScreenshotRequested;
   FillTestList;
   FPair := TSteamPairTest.Create(Self, SteamAPI1);
+  FPair.AppName := 'SteamDemo (FMX)';
   FPair.OnLog := AddLog;
   FPair.OnRowChanged := PairRow;
   FPair.OnFinished := PairFinished;

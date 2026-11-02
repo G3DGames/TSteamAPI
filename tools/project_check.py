@@ -107,6 +107,91 @@ for unit, copies in SHARED.items():
     if len(texts) == len(copies) and len(set(texts)) > 1:
         problems.append(f"{unit} copies differ: " + " vs ".join(copies) + " - keep them identical")
 
+# E2169 "Field definition not allowed after methods or properties": inside
+# one visibility section of a class, a field may not follow a method or
+# property (Delphi; FPC accepts it). Checked in every hand-written unit.
+def strip_comments(text):
+    """Blanks comments (keeping newlines, so line numbers stay) and strings."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "'":
+            j = text.find("'", i + 1)
+            j = n if j < 0 else j + 1
+            out.append("''" + "\n" * text.count("\n", i, j))
+            i = j
+        elif c == "{" or text.startswith("(*", i) or text.startswith("//", i):
+            end = "}" if c == "{" else ("*)" if c == "(" else "\n")
+            j = text.find(end, i + (1 if c == "{" else 2))
+            j = n if j < 0 else j + (0 if end == "\n" else len(end))
+            out.append(" " + "\n" * text.count("\n", i, j))
+            i = j
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+SECTION_WORDS = re.compile(r"^(strict\s+)?(private|protected|public|published)\b\s*", re.I)
+MEMBER = re.compile(r"^(class\s+)?(procedure|function|constructor|destructor|property|operator)\b", re.I)
+FIELD = re.compile(r"^(class\s+var\s+)?[A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*\s*:", re.I)
+CLASS_HEAD = re.compile(r"\b\w+\s*=\s*class\b(?!\s*(of\b|;|\(\s*\w+\s*\)\s*;))", re.I)
+for top in ("demos", "RemoteLogging", "lib", "fmx", "vcl", "lcl", "design"):
+    for dirpath, _, files in os.walk(os.path.join(ROOT, top)):
+        for f in files:
+            if not f.lower().endswith(".pas"):
+                continue
+            path = os.path.join(dirpath, f)
+            text = strip_comments(open(path, encoding="latin-1").read())
+            for m in CLASS_HEAD.finditer(text):
+                pos = m.end()
+                # skip the ancestor list
+                k = pos
+                while k < len(text) and text[k] in " \t\r\n":
+                    k += 1
+                if k < len(text) and text[k] == "(":
+                    k = text.index(")", k) + 1
+                after_member, depth = False, 0
+                while k < len(text):
+                    # one statement up to ';' (outside parentheses / brackets)
+                    start, par = k, 0
+                    while k < len(text):
+                        ch = text[k]
+                        if ch in "([":
+                            par += 1
+                        elif ch in ")]":
+                            par -= 1
+                        elif ch == ";" and par == 0:
+                            break
+                        k += 1
+                    stmt = text[start:k].strip()
+                    k += 1
+                    line = text.count("\n", 0, start + (len(text[start:k]) - len(text[start:k].lstrip()))) + 1
+                    while True:   # leading section words
+                        sm = SECTION_WORDS.match(stmt)
+                        if not sm:
+                            break
+                        after_member = False
+                        stmt = stmt[sm.end():]
+                    low = stmt.lower()
+                    if re.search(r"\b(record|case)\b", low) and not MEMBER.match(stmt):
+                        depth += len(re.findall(r"\brecord\b", low))
+                    if re.match(r"^end\b", low) or re.search(r"\bend$", low):
+                        if depth:
+                            depth -= 1
+                            continue
+                        break
+                    if depth or not stmt:
+                        continue
+                    if MEMBER.match(stmt):
+                        after_member = True
+                    elif re.match(r"^(var|const|type|class\s+var)\b", low):
+                        after_member = False   # a nested var / const / type block starts anew
+                        if re.match(r"^class\s+var\b", low):
+                            continue
+                    elif after_member and FIELD.match(stmt) and not re.match(r"^(read|write|default|stored|index|overload|override|virtual|abstract|reintroduce|static|inline|dynamic|message|cdecl|stdcall|register|deprecated|platform|final)\b", low):
+                        problems.append(f"{os.path.relpath(path, ROOT)}({line}): field after a method or property "
+                                        "in the same section (Delphi E2169) - move it above the methods")
+
 for p in problems:
     print(p)
 print(f"{len(problems)} problem(s)")

@@ -99,6 +99,10 @@ object frmReceiver: TfrmReceiver
     Top = 176
     object mnuFile: TMenuItem
       Text = 'File'
+      object mnuClearLog: TMenuItem
+        Text = 'Clear Log'
+        OnClick = mnuClearLogClick
+      end
       object mnuExit: TMenuItem
         Text = 'Exit'
         OnClick = mnuExitClick

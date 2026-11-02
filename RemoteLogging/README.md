@@ -31,7 +31,9 @@ may be offered with the project's releases for people without Delphi.
    192.168.x.x, 172.16-31.x.x and 10.x.x.x addresses (VPNs, virtual
    machines and WSL usually come last). It listens on that address only
    and remembers the choice for next time. The first time, allow it
-   through the firewall on **private** networks. **File -> Exit** closes it.
+   through the firewall on **private** networks. **File -> Clear Log**
+   empties the lines shown (the session's log file keeps them);
+   **File -> Exit** closes it.
 2. In the program on the device, choose **File -> Send log to receiver**
    - in SteamInputDemo also **DPadUp + Y + LeftBumper held together** on
    the controller, in VirtualGamepad **Start Remote Logging** in the

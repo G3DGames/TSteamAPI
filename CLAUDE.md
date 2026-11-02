@@ -1122,6 +1122,85 @@ Project AppID: 2275430.
   unit declares TSteamGameServer<Name> = class(TSteam<Name>) (Utils,
   Networking, NetworkingSockets, NetworkingMessages, HTTP, UGC,
   Inventory); those 7 pages regenerated. NO PACKAGE REBUILD.
+- PUSH 2c6acb0 "Docs 14b" + 5a7063b "Docs 14c" (19:16) VERIFIED against a
+  separate clone: Fix13 / Fix14 / Fix14b / Fix14c pushed, every file
+  identical ignoring CRLF / BOM EXCEPT docs/components/
+  TSteamMatchmakingServers.md - my error: Fix14 shipped it generated
+  BEFORE the plug-in was regenerated (gen_docs ran on the old unit; the
+  first gen_steam_api call lacked the SDK path), so it still described
+  Steam's query handle. Zip Fix14d (follows Fix14c): the regenerated page.
+  RULE: run gen_steam_api.py <sdk> FIRST, gen_docs.py after it. Also
+  pushed (owner's IDE): the 12 .dproj files default to Win64 (Platform
+  Condition) - expected for the Win64 round, no paths in them. Working
+  copy reset to origin/main. NO PACKAGE REBUILD.
+- OWNER (19:19, SteamDemo FMX Win64 Debug): E2169 "Field definition not
+  allowed after methods or properties" in DemoRemoteLog.pas(51) - mine,
+  Fix14 put the FreeSearches / StartSearch declarations between fields.
+  Zip Fix15 (follows Fix14d): moved after the last field. The IDE's "Line
+  endings are LF" note is only a hint (git stores LF); the zip's .pas is
+  CRLF. RULE: in a class, new methods go AFTER every field. NO PACKAGE
+  REBUILD.
+- TWO-PC RUN 2 (owner, 19:24, FMX Win64, roles swapped: the NEW account
+  "simon" on the Miix tablet HOSTED, the main account was the guest):
+  main 30/30 + pair 7/8; Miix 30/30 on its third run, pair 8/8. Friends
+  failed again on the side READING THE NEW ACCOUNT'S rich presence (main,
+  level 15, as guest this time); the new account's SetRichPresence ->
+  True and read back. So: Steam does not publish a limited account's
+  rich presence to a non-friend - not our bug; to retest as friends. The
+  Miix got THREE "Test components" presses ~4 s apart: each restarted the
+  test and the cut runs reported FAILs (Rules, ValidateAuthTicketResponse)
+  that were only the restart. Zip Fix16 (follows Fix15): a press while the
+  component test / pair test runs is IGNORED with a log line (both end by
+  themselves). Remote log: the 3-try search worked (the receiver was not
+  up for the first round; the next press found it at once). OWNER (19:28):
+  LogReceiver gets File > Clear Log (empties the memo only; the session
+  file keeps every line); RemoteLogging/README.md. NO PACKAGE REBUILD.
+  NOT YET COMPILED.
+- OWNER (19:35, SteamDemoVCL Win64): E2169 in uMain.pas(180) - mine,
+  RLog1 (not Fix14): RemoteLogChanged was declared between FRemote and
+  FAutoStart in SteamDemoVCL AND SteamDemoLCL (FPC accepts it, so the LCL
+  one never showed). Zip Fix17 (follows Fix16): moved after the last
+  field in both; stale "21 components" comment fixed. project_check.py
+  now CHECKS E2169 (comment / string aware, statement by statement, per
+  visibility section, records skipped): 0 on the tree, and it reports
+  both the pushed DemoRemoteLog.pas and the old VCL uMain.pas. NO
+  PACKAGE REBUILD.
+- OWNER (19:37): an LCL vs FMX / VCL pair run would be interesting. Zip
+  Fix18 (follows Fix17): TSteamPairTest.AppName (set by each form:
+  'SteamDemo (FMX)', 'SteamDemoVCL', 'SteamDemoLCL') and MyBuild = name +
+  compiler (FPC {$I %FPCVERSION%} / Delphi CompilerVersion) +
+  TSteamLib.PlatformDescription; the host publishes it as lobby data
+  host_build, the guest as member data guest_build; each log says "this
+  copy: ..." / "the other copy: ..." and the "finished as" line names
+  both. docs/TestSetup.md: mixed pairs, and the rich-presence limit for a
+  new limited account. NO PACKAGE REBUILD. NOT YET COMPILED (FPC side
+  especially: {$I %FPCVERSION%}).
+- FIRST FPC vs DELPHI PAIR RUN (owner, 19:57, Fix18): main = SteamDemoLCL
+  (FPC 3.2.2, host, Peardox), Miix = SteamDemoVCL (Delphi 37.0, guest,
+  new account), NOT friends. Both component tests 30/30; MyBuild lines
+  right on both sides (FPC side compiled). Guest 8/8; host 6/8. BUG
+  (mine, since the DONE handshake): the guest stopped 9 ms after sending
+  DONE with "the other copy sent no DONE within 60 s" - Tick took NowT,
+  then Poll sent DONE and set FDoneTicks > NowT, and the UInt64
+  NowT - FDoneTicks wrapped to a huge value. It never showed before
+  because DONE used to go out from a chat handler, not from Poll. The
+  early leave cost the host its old-P2P answer (packet in flight) and the
+  rich-presence row (the known non-friend limit). Zip Fix19 (follows
+  Fix18): TicksSince(ANow, AFrom) (0 when AFrom is later) for every tick
+  difference in the pair test, NowT re-read after Poll; the component
+  test's time-out check guarded the same way. NO PACKAGE REBUILD. NOT
+  YET COMPILED.
+- FIX19 CONFIRMED + PAIR TEST COMPLETE (owner, 20:10 and 20:23, Win64):
+  20:10 Miix VCL host / main LCL guest, not friends: Miix 30/30 + 8/8,
+  main 30/30 + 7/8 (only Friends) - the host waited for the guest's DONE
+  (55 s) and both closed together. 20:23 AS FRIENDS, main LCL host / Miix
+  VCL guest: BOTH 30/30 AND 8/8; rich presence read both ways within a
+  second; pair test ~10 s. So the Friends failures were Steam's limit for
+  a limited account and a non-friend, not ours (docs/TestSetup.md says
+  so). FPC vs Delphi done both ways round; FMX vs VCL done (19:44). Left
+  for the SteamDemo* round: nothing; next batch SteamConsole --server
+  (dedicated server) + FPC console. Zip Fix20 (follows Fix19): these
+  notes + TestSetup.md. NO PACKAGE REBUILD.
 - OWNER (18:15): the FMX SteamDemo SWITCHES TO THE SHARED
   demos/Shared/SteamComponentTest.pas (no more FMX copy of the test; the
   test's plug-in components leave its form); the DEDICATED server is

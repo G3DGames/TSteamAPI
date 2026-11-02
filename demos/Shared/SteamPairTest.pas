@@ -194,6 +194,11 @@ type
     FPeer: TSteamID;
     { The lobby (0 = none). }
     FLobby: TSteamID;
+    { Backing field of @link(AppName). }
+    FAppName: string;
+    { What the other copy runs (its program, compiler and platform: lobby
+      data host_build / member data guest_build); '' until read. }
+    FPeerBuild: string;
     { PairTicks of Start / of the pairing / of the last lobby search / when to close. }
     FStartTicks, FPairedTicks, FScanTicks, FCloseAt: UInt64;
     { A lobby search made while waiting (tie-break), not the first one. }
@@ -302,6 +307,14 @@ type
     procedure ServerRulesFailed(Sender: TObject; AQuery: HServerQuery);
     { Read accessor of @link(RowText). }
     function GetRowText(AIndex: Integer): string;
+    { This copy's program, compiler and platform, e.g. "SteamDemoLCL, FPC
+      3.2.2, Windows x64 build on Windows 11" - published in the lobby so
+      each log names what the other side ran (FPC against Delphi, LCL
+      against FMX / VCL). }
+    function MyBuild: string;
+    { Reads the other copy's build from the lobby once it is there (logs it
+      the first time). }
+    procedure ReadPeerBuild;
   public
     { Creates the six components it uses, owned by the test and linked to ASteamAPI. }
     constructor Create(AOwner: TComponent; ASteamAPI: TCustomSteamAPI); reintroduce;
@@ -316,6 +329,9 @@ type
     function Running: Boolean;
     { Text of row AIndex (a PT_ constant). }
     property RowText[AIndex: Integer]: string read GetRowText;
+    { The program's name in @link(MyBuild) (the form sets it, e.g.
+      'SteamDemoLCL'; default 'TSteamAPI demo'). }
+    property AppName: string read FAppName write FAppName;
     { Every log line of the test. }
     property OnLog: TPairTestLogEvent read FOnLog write FOnLog;
     { A row changed. }
@@ -327,6 +343,7 @@ type
 implementation
 
 uses
+  Steamworks.API,       // TSteamLib.PlatformDescription
   SteamComponentTest;   // DemoGameServerUsers: the game server both tests may share
 
 const
@@ -430,12 +447,25 @@ end;
 
 { TSteamPairTest }
 
+{ Milliseconds from AFrom to ANow; 0 when AFrom is later. The tick values
+  are UInt64, so a plain ANow - AFrom wraps to a huge number when AFrom
+  was taken after ANow - as when Poll sends DONE inside Tick (2026-11-02:
+  the guest stopped 9 ms after its DONE with "no DONE within 60 s"). }
+function TicksSince(ANow, AFrom: UInt64): UInt64;
+begin
+  if ANow > AFrom then
+    Result := ANow - AFrom
+  else
+    Result := 0;
+end;
+
 constructor TSteamPairTest.Create(AOwner: TComponent; ASteamAPI: TCustomSteamAPI);
 var
   I: Integer;
 begin
   inherited Create(AOwner);
   SteamAPI1 := ASteamAPI;
+  FAppName := 'TSteamAPI demo';
   FListen := k_HSteamListenSocket_Invalid;
   FConn := k_HSteamNetConnection_Invalid;
   for I := 0 to PT_COUNT - 1 do
@@ -492,6 +522,32 @@ procedure TSteamPairTest.AddLog(const S: string);
 begin
   if Assigned(FOnLog) then
     FOnLog('Pair test: ' + S);
+end;
+
+function TSteamPairTest.MyBuild: string;
+begin
+{$ifdef FPC}
+  Result := FAppName + ', FPC ' + {$I %FPCVERSION%};
+{$else}
+  Result := FAppName + Format(', Delphi (compiler %d.%d)', [Trunc(CompilerVersion), Round(Frac(CompilerVersion) * 10)]);
+{$endif}
+  Result := Result + ', ' + TSteamLib.PlatformDescription;
+end;
+
+procedure TSteamPairTest.ReadPeerBuild;
+var
+  S: string;
+begin
+  if (FPeerBuild <> '') or (FLobby.Value = 0) or (FPeer.Value = 0) then
+    Exit;
+  if FIsHost then
+    S := FMatch.Plugin.GetLobbyMemberData(FLobby, FPeer, 'guest_build')
+  else
+    S := FMatch.Plugin.GetLobbyData(FLobby, 'host_build');
+  if S = '' then
+    Exit;
+  FPeerBuild := S;
+  AddLog('the other copy: ' + S);
 end;
 
 function TSteamPairTest.GetRowText(AIndex: Integer): string;
@@ -553,8 +609,13 @@ begin
     AddLog('Steam is not running - press Start first');
     Exit;
   end;
+  // a second press while the test runs is ignored (a restart would leave
+  // the other copy waiting for a peer that has gone)
   if Running then
-    Finish('restarted by Pair');
+  begin
+    AddLog('already running - press ignored; it ends by itself (both copies done, or the time-outs)');
+    Exit;
+  end;
   if (FUser.Plugin = nil) or (FMatch.Plugin = nil) or (FFriends.Plugin = nil) or (FP2P.Plugin = nil) or
     (FSockets.Plugin = nil) or (FMessages.Plugin = nil) then
   begin
@@ -573,6 +634,7 @@ begin
   FLobby := TSteamID.Create(0);
   FIsHost := False;
   FLobbyDataSeen := False;
+  FPeerBuild := '';
   FTicket := nil;
   FTicketHandle := k_HAuthTicketInvalid;
   FTicketSize := 0;
@@ -702,6 +764,7 @@ begin
   FMatch.Plugin.SetLobbyData(FLobby, PAIR_KEY, PAIR_VALUE);
   FMatch.Plugin.SetLobbyData(FLobby, 'host', U64Text(FMe.Value));
   FMatch.Plugin.SetLobbyData(FLobby, 'host_name', FFriends.Plugin.GetPersonaName);
+  FMatch.Plugin.SetLobbyData(FLobby, 'host_build', MyBuild);
   FPhase := ppWaiting;
   FScanTicks := PairTicks;
   AddLog(Format('lobby %s created, lobby data set - HOST, waiting for the guest (press Pair on the other machine)',
@@ -730,6 +793,7 @@ begin
   else
     FPeer := TSteamID.Create(HostID);
   FMatch.Plugin.SetLobbyMemberData(FLobby, 'guest_name', FFriends.Plugin.GetPersonaName);
+  FMatch.Plugin.SetLobbyMemberData(FLobby, 'guest_build', MyBuild);
   AddLog(Format('joined lobby %s - GUEST; host %s "%s", %d member(s), lobby data host_name "%s"',
     [IDText(FLobby), IDText(FPeer), FFriends.Plugin.GetFriendPersonaName(FPeer),
      FMatch.Plugin.GetNumLobbyMembers(FLobby), FMatch.Plugin.GetLobbyData(FLobby, 'host_name')]));
@@ -763,7 +827,10 @@ var
   S: string;
 begin
   if (FPhase <> ppRunning) or not FIsHost or (AData.m_ulSteamIDLobby <> FLobby.Value) or
-    (AData.m_ulSteamIDMember <> FPeer.Value) or FLobbyDataSeen then
+    (AData.m_ulSteamIDMember <> FPeer.Value) then
+    Exit;
+  ReadPeerBuild;
+  if FLobbyDataSeen then
     Exit;
   S := FMatch.Plugin.GetLobbyMemberData(FLobby, FPeer, 'guest_name');
   if S <> '' then
@@ -786,6 +853,8 @@ begin
   FPhase := ppRunning;
   FPairedTicks := PairTicks;
   AddLog(Format('PAIRED as %s with %s - running every test', [IfThen(FIsHost, 'HOST', 'GUEST'), IDText(FPeer)]));
+  AddLog('this copy: ' + MyBuild);
+  ReadPeerBuild;
   // Lobby: the guest has read the host's lobby data already; the host
   // waits for the guest's member data (LobbyDataUpdate) - or has it
   if FIsHost then
@@ -1293,7 +1362,7 @@ begin
     if FFriends.Plugin.GetFriendRichPresence(FPeer, 'status') = FPeerStatus then
       RowDone(PT_FRIENDS, True, Format('peer persona "%s"; rich presence set here, the peer''s read ("%s", polled)',
         [FFriends.Plugin.GetFriendPersonaName(FPeer), FPeerStatus]))
-    else if PairTicks - FPresenceTicks >= PAIR_RESCAN_MS then
+    else if TicksSince(PairTicks, FPresenceTicks) >= PAIR_RESCAN_MS then
     begin
       FFriends.Plugin.RequestFriendRichPresence(FPeer);
       FPresenceTicks := PairTicks;
@@ -1338,26 +1407,28 @@ begin
   try
     case FPhase of
       ppSearching, ppCreating, ppJoining:
-        if NowT - FStartTicks > PAIR_WAIT_MS then
+        if TicksSince(NowT, FStartTicks) > PAIR_WAIT_MS then
           Finish(Format('no answer from Steam / no other copy within %d s', [PAIR_WAIT_MS div 1000]));
       ppWaiting:
-        if NowT - FStartTicks > PAIR_WAIT_MS then
+        if TicksSince(NowT, FStartTicks) > PAIR_WAIT_MS then
           Finish(Format('the other copy did not join within %d s', [PAIR_WAIT_MS div 1000]))
-        else if NowT - FScanTicks >= PAIR_RESCAN_MS then
+        else if TicksSince(NowT, FScanTicks) >= PAIR_RESCAN_MS then
           SearchLobbies(True);
       ppRunning:
         begin
+          ReadPeerBuild;   // the host gets the guest's member data a little later
           if FServerStartDue then
           begin
             FServerStartDue := False;
             StartServerForPeer;
           end;
           Poll;
+          NowT := PairTicks;   // Poll may have sent DONE (FDoneTicks) just now
           if (FCloseAt <> 0) and (NowT >= FCloseAt) then
             Finish('')
-          else if FDoneSent and not FPeerDone and (NowT - FDoneTicks > PAIR_TIMEOUT_MS) then
+          else if FDoneSent and not FPeerDone and (TicksSince(NowT, FDoneTicks) > PAIR_TIMEOUT_MS) then
             Finish(Format('the other copy sent no DONE within %d s', [PAIR_TIMEOUT_MS div 1000]))
-          else if not FDoneSent and (NowT - FPairedTicks > PAIR_TIMEOUT_MS) then
+          else if not FDoneSent and (TicksSince(NowT, FPairedTicks) > PAIR_TIMEOUT_MS) then
           begin
             for I := 0 to PT_COUNT - 1 do
               if not FRows[I].Done then
@@ -1499,7 +1570,9 @@ begin
       Inc(Passed);
     AddLog(Format('result %s: %s', [PairTestNames[I], GetRowText(I)]));
   end;
-  AddLog(Format('finished as %s: %d of %d PASS', [IfThen(FIsHost, 'HOST', 'GUEST'), Passed, PT_COUNT]));
+  AddLog(Format('finished as %s: %d of %d PASS (this copy: %s; the other: %s)',
+    [IfThen(FIsHost, 'HOST', 'GUEST'), Passed, PT_COUNT, MyBuild,
+     IfThen(FPeerBuild <> '', FPeerBuild, 'not known - an older build without host_build / guest_build')]));
   FPhase := ppIdle;
   if Assigned(FOnFinished) then
     FOnFinished(Self);

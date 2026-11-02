@@ -43,10 +43,6 @@ type
     FSpent: TList;
     { Searches made for this Toggle (1..SEARCH_TRIES). }
     FTries: Integer;
-    { Frees the searches in FSpent and FDiscovery (never from a handler). }
-    procedure FreeSearches;
-    { Starts search number FTries. }
-    procedure StartSearch;
     { @true while a search runs. }
     FBusy: Boolean;
     { @true once Shutdown ran (late search results are ignored). }
@@ -57,6 +53,10 @@ type
     FOnLog: TDemoRemoteLogEvent;
     { Backing field of @link(OnChanged). }
     FOnChanged: TNotifyEvent;
+    { Frees the searches in FSpent and FDiscovery (never from a handler). }
+    procedure FreeSearches;
+    { Starts search number FTries. }
+    procedure StartSearch;
     { Writes a "[remote log] ..." line to @link(OnLog). }
     procedure Log(const S: string);
     { Raises @link(OnChanged). }
