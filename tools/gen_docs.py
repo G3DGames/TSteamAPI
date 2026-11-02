@@ -218,6 +218,14 @@ def generate(name, sdk):
     w(f"Unit: `{unit}` - linking it (a `uses` entry, or dropping a `{comp_cls}`) enables the")
     w(f"plug-in. Steam interface: `{iface}` (SDK 1.65).")
     w("")
+    # a game-server copy declared in the same unit (gen_steam_api.py SERVER_COPIES)
+    gs_comp = f"TSteamGameServer{name}"
+    if re.search(rf"^\s*{gs_comp}\s*=\s*class\({comp_cls}\)", src, re.M):
+        w(f"**Game-server copy:** `{gs_comp}` (plug-in `{gs_comp}Plugin`) in the same unit - the")
+        w(f"game server's own `{iface}`, with every method and event on this page. It attaches")
+        w("while the game server runs and gets its events from the server's callback pipe")
+        w("(see [TSteamGameServer](TSteamGameServer.md#server-components)).")
+        w("")
     extras = os.path.join(EXTRAS, name + ".md")
     if os.path.exists(extras):
         w(open(extras, encoding="utf-8").read().strip())

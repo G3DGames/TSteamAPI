@@ -7,6 +7,11 @@
 Unit: `Steamworks.Plugin.UGC` - linking it (a `uses` entry, or dropping a `TSteamUGC`) enables the
 plug-in. Steam interface: `ISteamUGC` (SDK 1.65).
 
+**Game-server copy:** `TSteamGameServerUGC` (plug-in `TSteamGameServerUGCPlugin`) in the same unit - the
+game server's own `ISteamUGC`, with every method and event on this page. It attaches
+while the game server runs and gets its events from the server's callback pipe
+(see [TSteamGameServer](TSteamGameServer.md#server-components)).
+
 ## Overview
 
 Steam Workshop: querying, creating, updating, subscribing to and installing

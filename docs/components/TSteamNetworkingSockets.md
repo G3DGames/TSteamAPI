@@ -7,6 +7,11 @@
 Unit: `Steamworks.Plugin.NetworkingSockets` - linking it (a `uses` entry, or dropping a `TSteamNetworkingSockets`) enables the
 plug-in. Steam interface: `ISteamNetworkingSockets` (SDK 1.65).
 
+**Game-server copy:** `TSteamGameServerNetworkingSockets` (plug-in `TSteamGameServerNetworkingSocketsPlugin`) in the same unit - the
+game server's own `ISteamNetworkingSockets`, with every method and event on this page. It attaches
+while the game server runs and gets its events from the server's callback pipe
+(see [TSteamGameServer](TSteamGameServer.md#server-components)).
+
 ## Overview
 
 Connection-oriented networking (`ISteamNetworkingSockets`, Valve's

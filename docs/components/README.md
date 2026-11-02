@@ -38,11 +38,29 @@ link to it.
 | [TSteamNetworkingMessages](TSteamNetworkingMessages.md) | ISteamNetworkingMessages | P2P messages to a Steam user, no connection to manage |
 | [TSteamNetworkingUtils](TSteamNetworkingUtils.md) | ISteamNetworkingUtils | Relay network status, ping locations, clock, settings |
 | [TSteamMatchmakingServers](TSteamMatchmakingServers.md) | ISteamMatchmakingServers | Server browser: server lists, ping, players, rules |
-| [TSteamGameServer](TSteamGameServer.md) | ISteamGameServer | Game server (listen or dedicated): log-on, server browser listing and rules, player auth; its server copies TSteamGameServerUtils / Networking / NetworkingSockets / NetworkingMessages / HTTP / UGC / Inventory |
-| [TSteamGameServerStats](TSteamGameServerStats.md) | ISteamGameServerStats | Players' stats and achievements, set by the game server |
 
-Still to come: the game-server API. ISteamController is not
-bound (deprecated by Valve; use TSteamInput).
+ISteamController is not bound (deprecated by Valve; use TSteamInput).
+
+### Game-server components
+
+They attach while the game server runs (a listen server inside the game,
+or a dedicated server) and get their events from the server's callback
+pipe, never the client's - see [TSteamGameServer](TSteamGameServer.md).
+The seven copies are the game server's own instance of a client
+interface; they have the client component's methods and events, are
+declared in the same unit and documented on its page.
+
+| Page | Interface | Typical use |
+|------|-----------|-------------|
+| [TSteamGameServer](TSteamGameServer.md) | ISteamGameServer | Game server (listen or dedicated): log-on, server browser listing and rules, player auth |
+| [TSteamGameServerStats](TSteamGameServerStats.md) | ISteamGameServerStats | Players' stats and achievements, set by the game server |
+| `TSteamGameServerUtils` - see [TSteamUtils](TSteamUtils.md) | the server's ISteamUtils | Server time, IPC calls, the server's AppID |
+| `TSteamGameServerNetworking` - see [TSteamNetworking](TSteamNetworking.md) | the server's ISteamNetworking | Old P2P packets to players (deprecated by Valve) |
+| `TSteamGameServerNetworkingSockets` - see [TSteamNetworkingSockets](TSteamNetworkingSockets.md) | the server's ISteamNetworkingSockets | Listen sockets players connect to |
+| `TSteamGameServerNetworkingMessages` - see [TSteamNetworkingMessages](TSteamNetworkingMessages.md) | the server's ISteamNetworkingMessages | Messages to players, no connection to manage |
+| `TSteamGameServerHTTP` - see [TSteamHTTP](TSteamHTTP.md) | the server's ISteamHTTP | HTTP requests from the server |
+| `TSteamGameServerUGC` - see [TSteamUGC](TSteamUGC.md) | the server's ISteamUGC | Workshop items the server downloads (dedicated server) |
+| `TSteamGameServerInventory` - see [TSteamInventory](TSteamInventory.md) | the server's ISteamInventory | Checking and granting players' items on the server |
 
 ## How these pages are made
 

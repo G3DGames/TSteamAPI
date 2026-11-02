@@ -7,6 +7,11 @@
 Unit: `Steamworks.Plugin.Networking` - linking it (a `uses` entry, or dropping a `TSteamNetworking`) enables the
 plug-in. Steam interface: `ISteamNetworking` (SDK 1.65).
 
+**Game-server copy:** `TSteamGameServerNetworking` (plug-in `TSteamGameServerNetworkingPlugin`) in the same unit - the
+game server's own `ISteamNetworking`, with every method and event on this page. It attaches
+while the game server runs and gets its events from the server's callback pipe
+(see [TSteamGameServer](TSteamGameServer.md#server-components)).
+
 ## Overview
 
 The OLD peer-to-peer API (`ISteamNetworking`): packets to another Steam

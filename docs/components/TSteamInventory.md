@@ -7,6 +7,11 @@
 Unit: `Steamworks.Plugin.Inventory` - linking it (a `uses` entry, or dropping a `TSteamInventory`) enables the
 plug-in. Steam interface: `ISteamInventory` (SDK 1.65).
 
+**Game-server copy:** `TSteamGameServerInventory` (plug-in `TSteamGameServerInventoryPlugin`) in the same unit - the
+game server's own `ISteamInventory`, with every method and event on this page. It attaches
+while the game server runs and gets its events from the server's callback pipe
+(see [TSteamGameServer](TSteamGameServer.md#server-components)).
+
 ## Overview
 
 Steam Inventory: items the user owns in this game (cosmetics, drops,

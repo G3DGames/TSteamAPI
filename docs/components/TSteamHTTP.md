@@ -7,6 +7,11 @@
 Unit: `Steamworks.Plugin.HTTP` - linking it (a `uses` entry, or dropping a `TSteamHTTP`) enables the
 plug-in. Steam interface: `ISteamHTTP` (SDK 1.65).
 
+**Game-server copy:** `TSteamGameServerHTTP` (plug-in `TSteamGameServerHTTPPlugin`) in the same unit - the
+game server's own `ISteamHTTP`, with every method and event on this page. It attaches
+while the game server runs and gets its events from the server's callback pipe
+(see [TSteamGameServer](TSteamGameServer.md#server-components)).
+
 ## Overview
 
 HTTP requests through the Steam client: no HTTP library of your own, and

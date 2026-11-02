@@ -1114,6 +1114,14 @@ Project AppID: 2275430.
   gone). The 7 server copies can be supplied as their own .ico files or as
   one server badge composited onto the client icons. docs/README.md line
   updated. NO PACKAGE REBUILD.
+- OWNER (19:14): "is docs/components correct then?" - no: the 7 server
+  copies had no index entry and the index still said "Still to come: the
+  game-server API". Zip Fix14c (follows Fix14b): docs/components/README.md
+  gets a "Game-server components" table (all 9; the copies link to their
+  client page); gen_docs.py adds a "Game-server copy" line to a page whose
+  unit declares TSteamGameServer<Name> = class(TSteam<Name>) (Utils,
+  Networking, NetworkingSockets, NetworkingMessages, HTTP, UGC,
+  Inventory); those 7 pages regenerated. NO PACKAGE REBUILD.
 - OWNER (18:15): the FMX SteamDemo SWITCHES TO THE SHARED
   demos/Shared/SteamComponentTest.pas (no more FMX copy of the test; the
   test's plug-in components leave its form); the DEDICATED server is

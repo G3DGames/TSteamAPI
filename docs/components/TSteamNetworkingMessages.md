@@ -7,6 +7,11 @@
 Unit: `Steamworks.Plugin.NetworkingMessages` - linking it (a `uses` entry, or dropping a `TSteamNetworkingMessages`) enables the
 plug-in. Steam interface: `ISteamNetworkingMessages` (SDK 1.65).
 
+**Game-server copy:** `TSteamGameServerNetworkingMessages` (plug-in `TSteamGameServerNetworkingMessagesPlugin`) in the same unit - the
+game server's own `ISteamNetworkingMessages`, with every method and event on this page. It attaches
+while the game server runs and gets its events from the server's callback pipe
+(see [TSteamGameServer](TSteamGameServer.md#server-components)).
+
 ## Overview
 
 Message-based peer to peer (`ISteamNetworkingMessages`): send to a Steam
