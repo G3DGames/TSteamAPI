@@ -175,6 +175,20 @@ Achievements):
    `x86_64-win64/steam_api64.dll`) - section 3.
 4. Run it with the Steam client running.
 
+**VirtualGamepadLCL** (3D gamepad visualiser, Castle Game Engine):
+
+1. Register Castle Game Engine's Lazarus packages `castle_engine_base` and
+   `castle_engine_lcl` (Castle's own Lazarus instructions), and the
+   SteamworksLCL package as above. Castle must be from November 2025 or
+   later: the model's joints are moved from code, which needs Castle's GPU
+   skinning (older versions bake skinned animation, and the buttons would
+   not move).
+2. Open `demos/VirtualGamepadLCL/VirtualGamepadLCL.lpi` and build.
+3. Copy the Steam library into `demos/VirtualGamepadLCL/<cpu>-<os>/`.
+4. Run it with the Steam client running and a pad connected. It uses AppID
+   480 (Spacewar) and never relaunches through Steam. Hold Start for the
+   overlay menu.
+
 **SteamConsole** from the command line:
 
 ```

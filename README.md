@@ -138,6 +138,20 @@ demos/
                             github.com/peardox/Sprite3D): it frames the pad
                             exactly; drag orbits, wheel zooms, right-click
                             resets.
+  VirtualGamepadLCL/        the same visualiser for Lazarus / Free Pascal with
+                            Castle Game Engine (LCL form + TCastleControl;
+                            .lpi / .lpr, sources in src/), AppID 480 (Spacewar
+                            - not for Steam): same manifest, layouts and
+                            models, same overlay menu (controller row, Return
+                            to App, Enable / Disable Motion, Start / Stop
+                            Remote Logging, Exit; remote logging also from
+                            File > Send log to receiver, through
+                            RemoteLogging/src/RemoteLog.SenderFPC.pas - the
+                            Free Pascal sender, FPC's Sockets unit).
+                            src/PadAnimator.pas plays any number of the
+                            model's clips at once on its joints (needs a
+                            Castle Game Engine from November 2025 or later -
+                            joints moved from code, GPU skinning).
                             Data next to the executable (Windows, Linux) or in
                             the bundle's Contents/Resources (macOS - codesign
                             rejects data files in Contents/MacOS); the log
@@ -602,6 +616,15 @@ Windows', normal behaviour. Each says why and what to do.
   `src/uMain.lfm`. To open that form in the designer, install
   `packages/SteamworksLCL.lpk` first (docs/Install-Lazarus-FPC.md); before
   that, if Lazarus offers to remove unknown classes, choose Cancel.
+* **VirtualGamepadLCL** (Castle Game Engine): register Castle Game Engine's
+  Lazarus packages (`castle_engine_base`, `castle_engine_lcl`; Castle's
+  "Lazarus" page) and `packages/SteamworksLCL.lpk`, open
+  `demos/VirtualGamepadLCL/VirtualGamepadLCL.lpi` and build. The executable
+  goes to `demos/VirtualGamepadLCL/<cpu>-<os>/`; copy the Steam library
+  there as for SteamDemoLCL. Run from there it finds the manifest and
+  layouts in `../src/` and the models in the repository's `models/`; a
+  deployed copy needs them next to the executable. AppID 480 (Valve's
+  Spacewar), never relaunched through Steam.
 * **SteamConsole:**
 
 ```
@@ -617,7 +640,7 @@ FPC / Lazarus build output (`*.o`, `*.ppu`, `lib/<cpu>-<os>/`, `backup/`,
 python3 tools/pasdoc_check.py
 python3 tools/project_check.py
 python3 tools/gen_docs.py        # regenerates docs/components/TSteam<Name>.md
-python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (both demos)
+python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three input demos)
 ```
 
 ## Status / next steps

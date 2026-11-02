@@ -47,6 +47,9 @@ heap.trc
 # its unit output (lib/<cpu>-<os>/ - the lib/*-*/ pattern above is anchored
 # to the repository root, so it does not match here)
 /demos/SteamDemoLCL/lib/
+# the same for the Castle Game Engine visualiser (Lazarus)
+/demos/VirtualGamepadLCL/*-*/
+/demos/VirtualGamepadLCL/lib/
 # Lazarus package output: units in packages/lib/<cpu>-<os>/, and the package
 # unit Lazarus regenerates from the .lpk on every compile
 /packages/lib/

@@ -725,7 +725,9 @@ begin
     Exit(Win);
   // Wine (or Proton, CrossOver, ...): name it, then the real system behind it
   Wine := 'Wine ' + string(AnsiString(WineVer()));
-  Compat := GetEnvironmentVariable('STEAM_COMPAT_DATA_PATH');
+  // SysUtils' one-parameter version: FPC's Windows unit (used here) has a
+  // three-parameter GetEnvironmentVariable that would hide it
+  Compat := SysUtils.GetEnvironmentVariable('STEAM_COMPAT_DATA_PATH');
   if Compat <> '' then
     Wine := ProtonName(Compat) + ' (' + Wine + ')';
   Sys := '';

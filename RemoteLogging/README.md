@@ -14,11 +14,13 @@ You can ignore it completely: the demos work exactly the same without it.
 |---|---|
 | `LogReceiver/` | A small FMX app for your desk machine. It announces itself on the local network, asks you to **Accept** each program that wants to send its log, shows the lines live and saves each session to a file in `Documents/LogReceiver`. |
 | `src/RemoteLog.Sender.pas` | The sending side, one class (`TRemoteLogSender`). A program hands it log lines; it finds receivers, connects and streams the lines in the background. |
-| `src/RemoteLog.Protocol.pas` | Ports and message formats, shared by both. |
+| `src/RemoteLog.SenderFPC.pas` | The same sending side for **Free Pascal / Lazarus** (same classes and methods), on FPC's own `Sockets` unit - no Indy, no extra package. Used by demos/VirtualGamepadLCL. |
+| `src/RemoteLog.Protocol.pas` | Ports and message formats, shared by all three. |
 
-Delphi only (it uses Indy, which comes with Delphi): Windows, macOS, Linux
-and Android. A release build of LogReceiver may be offered with the
-project's releases for people without Delphi.
+LogReceiver and RemoteLog.Sender are Delphi (they use Indy, which comes
+with Delphi): Windows, macOS, Linux and Android. RemoteLog.SenderFPC is
+Free Pascal 3.2.2: Windows, Linux, macOS. A release build of LogReceiver
+may be offered with the project's releases for people without Delphi.
 
 ## Using it
 
@@ -95,4 +97,5 @@ FSender.Free;                                   // sends what is queued (up to 1
 ```
 
 Add `RemoteLogging\src` to the program's unit search path. Nothing else in
-the repository needs it.
+the repository needs it. With Free Pascal / Lazarus write
+`uses RemoteLog.SenderFPC;` instead - the code above stays the same.

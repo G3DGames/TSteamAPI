@@ -1,0 +1,104 @@
+object frmGamepadLCL: TfrmGamepadLCL
+  Left = 0
+  Height = 800
+  Top = 0
+  Width = 1100
+  Caption = 'Virtual Gamepad LCL - AppID 480 (SDK 1.65)'
+  ClientHeight = 800
+  ClientWidth = 1100
+  Menu = MainMenu1
+  Position = poScreenCenter
+  OnClose = FormClose
+  OnCreate = FormCreate
+  object pnlPad: TPanel
+    Left = 0
+    Height = 44
+    Top = 0
+    Width = 1100
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 44
+    ClientWidth = 1100
+    TabOrder = 0
+    object lblPadName: TLabel
+      Left = 8
+      Height = 44
+      Top = 0
+      Width = 1092
+      Align = alClient
+      BorderSpacing.Left = 8
+      Caption = 'No controller'
+      Layout = tlCenter
+    end
+  end
+  object tmPoll: TTimer
+    Enabled = False
+    Interval = 16
+    OnTimer = tmPollTimer
+    Left = 760
+    Top = 160
+  end
+  object tmStart: TTimer
+    Interval = 100
+    OnTimer = tmStartTimer
+    Left = 760
+    Top = 216
+  end
+  object MainMenu1: TMainMenu
+    Left = 840
+    Top = 272
+    object mnuFile: TMenuItem
+      Caption = 'File'
+      object mnuLayout: TMenuItem
+        Caption = 'View Controller Settings...'
+        OnClick = mnuLayoutClick
+      end
+      object mnuRemoteLog: TMenuItem
+        Caption = 'Send log to receiver...'
+        OnClick = mnuRemoteLogClick
+      end
+      object mnuSep1: TMenuItem
+        Caption = '-'
+      end
+      object mnuExit: TMenuItem
+        Caption = 'Exit'
+        OnClick = mnuExitClick
+      end
+    end
+    object mnuView: TMenuItem
+      Caption = 'View'
+      object mnuMotion: TMenuItem
+        Caption = 'Follow pad motion: off'
+        OnClick = mnuMotionClick
+      end
+      object mnuRecenter: TMenuItem
+        Caption = 'Recenter motion'
+        OnClick = mnuRecenterClick
+      end
+      object mnuShowBack: TMenuItem
+        Caption = 'Show back'
+        OnClick = mnuShowBackClick
+      end
+      object mnuResetView: TMenuItem
+        Caption = 'Reset view'
+        OnClick = mnuResetViewClick
+      end
+    end
+  end
+  object SteamAPI1: TSteamAPI
+    AppID = 480
+    OnInitialized = SteamInitialized
+    OnInitFailed = SteamInitFailed
+    OnShutdown = SteamShutdown
+    OnSteamShutdown = SteamClientExit
+    OnLog = SteamLog
+    Left = 840
+    Top = 160
+  end
+  object SteamInput1: TSteamInput
+    SteamAPI = SteamAPI1
+    OnSteamInputConfigurationLoaded = InputConfigurationLoaded
+    Left = 840
+    Top = 216
+  end
+end

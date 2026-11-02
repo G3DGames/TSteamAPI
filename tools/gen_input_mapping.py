@@ -4,9 +4,9 @@ controller type from ONE table of action sets, actions and bindings.
 
     python3 tools/gen_input_mapping.py
 
-Output (every folder in OUTS - demos/SteamInputDemo/src/ and
-demos/VirtualGamepad/src/, IDENTICAL files: projects use only their own
-sources, owner 2026-10-31): steam_input_manifest.vdf and
+Output (every folder in OUTS - demos/SteamInputDemo/src/,
+demos/VirtualGamepad/src/ and demos/VirtualGamepadLCL/src/, IDENTICAL
+files: projects use only their own sources, owner 2026-10-31): steam_input_manifest.vdf and
 controller_<type>.vdf for every type in CONTROLLERS. Never edit those
 files by hand: change the tables here and run the script again.
 
@@ -45,7 +45,7 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTS = [os.path.join(ROOT, "demos", d, "src")
-        for d in ("SteamInputDemo", "VirtualGamepad")]
+        for d in ("SteamInputDemo", "VirtualGamepad", "VirtualGamepadLCL")]
 
 TITLE = "SteamInputDemo default layout"
 DESCRIPTION = "Default bindings for the TSteamAPI Steam Input test (AppID 2275430)."
