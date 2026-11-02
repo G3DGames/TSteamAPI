@@ -38,7 +38,7 @@ unit Steamworks.FMX;
 interface
 
 uses
-  SysUtils, Classes, FMX.Types, FMX.Graphics,
+  SysUtils, Classes, FMX.Types, FMX.Graphics, FMX.Forms,
   Steamworks.Types, Steamworks.Core, Steamworks.Components;
 
 type
@@ -122,10 +122,41 @@ type
     for writing, after it was already resized.) }
 function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
 
+(* Converts an FMX bitmap to the pixel format ISteamScreenshots.WriteScreenshot
+  takes: packed 24-bit RGB, 3 bytes per pixel, rows top-down, no padding, no
+  alpha (alpha is dropped, so the bitmap should be opaque).
+  @returns(Width * Height * 3 bytes; @nil when ABitmap is @nil, empty or
+    cannot be mapped for reading.) *)
+function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
+
+(* Takes a screenshot of a form for Steam: paints the form's client area into
+  an offscreen bitmap at the window's scale (its physical pixels on a high-DPI
+  screen) on an opaque white background and returns it as
+  @link(SteamBitmapToRGB) does. Call it on the main thread. Hand the result to
+  WriteScreenshot - from @code(TSteamScreenshots.OnScreenshotRequested)
+  (while hooked) or whenever the game wants a screenshot. Unlike
+  TriggerScreenshot this needs no Steam overlay in the process.
+  @longCode(#
+  RGB := SteamFormToRGB(Self, W, H);
+  if RGB <> nil then
+    SteamScreenshots1.Plugin.WriteScreenshot(@RGB[0], Length(RGB), W, H);
+  #)
+  What the form paints is what is captured: controls drawn natively by the
+  platform (ControlType = Platform) and the contents of 3D viewports may be
+  missing - capture those from their own render target instead. A form with
+  Transparency = True may come out black where it paints nothing (alpha is
+  dropped).
+  @param(AForm The form to capture.)
+  @param(AWidth Width of the image in pixels (0 on failure).)
+  @param(AHeight Height of the image in pixels (0 on failure).)
+  @returns(The RGB bytes, @nil when AForm is @nil, has no client area or the
+    bitmap cannot be painted or read.) *)
+function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
+
 implementation
 
 uses
-  UITypes, FMX.Forms, Steamworks.Plugin.Utils;
+  UITypes, Steamworks.Plugin.Utils;
 
 function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
 var
@@ -163,6 +194,80 @@ begin
     ABitmap.Unmap(Data);
   end;
   Result := True;
+end;
+
+function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
+var
+  Data: TBitmapData;
+  X, Y: Integer;
+  C: TAlphaColor;
+  P: PByte;
+begin
+  Result := nil;
+  if (ABitmap = nil) or ABitmap.IsEmpty then
+    Exit;
+  if not ABitmap.Map(TMapAccess.Read, Data) then
+    Exit;
+  try
+    SetLength(Result, ABitmap.Width * ABitmap.Height * 3);
+    P := @Result[0];
+    // GetPixel returns $AARRGGBB whatever the platform's pixel format is
+    // (BGRA on Windows); Steam wants R, G, B in that byte order
+    for Y := 0 to ABitmap.Height - 1 do
+      for X := 0 to ABitmap.Width - 1 do
+      begin
+        C := Data.GetPixel(X, Y);
+        P[0] := Byte(C shr 16);
+        P[1] := Byte(C shr 8);
+        P[2] := Byte(C);
+        Inc(P, 3);
+      end;
+  finally
+    ABitmap.Unmap(Data);
+  end;
+end;
+
+function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
+var
+  Bmp: TBitmap;
+  Scale: Single;
+  W, H: Integer;
+begin
+  Result := nil;
+  AWidth := 0;
+  AHeight := 0;
+  if AForm = nil then
+    Exit;
+  Scale := 1;
+  if AForm.Handle <> nil then
+    Scale := AForm.Handle.Scale;
+  if Scale <= 0 then
+    Scale := 1;
+  W := Round(AForm.ClientWidth * Scale);
+  H := Round(AForm.ClientHeight * Scale);
+  if (W <= 0) or (H <= 0) then
+    Exit;
+  Bmp := TBitmap.Create(W, H);
+  try
+    // Logical coordinates -> physical pixels, as on screen
+    Bmp.BitmapScale := Scale;
+    if not Bmp.Canvas.BeginScene then
+      Exit;
+    try
+      Bmp.Canvas.Clear(TAlphaColors.White);
+      AForm.PaintTo(Bmp.Canvas);
+    finally
+      Bmp.Canvas.EndScene;
+    end;
+    Result := SteamBitmapToRGB(Bmp);
+    if Result <> nil then
+    begin
+      AWidth := Bmp.Width;
+      AHeight := Bmp.Height;
+    end;
+  finally
+    Bmp.Free;
+  end;
 end;
 
 { TSteamAPI }

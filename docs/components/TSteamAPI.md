@@ -30,6 +30,7 @@ time is fine.)
 * [Life cycle](#life-cycle)
 * [Plug-in components](#plug-in-components)
 * [Images: SteamImageToBitmap](#images-steamimagetobitmap)
+* [Screenshots: SteamFormToRGB (FMX)](#screenshots-steamformtorgb-fmx)
 * [Errors](#errors)
 * [Threads](#threads)
 
@@ -145,6 +146,32 @@ for its own `TBitmap`. `AImage` is a Steam image handle (avatar or
 achievement icon). It returns `False` for 0 (none) and -1 (still loading -
 wait for `TSteamFriends.OnAvatarImageLoaded` /
 `TSteamUserStats.OnUserAchievementIconFetched`).
+
+## Screenshots: SteamFormToRGB (FMX)
+
+`Steamworks.FMX` has
+
+```pascal
+function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
+function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
+```
+
+`SteamFormToRGB` paints the form's client area into an offscreen bitmap at
+the window's scale and returns it in the format
+`TSteamScreenshots.Plugin.WriteScreenshot` takes (packed 24-bit RGB, rows
+top-down). That is how a game takes a screenshot **without the Steam
+overlay** - `TriggerScreenshot` and the F12 hotkey only work while the
+overlay is in the process (see [TSteamScreenshots](TSteamScreenshots.md)):
+
+```pascal
+RGB := SteamFormToRGB(Self, W, H);
+if RGB <> nil then
+  SteamScreenshots1.Plugin.WriteScreenshot(@RGB[0], Length(RGB), W, H);
+```
+
+What the form paints is captured; natively drawn platform controls and 3D
+viewports may be missing (capture those from their render target and use
+`SteamBitmapToRGB`). Steamworks.VCL / Steamworks.LCL have no counterpart yet.
 
 ## Errors
 

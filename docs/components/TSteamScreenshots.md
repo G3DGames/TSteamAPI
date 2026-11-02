@@ -26,11 +26,14 @@ procedure TForm1.SteamScreenshots1ScreenshotRequested(Sender: TObject;
   const AData: ScreenshotRequested_t);
 var
   RGB: TBytes;            // Width * Height * 3 bytes, R G B, no alpha
-  H: ScreenshotHandle;
+  W, H: Integer;
+  Shot: ScreenshotHandle;
 begin
-  RGB := RenderFrameWithoutHud(FWidth, FHeight);
-  H := SteamScreenshots1.Plugin.WriteScreenshot(@RGB[0], Length(RGB), FWidth, FHeight);
-  SteamScreenshots1.Plugin.SetLocation(H, CurrentLevelName);
+  RGB := SteamFormToRGB(Self, W, H);   // Steamworks.FMX: this window
+  if RGB = nil then
+    Exit;
+  Shot := SteamScreenshots1.Plugin.WriteScreenshot(@RGB[0], Length(RGB), W, H);
+  SteamScreenshots1.Plugin.SetLocation(Shot, CurrentLevelName);
 end;
 
 procedure TForm1.SteamScreenshots1ScreenshotReady(Sender: TObject;
@@ -51,8 +54,16 @@ end;
   The method's `string` parameters cannot pass C `NULL`: to let Steam make the
   thumbnail, call the export directly,
   `P.Flat.AddScreenshotToLibrary(P.Handle, PAnsiChar(UTF8String(FileName)), nil, W, H)`.
+* **`TriggerScreenshot` and the F12 hotkey need the Steam overlay.** With
+  no overlay in the process (`TSteamUtils.Plugin.IsOverlayEnabled` =
+  `False`, e.g. a build started from the IDE) nothing happens - no
+  screenshot, no `OnScreenshotRequested`, no error (observed with SDK 1.65
+  on Win64; see README "Known issues"). `WriteScreenshot`, `AddScreenshotToLibrary`, the tags and
+  `OnScreenshotReady` need no overlay, so to take a screenshot that always
+  works, capture the frame yourself (FMX: `SteamFormToRGB` in
+  Steamworks.FMX) and call `WriteScreenshot`.
 * `TriggerScreenshot` takes one from code (or raises `OnScreenshotRequested`
-  while hooked).
+  while hooked) - with the overlay only, see above.
 * Tags: `SetLocation`, `TagUser` (a friend in the picture), `TagPublishedFile`
   (a Workshop item shown); handles are valid for the life of the process.
 

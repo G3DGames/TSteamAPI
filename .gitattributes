@@ -2,3 +2,6 @@
 # Shell scripts run on Linux: always LF, also in a Windows checkout
 # (a CRLF script fails with "/bin/sh^M: bad interpreter")
 *.sh text eol=lf
+# Windows batch files: always CRLF (cmd can mis-handle labels / goto in an
+# LF batch file)
+*.bat text eol=crlf

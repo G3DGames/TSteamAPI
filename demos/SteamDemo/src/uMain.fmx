@@ -9,6 +9,7 @@ object frmMain: TfrmMain
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
   OnClose = FormClose
+  OnDestroy = FormDestroy
   DesignerMasterStyle = 0
   object pnlTop: TPanel
     Align = Top
@@ -56,6 +57,16 @@ object frmMain: TfrmMain
       Text = 'Copy log'
       OnClick = btnCopyClick
     end
+    object btnTest: TButton
+      Position.X = 520.000000000000000000
+      Position.Y = 10.000000000000000000
+      Size.Width = 140.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 4
+      Text = 'Test components'
+      OnClick = btnTestClick
+    end
   end
   object tabMain: TTabControl
     Align = Client
@@ -66,6 +77,8 @@ object frmMain: TfrmMain
     TabOrder = 1
     TabPosition = Top
     Sizes = (
+      720s
+      446s
       720s
       446s
       720s
@@ -203,6 +216,40 @@ object frmMain: TfrmMain
         Viewport.Height = 442.000000000000000000
       end
     end
+    object tiComponents: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = False
+      Size.Width = 90.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Components'
+      ExplicitSize.cx = 50.000000000000000000
+      ExplicitSize.cy = 50.000000000000000000
+      object lbComponents: TListBox
+        Align = Client
+        Size.Width = 720.000000000000000000
+        Size.Height = 446.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 0
+        DisableFocusEffect = True
+        ItemHeight = 56.000000000000000000
+        DefaultItemStyles.ItemStyle = 'listboxitembottomdetail'
+        DefaultItemStyles.GroupHeaderStyle = ''
+        DefaultItemStyles.GroupFooterStyle = ''
+        Viewport.Width = 716.000000000000000000
+        Viewport.Height = 442.000000000000000000
+      end
+    end
+  end
+  object tmTests: TTimer
+    Enabled = False
+    OnTimer = tmTestsTimer
+    Left = 544
+    Top = 8
   end
   object SteamAPI1: TSteamAPI
     AppID = 2275430
@@ -230,5 +277,63 @@ object frmMain: TfrmMain
     OnUserAchievementIconFetched = AchievementIconFetched
     Left = 600
     Top = 120
+  end
+  object SteamUtils1: TSteamUtils
+    SteamAPI = SteamAPI1
+    OnIPCountry = UtilsIPCountry
+    OnLowBatteryPower = UtilsLowBattery
+    OnCheckFileSignature = UtilsCheckFileSignature
+    Left = 656
+    Top = 8
+  end
+  object SteamUser1: TSteamUser
+    SteamAPI = SteamAPI1
+    OnSteamServersConnected = UserServersConnected
+    OnSteamServerConnectFailure = UserServerConnectFailure
+    OnSteamServersDisconnected = UserServersDisconnected
+    OnGetAuthSessionTicketResponse = UserAuthTicketResponse
+    OnDurationControl = UserDurationControl
+    Left = 656
+    Top = 64
+  end
+  object SteamApps1: TSteamApps
+    SteamAPI = SteamAPI1
+    OnDlcInstalled = AppsDlcInstalled
+    OnNewUrlLaunchParameters = AppsNewUrlLaunchParameters
+    OnFileDetailsResult = AppsFileDetails
+    OnTimedTrialStatus = AppsTimedTrialStatus
+    Left = 656
+    Top = 120
+  end
+  object SteamRemoteStorage1: TSteamRemoteStorage
+    SteamAPI = SteamAPI1
+    OnRemoteStorageFileWriteAsyncComplete = StorageWriteComplete
+    OnRemoteStorageFileReadAsyncComplete = StorageReadComplete
+    OnRemoteStorageLocalFileChange = StorageLocalFileChange
+    Left = 656
+    Top = 176
+  end
+  object SteamScreenshots1: TSteamScreenshots
+    SteamAPI = SteamAPI1
+    OnScreenshotReady = ScreenshotReady
+    OnScreenshotRequested = ScreenshotRequested
+    Left = 600
+    Top = 176
+  end
+  object SteamTimeline1: TSteamTimeline
+    SteamAPI = SteamAPI1
+    OnSteamTimelineGamePhaseRecordingExists = TimelinePhaseRecordingExists
+    OnSteamTimelineEventRecordingExists = TimelineEventRecordingExists
+    Left = 600
+    Top = 232
+  end
+  object SteamUGC1: TSteamUGC
+    SteamAPI = SteamAPI1
+    OnSteamUGCQueryCompleted = UGCQueryCompleted
+    OnUserSubscribedItemsListChanged = UGCSubscribedListChanged
+    OnItemInstalled = UGCItemInstalled
+    OnWorkshopEULAStatus = UGCWorkshopEULAStatus
+    Left = 656
+    Top = 232
   end
 end
