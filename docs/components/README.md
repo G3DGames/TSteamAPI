@@ -37,9 +37,9 @@ link to it.
 | [TSteamNetworkingSockets](TSteamNetworkingSockets.md) | ISteamNetworkingSockets | Connections: by IP or P2P over the relay network |
 | [TSteamNetworkingMessages](TSteamNetworkingMessages.md) | ISteamNetworkingMessages | P2P messages to a Steam user, no connection to manage |
 | [TSteamNetworkingUtils](TSteamNetworkingUtils.md) | ISteamNetworkingUtils | Relay network status, ping locations, clock, settings |
+| [TSteamMatchmakingServers](TSteamMatchmakingServers.md) | ISteamMatchmakingServers | Server browser: server lists, ping, players, rules |
 
-Still to come: the server browser
-(MatchmakingServers), later the game-server API. ISteamController is not
+Still to come: the game-server API. ISteamController is not
 bound (deprecated by Valve; use TSteamInput).
 
 ## How these pages are made

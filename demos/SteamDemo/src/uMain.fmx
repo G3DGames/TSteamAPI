@@ -432,4 +432,20 @@ object frmMain: TfrmMain
     Left = 600
     Top = 624
   end
+  object SteamMatchmakingServers1: TSteamMatchmakingServers
+    SteamAPI = SteamAPI1
+    OnServerResponded = ServersResponded
+    OnServerFailedToRespond = ServersFailed
+    OnServerListComplete = ServerListComplete
+    OnPingResponded = PingResponded
+    OnPingFailed = PingFailed
+    OnPlayer = ServerPlayer
+    OnPlayersFailed = PlayersFailed
+    OnPlayersComplete = PlayersComplete
+    OnRule = ServerRule
+    OnRulesFailed = RulesFailed
+    OnRulesComplete = RulesComplete
+    Left = 720
+    Top = 624
+  end
 end

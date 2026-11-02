@@ -1,0 +1,1316 @@
+// Hand-written additions to the generated ISteamMatchmakingServers plug-in.
+// Merged verbatim by tools/gen_steam_api.py (sections start with //@name).
+//
+// ISteamMatchmakingServers answers through C++ RESPONSE OBJECTS, not
+// callbacks: the caller passes a pointer to an object whose first field is
+// a vtable (ISteamMatchmakingServerListResponse, ...PingResponse,
+// ...PlayersResponse, ...RulesResponse) and Steam calls its virtual methods
+// from inside SteamAPI_ManualDispatch_RunFrame - i.e. on whichever thread
+// pumps. Here each object is a TSteamServerResponse record whose vtable
+// holds Pascal routines. They copy what Steam reports and hand it to
+// TSteamCallbackDispatcher.Post (negative id), so the events reach the same
+// thread as every other callback, in order, and never run inside Steam's
+// frame.
+//
+// Calling convention of the virtual methods: on 32-bit Windows MSVC uses
+// THISCALL (this in ECX, the rest on the stack, callee pops) - Pascal has
+// no such convention, so a three-instruction thunk moves ECX onto the stack
+// and jumps to a stdcall routine. Everywhere else the object pointer is
+// simply the first argument (Win64, System V x86-64, AAPCS64, and GCC's
+// i386 thiscall = cdecl): cdecl routines.
+//
+// Lifetime: Steam keeps the object pointer until ReleaseRequest (lists) or
+// until the query ends / CancelServerQuery (ping, players, rules). Ended
+// objects are freed only once no posted event refers to them and 5 s have
+// passed (the pump thread may still be inside RunFrame when a query is
+// stopped); everything left is freed when Steam stops.
+//
+// Not wrapped: ServerFriends (ISteamMatchmakingServerFriendsResponse) - no
+// documentation from Valve and no known use; the raw method stays.
+//@uses
+SyncObjs
+//@types
+const
+  { Callback id under which the response objects post their answers
+    (TSteamCallbackDispatcher.Post; negative ids are never Steam's). }
+  SteamServerResponse_k_iPosted = -4100;
+
+type
+  { Which list @link(TSteamMatchmakingServersPlugin.StartServerList) asks
+    the master servers for. sltLAN ignores filters. }
+  TSteamServerListKind = (sltInternet, sltLAN, sltFriends, sltFavorites, sltHistory, sltSpectator);
+
+  { What a server-browser event reports (@link(TSteamServerEvent).Kind).
+    The names follow the C++ response methods:
+    ServerResponded / ServerFailedToRespond / RefreshComplete (lists),
+    ServerResponded / ServerFailedToRespond (ping), AddPlayerToList /
+    PlayersFailedToRespond / PlayersRefreshComplete, RulesResponded /
+    RulesFailedToRespond / RulesRefreshComplete. }
+  TSteamServerEventKind = (sekServerResponded, sekServerFailedToRespond, sekServerListComplete,
+    sekPingResponded, sekPingFailedToRespond,
+    sekPlayerAdded, sekPlayersFailedToRespond, sekPlayersComplete,
+    sekRuleResponded, sekRulesFailedToRespond, sekRulesComplete);
+
+  { One answer of the server browser, as handed to a
+    @link(TSteamServerEventHandler). Fields that do not apply to Kind are 0. }
+  TSteamServerEvent = record
+    { What happened. }
+    Kind: TSteamServerEventKind;
+    { List events: the request (from @link(TSteamMatchmakingServersPlugin.StartServerList)). }
+    Request: HServerListRequest;
+    { sekServerResponded / sekServerFailedToRespond: the server's index in the list. }
+    Index: Integer;
+    { sekServerListComplete: how the refresh ended. }
+    Response: EMatchMakingServerResponse;
+    { Ping / player / rule events: the query (from StartPing, StartPlayerDetails, StartServerRules). }
+    Query: HServerQuery;
+    { sekPlayerAdded: the player's score. }
+    Score: Integer;
+    { sekPlayerAdded: seconds the player has been on the server. }
+    TimePlayed: Single;
+    { @true when @link(Server) holds the server's details (sekServerResponded, sekPingResponded). }
+    HasServer: Boolean;
+    { The server's details, copied when Steam reported them. }
+    Server: gameserveritem_t;
+  end;
+
+  { Receives every answer of the requests and queries it was passed to.
+    AText is the player name (sekPlayerAdded) or rule name
+    (sekRuleResponded), AValue the rule value; both empty otherwise. Runs on
+    the thread that delivers callbacks (TSteamAPI.Delivery). }
+  TSteamServerEventHandler = procedure(Sender: TObject; const AEvent: TSteamServerEvent;
+    const AText, AValue: string) of object;
+
+  { @exclude Stand-in for a C++ response object (one per request / query).
+    VTable must stay the first field. }
+  TSteamServerResponse = record
+    { The vtable Steam calls through (one of four, per Kind). }
+    VTable: Pointer;
+    { The TSteamMatchmakingServersPlugin that made it. }
+    Plugin: TObject;
+    { Unique per plug-in (never reused): a posted event names it, so an
+      event can never reach a later object at the same address. }
+    Serial: Cardinal;
+    { 0 list, 1 ping, 2 players, 3 rules. }
+    Kind: Integer;
+    { Lists: the request handle (nil until the request call returned). }
+    Request: HServerListRequest;
+    { Queries: the query handle (HSERVERQUERY_INVALID until the call returned). }
+    Query: HServerQuery;
+    { Who gets the events. }
+    Handler: TSteamServerEventHandler;
+    { Events posted but not delivered yet; the object lives while > 0. }
+    Pending: Integer;
+    { Steam reported the last answer of a query. }
+    Finished: Boolean;
+    { Stopped by the program (released / cancelled): no more events. }
+    Cancelled: Boolean;
+    { When Finished or Cancelled was set. }
+    DeadAt: TDateTime;
+  end;
+  { @exclude Pointer to @link(TSteamServerResponse). }
+  PSteamServerResponse = ^TSteamServerResponse;
+
+  { @exclude Called when a watched component is freed. }
+  TSteamServerOwnerRemoved = procedure(AComponent: TComponent) of object;
+  { @exclude Free-notification sink: stops the requests of a component
+    (handler owner) that is being destroyed, so Steam never calls into a
+    freed handler. }
+  TSteamServerOwnerWatch = class(TComponent)
+  private
+    { Called for every freed component this watch was registered with. }
+    FOnRemove: TSteamServerOwnerRemoved;
+  protected
+    { Forwards opRemove to FOnRemove. }
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  end;
+
+//@private
+    { Guards @link(FObjects) and every TSteamServerResponse field (the pump
+      thread posts, the delivery thread delivers, the program starts / stops). }
+    FServerLock: SyncObjs.TCriticalSection;
+    { Every response object not yet freed (PSteamServerResponse). }
+    FObjects: TList;
+    { Components registered with @link(FWatch) (handler owners). }
+    FWatched: TList;
+    { Free-notification sink for handler owners. }
+    FWatch: TSteamServerOwnerWatch;
+    { Set while Steam stops: response objects post nothing more. }
+    FClosing: Boolean;
+    { Last TSteamServerResponse.Serial given out. }
+    FLastSerial: Cardinal;
+    { A new response object of AKind for AHandler (also frees old ended ones). }
+    function NewResponse(AKind: Integer; AHandler: TSteamServerEventHandler): PSteamServerResponse;
+    { Frees ended objects nothing refers to any more. Caller holds the lock. }
+    procedure Sweep;
+    { Marks AObj stopped by the program. Caller holds the lock.
+      @returns(@false when it was stopped already.) }
+    function MarkCancelled(AObj: PSteamServerResponse): Boolean;
+    { Tells Steam to stop AObj's request / query (no lock held: Steam may
+      call back into the object while it stops it). }
+    procedure StopInSteam(AObj: PSteamServerResponse);
+    { Registers the handler's owner for a free notification. }
+    procedure Watch(AHandler: TSteamServerEventHandler);
+    { FWatch's callback: a handler owner is being freed. }
+    procedure OwnerRemoved(AComponent: TComponent);
+    { Delivery side: a posted event reaches its handler. }
+    procedure HandlePosted(const AData: TSteamCallbackData);
+    { Pump side (called by the response routines): copies one answer and
+      posts it. AFinal: the last answer of a query. }
+    procedure PostEvent(AObj: PSteamServerResponse; const AEvent: TSteamServerEvent;
+      AText, AValue: PAnsiChar; AFinal: Boolean);
+    { Pump side: copies server AIndex of ARequest into AEvent.Server. }
+    procedure FillServer(ARequest: HServerListRequest; AIndex: Integer; var AEvent: TSteamServerEvent);
+    { Stops everything and frees every response object (Steam stopping). }
+    procedure CloseResponses;
+//@public
+    { Creates the bookkeeping for the response objects. }
+    constructor Create; override;
+    { Frees what @link(CloseResponses) left (nothing, normally). }
+    destructor Destroy; override;
+
+    (* Asks Steam for a server list; the servers arrive one by one through
+       AHandler (sekServerResponded with the details / sekServerFailedToRespond),
+       then sekServerListComplete. The request stays usable (RefreshQuery,
+       GetServerDetails, GetServerCount) until @link(StopServerList).
+       @param(AKind  Which list; sltLAN ignores the filters.)
+       @param(AApp  The game's AppID.)
+       @param(AFilterKeys  Filter names ("map", "gamedir", "dedicated",
+         "secure", "notfull", "hasplayers", "gametagsand", ... - see
+         isteammatchmaking.h); same length as AFilterValues.)
+       @param(AFilterValues  Their values ('' for the filters without one).)
+       @param(AHandler  Receives the answers. When its object is a
+         TComponent, freeing it stops the request.)
+       @returns(The request handle, @nil when Steam refused.)
+       @raises(ESteamworksError when Steam is not running, an export is
+         missing or the two filter arrays differ in length.) *)
+    function StartServerList(AKind: TSteamServerListKind; AApp: AppId_t;
+      const AFilterKeys, AFilterValues: array of string;
+      AHandler: TSteamServerEventHandler): HServerListRequest;
+    { Releases a request of @link(StartServerList) (ReleaseRequest): no
+      more events for it. Raw requests (made with the generated methods) are
+      released too. }
+    procedure StopServerList(ARequest: HServerListRequest);
+    { Pings one server (IP in host order, e.g. gameserveritem_t.m_NetAdr.m_unIP,
+      and its QUERY port); one answer: sekPingResponded with the details or
+      sekPingFailedToRespond. @returns(The query, HSERVERQUERY_INVALID when
+      Steam refused.) }
+    function StartPing(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
+    { Asks one server for its players: sekPlayerAdded per player (AText =
+      name), then sekPlayersComplete - or sekPlayersFailedToRespond.
+      @returns(The query, HSERVERQUERY_INVALID when Steam refused.) }
+    function StartPlayerDetails(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
+    { Asks one server for its rules: sekRuleResponded per rule (AText =
+      name, AValue = value), then sekRulesComplete - or
+      sekRulesFailedToRespond. @returns(The query, HSERVERQUERY_INVALID when
+      Steam refused.) }
+    function StartServerRules(AIP: UInt32; AQueryPort: UInt16; AHandler: TSteamServerEventHandler): HServerQuery;
+    { Stops a ping / players / rules query (CancelServerQuery): no more
+      events for it. Harmless for a query that has ended. }
+    procedure StopServerQuery(AQuery: HServerQuery);
+    { Stops every request and query whose handler belongs to AOwner. Called
+      automatically when a TComponent owner is freed. }
+    procedure StopOwner(AOwner: TObject);
+    { Requests and queries still running (not ended, not stopped). }
+    function ActiveCount: Integer;
+//@initialize
+  FClosing := False;
+  Subscribe(SteamServerResponse_k_iPosted, HandlePosted);
+//@finalize
+  CloseResponses;
+//@implementation
+{ TSteamServerOwnerWatch }
+
+procedure TSteamServerOwnerWatch.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and Assigned(FOnRemove) then
+    FOnRemove(AComponent);
+end;
+
+{ The response objects' virtual methods }
+
+// MSVC 32-bit: thiscall (see the top of tools/plugin_extras/MatchmakingServers.pas.txt)
+{$if defined(MSWINDOWS) and (defined(CPUX86) or defined(CPUI386))}
+  {$define STEAM_SERVER_THISCALL}
+{$endif}
+
+const
+  { Response object kinds (TSteamServerResponse.Kind). }
+  SRK_LIST = 0;
+  SRK_PING = 1;
+  SRK_PLAYERS = 2;
+  SRK_RULES = 3;
+  { Seconds an ended object is kept (the pump may still be in RunFrame). }
+  SR_KEEP_SECONDS = 5;
+  { Pumps an answer may wait for its query handle (see HandlePosted). }
+  SR_MAX_RETRIES = 200;
+
+type
+  { Header of a posted payload; the UTF-8 text and value bytes follow. }
+  TSteamServerPosted = record
+    { The object the answer belongs to. }
+    Obj: PSteamServerResponse;
+    { Its Serial when the answer was posted. }
+    Serial: Cardinal;
+    { Times the delivery was put off because the query handle was not
+      stored yet (see HandlePosted). }
+    Retries: Integer;
+    { The answer. }
+    Event: TSteamServerEvent;
+    { Bytes of the text after the header. }
+    TextLen: Integer;
+    { Bytes of the value after the text. }
+    ValueLen: Integer;
+  end;
+
+var
+  { The four vtables (filled by InitServerVTables). }
+  VT_List: array[0..2] of Pointer;
+  VT_Ping: array[0..1] of Pointer;
+  VT_Players: array[0..2] of Pointer;
+  VT_Rules: array[0..2] of Pointer;
+
+function PluginOf(AThis: PSteamServerResponse): TSteamMatchmakingServersPlugin;
+begin
+  Result := TSteamMatchmakingServersPlugin(AThis^.Plugin);
+end;
+
+// Every routine swallows exceptions: nothing may unwind into Steam's C++ frames.
+
+procedure List_ServerResponded(AThis: PSteamServerResponse; ARequest: HServerListRequest;
+  AServer: Integer); {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekServerResponded;
+    Ev.Request := ARequest;
+    Ev.Index := AServer;
+    PluginOf(AThis).FillServer(ARequest, AServer, Ev);
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, False);
+  except
+  end;
+end;
+
+procedure List_ServerFailedToRespond(AThis: PSteamServerResponse; ARequest: HServerListRequest;
+  AServer: Integer); {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekServerFailedToRespond;
+    Ev.Request := ARequest;
+    Ev.Index := AServer;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, False);
+  except
+  end;
+end;
+
+procedure List_RefreshComplete(AThis: PSteamServerResponse; ARequest: HServerListRequest;
+  AResponse: EMatchMakingServerResponse); {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekServerListComplete;
+    Ev.Request := ARequest;
+    Ev.Response := AResponse;
+    // not final: the request lives until StopServerList (RefreshQuery)
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, False);
+  except
+  end;
+end;
+
+procedure Ping_ServerResponded(AThis: PSteamServerResponse; AServer: Pgameserveritem_t);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekPingResponded;
+    if AServer <> nil then
+    begin
+      Ev.Server := AServer^;
+      Ev.HasServer := True;
+    end;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, True);
+  except
+  end;
+end;
+
+procedure Ping_ServerFailedToRespond(AThis: PSteamServerResponse);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekPingFailedToRespond;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, True);
+  except
+  end;
+end;
+
+procedure Players_AddPlayerToList(AThis: PSteamServerResponse; AName: PAnsiChar; AScore: Integer;
+  ATimePlayed: Single); {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekPlayerAdded;
+    Ev.Score := AScore;
+    Ev.TimePlayed := ATimePlayed;
+    PluginOf(AThis).PostEvent(AThis, Ev, AName, nil, False);
+  except
+  end;
+end;
+
+procedure Players_PlayersFailedToRespond(AThis: PSteamServerResponse);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekPlayersFailedToRespond;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, True);
+  except
+  end;
+end;
+
+procedure Players_PlayersRefreshComplete(AThis: PSteamServerResponse);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekPlayersComplete;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, True);
+  except
+  end;
+end;
+
+procedure Rules_RulesResponded(AThis: PSteamServerResponse; ARule, AValue: PAnsiChar);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekRuleResponded;
+    PluginOf(AThis).PostEvent(AThis, Ev, ARule, AValue, False);
+  except
+  end;
+end;
+
+procedure Rules_RulesFailedToRespond(AThis: PSteamServerResponse);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekRulesFailedToRespond;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, True);
+  except
+  end;
+end;
+
+procedure Rules_RulesRefreshComplete(AThis: PSteamServerResponse);
+  {$ifdef STEAM_SERVER_THISCALL}stdcall{$else}cdecl{$endif};
+var
+  Ev: TSteamServerEvent;
+begin
+  try
+    Ev := Default(TSteamServerEvent);
+    Ev.Kind := sekRulesComplete;
+    PluginOf(AThis).PostEvent(AThis, Ev, nil, nil, True);
+  except
+  end;
+end;
+
+{$ifdef STEAM_SERVER_THISCALL}
+// thiscall -> stdcall: [esp] = return address, ECX = this. Push this
+// beneath the return address and jump; the stdcall routine pops this and
+// the caller's arguments, as thiscall's callee must. EAX is free on entry.
+// Delphi Debug builds set {$W+} (stack frames): a frame would make
+// "pop eax" take the saved EBP instead of the return address. Off for the
+// thunks, restored after them. FPC: nostackframe.
+{$ifdef FPC}{$asmmode intel}{$else}{$ifopt W+}{$define STEAM_SERVER_W_ON}{$W-}{$endif}{$endif}
+
+procedure Thunk_List_ServerResponded; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp List_ServerResponded
+end;
+
+procedure Thunk_List_ServerFailedToRespond; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp List_ServerFailedToRespond
+end;
+
+procedure Thunk_List_RefreshComplete; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp List_RefreshComplete
+end;
+
+procedure Thunk_Ping_ServerResponded; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Ping_ServerResponded
+end;
+
+procedure Thunk_Ping_ServerFailedToRespond; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Ping_ServerFailedToRespond
+end;
+
+procedure Thunk_Players_AddPlayerToList; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Players_AddPlayerToList
+end;
+
+procedure Thunk_Players_PlayersFailedToRespond; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Players_PlayersFailedToRespond
+end;
+
+procedure Thunk_Players_PlayersRefreshComplete; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Players_PlayersRefreshComplete
+end;
+
+procedure Thunk_Rules_RulesResponded; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Rules_RulesResponded
+end;
+
+procedure Thunk_Rules_RulesFailedToRespond; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Rules_RulesFailedToRespond
+end;
+
+procedure Thunk_Rules_RulesRefreshComplete; {$ifdef FPC}assembler; nostackframe;{$endif}
+asm
+  pop eax
+  push ecx
+  push eax
+  jmp Rules_RulesRefreshComplete
+end;
+{$ifdef STEAM_SERVER_W_ON}{$W+}{$endif}
+{$endif}
+
+{ Fills the vtables, in the order of the virtual methods in isteammatchmaking.h. }
+procedure InitServerVTables;
+begin
+  {$ifdef STEAM_SERVER_THISCALL}
+  VT_List[0] := @Thunk_List_ServerResponded;
+  VT_List[1] := @Thunk_List_ServerFailedToRespond;
+  VT_List[2] := @Thunk_List_RefreshComplete;
+  VT_Ping[0] := @Thunk_Ping_ServerResponded;
+  VT_Ping[1] := @Thunk_Ping_ServerFailedToRespond;
+  VT_Players[0] := @Thunk_Players_AddPlayerToList;
+  VT_Players[1] := @Thunk_Players_PlayersFailedToRespond;
+  VT_Players[2] := @Thunk_Players_PlayersRefreshComplete;
+  VT_Rules[0] := @Thunk_Rules_RulesResponded;
+  VT_Rules[1] := @Thunk_Rules_RulesFailedToRespond;
+  VT_Rules[2] := @Thunk_Rules_RulesRefreshComplete;
+  {$else}
+  VT_List[0] := @List_ServerResponded;
+  VT_List[1] := @List_ServerFailedToRespond;
+  VT_List[2] := @List_RefreshComplete;
+  VT_Ping[0] := @Ping_ServerResponded;
+  VT_Ping[1] := @Ping_ServerFailedToRespond;
+  VT_Players[0] := @Players_AddPlayerToList;
+  VT_Players[1] := @Players_PlayersFailedToRespond;
+  VT_Players[2] := @Players_PlayersRefreshComplete;
+  VT_Rules[0] := @Rules_RulesResponded;
+  VT_Rules[1] := @Rules_RulesFailedToRespond;
+  VT_Rules[2] := @Rules_RulesRefreshComplete;
+  {$endif}
+end;
+
+{ Length of a C string (0 for nil). }
+function AnsiLen(P: PAnsiChar): Integer;
+begin
+  Result := 0;
+  if P <> nil then
+    while P[Result] <> #0 do
+      Inc(Result);
+end;
+
+{ UTF-8 copy of S into a C char array of ASize bytes (truncated, always terminated). }
+procedure CopyToChars(const S: string; var ADest; ASize: Integer);
+var
+  U: UTF8String;
+  N: Integer;
+begin
+  FillChar(ADest, ASize, 0);
+  U := UTF8String(S);
+  N := Length(U);
+  if N > ASize - 1 then
+    N := ASize - 1;
+  if N > 0 then
+    Move(PAnsiChar(U)^, ADest, N);
+end;
+
+{ TSteamMatchmakingServersPlugin: response objects }
+
+constructor TSteamMatchmakingServersPlugin.Create;
+begin
+  inherited Create;
+  FServerLock := SyncObjs.TCriticalSection.Create;
+  FObjects := TList.Create;
+  FWatched := TList.Create;
+  if VT_List[0] = nil then
+    InitServerVTables;
+end;
+
+destructor TSteamMatchmakingServersPlugin.Destroy;
+var
+  I: Integer;
+begin
+  if FObjects <> nil then
+    for I := 0 to FObjects.Count - 1 do
+      Dispose(PSteamServerResponse(FObjects[I]));
+  FObjects.Free;
+  FWatch.Free;
+  FWatched.Free;
+  FServerLock.Free;
+  inherited;
+end;
+
+function TSteamMatchmakingServersPlugin.NewResponse(AKind: Integer;
+  AHandler: TSteamServerEventHandler): PSteamServerResponse;
+begin
+  New(Result);
+  Result^ := Default(TSteamServerResponse);
+  case AKind of
+    SRK_LIST: Result^.VTable := @VT_List[0];
+    SRK_PING: Result^.VTable := @VT_Ping[0];
+    SRK_PLAYERS: Result^.VTable := @VT_Players[0];
+  else
+    Result^.VTable := @VT_Rules[0];
+  end;
+  Result^.Plugin := Self;
+  Result^.Kind := AKind;
+  Result^.Query := HSERVERQUERY_INVALID;
+  Result^.Handler := AHandler;
+  FServerLock.Enter;
+  try
+    Sweep;
+    Inc(FLastSerial);
+    Result^.Serial := FLastSerial;
+    FObjects.Add(Result);
+  finally
+    FServerLock.Leave;
+  end;
+  Watch(AHandler);
+end;
+
+procedure TSteamMatchmakingServersPlugin.Sweep;
+var
+  I: Integer;
+  Obj: PSteamServerResponse;
+  Limit: TDateTime;
+begin
+  Limit := Now - SR_KEEP_SECONDS / SecsPerDay;
+  for I := FObjects.Count - 1 downto 0 do
+  begin
+    Obj := FObjects[I];
+    if (Obj^.Finished or Obj^.Cancelled) and (Obj^.Pending <= 0) and (Obj^.DeadAt < Limit) then
+    begin
+      FObjects.Delete(I);
+      Dispose(Obj);
+    end;
+  end;
+end;
+
+function TSteamMatchmakingServersPlugin.MarkCancelled(AObj: PSteamServerResponse): Boolean;
+begin
+  Result := not AObj^.Cancelled;
+  if not Result then
+    Exit;
+  AObj^.Cancelled := True;
+  AObj^.DeadAt := Now;
+end;
+
+procedure TSteamMatchmakingServersPlugin.StopInSteam(AObj: PSteamServerResponse);
+begin
+  if FIntf = nil then
+    Exit;
+  if AObj^.Kind = SRK_LIST then
+  begin
+    if (AObj^.Request <> nil) and Assigned(FFlat.ReleaseRequest) then
+      FFlat.ReleaseRequest(FIntf, AObj^.Request);
+  end
+  else if AObj^.Finished then
+    // the query has ended: Steam has forgotten it already
+  else if (AObj^.Query <> HSERVERQUERY_INVALID) and Assigned(FFlat.CancelServerQuery) then
+    FFlat.CancelServerQuery(FIntf, AObj^.Query);
+end;
+
+procedure TSteamMatchmakingServersPlugin.Watch(AHandler: TSteamServerEventHandler);
+var
+  Owner: TObject;
+begin
+  Owner := TObject(TMethod(AHandler).Data);
+  if not (Owner is TComponent) then
+    Exit;
+  if FWatch = nil then
+  begin
+    FWatch := TSteamServerOwnerWatch.Create(nil);
+    FWatch.FOnRemove := OwnerRemoved;
+  end;
+  if FWatched.IndexOf(Owner) >= 0 then
+    Exit;
+  FWatched.Add(Owner);
+  TComponent(Owner).FreeNotification(FWatch);
+end;
+
+procedure TSteamMatchmakingServersPlugin.OwnerRemoved(AComponent: TComponent);
+begin
+  FWatched.Remove(AComponent);
+  StopOwner(AComponent);
+end;
+
+procedure TSteamMatchmakingServersPlugin.FillServer(ARequest: HServerListRequest; AIndex: Integer;
+  var AEvent: TSteamServerEvent);
+var
+  P: Pgameserveritem_t;
+begin
+  if (FIntf = nil) or not Assigned(FFlat.GetServerDetails) then
+    Exit;
+  P := FFlat.GetServerDetails(FIntf, ARequest, AIndex);
+  if P <> nil then
+  begin
+    AEvent.Server := P^;
+    AEvent.HasServer := True;
+  end;
+end;
+
+procedure TSteamMatchmakingServersPlugin.PostEvent(AObj: PSteamServerResponse;
+  const AEvent: TSteamServerEvent; AText, AValue: PAnsiChar; AFinal: Boolean);
+var
+  Hdr: TSteamServerPosted;
+  Buf: TBytes;
+begin
+  FServerLock.Enter;
+  try
+    if FClosing or AObj^.Cancelled then
+      Exit;
+    Inc(AObj^.Pending);
+    if AFinal and not AObj^.Finished then
+    begin
+      AObj^.Finished := True;
+      AObj^.DeadAt := Now;
+    end;
+  finally
+    FServerLock.Leave;
+  end;
+  try
+    Hdr.Obj := AObj;
+    Hdr.Serial := AObj^.Serial;
+    Hdr.Retries := 0;
+    Hdr.Event := AEvent;
+    Hdr.TextLen := AnsiLen(AText);
+    Hdr.ValueLen := AnsiLen(AValue);
+    SetLength(Buf, SizeOf(Hdr) + Hdr.TextLen + Hdr.ValueLen);
+    Move(Hdr, Buf[0], SizeOf(Hdr));
+    if Hdr.TextLen > 0 then
+      Move(AText^, Buf[SizeOf(Hdr)], Hdr.TextLen);
+    if Hdr.ValueLen > 0 then
+      Move(AValue^, Buf[SizeOf(Hdr) + Hdr.TextLen], Hdr.ValueLen);
+    Steam.Dispatcher.Post(SteamServerResponse_k_iPosted, Buf[0], Length(Buf));
+  except
+    FServerLock.Enter;
+    try
+      Dec(AObj^.Pending);
+    finally
+      FServerLock.Leave;
+    end;
+    raise;
+  end;
+end;
+
+procedure TSteamMatchmakingServersPlugin.HandlePosted(const AData: TSteamCallbackData);
+var
+  Hdr: TSteamServerPosted;
+  Obj: PSteamServerResponse;
+  Handler: TSteamServerEventHandler;
+  Live, Again: Boolean;
+  U: UTF8String;
+  Text, Value: string;
+  Buf: TBytes;
+begin
+  if (AData.Data = nil) or (AData.Size < SizeOf(Hdr)) then
+    Exit;
+  Move(AData.Data^, Hdr, SizeOf(Hdr));
+  if AData.Size < SizeOf(Hdr) + Hdr.TextLen + Hdr.ValueLen then
+    Exit;
+  Obj := Hdr.Obj;
+  Live := False;
+  Handler := nil;
+  Again := False;
+  FServerLock.Enter;
+  try
+    // still ours, and the same object? (CloseResponses frees everything,
+    // and a later object may get the same address: the serial tells)
+    if (FObjects.IndexOf(Obj) >= 0) and (Obj^.Serial = Hdr.Serial) then
+    begin
+      if (Obj^.Kind <> SRK_LIST) and (Obj^.Query = HSERVERQUERY_INVALID) and not Obj^.Cancelled and
+        (Hdr.Retries < SR_MAX_RETRIES) then
+        // Delivered on the worker (sdPumpThread) before StartPing & co. have
+        // stored the query handle: put it off to the next pump (still Pending)
+        Again := True
+      else
+      begin
+        Dec(Obj^.Pending);
+        Live := not Obj^.Cancelled;
+        Handler := Obj^.Handler;
+        if Obj^.Kind <> SRK_LIST then
+          Hdr.Event.Query := Obj^.Query;
+      end;
+    end;
+  finally
+    FServerLock.Leave;
+  end;
+  if Again then
+  begin
+    Inc(Hdr.Retries);
+    Buf := nil;
+    SetLength(Buf, AData.Size);
+    Move(AData.Data^, Buf[0], AData.Size);
+    Move(Hdr, Buf[0], SizeOf(Hdr));
+    Steam.Dispatcher.Post(SteamServerResponse_k_iPosted, Buf[0], Length(Buf));
+    Exit;
+  end;
+  if not (Live and Assigned(Handler)) then
+    Exit;
+  Text := '';
+  Value := '';
+  if Hdr.TextLen > 0 then
+  begin
+    SetString(U, PAnsiChar(AData.Data) + SizeOf(Hdr), Hdr.TextLen);
+    Text := string(U);
+  end;
+  if Hdr.ValueLen > 0 then
+  begin
+    SetString(U, PAnsiChar(AData.Data) + SizeOf(Hdr) + Hdr.TextLen, Hdr.ValueLen);
+    Value := string(U);
+  end;
+  Handler(Self, Hdr.Event, Text, Value);
+end;
+
+procedure TSteamMatchmakingServersPlugin.CloseResponses;
+var
+  Stop: TList;
+  I: Integer;
+  Obj: PSteamServerResponse;
+begin
+  Stop := TList.Create;
+  try
+    FServerLock.Enter;
+    try
+      FClosing := True;
+      for I := 0 to FObjects.Count - 1 do
+      begin
+        Obj := FObjects[I];
+        if MarkCancelled(Obj) then
+          Stop.Add(Obj);
+      end;
+    finally
+      FServerLock.Leave;
+    end;
+    // Steam is still up (plug-ins finalise before SteamAPI_Shutdown) and
+    // nothing pumps any more: release what is still running, then free all
+    for I := 0 to Stop.Count - 1 do
+      try
+        StopInSteam(Stop[I]);
+      except
+        on E: Exception do
+          Log(sllWarning, 'Stopping a server-browser request: ' + E.Message);
+      end;
+  finally
+    Stop.Free;
+  end;
+  FServerLock.Enter;
+  try
+    for I := 0 to FObjects.Count - 1 do
+      Dispose(PSteamServerResponse(FObjects[I]));
+    FObjects.Clear;
+  finally
+    FServerLock.Leave;
+  end;
+  FWatched.Clear;
+  FreeAndNil(FWatch);   // removes its free notifications
+end;
+
+function TSteamMatchmakingServersPlugin.StartServerList(AKind: TSteamServerListKind; AApp: AppId_t;
+  const AFilterKeys, AFilterValues: array of string;
+  AHandler: TSteamServerEventHandler): HServerListRequest;
+var
+  Pairs: array of MatchMakingKeyValuePair_t;
+  Ptrs: array of PMatchMakingKeyValuePair_t;
+  Filters: Pointer;
+  N, I: Integer;
+  Obj: PSteamServerResponse;
+begin
+  case AKind of
+    sltInternet: Need(Assigned(FFlat.RequestInternetServerList), 'RequestInternetServerList');
+    sltLAN: Need(Assigned(FFlat.RequestLANServerList), 'RequestLANServerList');
+    sltFriends: Need(Assigned(FFlat.RequestFriendsServerList), 'RequestFriendsServerList');
+    sltFavorites: Need(Assigned(FFlat.RequestFavoritesServerList), 'RequestFavoritesServerList');
+    sltHistory: Need(Assigned(FFlat.RequestHistoryServerList), 'RequestHistoryServerList');
+    sltSpectator: Need(Assigned(FFlat.RequestSpectatorServerList), 'RequestSpectatorServerList');
+  end;
+  if Length(AFilterKeys) <> Length(AFilterValues) then
+    raise ESteamworksError.CreateFmt('StartServerList: %d filter names but %d values',
+      [Length(AFilterKeys), Length(AFilterValues)]);
+  N := Length(AFilterKeys);
+  Pairs := nil;
+  Ptrs := nil;
+  SetLength(Pairs, N);
+  SetLength(Ptrs, N);
+  for I := 0 to N - 1 do
+  begin
+    CopyToChars(AFilterKeys[I], Pairs[I].m_szKey, SizeOf(Pairs[I].m_szKey));
+    CopyToChars(AFilterValues[I], Pairs[I].m_szValue, SizeOf(Pairs[I].m_szValue));
+    Ptrs[I] := @Pairs[I];
+  end;
+  Filters := nil;
+  if N > 0 then
+    Filters := @Ptrs[0];   // MatchMakingKeyValuePair_t **: an array of pointers
+  Obj := NewResponse(SRK_LIST, AHandler);
+  Result := nil;
+  try
+    case AKind of
+      sltInternet: Result := FFlat.RequestInternetServerList(FIntf, AApp, Filters, N, Obj);
+      sltLAN: Result := FFlat.RequestLANServerList(FIntf, AApp, Obj);
+      sltFriends: Result := FFlat.RequestFriendsServerList(FIntf, AApp, Filters, N, Obj);
+      sltFavorites: Result := FFlat.RequestFavoritesServerList(FIntf, AApp, Filters, N, Obj);
+      sltHistory: Result := FFlat.RequestHistoryServerList(FIntf, AApp, Filters, N, Obj);
+      sltSpectator: Result := FFlat.RequestSpectatorServerList(FIntf, AApp, Filters, N, Obj);
+    end;
+  finally
+    FServerLock.Enter;
+    try
+      Obj^.Request := Result;
+      if Result = nil then
+        MarkCancelled(Obj);   // refused (or raised): Steam does not hold it
+    finally
+      FServerLock.Leave;
+    end;
+  end;
+end;
+
+procedure TSteamMatchmakingServersPlugin.StopServerList(ARequest: HServerListRequest);
+var
+  I: Integer;
+  Obj, Found: PSteamServerResponse;
+  Known: Boolean;
+begin
+  Need(Assigned(FFlat.ReleaseRequest), 'ReleaseRequest');
+  if ARequest = nil then
+    Exit;
+  Found := nil;
+  Known := False;
+  FServerLock.Enter;
+  try
+    for I := 0 to FObjects.Count - 1 do
+    begin
+      Obj := FObjects[I];
+      if (Obj^.Kind = SRK_LIST) and (Obj^.Request = ARequest) then
+      begin
+        Known := True;
+        if MarkCancelled(Obj) then
+        begin
+          Found := Obj;
+          Break;
+        end;
+      end;
+    end;
+  finally
+    FServerLock.Leave;
+  end;
+  if Known and (Found = nil) then
+    Exit;   // released already: never release a handle twice
+  // outside the lock: Steam may call the object while it releases it
+  FFlat.ReleaseRequest(FIntf, ARequest);
+  if Found = nil then
+    Log(sllDebug, 'StopServerList: not a request of StartServerList - released anyway');
+end;
+
+function TSteamMatchmakingServersPlugin.StartPing(AIP: UInt32; AQueryPort: UInt16;
+  AHandler: TSteamServerEventHandler): HServerQuery;
+var
+  Obj: PSteamServerResponse;
+begin
+  Need(Assigned(FFlat.PingServer), 'PingServer');
+  Obj := NewResponse(SRK_PING, AHandler);
+  Result := HSERVERQUERY_INVALID;
+  try
+    Result := FFlat.PingServer(FIntf, AIP, AQueryPort, Obj);
+  finally
+    FServerLock.Enter;
+    try
+      Obj^.Query := Result;
+      if Result = HSERVERQUERY_INVALID then
+        MarkCancelled(Obj);
+    finally
+      FServerLock.Leave;
+    end;
+  end;
+end;
+
+function TSteamMatchmakingServersPlugin.StartPlayerDetails(AIP: UInt32; AQueryPort: UInt16;
+  AHandler: TSteamServerEventHandler): HServerQuery;
+var
+  Obj: PSteamServerResponse;
+begin
+  Need(Assigned(FFlat.PlayerDetails), 'PlayerDetails');
+  Obj := NewResponse(SRK_PLAYERS, AHandler);
+  Result := HSERVERQUERY_INVALID;
+  try
+    Result := FFlat.PlayerDetails(FIntf, AIP, AQueryPort, Obj);
+  finally
+    FServerLock.Enter;
+    try
+      Obj^.Query := Result;
+      if Result = HSERVERQUERY_INVALID then
+        MarkCancelled(Obj);
+    finally
+      FServerLock.Leave;
+    end;
+  end;
+end;
+
+function TSteamMatchmakingServersPlugin.StartServerRules(AIP: UInt32; AQueryPort: UInt16;
+  AHandler: TSteamServerEventHandler): HServerQuery;
+var
+  Obj: PSteamServerResponse;
+begin
+  Need(Assigned(FFlat.ServerRules), 'ServerRules');
+  Obj := NewResponse(SRK_RULES, AHandler);
+  Result := HSERVERQUERY_INVALID;
+  try
+    Result := FFlat.ServerRules(FIntf, AIP, AQueryPort, Obj);
+  finally
+    FServerLock.Enter;
+    try
+      Obj^.Query := Result;
+      if Result = HSERVERQUERY_INVALID then
+        MarkCancelled(Obj);
+    finally
+      FServerLock.Leave;
+    end;
+  end;
+end;
+
+procedure TSteamMatchmakingServersPlugin.StopServerQuery(AQuery: HServerQuery);
+var
+  I: Integer;
+  Obj, Found: PSteamServerResponse;
+  Known: Boolean;
+begin
+  Need(Assigned(FFlat.CancelServerQuery), 'CancelServerQuery');
+  if AQuery = HSERVERQUERY_INVALID then
+    Exit;
+  Found := nil;
+  Known := False;
+  FServerLock.Enter;
+  try
+    // Steam may reuse query numbers: the RUNNING query with that number
+    // first, then one that has ended (only marked, nothing to cancel)
+    for I := 0 to FObjects.Count - 1 do
+    begin
+      Obj := FObjects[I];
+      if (Obj^.Kind <> SRK_LIST) and (Obj^.Query = AQuery) then
+      begin
+        Known := True;
+        if not (Obj^.Cancelled or Obj^.Finished) then
+        begin
+          Found := Obj;
+          Break;
+        end;
+      end;
+    end;
+    if Found <> nil then
+      MarkCancelled(Found)
+    else
+      for I := 0 to FObjects.Count - 1 do
+      begin
+        Obj := FObjects[I];
+        if (Obj^.Kind <> SRK_LIST) and (Obj^.Query = AQuery) then
+          MarkCancelled(Obj);   // ended: no more events, no Steam call
+      end;
+  finally
+    FServerLock.Leave;
+  end;
+  if Found <> nil then
+    StopInSteam(Found)
+  else if not Known then
+    FFlat.CancelServerQuery(FIntf, AQuery);   // a raw query of the generated methods
+end;
+
+procedure TSteamMatchmakingServersPlugin.StopOwner(AOwner: TObject);
+var
+  Stop: TList;
+  I: Integer;
+  Obj: PSteamServerResponse;
+begin
+  if AOwner = nil then
+    Exit;
+  Stop := TList.Create;
+  try
+    FServerLock.Enter;
+    try
+      for I := 0 to FObjects.Count - 1 do
+      begin
+        Obj := FObjects[I];
+        if (TMethod(Obj^.Handler).Data = Pointer(AOwner)) and MarkCancelled(Obj) then
+          Stop.Add(Obj);
+      end;
+    finally
+      FServerLock.Leave;
+    end;
+    for I := 0 to Stop.Count - 1 do
+      StopInSteam(Stop[I]);
+  finally
+    Stop.Free;
+  end;
+end;
+
+function TSteamMatchmakingServersPlugin.ActiveCount: Integer;
+var
+  I: Integer;
+  Obj: PSteamServerResponse;
+begin
+  Result := 0;
+  FServerLock.Enter;
+  try
+    for I := 0 to FObjects.Count - 1 do
+    begin
+      Obj := FObjects[I];
+      if not (Obj^.Finished or Obj^.Cancelled) then
+        Inc(Result);
+    end;
+  finally
+    FServerLock.Leave;
+  end;
+end;
+//@comptypes
+  { @link(TSteamMatchmakingServers.OnServerResponded): server AIndex of
+    ARequest answered; AServer = its details (GetServerDetails). }
+  TSteamServerRespondedEvent = procedure(Sender: TObject; ARequest: HServerListRequest; AIndex: Integer;
+    const AServer: gameserveritem_t) of object;
+  { @link(TSteamMatchmakingServers.OnServerFailedToRespond): server AIndex of
+    ARequest did not answer. }
+  TSteamServerFailedEvent = procedure(Sender: TObject; ARequest: HServerListRequest; AIndex: Integer) of object;
+  { @link(TSteamMatchmakingServers.OnServerListComplete): the refresh of
+    ARequest has ended. }
+  TSteamServerListCompleteEvent = procedure(Sender: TObject; ARequest: HServerListRequest;
+    AResponse: EMatchMakingServerResponse) of object;
+  { @link(TSteamMatchmakingServers.OnPingResponded): the pinged server
+    answered (AServer.m_nPing = round trip in ms). }
+  TSteamServerPingEvent = procedure(Sender: TObject; AQuery: HServerQuery; const AServer: gameserveritem_t) of object;
+  { A query that reports nothing but its end (failed / complete). }
+  TSteamServerQueryEvent = procedure(Sender: TObject; AQuery: HServerQuery) of object;
+  { @link(TSteamMatchmakingServers.OnPlayer): one player of the server. }
+  TSteamServerPlayerEvent = procedure(Sender: TObject; AQuery: HServerQuery; const AName: string;
+    AScore: Integer; ATimePlayed: Single) of object;
+  { @link(TSteamMatchmakingServers.OnRule): one rule (name / value) of the server. }
+  TSteamServerRuleEvent = procedure(Sender: TObject; AQuery: HServerQuery; const ARule, AValue: string) of object;
+//@compprivate
+    { Backing field of @link(OnServerResponded). }
+    FOnServerResponded: TSteamServerRespondedEvent;
+    { Backing field of @link(OnServerFailedToRespond). }
+    FOnServerFailedToRespond: TSteamServerFailedEvent;
+    { Backing field of @link(OnServerListComplete). }
+    FOnServerListComplete: TSteamServerListCompleteEvent;
+    { Backing field of @link(OnPingResponded). }
+    FOnPingResponded: TSteamServerPingEvent;
+    { Backing field of @link(OnPingFailed). }
+    FOnPingFailed: TSteamServerQueryEvent;
+    { Backing field of @link(OnPlayer). }
+    FOnPlayer: TSteamServerPlayerEvent;
+    { Backing field of @link(OnPlayersFailed). }
+    FOnPlayersFailed: TSteamServerQueryEvent;
+    { Backing field of @link(OnPlayersComplete). }
+    FOnPlayersComplete: TSteamServerQueryEvent;
+    { Backing field of @link(OnRule). }
+    FOnRule: TSteamServerRuleEvent;
+    { Backing field of @link(OnRulesFailed). }
+    FOnRulesFailed: TSteamServerQueryEvent;
+    { Backing field of @link(OnRulesComplete). }
+    FOnRulesComplete: TSteamServerQueryEvent;
+    { The plug-in, or ESteamworksError when Steam is not running. }
+    function NeedPlugin: TSteamMatchmakingServersPlugin;
+    { Receives every answer of this component's requests and raises the
+      matching event. }
+    procedure ServerEvent(Sender: TObject; const AEvent: TSteamServerEvent; const AText, AValue: string);
+//@comppublic
+    { Asks Steam for a server list (see
+      @link(TSteamMatchmakingServersPlugin.StartServerList)); answers arrive
+      through @link(OnServerResponded), @link(OnServerFailedToRespond) and
+      @link(OnServerListComplete). Release it with @link(StopServerList).
+      @returns(The request, @nil when Steam refused.) }
+    function StartServerList(AKind: TSteamServerListKind; AApp: AppId_t;
+      const AFilterKeys, AFilterValues: array of string): HServerListRequest; overload;
+    { @link(StartServerList) without filters. }
+    function StartServerList(AKind: TSteamServerListKind; AApp: AppId_t): HServerListRequest; overload;
+    { Releases a request of @link(StartServerList): no more events for it. }
+    procedure StopServerList(ARequest: HServerListRequest);
+    { Pings a server (IP in host order, QUERY port): @link(OnPingResponded)
+      or @link(OnPingFailed). @returns(The query, HSERVERQUERY_INVALID when refused.) }
+    function StartPing(AIP: UInt32; AQueryPort: UInt16): HServerQuery;
+    { Asks a server for its players: @link(OnPlayer) per player, then
+      @link(OnPlayersComplete) - or @link(OnPlayersFailed). }
+    function StartPlayerDetails(AIP: UInt32; AQueryPort: UInt16): HServerQuery;
+    { Asks a server for its rules: @link(OnRule) per rule, then
+      @link(OnRulesComplete) - or @link(OnRulesFailed). }
+    function StartServerRules(AIP: UInt32; AQueryPort: UInt16): HServerQuery;
+    { Stops a ping / players / rules query: no more events for it. }
+    procedure StopServerQuery(AQuery: HServerQuery);
+//@comppublished
+    { A server of a list answered (C++ ServerResponded); AServer = its details. }
+    property OnServerResponded: TSteamServerRespondedEvent read FOnServerResponded write FOnServerResponded;
+    { A server of a list did not answer (C++ ServerFailedToRespond). }
+    property OnServerFailedToRespond: TSteamServerFailedEvent read FOnServerFailedToRespond write FOnServerFailedToRespond;
+    { The list's refresh has ended (C++ RefreshComplete); the request stays
+      valid until @link(StopServerList). }
+    property OnServerListComplete: TSteamServerListCompleteEvent read FOnServerListComplete write FOnServerListComplete;
+    { A pinged server answered (C++ ISteamMatchmakingPingResponse::ServerResponded). }
+    property OnPingResponded: TSteamServerPingEvent read FOnPingResponded write FOnPingResponded;
+    { A pinged server did not answer. }
+    property OnPingFailed: TSteamServerQueryEvent read FOnPingFailed write FOnPingFailed;
+    { One player of a @link(StartPlayerDetails) query (C++ AddPlayerToList). }
+    property OnPlayer: TSteamServerPlayerEvent read FOnPlayer write FOnPlayer;
+    { The players query failed (C++ PlayersFailedToRespond). }
+    property OnPlayersFailed: TSteamServerQueryEvent read FOnPlayersFailed write FOnPlayersFailed;
+    { The players query has ended (C++ PlayersRefreshComplete). }
+    property OnPlayersComplete: TSteamServerQueryEvent read FOnPlayersComplete write FOnPlayersComplete;
+    { One rule of a @link(StartServerRules) query (C++ RulesResponded). }
+    property OnRule: TSteamServerRuleEvent read FOnRule write FOnRule;
+    { The rules query failed (C++ RulesFailedToRespond). }
+    property OnRulesFailed: TSteamServerQueryEvent read FOnRulesFailed write FOnRulesFailed;
+    { The rules query has ended (C++ RulesRefreshComplete). }
+    property OnRulesComplete: TSteamServerQueryEvent read FOnRulesComplete write FOnRulesComplete;
+//@compimplementation
+function TSteamMatchmakingServers.NeedPlugin: TSteamMatchmakingServersPlugin;
+begin
+  Result := Plugin;
+  if Result = nil then
+    raise ESteamworksError.Create(ClassName + ': ISteamMatchmakingServers is not available (Steam not running?)');
+end;
+
+function TSteamMatchmakingServers.StartServerList(AKind: TSteamServerListKind; AApp: AppId_t;
+  const AFilterKeys, AFilterValues: array of string): HServerListRequest;
+begin
+  Result := NeedPlugin.StartServerList(AKind, AApp, AFilterKeys, AFilterValues, ServerEvent);
+end;
+
+function TSteamMatchmakingServers.StartServerList(AKind: TSteamServerListKind; AApp: AppId_t): HServerListRequest;
+begin
+  Result := NeedPlugin.StartServerList(AKind, AApp, [], [], ServerEvent);
+end;
+
+procedure TSteamMatchmakingServers.StopServerList(ARequest: HServerListRequest);
+begin
+  NeedPlugin.StopServerList(ARequest);
+end;
+
+function TSteamMatchmakingServers.StartPing(AIP: UInt32; AQueryPort: UInt16): HServerQuery;
+begin
+  Result := NeedPlugin.StartPing(AIP, AQueryPort, ServerEvent);
+end;
+
+function TSteamMatchmakingServers.StartPlayerDetails(AIP: UInt32; AQueryPort: UInt16): HServerQuery;
+begin
+  Result := NeedPlugin.StartPlayerDetails(AIP, AQueryPort, ServerEvent);
+end;
+
+function TSteamMatchmakingServers.StartServerRules(AIP: UInt32; AQueryPort: UInt16): HServerQuery;
+begin
+  Result := NeedPlugin.StartServerRules(AIP, AQueryPort, ServerEvent);
+end;
+
+procedure TSteamMatchmakingServers.StopServerQuery(AQuery: HServerQuery);
+begin
+  NeedPlugin.StopServerQuery(AQuery);
+end;
+
+procedure TSteamMatchmakingServers.ServerEvent(Sender: TObject; const AEvent: TSteamServerEvent;
+  const AText, AValue: string);
+begin
+  case AEvent.Kind of
+    sekServerResponded:
+      if Assigned(FOnServerResponded) then
+        FOnServerResponded(Self, AEvent.Request, AEvent.Index, AEvent.Server);
+    sekServerFailedToRespond:
+      if Assigned(FOnServerFailedToRespond) then
+        FOnServerFailedToRespond(Self, AEvent.Request, AEvent.Index);
+    sekServerListComplete:
+      if Assigned(FOnServerListComplete) then
+        FOnServerListComplete(Self, AEvent.Request, AEvent.Response);
+    sekPingResponded:
+      if Assigned(FOnPingResponded) then
+        FOnPingResponded(Self, AEvent.Query, AEvent.Server);
+    sekPingFailedToRespond:
+      if Assigned(FOnPingFailed) then
+        FOnPingFailed(Self, AEvent.Query);
+    sekPlayerAdded:
+      if Assigned(FOnPlayer) then
+        FOnPlayer(Self, AEvent.Query, AText, AEvent.Score, AEvent.TimePlayed);
+    sekPlayersFailedToRespond:
+      if Assigned(FOnPlayersFailed) then
+        FOnPlayersFailed(Self, AEvent.Query);
+    sekPlayersComplete:
+      if Assigned(FOnPlayersComplete) then
+        FOnPlayersComplete(Self, AEvent.Query);
+    sekRuleResponded:
+      if Assigned(FOnRule) then
+        FOnRule(Self, AEvent.Query, AText, AValue);
+    sekRulesFailedToRespond:
+      if Assigned(FOnRulesFailed) then
+        FOnRulesFailed(Self, AEvent.Query);
+    sekRulesComplete:
+      if Assigned(FOnRulesComplete) then
+        FOnRulesComplete(Self, AEvent.Query);
+  end;
+end;

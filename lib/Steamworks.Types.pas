@@ -278,7 +278,8 @@ const
   and its offset, e.g. 304 -> @code('Friends+4'), 703 -> @code('Utils+3').
   Ids of 1000000 and above are the Steam client's own internal callbacks,
   which manual dispatch also delivers; they are not in the public SDK headers
-  and are labelled @code('internal').
+  and are labelled @code('internal'); negative ids (posted by a plug-in for
+  a C++ response object) @code('response object').
   @param(ACallbackID  k_iCallback value.) }
 function SteamCallbackGroupName(ACallbackID: Integer): string;
 
@@ -457,6 +458,10 @@ var
 begin
   if ACallbackID >= 1000000 then
     Exit('internal');
+  // Negative ids: posted by a plug-in for a C++ response object
+  // (TSteamCallbackDispatcher.Post), never by Steam
+  if ACallbackID < 0 then
+    Exit('response object');
   for I := Low(SteamCallbackBases) to High(SteamCallbackBases) do
     if ACallbackID >= SteamCallbackBases[I] then
       Exit(SteamCallbackNames[I] + '+' + IntToStr(ACallbackID - SteamCallbackBases[I]));

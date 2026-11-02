@@ -41,6 +41,7 @@ contains
   Steamworks.Plugin.Networking in '..\lib\plugins\Steamworks.Plugin.Networking.pas',
   Steamworks.Plugin.NetworkingSockets in '..\lib\plugins\Steamworks.Plugin.NetworkingSockets.pas',
   Steamworks.Plugin.NetworkingMessages in '..\lib\plugins\Steamworks.Plugin.NetworkingMessages.pas',
-  Steamworks.Plugin.NetworkingUtils in '..\lib\plugins\Steamworks.Plugin.NetworkingUtils.pas';
+  Steamworks.Plugin.NetworkingUtils in '..\lib\plugins\Steamworks.Plugin.NetworkingUtils.pas',
+  Steamworks.Plugin.MatchmakingServers in '..\lib\plugins\Steamworks.Plugin.MatchmakingServers.pas';
 
 end.

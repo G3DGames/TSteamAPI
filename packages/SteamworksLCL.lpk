@@ -157,6 +157,10 @@
         <UnitName Value="Steamworks.Plugin.NetworkingUtils"/>
       </Item>
       <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.MatchmakingServers.pas"/>
+        <UnitName Value="Steamworks.Plugin.MatchmakingServers"/>
+      </Item>
+      <Item>
         <Filename Value="../lib/Steamworks.inc"/>
         <Type Value="Include"/>
       </Item>

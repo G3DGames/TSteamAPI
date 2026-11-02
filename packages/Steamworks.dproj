@@ -7,7 +7,7 @@
         <MainSource>Steamworks.dpk</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>168067</TargetedPlatforms>
         <ProjectName Condition="'$(ProjectName)'==''">Steamworks</ProjectName>
     </PropertyGroup>
@@ -213,6 +213,7 @@
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingSockets.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingMessages.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingUtils.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.MatchmakingServers.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

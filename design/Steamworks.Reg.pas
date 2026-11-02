@@ -17,7 +17,7 @@ procedure Register;
 implementation
 
 uses
-  Classes, DesignIntf, DesignEditors, Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Steamworks.Plugin.Input, Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties, Steamworks.Plugin.Music, Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface, Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets, Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils;
+  Classes, DesignIntf, DesignEditors, Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Steamworks.Plugin.Input, Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties, Steamworks.Plugin.Music, Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface, Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets, Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils, Steamworks.Plugin.MatchmakingServers;
 
 type
   // Adds the units the IDE-generated event handlers need (record and
@@ -37,7 +37,7 @@ end;
 
 procedure Register;
 begin
-  RegisterComponents('Steamworks', [TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput, TSteamMatchmaking, TSteamParties, TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory, TSteamVideo, TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking, TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils]);
+  RegisterComponents('Steamworks', [TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput, TSteamMatchmaking, TSteamParties, TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory, TSteamVideo, TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking, TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils, TSteamMatchmakingServers]);
   RegisterSelectionEditor(TSteamPluginComponent, TSteamPluginSelectionEditor);
 end;
 

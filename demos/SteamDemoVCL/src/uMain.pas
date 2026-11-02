@@ -13,7 +13,7 @@
   Copy Log, Exit - and four tabs: Output (the log, also appended to
   SteamDemo.log next to the executable), Personal (the user's avatar,
   persona, Steam ids, level, the friends list with avatars), Achievements
-  (icons, unlock state) and Components (the base test of 20 more plug-in
+  (icons, unlock state) and Components (the base test of 21 more plug-in
   components, demos/Shared/SteamComponentTest.pas - the same test as the
   FMX SteamDemo's; that unit creates the components itself). }
 unit uMain;
@@ -148,7 +148,7 @@ type
   private
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
-    { The component test (creates its own 20 components). }
+    { The component test (creates its own 21 components). }
     FTest: TSteamComponentTest;
     { Auto Start Steam setting, saved in @link(FSettingsFile). }
     FAutoStart: Boolean;
@@ -516,6 +516,9 @@ begin
     // Open, append, close per line: nothing is lost if the process is killed
     AssignFile(F, FLogFile);
     Append(F);
+    // UTF-8 like the FMX and LCL demos' logs (a TextFile writes the ANSI
+    // code page by default: Steam's UTF-8 server names came out as '?')
+    SetTextCodePage(F, 65001);
     try
       Writeln(F, Line);
     finally

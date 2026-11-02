@@ -27,7 +27,9 @@ Each plug-in unit has
     raises ESteamworksError naming the export.
 Hand-written additions live in tools/plugin_extras/<Name>.pas.txt (sections
 //@uses //@types //@private //@public //@implementation //@initialize
-//@finalize) and are merged verbatim. A method the generator cannot emit (a
+//@finalize for the plug-in class; //@comptypes //@compprivate //@comppublic
+//@comppublished //@compimplementation for the component) and are merged
+verbatim. A method the generator cannot emit (a
 struct returned by value, as in ISteamInput) may be written there by hand
 under its generated name; the report then lists it as hand-written. Generated files must never be edited by hand.
 
@@ -80,6 +82,10 @@ PLUGINS = {
     "ISteamNetworkingSockets": "NetworkingSockets",
     "ISteamNetworkingMessages": "NetworkingMessages",
     "ISteamNetworkingUtils": "NetworkingUtils",
+    # Batch 2c (2026-11-02): server browser - its results arrive through C++
+    # response objects (ISteamMatchmaking*Response), built by hand in
+    # tools/plugin_extras/MatchmakingServers.pas.txt
+    "ISteamMatchmakingServers": "MatchmakingServers",
 }
 
 # Bit-flag enums the heuristic below cannot recognise (few, small powers of
@@ -149,6 +155,12 @@ CALLBACK_BASE_ALIAS = {"Input": "Controller"}
 # Callbacks of an interface declared in ANOTHER header (the header rule
 # would miss them); their id still has to lie in the interface's range.
 CALLBACK_EXTRA = {"NetworkingSockets": {"SteamNetworkingFakeIPResult_t"}}
+# Interfaces that own no callback structs although their header declares
+# some (isteammatchmaking.h: the lobby / party callbacks belong to
+# Matchmaking and Parties; there is no k_iSteamMatchmakingServersCallbacks
+# base to tell them apart). MatchmakingServers answers through C++ response
+# objects instead (tools/plugin_extras/MatchmakingServers.pas.txt).
+NO_CALLBACKS = {"MatchmakingServers"}
 
 # Declared by hand in lib/Steamworks.Types.pas (read at run time as well).
 PASCAL_KEYWORDS = set("""and array as asm begin case class const constructor destructor dispinterface
@@ -854,6 +866,8 @@ class PluginUnit:
 
     def interface_callbacks(self):
         """Generated callback structs declared in this interface's header, by id."""
+        if self.name in NO_CALLBACKS:
+            return []
         sdk = self.sdk
         header = None
         for h, txt in sdk.headers.items():
@@ -1010,6 +1024,7 @@ class PluginUnit:
     # ------------------------------------------------------------- emit
     def emit(self):
         out = []
+        self._out = out   # the component emitters splice extras in here too
         w = out.append
         ci = self.iface["classname"]
         w(f"(* @abstract({ci} plug-in (SDK 1.65), generated from steam_api.json.)")
@@ -1037,9 +1052,13 @@ class PluginUnit:
             uses += [u.strip() for u in line.split(",") if u.strip()]
         w("  " + ", ".join(uses) + ";")
         w("")
-        w("type")
-        if self.extras.get("types"):
-            out.extend(self.extras["types"])
+        xt = self.extras.get("types", [])
+        # a types section may open with its own const block (it then
+        # re-opens "type" itself)
+        if not (xt and xt[0].strip() == "const"):
+            w("type")
+        if xt:
+            out.extend(xt)
             w("")
         w(doc(f"Every flat export of {ci} with its exact C signature (@nil when the "
               "loaded library lacks it). First argument: the interface pointer.", "  "))
@@ -1186,6 +1205,9 @@ class PluginUnit:
             w(f"  {cb['event']} = procedure(Sender: TObject; {mode} AData: {cb['struct']}) of object;")
         if self.callbacks:
             w("")
+        if self.extras.get("comptypes"):
+            self._out.extend(self.extras["comptypes"])
+            w("")
         w("{$ifndef FPC}")
         w("  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]")
         w("{$endif}")
@@ -1197,6 +1219,8 @@ class PluginUnit:
         for cb in self.callbacks:
             w(doc(f"Backing field of @link({cb['prop']}).", "    "))
             w(f"    {cb['field']}: {cb['event']};")
+        # hand-written fields / methods (fields first, as above)
+        self._out.extend(self.extras.get("compprivate", []))
         w(doc("Read accessor of @link(Plugin).", "    "))
         w(f"    function GetPlugin: {self.cls};")
         for cb in self.callbacks:
@@ -1208,12 +1232,14 @@ class PluginUnit:
         w("  public")
         w(doc(f"The {ci} plug-in, for calls; @nil while Steam is not running.", "    "))
         w(f"    property Plugin: {self.cls} read GetPlugin;")
+        self._out.extend(self.extras.get("comppublic", []))
         w("  published")
         w(doc("The TSteamAPI this component belongs to.", "    "))
         w("    property SteamAPI;")
         for cb in self.callbacks:
             w(doc(f"Callback {cb['id']} ({cb['struct']}): " + (cb["doc"] or "see the SDK."), "    "))
             w(f"    property {cb['prop']}: {cb['event']} read {cb['field']} write {cb['field']};")
+        self._out.extend(self.extras.get("comppublished", []))
         w("  end;")
         w("")
 
@@ -1246,6 +1272,9 @@ class PluginUnit:
             w("  AData.CopyTo(Ev, SizeOf(Ev));")
             w(f"  {cb['field']}(Self, Ev);")
             w("end;")
+            w("")
+        if self.extras.get("compimplementation"):
+            self._out.extend(self.extras["compimplementation"])
             w("")
 
     def call_args(self, m):

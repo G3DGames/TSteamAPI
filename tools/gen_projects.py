@@ -35,7 +35,9 @@ PLUGINS = ["Steamworks.Plugin.Utils", "Steamworks.Plugin.User", "Steamworks.Plug
            "Steamworks.Plugin.RemotePlay",
            # batch 2b (2026-11-02)
            "Steamworks.Plugin.Networking", "Steamworks.Plugin.NetworkingSockets",
-           "Steamworks.Plugin.NetworkingMessages", "Steamworks.Plugin.NetworkingUtils"]
+           "Steamworks.Plugin.NetworkingMessages", "Steamworks.Plugin.NetworkingUtils",
+           # batch 2c (2026-11-02)
+           "Steamworks.Plugin.MatchmakingServers"]
 # Delphi platforms with a Steam redistributable. Linux32 and LinuxARM64 are
 # FPC-only (Delphi has no such targets); see README.
 ALL_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64", "Android64"]

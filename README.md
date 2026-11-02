@@ -98,6 +98,7 @@ lib/                        framework-free library (Delphi + FPC)
     Steamworks.Plugin.NetworkingSockets.pas  ISteamNetworkingSockets (connections)
     Steamworks.Plugin.NetworkingMessages.pas ISteamNetworkingMessages (P2P messages)
     Steamworks.Plugin.NetworkingUtils.pas    ISteamNetworkingUtils (relay network, ping)
+    Steamworks.Plugin.MatchmakingServers.pas ISteamMatchmakingServers (server browser)
 fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread),
                             SteamImageToBitmap, SteamFormToRGB (screenshots)
@@ -123,7 +124,7 @@ demos/
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form,
                               File menu (Auto Start Steam, Take Screenshot, Copy Log, Exit) and
-                              the Components tab (base test of 20 more plug-in components)
+                              the Components tab (base test of 21 more plug-in components)
   Shared/                   SteamComponentTest.pas: the component test of SteamDemoVCL and
                             SteamDemoLCL (Delphi + FPC, no UI; creates its own components)
   SteamConsole/             console smoke test (no framework; FPC-ready)
@@ -248,8 +249,8 @@ Step by step, with every alarming-looking message explained:
    TSteamTimeline, TSteamUGC, TSteamMatchmaking, TSteamParties,
    TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory,
    TSteamVideo, TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking,
-   TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils
-   - 20): each is on
+   TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils,
+   TSteamMatchmakingServers - 21): each is on
    the form with its events wired;
    the test checks it is attached, makes its synchronous calls and waits up
    to 20 s for one or more callbacks / call results through its events. The
@@ -258,7 +259,13 @@ Step by step, with every alarming-looking message explained:
    code Steam puts in them (Steam Cloud or Workshop being off for the app
    is a Steam setting). Side effects: a small Steam Cloud file is written
    and deleted, a timeline event / game phase is recorded, and a socket
-   pair inside the program sends itself one message. The test
+   pair inside the program sends itself one message. The server-browser
+   test reads a LAN list for this app and the Internet list of AppID 730
+   (Counter-Strike 2: many public servers), releases it after 5 servers
+   and asks the first one with a direct address for its ping, players and
+   rules - read-only queries any server browser makes. Servers behind
+   Steam's relay network report a fake IP (169.254.x.x) that these
+   queries cannot reach, so they are skipped. The test
    writes no screenshot (it only switches the screenshot hook on and off);
    use File > Take Screenshot for that.
 4. To use the components at design time, for the IDE's platform (Win64 for
@@ -278,7 +285,7 @@ Step by step, with every alarming-looking message explained:
       TSteamHTMLSurface, TSteamInventory, TSteamVideo,
       TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking,
       TSteamNetworkingSockets, TSteamNetworkingMessages,
-      TSteamNetworkingUtils) and
+      TSteamNetworkingUtils, TSteamMatchmakingServers) and
       `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
       (the VCL TSteamAPI). They appear on the "Steamworks"
       palette page.
@@ -340,7 +347,7 @@ plug-in unit also declares a component named after the interface -
 `TSteamMatchmaking`, `TSteamParties`, `TSteamMusic`, `TSteamHTTP`, `TSteamHTMLSurface`,
 `TSteamInventory`, `TSteamVideo`, `TSteamParentalSettings`, `TSteamRemotePlay`,
 `TSteamNetworking`, `TSteamNetworkingSockets`, `TSteamNetworkingMessages`,
-`TSteamNetworkingUtils` - that works with any framework:
+`TSteamNetworkingUtils`, `TSteamMatchmakingServers` - that works with any framework:
 
 * `SteamAPI` links it to the root; at run time a component whose owner has
   exactly one `TSteamAPI` links itself.
@@ -711,7 +718,7 @@ Windows', normal behaviour. Each says why and what to do.
   VCL demo (buttons enabled by state, File menu, tabs Output, Personal,
   Achievements, Components), with the Steam root and the Friends / UserStats
   components in `src/uMain.lfm`; **Test components** runs
-  `demos/Shared/SteamComponentTest.pas` (20 components, created by that
+  `demos/Shared/SteamComponentTest.pas` (21 components, created by that
   unit - the same tests as the FMX SteamDemo). To open that form in the designer, install
   `packages/SteamworksLCL.lpk` first (docs/Install-Lazarus-FPC.md); before
   that, if Lazarus offers to remove unknown classes, choose Cancel.
@@ -806,14 +813,20 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three 
   HTTP, HTMLSurface, Inventory, Video, ParentalSettings, RemotePlay - one
   page each and a SteamDemo test. Not bound: `ISteamParties.
   GetBeaconLocationData` (struct by value - needs a per-platform shim).
-* Batch 2b (2026-11-02, not yet compiled): Networking, NetworkingSockets,
+* Batch 2b (2026-11-02, tested on Win64 with Delphi 13 (FMX, VCL) and
+  FPC 3.2.2 (LCL)): Networking, NetworkingSockets,
   NetworkingMessages, NetworkingUtils, with C union support (hand-written
   variant records: SteamNetworkingIdentity, SteamNetworkingIPAddr,
   SteamNetworkingConfigValue_t, SteamInputActionEvent_t,
   RemotePlayInput_t) - one page each and a SteamDemo test. Not bound:
   `ISteamNetworking.CreateListenSocket` / `CreateConnectionSocket`
   (deprecated `SteamIPAddress_t` by value).
-* Next: MatchmakingServers (C++ response objects - a vtable shim).
+* Batch 2c (2026-11-02, not yet compiled): MatchmakingServers, the server
+  browser. Its answers come through C++ response objects, which the
+  plug-in builds itself (Pascal vtables; on Win32 a thunk turns MSVC's
+  thiscall into stdcall) and turns into ordinary events delivered like
+  callbacks (`TSteamCallbackDispatcher.Post`). Not wrapped:
+  `ServerFriends` (undocumented; the raw method stays).
 * Later: the game-server API (`SteamGameServer_*`, ISteamGameServer /
   GameServerStats). ISteamController is not bound: Valve deprecated it in
   favour of ISteamInput.

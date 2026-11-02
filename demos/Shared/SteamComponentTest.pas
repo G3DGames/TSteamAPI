@@ -1,4 +1,4 @@
-{ @abstract(The base test of 20 plug-in components, for the VCL and LCL
+{ @abstract(The base test of 21 plug-in components, for the VCL and LCL
   demos: no UI, compiles with Delphi and FPC.)
 
   @link(TSteamComponentTest) creates the components itself (owned by it,
@@ -42,7 +42,8 @@ uses
   Steamworks.Plugin.Music, Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface,
   Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings,
   Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets,
-  Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils;
+  Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils,
+  Steamworks.Plugin.MatchmakingServers;
 
 const
   { Component test: index of TSteamUtils. }
@@ -85,8 +86,23 @@ const
   CT_NETMESSAGES = 18;
   { Component test: index of TSteamNetworkingUtils. }
   CT_NETUTILS = 19;
+  { Component test: index of TSteamMatchmakingServers. }
+  CT_SERVERS = 20;
   { Number of components the component test covers. }
-  CT_COUNT = 20;
+  CT_COUNT = 21;
+  { AppID whose Internet server list the MatchmakingServers test reads: a
+    game with many public servers (Counter-Strike 2), so ServerResponded
+    and the ping / players / rules queries meet a real server. Read-only. }
+  TEST_SERVER_APP = 730;
+  { The MatchmakingServers test releases the Internet list once this many
+    servers answered and one of them has a direct address... }
+  TEST_SERVER_MAX = 5;
+  { ... or after this many, whatever their addresses. Many big servers sit
+    behind Steam's relay network and report a FAKE IP (169.254.x.x, see
+    ISteamNetworkingFakeIP): ping / players / rules cannot reach those
+    (first run, 2026-11-02: all three failed), so the test queries the
+    first server with a direct address. }
+  TEST_SERVER_LIMIT = 50;
   { URL the HTTP test fetches: Steam's own Web API server-info call (no key
     needed, small JSON answer). }
   TEST_HTTP_URL = 'https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/';
@@ -100,7 +116,8 @@ const
     'TSteamApps', 'TSteamRemoteStorage', 'TSteamScreenshots', 'TSteamTimeline', 'TSteamUGC',
     'TSteamMatchmaking', 'TSteamParties', 'TSteamMusic', 'TSteamHTTP', 'TSteamHTMLSurface',
     'TSteamInventory', 'TSteamVideo', 'TSteamParentalSettings', 'TSteamRemotePlay',
-    'TSteamNetworking', 'TSteamNetworkingSockets', 'TSteamNetworkingMessages', 'TSteamNetworkingUtils');
+    'TSteamNetworking', 'TSteamNetworkingSockets', 'TSteamNetworkingMessages', 'TSteamNetworkingUtils',
+    'TSteamMatchmakingServers');
 
 type
   { State of one component in the test. }
@@ -179,6 +196,8 @@ type
     SteamNetworkingMessages1: TSteamNetworkingMessages;
     { See SteamUtils1. }
     SteamNetworkingUtils1: TSteamNetworkingUtils;
+    { See SteamUtils1. }
+    SteamMatchmakingServers1: TSteamMatchmakingServers;
     { Backing field of @link(OnLog). }
     FOnLog: TComponentTestLogEvent;
     { Backing field of @link(OnRowChanged). }
@@ -213,6 +232,24 @@ type
     FInvResult: SteamInventoryResult_t;
     { The NetworkingSockets test's socket pair (k_HSteamNetConnection_Invalid = none). }
     FSockConn1, FSockConn2: HSteamNetConnection;
+    { The MatchmakingServers test's Internet and LAN lists (@nil = none). }
+    FServerList, FLANList: HServerListRequest;
+    { Its ping / players / rules queries (HSERVERQUERY_INVALID = none). }
+    FPingQuery, FPlayersQuery, FRulesQuery: HServerQuery;
+    { Servers of the Internet list that answered / did not answer. }
+    FServersSeen, FServersFailed: Integer;
+    { Servers that answered with a relay fake IP (169.254.x.x). }
+    FServersFake: Integer;
+    { The first server that answered (the one queried). }
+    FHaveServer: Boolean;
+    { Its IP (host order) and query port. }
+    FFirstIP: UInt32;
+    { See FFirstIP. }
+    FFirstQueryPort: UInt16;
+    { Its name. }
+    FFirstName: string;
+    { Players / rules reported by the queries. }
+    FPlayerCount, FRuleCount: Integer;
     { Read accessor of @link(RowText). }
     function GetRowText(AIndex: Integer): string;
     { Read accessor of @link(Screenshots). }
@@ -241,6 +278,14 @@ type
     procedure CheckTestsDone;
     { Closes whatever is left of the socket pair (both sides). }
     procedure CloseSocketPair(const AWhy: string);
+    { Releases the MatchmakingServers test's lists and stops its queries. }
+    procedure StopServerRequests(const AWhy: string);
+    { Adds S to the MatchmakingServers row. }
+    procedure AddServerNote(const S: string);
+    { Registers a started server-browser request (AOk) or records it as refused. }
+    procedure ServerRequestStarted(const AName, AWhat: string; AOk: Boolean);
+    { The Internet list has answered enough: releases it and queries its first server. }
+    procedure EndInternetList(const AHow: string);
     { TSteamUtils: reads + CheckFileSignature. }
     procedure TestUtils;
     { TSteamUser: reads + GetAuthSessionTicket + GetDurationControl. }
@@ -281,6 +326,8 @@ type
     procedure TestNetworkingMessages;
     { TSteamNetworkingUtils: local timestamp, relay network status. }
     procedure TestNetworkingUtils;
+    { See TestUtils. }
+    procedure TestMatchmakingServers;
     { Event handlers of the components (wired in the constructor). }
     procedure UtilsCheckFileSignature(Sender: TObject; const AData: CheckFileSignature_t);
     { See UtilsCheckFileSignature. }
@@ -341,8 +388,33 @@ type
     procedure NetConnectionStatusChanged(Sender: TObject; const AData: SteamNetConnectionStatusChangedCallback_t);
     { See UtilsCheckFileSignature. }
     procedure RelayNetworkStatus(Sender: TObject; const AData: SteamRelayNetworkStatus_t);
+    { See UtilsCheckFileSignature. }
+    procedure ServersResponded(Sender: TObject; ARequest: HServerListRequest; AIndex: Integer;
+      const AServer: gameserveritem_t);
+    { See UtilsCheckFileSignature. }
+    procedure ServersFailed(Sender: TObject; ARequest: HServerListRequest; AIndex: Integer);
+    { See UtilsCheckFileSignature. }
+    procedure ServerListComplete(Sender: TObject; ARequest: HServerListRequest;
+      AResponse: EMatchMakingServerResponse);
+    { See UtilsCheckFileSignature. }
+    procedure PingResponded(Sender: TObject; AQuery: HServerQuery; const AServer: gameserveritem_t);
+    { See UtilsCheckFileSignature. }
+    procedure PingFailed(Sender: TObject; AQuery: HServerQuery);
+    { See UtilsCheckFileSignature. }
+    procedure ServerPlayer(Sender: TObject; AQuery: HServerQuery; const AName: string;
+      AScore: Integer; ATimePlayed: Single);
+    { See UtilsCheckFileSignature. }
+    procedure PlayersFailed(Sender: TObject; AQuery: HServerQuery);
+    { See UtilsCheckFileSignature. }
+    procedure PlayersComplete(Sender: TObject; AQuery: HServerQuery);
+    { See UtilsCheckFileSignature. }
+    procedure ServerRule(Sender: TObject; AQuery: HServerQuery; const ARule, AValue: string);
+    { See UtilsCheckFileSignature. }
+    procedure RulesFailed(Sender: TObject; AQuery: HServerQuery);
+    { See UtilsCheckFileSignature. }
+    procedure RulesComplete(Sender: TObject; AQuery: HServerQuery);
   public
-    { Creates the 20 components, owned by the test and linked to ASteamAPI. }
+    { Creates the 21 components, owned by the test and linked to ASteamAPI. }
     constructor Create(AOwner: TComponent; ASteamAPI: TCustomSteamAPI); reintroduce;
     { Runs the test (Steam must be running); a running test is finished first. }
     procedure Start;
@@ -505,6 +577,9 @@ begin
   FInvResult := k_SteamInventoryResultInvalid;
   FSockConn1 := k_HSteamNetConnection_Invalid;
   FSockConn2 := k_HSteamNetConnection_Invalid;
+  FPingQuery := HSERVERQUERY_INVALID;
+  FPlayersQuery := HSERVERQUERY_INVALID;
+  FRulesQuery := HSERVERQUERY_INVALID;
   for I := 0 to CT_COUNT - 1 do
     FRows[I] := 'not run - press Test components (Steam must be started)';
   // Each: create, wire the events, link (SteamAPI last: it attaches the
@@ -599,6 +674,20 @@ begin
   SteamNetworkingUtils1.Name := 'SteamNetworkingUtils1';
   SteamNetworkingUtils1.OnSteamRelayNetworkStatus := RelayNetworkStatus;
   SteamNetworkingUtils1.SteamAPI := ASteamAPI;
+  SteamMatchmakingServers1 := TSteamMatchmakingServers.Create(Self);
+  SteamMatchmakingServers1.Name := 'SteamMatchmakingServers1';
+  SteamMatchmakingServers1.OnServerResponded := ServersResponded;
+  SteamMatchmakingServers1.OnServerFailedToRespond := ServersFailed;
+  SteamMatchmakingServers1.OnServerListComplete := ServerListComplete;
+  SteamMatchmakingServers1.OnPingResponded := PingResponded;
+  SteamMatchmakingServers1.OnPingFailed := PingFailed;
+  SteamMatchmakingServers1.OnPlayer := ServerPlayer;
+  SteamMatchmakingServers1.OnPlayersFailed := PlayersFailed;
+  SteamMatchmakingServers1.OnPlayersComplete := PlayersComplete;
+  SteamMatchmakingServers1.OnRule := ServerRule;
+  SteamMatchmakingServers1.OnRulesFailed := RulesFailed;
+  SteamMatchmakingServers1.OnRulesComplete := RulesComplete;
+  SteamMatchmakingServers1.SteamAPI := ASteamAPI;
 end;
 
 function TSteamComponentTest.GetRowText(AIndex: Integer): string;
@@ -767,6 +856,7 @@ begin
         AddLog('Test cleanup: ISteamHTMLSurface.Shutdown ' +
           BoolToStr(SteamHTMLSurface1.Plugin.Shutdown, True));
       CloseSocketPair('Test cleanup');
+      StopServerRequests('Test cleanup');
     except
       on E: Exception do AddLog('Test cleanup failed: ' + E.Message);
     end;
@@ -778,6 +868,11 @@ begin
   FInvResult := k_SteamInventoryResultInvalid;
   FSockConn1 := k_HSteamNetConnection_Invalid;
   FSockConn2 := k_HSteamNetConnection_Invalid;
+  FServerList := nil;
+  FLANList := nil;
+  FPingQuery := HSERVERQUERY_INVALID;
+  FPlayersQuery := HSERVERQUERY_INVALID;
+  FRulesQuery := HSERVERQUERY_INVALID;
   Passed := 0;
   for I := 0 to CT_COUNT - 1 do
   begin
@@ -842,6 +937,7 @@ begin
   TestNetworkingSockets;
   TestNetworkingMessages;
   TestNetworkingUtils;
+  TestMatchmakingServers;
   CheckTestsDone;
 end;
 
@@ -1459,7 +1555,11 @@ begin
      AData.m_unTotalMatchingResults, BoolToStr(AData.m_bCachedData, True)]));
   if not Answered(CT_UGC, 'SendQueryUGCRequest') then
     Exit;
-  FTests[CT_UGC].Note := Format('query %s, %d items', [ResultText(AData.m_eResult), AData.m_unTotalMatchingResults]);
+  // appended: the EULA status may have arrived first (VCL run 16:35)
+  if FTests[CT_UGC].Note <> '' then
+    FTests[CT_UGC].Note := FTests[CT_UGC].Note + ', ';
+  FTests[CT_UGC].Note := FTests[CT_UGC].Note +
+    Format('query %s, %d items', [ResultText(AData.m_eResult), AData.m_unTotalMatchingResults]);
   G := SteamUGC1.Plugin;
   if G <> nil then
   try
@@ -2024,4 +2124,277 @@ begin
     'any relay %d, "%s"', [Ord(AData.m_eAvail), Ord(AData.m_eAvailNetworkConfig), Ord(AData.m_eAvailAnyRelay),
     SteamText(@AData.m_debugMsg[0])]));
 end;
+
+{ --- TSteamMatchmakingServers --- }
+
+{ How a server-list refresh ended. }
+function ServerResponseText(AResponse: EMatchMakingServerResponse): string;
+begin
+  case Ord(AResponse) of
+    0: Result := 'servers responded';
+    1: Result := 'servers failed to respond';
+    2: Result := 'no servers listed on the master server';
+  else
+    Result := 'response ' + IntToStr(Ord(AResponse));
+  end;
+end;
+
+{ An IPv4 address in host order as a.b.c.d. }
+function IPv4Text(AIP: UInt32): string;
+begin
+  Result := Format('%d.%d.%d.%d', [(AIP shr 24) and 255, (AIP shr 16) and 255, (AIP shr 8) and 255, AIP and 255]);
+end;
+
+procedure TSteamComponentTest.AddServerNote(const S: string);
+begin
+  if FTests[CT_SERVERS].Note <> '' then
+    FTests[CT_SERVERS].Note := FTests[CT_SERVERS].Note + ', ';
+  FTests[CT_SERVERS].Note := FTests[CT_SERVERS].Note + S;
+end;
+
+procedure TSteamComponentTest.ServerRequestStarted(const AName, AWhat: string; AOk: Boolean);
+begin
+  if AOk then
+  begin
+    AddLog(Format('Test TSteamMatchmakingServers: %s started - waiting for its answers', [AWhat]));
+    Expect(CT_SERVERS, AName);
+  end
+  else
+  begin
+    Inc(FTests[CT_SERVERS].Sent);
+    if FTests[CT_SERVERS].Missing <> '' then
+      FTests[CT_SERVERS].Missing := FTests[CT_SERVERS].Missing + ', ';
+    FTests[CT_SERVERS].Missing := FTests[CT_SERVERS].Missing + AName + ' (refused)';
+    AddLog(Format('Test TSteamMatchmakingServers: %s REFUSED by Steam (no request / query handle)', [AWhat]));
+  end;
+end;
+
+procedure TSteamComponentTest.TestMatchmakingServers;
+var
+  P: TSteamMatchmakingServersPlugin;
+begin
+  P := SteamMatchmakingServers1.Plugin;
+  if not BeginTest(CT_SERVERS, SteamMatchmakingServers1, P) then
+    Exit;
+  FServersSeen := 0;
+  FServersFailed := 0;
+  FServersFake := 0;
+  FHaveServer := False;
+  FPlayerCount := 0;
+  FRuleCount := 0;
+  try
+    // LAN: no master server, ends by itself within seconds - proves the
+    // list response object (RefreshComplete through its vtable)
+    FLANList := SteamMatchmakingServers1.StartServerList(sltLAN, FAppID);
+    ServerRequestStarted('LANList', 'LAN list for this app', FLANList <> nil);
+    // Internet: a game with many public servers (read-only queries), so
+    // ServerResponded and the ping / players / rules queries get a real
+    // server to talk to
+    FServerList := SteamMatchmakingServers1.StartServerList(sltInternet, TEST_SERVER_APP,
+      ['hasplayers', 'secure'], ['1', '1']);   // values as in Valve's SpaceWar sample
+    ServerRequestStarted('InternetList', Format('Internet list for AppID %d (hasplayers, secure; ' +
+      'released after %d servers incl. one with a direct address, or %d)', [TEST_SERVER_APP, TEST_SERVER_MAX,
+      TEST_SERVER_LIMIT]), FServerList <> nil);
+  except
+    on E: Exception do ReadFailed(CT_SERVERS, 'StartServerList', E);
+  end;
+end;
+
+procedure TSteamComponentTest.EndInternetList(const AHow: string);
+begin
+  if not Answered(CT_SERVERS, 'InternetList') then
+    Exit;
+  AddServerNote(Format('Internet list (AppID %d) %s: %d answered (%d with a relay fake IP), %d failed',
+    [TEST_SERVER_APP, AHow, FServersSeen, FServersFake, FServersFailed]));
+  try
+    SteamMatchmakingServers1.StopServerList(FServerList);
+    AddLog('Test TSteamMatchmakingServers: Internet list released (StopServerList)');
+  except
+    on E: Exception do ReadFailed(CT_SERVERS, 'StopServerList', E);
+  end;
+  FServerList := nil;
+  if not FHaveServer then
+  begin
+    AddServerNote('no server with a direct address answered - ping / players / rules not tested');
+    Exit;
+  end;
+  AddLog(Format('Test TSteamMatchmakingServers: querying "%s" (%s, query port %d): ping, players, rules',
+    [FFirstName, IPv4Text(FFirstIP), FFirstQueryPort]));
+  try
+    FPingQuery := SteamMatchmakingServers1.StartPing(FFirstIP, FFirstQueryPort);
+    ServerRequestStarted('Ping', Format('StartPing (query %d)', [FPingQuery]), FPingQuery <> HSERVERQUERY_INVALID);
+    FPlayersQuery := SteamMatchmakingServers1.StartPlayerDetails(FFirstIP, FFirstQueryPort);
+    ServerRequestStarted('Players', Format('StartPlayerDetails (query %d)', [FPlayersQuery]),
+      FPlayersQuery <> HSERVERQUERY_INVALID);
+    FRulesQuery := SteamMatchmakingServers1.StartServerRules(FFirstIP, FFirstQueryPort);
+    ServerRequestStarted('Rules', Format('StartServerRules (query %d)', [FRulesQuery]),
+      FRulesQuery <> HSERVERQUERY_INVALID);
+  except
+    on E: Exception do ReadFailed(CT_SERVERS, 'StartPing / StartPlayerDetails / StartServerRules', E);
+  end;
+end;
+
+procedure TSteamComponentTest.ServersResponded(Sender: TObject; ARequest: HServerListRequest; AIndex: Integer;
+  const AServer: gameserveritem_t);
+var
+  Fake: Boolean;
+begin
+  if (ARequest = nil) or (ARequest <> FServerList) then
+  begin
+    AddLog(Format('TSteamMatchmakingServers.OnServerResponded: server %d of another list, "%s"',
+      [AIndex, SteamText(@AServer.m_szServerName[0])]));
+    Exit;
+  end;
+  Inc(FServersSeen);
+  Fake := (AServer.m_NetAdr.m_unIP shr 16) = $A9FE;   // 169.254.0.0/16
+  if Fake then
+    Inc(FServersFake);
+  // the first few, and the one that will be queried
+  if (FServersSeen <= TEST_SERVER_MAX) or not (Fake or FHaveServer) then
+    AddLog(Format('TSteamMatchmakingServers.OnServerResponded: server %d "%s", map %s, %d/%d players, ' +
+      '%d ms, %s port %d (query port %d)%s', [AIndex, SteamText(@AServer.m_szServerName[0]),
+      SteamText(@AServer.m_szMap[0]), AServer.m_nPlayers, AServer.m_nMaxPlayers, AServer.m_nPing,
+      IPv4Text(AServer.m_NetAdr.m_unIP), AServer.m_NetAdr.m_usConnectionPort, AServer.m_NetAdr.m_usQueryPort,
+      IfThen(Fake, ' - relay fake IP', '')]));
+  if not (FHaveServer or Fake) then
+  begin
+    FHaveServer := True;
+    FFirstIP := AServer.m_NetAdr.m_unIP;
+    FFirstQueryPort := AServer.m_NetAdr.m_usQueryPort;
+    FFirstName := SteamText(@AServer.m_szServerName[0]);
+  end;
+  if (FHaveServer and (FServersSeen >= TEST_SERVER_MAX)) or (FServersSeen >= TEST_SERVER_LIMIT) then
+    EndInternetList(Format('released after %d servers', [FServersSeen]));
+end;
+
+procedure TSteamComponentTest.ServersFailed(Sender: TObject; ARequest: HServerListRequest; AIndex: Integer);
+begin
+  if (ARequest <> nil) and (ARequest = FServerList) then
+    Inc(FServersFailed);
+end;
+
+procedure TSteamComponentTest.ServerListComplete(Sender: TObject; ARequest: HServerListRequest;
+  AResponse: EMatchMakingServerResponse);
+var
+  Count: Integer;
+begin
+  Count := -1;
+  try
+    if SteamMatchmakingServers1.Plugin <> nil then
+      Count := SteamMatchmakingServers1.Plugin.GetServerCount(ARequest);
+  except
+    on E: Exception do ReadFailed(CT_SERVERS, 'GetServerCount', E);
+  end;
+  AddLog(Format('TSteamMatchmakingServers.OnServerListComplete: %s, %d servers in the list',
+    [ServerResponseText(AResponse), Count]));
+  if (ARequest <> nil) and (ARequest = FLANList) then
+  begin
+    if Answered(CT_SERVERS, 'LANList') then
+      AddServerNote(Format('LAN list: %s (%d)', [ServerResponseText(AResponse), Count]));
+    try
+      SteamMatchmakingServers1.StopServerList(FLANList);
+    except
+      on E: Exception do ReadFailed(CT_SERVERS, 'StopServerList', E);
+    end;
+    FLANList := nil;
+  end
+  else if (ARequest <> nil) and (ARequest = FServerList) then
+    EndInternetList('complete (' + ServerResponseText(AResponse) + ')');
+end;
+
+procedure TSteamComponentTest.PingResponded(Sender: TObject; AQuery: HServerQuery; const AServer: gameserveritem_t);
+begin
+  AddLog(Format('TSteamMatchmakingServers.OnPingResponded: query %d, "%s", %d ms',
+    [AQuery, SteamText(@AServer.m_szServerName[0]), AServer.m_nPing]));
+  if (AQuery = FPingQuery) and Answered(CT_SERVERS, 'Ping') then
+    AddServerNote(Format('ping %d ms', [AServer.m_nPing]));
+end;
+
+procedure TSteamComponentTest.PingFailed(Sender: TObject; AQuery: HServerQuery);
+begin
+  AddLog(Format('TSteamMatchmakingServers.OnPingFailed: query %d', [AQuery]));
+  if (AQuery = FPingQuery) and Answered(CT_SERVERS, 'Ping') then
+    AddServerNote('ping: no answer from the server');
+end;
+
+procedure TSteamComponentTest.ServerPlayer(Sender: TObject; AQuery: HServerQuery; const AName: string;
+  AScore: Integer; ATimePlayed: Single);
+begin
+  if AQuery <> FPlayersQuery then
+    Exit;
+  Inc(FPlayerCount);
+  if FPlayerCount <= 3 then
+    AddLog(Format('TSteamMatchmakingServers.OnPlayer: query %d, "%s", score %d, %.0f s',
+      [AQuery, AName, AScore, ATimePlayed]));
+end;
+
+procedure TSteamComponentTest.PlayersFailed(Sender: TObject; AQuery: HServerQuery);
+begin
+  AddLog(Format('TSteamMatchmakingServers.OnPlayersFailed: query %d', [AQuery]));
+  if (AQuery = FPlayersQuery) and Answered(CT_SERVERS, 'Players') then
+    AddServerNote('players: no answer from the server');
+end;
+
+procedure TSteamComponentTest.PlayersComplete(Sender: TObject; AQuery: HServerQuery);
+begin
+  AddLog(Format('TSteamMatchmakingServers.OnPlayersComplete: query %d, %d players', [AQuery, FPlayerCount]));
+  if (AQuery = FPlayersQuery) and Answered(CT_SERVERS, 'Players') then
+    AddServerNote(Format('%d players', [FPlayerCount]));
+end;
+
+procedure TSteamComponentTest.ServerRule(Sender: TObject; AQuery: HServerQuery; const ARule, AValue: string);
+begin
+  if AQuery <> FRulesQuery then
+    Exit;
+  Inc(FRuleCount);
+  if FRuleCount <= 3 then
+    AddLog(Format('TSteamMatchmakingServers.OnRule: query %d, %s = "%s"', [AQuery, ARule, AValue]));
+end;
+
+procedure TSteamComponentTest.RulesFailed(Sender: TObject; AQuery: HServerQuery);
+begin
+  AddLog(Format('TSteamMatchmakingServers.OnRulesFailed: query %d', [AQuery]));
+  if (AQuery = FRulesQuery) and Answered(CT_SERVERS, 'Rules') then
+    AddServerNote('rules: no answer from the server');
+end;
+
+procedure TSteamComponentTest.RulesComplete(Sender: TObject; AQuery: HServerQuery);
+begin
+  AddLog(Format('TSteamMatchmakingServers.OnRulesComplete: query %d, %d rules', [AQuery, FRuleCount]));
+  if (AQuery = FRulesQuery) and Answered(CT_SERVERS, 'Rules') then
+    AddServerNote(Format('%d rules', [FRuleCount]));
+end;
+
+procedure TSteamComponentTest.StopServerRequests(const AWhy: string);
+var
+  P: TSteamMatchmakingServersPlugin;
+begin
+  P := SteamMatchmakingServers1.Plugin;
+  if P <> nil then
+  begin
+    if FServerList <> nil then
+    begin
+      P.StopServerList(FServerList);
+      AddLog(AWhy + ': Internet server list released');
+    end;
+    if FLANList <> nil then
+    begin
+      P.StopServerList(FLANList);
+      AddLog(AWhy + ': LAN server list released');
+    end;
+    // harmless for queries that have ended
+    if FPingQuery <> HSERVERQUERY_INVALID then
+      P.StopServerQuery(FPingQuery);
+    if FPlayersQuery <> HSERVERQUERY_INVALID then
+      P.StopServerQuery(FPlayersQuery);
+    if FRulesQuery <> HSERVERQUERY_INVALID then
+      P.StopServerQuery(FRulesQuery);
+  end;
+  FServerList := nil;
+  FLANList := nil;
+  FPingQuery := HSERVERQUERY_INVALID;
+  FPlayersQuery := HSERVERQUERY_INVALID;
+  FRulesQuery := HSERVERQUERY_INVALID;
+end;
+
 end.

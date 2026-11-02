@@ -700,6 +700,144 @@ Project AppID: 2275430.
   VCL 140, LCL 109) - the FMX form takes that long to show in a debug
   run; harmless, watch it. Next: FPC probe on Win32 / Linux, batch 2c
   (MatchmakingServers).
+- Notes9 pushed (owner, 15:40: "pushed - continue").
+- BATCH 2C (zip Batch2c, follows Notes9): ISteamMatchmakingServers, the
+  server browser. Its answers come through C++ RESPONSE OBJECTS, not
+  callbacks:
+  * gen_steam_api.py: PLUGINS + MatchmakingServers; NO_CALLBACKS (no
+    k_iSteamMatchmakingServersCallbacks base, so the header rule gave it
+    all 17 lobby / party callbacks); new component extras sections
+    //@comptypes //@compprivate //@comppublic //@comppublished
+    //@compimplementation; an extras //@types section may open with
+    `const` (then it re-opens `type` itself). The 22 other plug-ins
+    regenerate UNCHANGED.
+  * lib/Steamworks.Callbacks.pas: TSteamCallbackDispatcher.Post(id,
+    data, size) - a payload from outside Steam's queue (any thread) kept
+    in FPosted; Pump delivers it right after RunFrame (no handler inside
+    Steam's frame), PumpToQueue queues it ahead of the frame's callbacks
+    (counted, so sdMainThread schedules a delivery), ClearQueue drops it.
+    Negative ids only; SteamCallbackGroupName names them 'response
+    object'.
+  * tools/plugin_extras/MatchmakingServers.pas.txt: TSteamServerResponse
+    records (VTable first) with four vtables of Pascal routines (cdecl,
+    object first) - on Win32 (MSVC THISCALL) asm thunks pop/push ECX/jmp
+    to stdcall routines (Delphi BASM + FPC {$asmmode intel}
+    nostackframe). The routines run on the pumping thread, copy the answer
+    (GetServerDetails inside ServerResponded, strings as UTF-8 bytes) and
+    Post it (id -4100); the plug-in's own subscription hands it to the
+    request's TSteamServerEventHandler. Plug-in API: StartServerList(kind,
+    app, filter keys, values, handler) / StopServerList, StartPing /
+    StartPlayerDetails / StartServerRules / StopServerQuery, StopOwner,
+    ActiveCount. Lifetime: an object lives while Steam may call it and
+    while posted events refer to it (Pending); ended / stopped ones are
+    freed 5 s later (sweep on the next request); CloseResponses (DoFinalize:
+    pump stopped, Steam still up) releases / cancels the rest, frees all.
+    A handler owner that is a TComponent gets a free notification
+    (TSteamServerOwnerWatch) that stops its requests. Steam is never
+    called with the lock held. ServerFriends not wrapped (undocumented).
+    ASSUMPTION, UNVERIFIED: Steam calls the response objects from inside
+    SteamAPI_ManualDispatch_RunFrame (manual dispatch) - the test shows it.
+  * Component TSteamMatchmakingServers: Start... / Stop... methods and 11
+    published events (OnServerResponded, OnServerFailedToRespond,
+    OnServerListComplete, OnPingResponded, OnPingFailed, OnPlayer,
+    OnPlayersFailed, OnPlayersComplete, OnRule, OnRulesFailed,
+    OnRulesComplete).
+  * Packages (Steamworks.dpk / .dproj, SteamworksLCL.lpk), gen_projects.py,
+    Reg units (24 components), doc_extras/MatchmakingServers.md, generated
+    docs page, components index, README.
+  * Test 20 -> 21 components (FMX SteamDemo on the form; shared
+    SteamComponentTest for VCL / LCL): LAN list for the app (ends by
+    itself), Internet list of AppID 730 (CS2, many public servers;
+    filters hasplayers + secure) released after 5 servers, then ping,
+    players and rules of the first server. PASS = every list / query
+    ended (failed-to-respond counts as an answer).
+  verify_generated: 779 flat signatures (18 new) identical.
+  REBUILD RUNTIME PACKAGE STEAMWORKS (+ the others that depend on it),
+  REINSTALL DCLSTEAMWORKS, REBUILD LAZARUS PACKAGE STEAMWORKSLCL.
+  NOT YET COMPILED. Win32 (the thunks) needs its own run.
+  Independent review (no compiler): no certain compile errors; ABI right
+  on every target (Win32 stack balances: thunk adds this, stdcall pops
+  it + the args). Fixed from it: Delphi Debug {$W+} could give the
+  thunks a stack frame -> {$W-} around them (restored after, $IFOPT);
+  posted events carry the object's Serial (a later object at the same
+  address never gets a stale event); StopServerList / StopServerQuery
+  never release / cancel a handle twice and prefer the RUNNING query
+  when Steam reuses a number; an answer delivered (sdPumpThread) before
+  StartPing & co. stored the query handle is re-posted to the next pump
+  (up to 200 times); test filters hasplayers / secure with value '1' as
+  in Valve's SpaceWar sample. Left: posts dropped by ClearQueue / a
+  raising handler keep their object until Steam stops (small, bounded).
+- BATCH 2C LCL RUN (owner, 16:22, FPC 3.2.2 Win64): COMPILED FIRST TIME,
+  23 plug-ins, 21 OF 21 PASS. RESPONSE OBJECTS WORK: Steam calls them
+  inside ManualDispatch_RunFrame (the assumption holds), posted as
+  callback -4100 (448 bytes), delivered on the main thread
+  (sumThread + sdMainThread). Internet list AppID 730: 5 ServerResponded
+  in 0.9 s with full details (names, maps, players, ping 6-15 ms) -
+  GetServerDetails inside the response works; StopServerList dropped the
+  ~17 answers already posted for it (logged as -4100 callbacks, no
+  events - as designed); LAN list: RefreshComplete
+  eNoServersListedOnMasterServer after 2 s. Ping / players / rules all
+  FAILED within 0.3 s: every listed server had a 169.254.x.x address =
+  Steam relay FAKE IPs (SDR), which A2S queries cannot reach (Steam also
+  warned "Rules query back from steam, without rules_data" three times).
+  So the failure paths of all three query objects are proven, not the
+  success paths. Zip Fix10 (follows Batch2c): the test queries the first
+  server WITHOUT a fake IP (TEST_SERVER_LIMIT 50 servers at most; the
+  note counts fake-IP servers); README. Screenshot + Exit clean.
+- FIX10 LCL RUN (owner, 16:27, FPC Win64): 21 OF 21 PASS. Server 27 of
+  27 answered was the first with a direct address (26 relay fake IPs).
+  SUCCESS PATHS PROVEN: PingResponded (gameserveritem_t & -> pointer,
+  6 ms), AddPlayerToList x7 with UTF-8 names, score and the FLOAT
+  time played (1127 s etc. - the Win64 XMM argument is right),
+  PlayersRefreshComplete; names with U+2022 come through intact. Rules:
+  RulesFailedToRespond after 2 s - CS2 servers do not answer rules
+  queries (assumed; Steam's earlier "without rules_data" warning fits),
+  so RulesResponded is the one virtual method not yet seen called.
+  Remaining for batch 2c: FMX / VCL Win64, and Win32 (the thunks).
+- FIX10 FMX RUN (owner, 16:30, Delphi 13 Win64 Debug): COMPILED, 21 OF
+  21 PASS. Queried a community server (direct IP, 8/32 players listed):
+  ping 7 ms, players query COMPLETE with 0 players (the server hides its
+  player list - common), rules failed after 2 s again. Delphi Win64
+  response objects work as under FPC. Remaining: VCL Win64, Win32.
+- FIX10 VCL RUN (owner, 16:32, Delphi 13 Win64 Debug): 21 OF 21 PASS
+  (same RETAKE server: ping 7 ms, 7 players with names / scores / times,
+  rules failed). ONE DEMO BUG: U+2022 in server names showed as U+FFFD in
+  the VCL log FILE - its TextFile wrote the ANSI code page (cp1252 0x95),
+  read back as UTF-8. Zip Fix11 (follows Fix10): SetTextCodePage(F,
+  65001) after Append in SteamDemoVCL's AddLog (FMX: TFile.AppendAllText
+  UTF-8; LCL: FPC strings are UTF-8 already). Remaining: Win32.
+- FIX11 VCL RUN (owner, 16:35): 21 OF 21 PASS, U+2022 now right in the
+  VCL log file. Seen there: the UGC row lost "EULA status" when the
+  EULA answer came BEFORE the query (the query handler assigned Note
+  instead of appending) - zip Fix12 (follows Fix11) appends, in the
+  shared unit and the FMX demo. Remaining for batch 2c: Win32.
+- VCL RUN 16:36 (Win64, Fix12 presumably): 21 OF 21 PASS; UGC row has
+  both notes - but the query answered FIRST this time, so the reordered
+  case is not proven yet (harmless either way). Still: Win32.
+- Owner sent a Win32 VCL log (16:39) that is OLD: written 15:34, 22
+  plug-ins, 20 components = a Batch2b / Fix9 build, before Batch2c. Still
+  useful: WIN32 (WOW64) VCL 20 OF 20 PASS with the Fix9 SDKTypes (1221 =
+  712 bytes on Win32 too), screenshot 944x601 OK, Exit clean. The Win32
+  run of batch 2c (thunks) is still to come - needs Steamworks rebuilt
+  for Win32 first.
+- WIN32 THUNKS PROVEN (owner, 16:40, SteamDemoVCL Win32 Debug under
+  WOW64, Delphi 13 - so {$W+} Debug stack frames did not break them):
+  23 plug-ins, 21 OF 21 PASS. Posted payload 432 bytes (448 on Win64:
+  smaller pointers). Through the MSVC-thiscall -> stdcall thunks:
+  ServerResponded (request + index; GetServerDetails inside it),
+  RefreshComplete (enum argument, LAN: no servers listed), ping
+  ServerResponded (gameserveritem_t pointer, 7 ms), AddPlayerToList x7
+  (name, score, FLOAT time 418 s on the stack), PlayersRefreshComplete,
+  RulesFailedToRespond. BATCH 2C COMPLETE on Win64 (FMX, VCL, LCL/FPC)
+  and Win32 (VCL). Only RulesResponded has never been called (no CS2
+  server answers rules). FPC Win32 (its own asm path) not run.
+- FMX WIN32 (owner, 16:43, SteamDemo Win32 Debug, WOW64): 21 OF 21 PASS,
+  432-byte posts, ping 7 ms, 7 players (times 557-558 s), rules failed,
+  LAN list complete; Exit clean. Auto Start fired 828 ms after FormCreate
+  (Win64 FMX: ~3900 ms) - the slow first paint is a Win64 FMX matter.
+  BATCH 2C: all four Delphi builds (FMX / VCL x Win64 / Win32) + LCL Win64.
+- OWNER (16:45): FPC Win32 is for the END, with macOS and Linux (the
+  thunks' FPC asm path and the FPC Win32 probe wait until then).
 - Callback updating (owner, 2026-10-30: "threaded is vital" for game
   engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
   Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror
@@ -2489,8 +2627,8 @@ verified 2026-11-02 13:50). All 19 plug-in components PASSED on Win64
 packages rebuilt (Steamworks, SteamworksFMX, SteamworksVCL; Lazarus:
 SteamworksLCL) and dclSteamworks reinstalled (Win32 design packages).
 Owner's order: FMX test first, then SteamDemoVCL / SteamDemoLCL (FPC).
-NEXT: the Batch2b build + SteamDemo run (20 components), then batch 2c
-(MatchmakingServers), the full Win64 round, macOS ARM64, Linux / SteamOS.
+NEXT: the Batch2c build + SteamDemo run (21 components, Win64 and Win32),
+the full Win64 round, macOS ARM64, Linux / SteamOS.
 NEXT SESSION FIRST: verify the latest push as in "Syncing safely". Then,
 still open: SteamDemo Win64 run of
 Menu4 (buttons, File menu, Auto Start setting file, Take Screenshot, Test

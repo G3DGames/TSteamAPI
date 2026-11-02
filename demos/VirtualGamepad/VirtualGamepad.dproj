@@ -7,7 +7,7 @@
         <MainSource>VirtualGamepad.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <ProjectName Condition="'$(ProjectName)'==''">VirtualGamepad</ProjectName>
         <TargetedPlatforms>135299</TargetedPlatforms>
     </PropertyGroup>

@@ -178,8 +178,11 @@ type
     FLock: SyncObjs.TCriticalSection;
     { Copies made by @link(PumpToQueue), oldest first. Guarded by @link(FQueueLock). }
     FQueue: TList<TSteamQueuedCallback>;
-    { Guards @link(FQueue). }
+    { Guards @link(FQueue) and @link(FPosted). }
     FQueueLock: SyncObjs.TCriticalSection;
+    { Copies handed in by @link(Post), oldest first, waiting for the next
+      @link(Pump) / @link(PumpToQueue). Guarded by @link(FQueueLock). }
+    FPosted: TList<TSteamQueuedCallback>;
     { @true while @link(Pump) runs (re-entrancy guard). }
     FPumping: Boolean;
     { @true while @link(PumpToQueue) runs (re-entrancy guard). }
@@ -224,6 +227,10 @@ type
     procedure RequeueFront(ABatch: TList<TSteamQueuedCallback>; AFrom: Integer);
     { Detaches every queued copy (oldest first); @nil when the queue is empty. }
     function TakeQueue: TList<TSteamQueuedCallback>;
+    { Detaches every posted copy (oldest first); @nil when there is none. }
+    function TakePosted: TList<TSteamQueuedCallback>;
+    { Delivers and frees the copies of ABatch (posted ones, see @link(Post)). }
+    procedure DeliverPosted(ABatch: TList<TSteamQueuedCallback>);
     { @true if a subscriber wants unclaimed call results of ACallbackID (takes the lock). }
     function HasCallResultSubscribers(ACallbackID: Integer): Boolean;
     { Routes a handler exception to @link(OnHandlerError). @returns(@true if handled.) }
@@ -260,8 +267,24 @@ type
       propagates. @returns(Number of copies delivered.) }
     function DeliverQueued: Integer;
 
-    { Frees every queued copy without delivering it (used by shutdown). }
+    { Frees every queued and posted copy without delivering it (used by
+      shutdown). }
     procedure ClearQueue;
+
+    (* Hands a callback that did NOT come from Steam's queue to the
+       subscribers of ACallbackID - for plug-ins whose results arrive through
+       C++ response objects that Steam calls from inside
+       SteamAPI_ManualDispatch_RunFrame (ISteamMatchmakingServers). The
+       payload is copied; any thread may call this. Nothing is delivered
+       here: the next @link(Pump) delivers it right after RunFrame (so no
+       handler runs inside Steam's frame), the next @link(PumpToQueue)
+       queues it for @link(DeliverQueued) - so it reaches the same thread,
+       in the same order, as Steam's own callbacks. Use NEGATIVE ids, which
+       Steam never uses.
+       @param(ACallbackID  The id subscribers listen to (negative).)
+       @param(AData  First byte of the payload.)
+       @param(ASize  Payload size in bytes (0 for none).) *)
+    procedure Post(ACallbackID: Integer; const AData; ASize: Integer);
 
     { Number of copies waiting for @link(DeliverQueued). }
     function QueuedCount: Integer;
@@ -400,6 +423,7 @@ begin
   FSubs := TList<TSteamSubscriptionEntry>.Create;
   FPending := TDictionary<SteamAPICall_t, TSteamPendingCallEntry>.Create;
   FQueue := TList<TSteamQueuedCallback>.Create;
+  FPosted := TList<TSteamQueuedCallback>.Create;
   // Qualified, as in Steamworks.Core: FPC's Windows unit has a record of that name
   FLock := SyncObjs.TCriticalSection.Create;
   FQueueLock := SyncObjs.TCriticalSection.Create;
@@ -407,9 +431,10 @@ end;
 
 destructor TSteamCallbackDispatcher.Destroy;
 begin
-  if FQueue <> nil then
+  if (FQueue <> nil) and (FPosted <> nil) then
     ClearQueue;
   FQueue.Free;
+  FPosted.Free;
   FPending.Free;
   FSubs.Free;
   FQueueLock.Free;
@@ -860,6 +885,8 @@ begin
   FStopRequested := False;
   try
     TSteamLib.SteamAPI_ManualDispatch_RunFrame(APipe);
+    // What Steam handed to response objects during RunFrame (see Post)
+    DeliverPosted(TakePosted);
     Msg := Default(CallbackMsg_t);
     while (not FStopRequested) and
           TSteamLib.SteamAPI_ManualDispatch_GetNextCallback(APipe, @Msg) do
@@ -931,11 +958,83 @@ var
   I: Integer;
 begin
   Batch := TakeQueue;
-  if Batch = nil then
+  if Batch <> nil then
+  begin
+    for I := 0 to Batch.Count - 1 do
+      Batch[I].Free;
+    Batch.Free;
+  end;
+  Batch := TakePosted;
+  if Batch <> nil then
+  begin
+    for I := 0 to Batch.Count - 1 do
+      Batch[I].Free;
+    Batch.Free;
+  end;
+end;
+
+function TSteamCallbackDispatcher.TakePosted: TList<TSteamQueuedCallback>;
+var
+  I: Integer;
+begin
+  Result := nil;
+  FQueueLock.Enter;
+  try
+    if FPosted.Count = 0 then
+      Exit;
+    Result := TList<TSteamQueuedCallback>.Create;
+    for I := 0 to FPosted.Count - 1 do
+      Result.Add(FPosted[I]);
+    FPosted.Clear;
+  finally
+    FQueueLock.Leave;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.Post(ACallbackID: Integer; const AData; ASize: Integer);
+var
+  Item: TSteamQueuedCallback;
+begin
+  if ASize < 0 then
+    ASize := 0;
+  Item := TSteamQueuedCallback.Create;
+  try
+    Item.CallbackID := ACallbackID;
+    Item.Size := ASize;
+    SetLength(Item.Payload, Max(ASize, 1));
+    if ASize > 0 then
+      Move(AData, Item.Payload[0], ASize);
+  except
+    Item.Free;
+    raise;
+  end;
+  FQueueLock.Enter;
+  try
+    FPosted.Add(Item);
+  finally
+    FQueueLock.Leave;
+  end;
+end;
+
+procedure TSteamCallbackDispatcher.DeliverPosted(ABatch: TList<TSteamQueuedCallback>);
+var
+  I: Integer;
+begin
+  if ABatch = nil then
     Exit;
-  for I := 0 to Batch.Count - 1 do
-    Batch[I].Free;
-  Batch.Free;
+  try
+    for I := 0 to ABatch.Count - 1 do
+      if not FStopRequested then
+        Deliver(ABatch[I].AsData);
+  finally
+    // Shutdown requested by a handler, or an unhandled handler exception:
+    // the rest of the posted copies is dropped (an exception also ends
+    // Pump before Steam's own callbacks of this frame are read - they stay
+    // in Steam's queue for the next frame)
+    for I := 0 to ABatch.Count - 1 do
+      ABatch[I].Free;
+    ABatch.Free;
+  end;
 end;
 
 function TSteamCallbackDispatcher.PumpToQueue(APipe: HSteamPipe; out ASteamShutdown: Boolean): Integer;
@@ -944,6 +1043,8 @@ var
   Completed: SteamAPICallCompleted_t;
   Item: TSteamQueuedCallback;
   Failed: Boolean;
+  Posted: TList<TSteamQueuedCallback>;
+  I: Integer;
 begin
   Result := 0;
   ASteamShutdown := False;
@@ -952,6 +1053,24 @@ begin
   FQueuePumping := True;
   try
     TSteamLib.SteamAPI_ManualDispatch_RunFrame(APipe);
+    // What Steam handed to response objects during RunFrame (see Post),
+    // queued ahead of the callbacks of this frame
+    Posted := TakePosted;
+    if Posted <> nil then
+    begin
+      try
+        for I := 0 to Posted.Count - 1 do
+        begin
+          Enqueue(Posted[I]);
+          Posted[I] := nil;
+          Inc(Result);
+        end;
+      finally
+        for I := 0 to Posted.Count - 1 do
+          Posted[I].Free;   // nil once queued
+        Posted.Free;
+      end;
+    end;
     Msg := Default(CallbackMsg_t);
     while TSteamLib.SteamAPI_ManualDispatch_GetNextCallback(APipe, @Msg) do
     begin
