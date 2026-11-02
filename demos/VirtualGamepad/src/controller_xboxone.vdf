@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"#title"
-	"description"		"#description"
+	"title"		"SteamInputDemo - Xbox One / Series (r4)"
+	"description"		"Default layout for the Xbox One / Series (controller_xboxone.vdf, revision 4) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
 	"controller_type"		"controller_xboxone"
 	"major_revision"		"0"
-	"minor_revision"		"0"
+	"minor_revision"		"4"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -83,6 +83,10 @@
 			{
 				"MenuConfirm"		"#Action_MenuConfirm"
 				"MenuBack"		"#Action_MenuBack"
+				"MenuUp"		"#Action_MenuUp"
+				"MenuDown"		"#Action_MenuDown"
+				"MenuLeft"		"#Action_MenuLeft"
+				"MenuRight"		"#Action_MenuRight"
 			}
 		}
 	}
@@ -90,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - Xbox One / Series"
-			"description"		"Default layout for the Xbox One / Series - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
+			"title"		"SteamInputDemo - Xbox One / Series (r4)"
+			"description"		"Default layout for the Xbox One / Series (controller_xboxone.vdf, revision 4) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -125,6 +129,10 @@
 			"Action_BackRightUpper"		"Upper right back paddle (R4)"
 			"Action_MenuConfirm"		"Confirm"
 			"Action_MenuBack"		"Back (with Confirm: back to every control)"
+			"Action_MenuUp"		"Menu: up"
+			"Action_MenuDown"		"Menu: down"
+			"Action_MenuLeft"		"Menu: left"
+			"Action_MenuRight"		"Menu: right"
 		}
 	}
 	"group"
@@ -181,6 +189,58 @@
 						"bindings"
 						{
 							"binding"		"game_action InGame Select"
+						}
+					}
+				}
+			}
+			"button_back_left"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackLeft"
+						}
+					}
+				}
+			}
+			"button_back_right"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackRight"
+						}
+					}
+				}
+			}
+			"button_back_left_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackLeftUpper"
+						}
+					}
+				}
+			}
+			"button_back_right_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action InGame BackRightUpper"
 						}
 					}
 				}
@@ -400,6 +460,22 @@
 	"group"
 	{
 		"id"		"7"
+		"mode"		"gyro_to_mouse"
+		"inputs"
+		{
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"InGame"		"Gyro"
+		}
+	}
+	"group"
+	{
+		"id"		"8"
 		"mode"		"switches"
 		"inputs"
 		{
@@ -407,7 +483,7 @@
 	}
 	"group"
 	{
-		"id"		"8"
+		"id"		"9"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -441,14 +517,6 @@
 	}
 	"group"
 	{
-		"id"		"9"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
 		"id"		"10"
 		"mode"		"trigger"
 		"inputs"
@@ -458,7 +526,7 @@
 	"group"
 	{
 		"id"		"11"
-		"mode"		"joystick_move"
+		"mode"		"trigger"
 		"inputs"
 		{
 		}
@@ -474,7 +542,75 @@
 	"group"
 	{
 		"id"		"13"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"14"
 		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuUp"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuDown"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuLeft"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuRight"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"15"
+		"mode"		"gyro_to_mouse"
 		"inputs"
 		{
 		}
@@ -492,6 +628,7 @@
 			"4"		"joystick active"
 			"5"		"right_joystick active"
 			"6"		"dpad active"
+			"7"		"gyro active"
 		}
 	}
 	"preset"
@@ -500,13 +637,14 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"7"		"switch active"
-			"8"		"button_diamond active"
-			"9"		"left_trigger active"
-			"10"		"right_trigger active"
-			"11"		"joystick active"
-			"12"		"right_joystick active"
-			"13"		"dpad active"
+			"8"		"switch active"
+			"9"		"button_diamond active"
+			"10"		"left_trigger active"
+			"11"		"right_trigger active"
+			"12"		"joystick active"
+			"13"		"right_joystick active"
+			"14"		"dpad active"
+			"15"		"gyro active"
 		}
 	}
 	"settings"

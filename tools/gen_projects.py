@@ -53,9 +53,13 @@ PROJECTS = [
     # so they list and search only their own sources. Build the packages first.
     dict(name="SteamDemo", dir="demos\\SteamDemo", kind="app", framework="FMX",
          platforms=ALL_PLATFORMS, default="Win64",
-         units=[],
+         # FmxLinuxGtkGlobal: same file as SteamInputDemo's (Steam Linux
+         # runtime, TListBox crash); no menu, so no FmxLinuxMenu
+         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
-         search="src", redist=True, depends=["SteamworksFMX"]),
+         search="src", redist=True, depends=["SteamworksFMX"],
+         # ICU launcher (docs/fmx-steamos-icu-bug.md); Linux64 only
+         linux_files=["src\\SteamDemo.sh"]),
     # VCL twin of SteamDemo, components and UI in src/uMain.dfm (the Lazarus
     # twin, demos/SteamDemoLCL, is a .lpi project - not listed here or in
     # the group)
@@ -68,7 +72,10 @@ PROJECTS = [
          # Android64: placeholder added by the owner 2026-10-30 (not run yet)
          platforms=ALL_PLATFORMS, default="Win64",
          units=[("uConsoleMain", "src\\uConsoleMain.pas")],
-         forms=[], search="src", redist=True, depends=["Steamworks"]),
+         forms=[], search="src", redist=True, depends=["Steamworks"],
+         # ICU launcher: the Delphi RTL bug is in System's start-up, so a
+         # console program dies in Steam's runtime on SteamOS too
+         linux_files=["src\\SteamConsole.sh"]),
     # Steam Input test (FMX, desktop): TSteamAPI + TSteamInput on the form,
     # live action values. "files" are copied next to the executable
     # (Windows post-build) or deployed beside the library (macOS / Linux).
@@ -103,13 +110,16 @@ PROJECTS = [
                 ("Sprite3DCamera", "src\\Sprite3DCamera.pas"),
                 ("Gorilla.Animation.Parallel", "src\\Gorilla.Animation.Parallel.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmGamepad")],
-         search="src", redist=True, depends=["SteamworksFMX"],
+         # ..\\..\\RemoteLogging\\src: the optional log sender (overlay menu
+         # and File menu, as in SteamInputDemo)
+         search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
          # models next to the program as well; on macOS every data file goes
          # to Contents/Resources (codesign treats Contents/MacOS as code and
          # rejects data there) - the program looks there on macOS
-         files=INPUT_FILES + MODEL_FILES, mac_data="Contents\\Resources\\"),
+         files=INPUT_FILES + MODEL_FILES, mac_data="Contents\\Resources\\",
+         linux_files=["src\\VirtualGamepad.sh"]),
     # OPTIONAL remote logging (RemoteLogging/, nothing to do with Steam): the
-    # receiver app. Senders (SteamInputDemo) use RemoteLogging\src directly.
+    # receiver app. Senders (SteamInputDemo, VirtualGamepad) use RemoteLogging\src directly.
     dict(name="LogReceiver", dir="RemoteLogging\\LogReceiver", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
          # FmxLinuxMenu, FmxLinuxGtkGlobal: same files as SteamInputDemo's

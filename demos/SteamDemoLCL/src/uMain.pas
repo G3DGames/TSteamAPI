@@ -194,6 +194,9 @@ begin
   except
     FLogFile := '';
   end;
+  // Which build runs on which system (native or Proton / Wine on SteamOS,
+  // Rosetta 2 on macOS, Steam's Linux runtime container ...)
+  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
   // AppID, UpdateMode, events and the plug-in links are set in the form file.
   // A form file cannot depend on the build configuration, so this is here:
   {$ifdef DEBUG}

@@ -84,12 +84,20 @@ for dirpath, _, files in os.walk(os.path.join(ROOT, "demos")):
                 problems.append(f"{os.path.relpath(path, ROOT)}: includes Steamworks.inc "
                                 "(demos have no path to lib/ - use {$ifdef FPC}{$mode delphi}{$endif})")
 
-# Shared FMX Linux fixes exist three times each (projects use only their
-# own sources): the copies must stay identical (line endings aside).
-COPY_DIRS = ["demos/SteamInputDemo/src", "RemoteLogging/LogReceiver/src",
+# Shared Linux / SteamOS fixes exist once per project (projects use only
+# their own sources): the copies must stay identical (line endings aside).
+# FmxLinuxMenu only where a form has a TMainMenu; the ICU launcher script
+# is named after its program (it starts <name> from <name>.sh).
+MENU_DIRS = ["demos/SteamInputDemo/src", "RemoteLogging/LogReceiver/src",
              "demos/VirtualGamepad/src"]
-for unit in ("FmxLinuxMenu.pas", "FmxLinuxGtkGlobal.pas"):
-    copies = [f"{d}/{unit}" for d in COPY_DIRS]
+SHARED = {
+    "FmxLinuxMenu.pas": [f"{d}/FmxLinuxMenu.pas" for d in MENU_DIRS],
+    "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas"
+                              for d in MENU_DIRS + ["demos/SteamDemo/src"]],
+    "ICU launcher": [f"demos/{n}/src/{n}.sh"
+                     for n in ("SteamInputDemo", "SteamDemo", "SteamConsole", "VirtualGamepad")],
+}
+for unit, copies in SHARED.items():
     texts = []
     for c in copies:
         path = os.path.join(ROOT, *c.split("/"))

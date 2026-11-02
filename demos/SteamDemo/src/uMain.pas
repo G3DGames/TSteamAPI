@@ -158,17 +158,31 @@ begin
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
+var
+  LogFileError: string;
 begin
 {$IFDEF ANDROID}
   FLogFile := TPath.Combine(TPath.GetDocumentsPath, 'SteamDemo.log');
 {$ELSE}
   FLogFile := TPath.Combine(ExpandFileName(ExtractFilePath(ParamStr(0))), 'SteamDemo.log');
 {$ENDIF}
+  LogFileError := '';
   try
     TFile.WriteAllText(FLogFile, '');
   except
-    FLogFile := '';
+    on E: Exception do
+    begin
+      // say why (in Steam's Linux runtime the game folder is not writable)
+      LogFileError := FLogFile + ': ' + E.Message;
+      FLogFile := '';
+    end;
   end;
+  if LogFileError <> '' then
+    AddLog('Log file could not be created (' + LogFileError + '); logging to the window'
+      {$IFDEF POSIX} + ' and stderr'{$ENDIF} + ' only');
+  // Which build runs on which system (native or Proton / Wine on SteamOS,
+  // Rosetta 2 on macOS, Steam's Linux runtime container ...)
+  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
   // AppID, UpdateMode, events and the plug-in links are set in uMain.fmx.
   // A form file cannot depend on the build configuration, so this is here:
 {$IFDEF DEBUG}
@@ -201,6 +215,13 @@ var
   Line: string;
 begin
   Line := FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S;
+{$IFDEF POSIX}
+  // Every line on stderr too, FIRST and flushed: inside Steam's Linux
+  // runtime the game folder is read-only, so the log file cannot be
+  // written there - stderr is what the launch options capture
+  WriteLn(ErrOutput, Line);
+  Flush(ErrOutput);
+{$ENDIF}
   memLog.Lines.Add(Line);
   memLog.GoToTextEnd;
   if FLogFile <> '' then

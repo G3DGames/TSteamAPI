@@ -301,6 +301,9 @@ begin
   // Linux: FMX's menu bar instead of GTK's, which shows only first letters
   // (FmxLinuxMenu). FIRST, before anything touches a menu item.
   ReplaceMainMenu(Self, MainMenu1);
+  // The system the receiver runs on, with its version and build (this tool
+  // uses no Steam unit, so the RTL's description, not TSteamLib's)
+  Caption := Caption + ' - ' + TOSVersion.ToString;
   FLock := TCriticalSection.Create;
   FSessions := TObjectList<TLogSession>.Create(True);
   FContexts := TDictionary<TIdContext, TLogSession>.Create;

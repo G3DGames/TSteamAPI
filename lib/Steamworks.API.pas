@@ -272,8 +272,32 @@ type
       build is translated on Apple silicon; on Windows when an x86 / x64 build
       is emulated on ARM64 Windows or an x86 build runs under WOW64. }
     class function ProcessTranslation: string; static;
-    { @link(BuildTarget) and @link(ProcessTranslation) as one log line, e.g.
-      @code('macOS x64 build, running under Rosetta 2'). }
+    { The operating system the program is really running on, with its
+      version and build number, e.g. @code('Windows 11 (10.0 build 26100)'),
+      @code('SteamOS 3.6.19 build 20241023.1 in Steam Runtime 3 (sniper),
+      Linux kernel 6.5.0') or @code('macOS 15.1 build 24B83').
+      @unorderedList(
+        @item(Windows: the version from ntdll's RtlGetVersion (true even
+          without a compatibility manifest). Under Wine (ntdll exports
+          wine_get_version) it names Wine, Proton when Steam started it
+          (STEAM_COMPAT_DATA_PATH set; Proton's version from the prefix's
+          version file), and the host system behind it (Linux distribution
+          or macOS, read through drive Z:), then the Windows version Wine
+          reports.)
+        @item(Linux: PRETTY_NAME (+ VERSION_ID, BUILD_ID) of /etc/os-release.
+          Inside a Steam Linux Runtime container the host's
+          /run/host/os-release comes first: "<host> in <runtime>". Then the
+          kernel release.)
+        @item(macOS: ProductVersion and ProductBuildVersion of
+          SystemVersion.plist.)
+      )
+      Never raises; parts that cannot be read are left out. }
+    class function RunningOS: string; static;
+    { @link(BuildTarget), @link(RunningOS) and @link(ProcessTranslation) as
+      one line, e.g. @code('Windows x64 build on Proton 9.0-3 (Wine 9.0) on
+      SteamOS ...') or @code('macOS x64 build on macOS 15.1 build 24B83,
+      running under Rosetta 2'). The demos append it to their window
+      captions. }
     class function PlatformDescription: string; static;
 
     { Loads the redistributable and binds the core exports.
@@ -468,11 +492,327 @@ begin
 end;
 {$endif}
 
+{ --- RunningOS helpers ------------------------------------------------------ }
+
+{ Whole content of a small text file, '' if it cannot be read. Reads until
+  the end instead of trusting the size, because /proc files report 0. The
+  files read here are ASCII, so each byte becomes one character. }
+function ReadSmallFile(const AFileName: string): string;
+var
+  F: TFileStream;
+  Buf: array[0..1023] of Byte;
+  N, I: Integer;
+begin
+  Result := '';
+  try
+    if not FileExists(AFileName) then
+      Exit;
+    F := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      repeat
+        N := F.Read(Buf, SizeOf(Buf));
+        for I := 0 to N - 1 do
+          Result := Result + Char(Buf[I]);
+      until (N <= 0) or (Length(Result) > 65536);
+    finally
+      F.Free;
+    end;
+  except
+    Result := '';
+  end;
+end;
+
+{ First line of AText, trimmed. }
+function FirstLine(const AText: string): string;
+var
+  I: Integer;
+begin
+  Result := AText;
+  for I := 1 to Length(Result) do
+    if (Result[I] = #10) or (Result[I] = #13) then
+    begin
+      SetLength(Result, I - 1);
+      Break;
+    end;
+  Result := Trim(Result);
+end;
+
+{ Value of KEY=value in an os-release text, quotes removed; '' if absent. }
+function OsReleaseValue(const AText, AKey: string): string;
+var
+  L: TStringList;
+  I: Integer;
+  S: string;
+begin
+  Result := '';
+  L := TStringList.Create;
+  try
+    L.Text := AText;
+    for I := 0 to L.Count - 1 do
+    begin
+      S := Trim(L[I]);
+      if SameText(Copy(S, 1, Length(AKey) + 1), AKey + '=') then
+      begin
+        Result := Trim(Copy(S, Length(AKey) + 2, MaxInt));
+        if (Length(Result) >= 2) and ((Result[1] = '"') or (Result[1] = '''')) and
+           (Result[Length(Result)] = Result[1]) then
+          Result := Copy(Result, 2, Length(Result) - 2);
+        Exit;
+      end;
+    end;
+  finally
+    L.Free;
+  end;
+end;
+
+{ "PRETTY_NAME [VERSION_ID] [build BUILD_ID]" of an os-release text
+  (VERSION_ID only when PRETTY_NAME does not contain it); '' if empty. }
+function DistroName(const AText: string): string;
+var
+  V, B: string;
+begin
+  Result := OsReleaseValue(AText, 'PRETTY_NAME');
+  if Result = '' then
+    Result := OsReleaseValue(AText, 'NAME');
+  if Result = '' then
+    Exit;
+  V := OsReleaseValue(AText, 'VERSION_ID');
+  if (V <> '') and (Pos(V, Result) = 0) then
+    Result := Result + ' ' + V;
+  B := OsReleaseValue(AText, 'BUILD_ID');
+  if (B <> '') and (Pos(B, Result) = 0) then
+    Result := Result + ' build ' + B;
+end;
+
+{ A Unix path as seen from where this program runs: unchanged natively,
+  under Wine (ARoot = 'Z:') through drive Z:, which maps to /. }
+function HostPath(const ARoot, APath: string): string;
+begin
+  if ARoot = '' then
+    Result := APath
+  else
+    Result := ARoot + StringReplace(APath, '/', '\', [rfReplaceAll]);
+end;
+
+{ The Linux distribution, "<host> in <runtime>" inside a Steam Linux Runtime
+  (pressure-vessel puts the host's os-release at /run/host/os-release);
+  '' if no os-release can be read. }
+function LinuxDistribution(const ARoot: string): string;
+var
+  Own, Host: string;
+begin
+  Own := DistroName(ReadSmallFile(HostPath(ARoot, '/etc/os-release')));
+  if Own = '' then
+    Own := DistroName(ReadSmallFile(HostPath(ARoot, '/usr/lib/os-release')));
+  Host := DistroName(ReadSmallFile(HostPath(ARoot, '/run/host/os-release')));
+  if (Host <> '') and (Own <> '') and (Host <> Own) then
+    Result := Host + ' in ' + Own
+  else if Host <> '' then
+    Result := Host
+  else
+    Result := Own;
+end;
+
+{ Text between <string> and </string> after <key>AKey</key> in a plist. }
+function PlistString(const AText, AKey: string): string;
+var
+  P, Q: Integer;
+  S: string;
+begin
+  Result := '';
+  P := Pos('<key>' + AKey + '</key>', AText);
+  if P = 0 then
+    Exit;
+  S := Copy(AText, P, 512);
+  P := Pos('<string>', S);
+  Q := Pos('</string>', S);
+  if (P > 0) and (Q > P) then
+    Result := Trim(Copy(S, P + 8, Q - P - 8));
+end;
+
+{ "macOS 15.1 build 24B83" from SystemVersion.plist; '' if unreadable. }
+function MacVersion(const ARoot: string): string;
+var
+  T, V, B: string;
+begin
+  Result := '';
+  T := ReadSmallFile(HostPath(ARoot, '/System/Library/CoreServices/SystemVersion.plist'));
+  V := PlistString(T, 'ProductVersion');
+  if V = '' then
+    Exit;
+  Result := PlistString(T, 'ProductName');
+  if Result = '' then
+    Result := 'macOS';
+  Result := Result + ' ' + V;
+  B := PlistString(T, 'ProductBuildVersion');
+  if B <> '' then
+    Result := Result + ' build ' + B;
+end;
+
+{$if defined(STEAMWORKS_WINDOWS)}
+type
+  { RTL_OSVERSIONINFOW (no managed fields: lib/ record rule). }
+  TRtlOSVersionInfoW = record
+    dwOSVersionInfoSize: UInt32;
+    dwMajorVersion: UInt32;
+    dwMinorVersion: UInt32;
+    dwBuildNumber: UInt32;
+    dwPlatformId: UInt32;
+    szCSDVersion: array[0..127] of WideChar;
+  end;
+  { ntdll RtlGetVersion: the real version, manifest or not. }
+  TRtlGetVersion = function(var AInfo: TRtlOSVersionInfoW): Integer; stdcall;
+  { Wine's ntdll wine_get_version (cdecl). }
+  TWineGetVersion = function: PAnsiChar; cdecl;
+  { Wine's ntdll wine_get_host_version (cdecl): uname sysname / release. }
+  TWineGetHostVersion = procedure(ASysName, ARelease: PPAnsiChar); cdecl;
+
+{ "Windows 11 (10.0 build 26100)" from RtlGetVersion; '' if unavailable. }
+function WindowsVersion(ANtdll: HMODULE): string;
+var
+  Fn: TRtlGetVersion;
+  Info: TRtlOSVersionInfoW;
+  Name: string;
+begin
+  Result := '';
+  Fn := TRtlGetVersion(GetProcAddress(ANtdll, 'RtlGetVersion'));
+  if not Assigned(Fn) then
+    Exit;
+  FillChar(Info, SizeOf(Info), 0);
+  Info.dwOSVersionInfoSize := SizeOf(Info);
+  if Fn(Info) <> 0 then
+    Exit;
+  if (Info.dwMajorVersion = 10) and (Info.dwBuildNumber >= 22000) then
+    Name := 'Windows 11'
+  else if Info.dwMajorVersion = 10 then
+    Name := 'Windows 10'
+  else
+    Name := 'Windows';
+  Result := Format('%s (%d.%d build %d)', [Name, Info.dwMajorVersion,
+    Info.dwMinorVersion, Info.dwBuildNumber]);
+end;
+
+{ Proton's version from the prefix's version file (first line, last word,
+  "proton-" removed); 'Proton' alone if it cannot be read. }
+function ProtonName(const ACompatData: string): string;
+var
+  S: string;
+  I: Integer;
+begin
+  Result := 'Proton';
+  S := FirstLine(ReadSmallFile(HostPath('Z:', ACompatData + '/version')));
+  I := LastDelimiter(' ', S);
+  if I > 0 then
+    S := Copy(S, I + 1, MaxInt);
+  if SameText(Copy(S, 1, 7), 'proton-') then
+    S := Copy(S, 8, MaxInt);
+  if S <> '' then
+    Result := Result + ' ' + S;
+end;
+
+function WindowsRunningOS: string;
+var
+  Ntdll: HMODULE;
+  WineVer: TWineGetVersion;
+  WineHost: TWineGetHostVersion;
+  SysName, Release: PAnsiChar;
+  Win, Wine, Host, Sys, Rel, Compat: string;
+begin
+  Ntdll := GetModuleHandle('ntdll.dll');
+  Win := WindowsVersion(Ntdll);
+  WineVer := TWineGetVersion(GetProcAddress(Ntdll, 'wine_get_version'));
+  if not Assigned(WineVer) then
+    Exit(Win);
+  // Wine (or Proton, CrossOver, ...): name it, then the real system behind it
+  Wine := 'Wine ' + string(AnsiString(WineVer()));
+  Compat := GetEnvironmentVariable('STEAM_COMPAT_DATA_PATH');
+  if Compat <> '' then
+    Wine := ProtonName(Compat) + ' (' + Wine + ')';
+  Sys := '';
+  Rel := '';
+  WineHost := TWineGetHostVersion(GetProcAddress(Ntdll, 'wine_get_host_version'));
+  if Assigned(WineHost) then
+  begin
+    SysName := nil;
+    Release := nil;
+    WineHost(@SysName, @Release);
+    if SysName <> nil then
+      Sys := string(AnsiString(SysName));
+    if Release <> nil then
+      Rel := string(AnsiString(Release));
+  end;
+  if SameText(Sys, 'Darwin') then
+  begin
+    Host := MacVersion('Z:');
+    if Host = '' then
+      Host := Trim('Darwin ' + Rel);
+  end
+  else
+  begin
+    Host := LinuxDistribution('Z:');
+    if SameText(Sys, 'Linux') and (Rel <> '') then
+    begin
+      if Host <> '' then
+        Host := Host + ', ';
+      Host := Host + 'Linux kernel ' + Rel;
+    end
+    else if Host = '' then
+      Host := Trim(Sys + ' ' + Rel);
+  end;
+  Result := Wine;
+  if Host <> '' then
+    Result := Result + ' on ' + Host;
+  if Win <> '' then
+    Result := Result + ', reporting ' + Win;
+end;
+{$endif}
+
+class function TSteamLib.RunningOS: string;
+{$if defined(STEAMWORKS_WINDOWS)}
+begin
+  try
+    Result := WindowsRunningOS;
+  except
+    Result := '';
+  end;
+end;
+{$elseif defined(STEAMWORKS_MACOS)}
+begin
+  try
+    Result := MacVersion('');
+  except
+    Result := '';
+  end;
+end;
+{$elseif defined(STEAMWORKS_LINUX) or defined(STEAMWORKS_ANDROID)}
+var
+  K: string;
+begin
+  try
+    Result := LinuxDistribution('');
+    if Result = '' then
+      {$ifdef STEAMWORKS_ANDROID}Result := 'Android'{$else}Result := 'Linux'{$endif};
+    K := FirstLine(ReadSmallFile('/proc/sys/kernel/osrelease'));
+    if K <> '' then
+      Result := Result + ', Linux kernel ' + K;
+  except
+    Result := '';
+  end;
+end;
+{$else}
+begin
+  Result := '';
+end;
+{$endif}
+
 class function TSteamLib.PlatformDescription: string;
 var
   T: string;
 begin
   Result := BuildTarget + ' build';
+  T := RunningOS;
+  if T <> '' then
+    Result := Result + ' on ' + T;
   T := ProcessTranslation;
   if T <> '' then
     Result := Result + ', running under ' + T;

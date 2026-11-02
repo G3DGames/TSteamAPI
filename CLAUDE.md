@@ -21,6 +21,13 @@ Read README.md first, then this file. Keep both up to date with every change.
   seven libraries, verified by check_redist.py).
 - Read the newest "Handover" section (marked READ THIS FIRST) for where work stopped.
 
+## To do at the END of the project (owner, 2026-11-01)
+- Front-end LAUNCHER for the demos under one AppID - plan, rules and open
+  decisions in docs/Launcher.md (also listed in README "Status / next
+  steps"). Do NOT start it before the other work is finished; keep the
+  plan up to date if a demo changes in a way it depends on (manifest,
+  RestartIfNecessary, deployment layout).
+
 ## Syncing safely
 - When the owner says a push is done: clone or fetch into a SEPARATE scratch
   folder, compare every file delivered since the last push (ignore CRLF and
@@ -31,6 +38,10 @@ Read README.md first, then this file. Keep both up to date with every change.
   there after a push are normal - check the important parts survived
   (post-build events, DeployFile entries, search paths) rather than expecting
   byte equality.
+  The owner switches target OS often, so a changed default <Platform> in a
+  .dproj (e.g. Linux64) and reordered entries are expected - never
+  "restore" those. The one IDE change to undo is Steamworks.groupproj
+  losing its <Dependencies> (it happened three times): restore it.
 
 ## Project
 Pascal binding of the Steamworks SDK 1.65. Core + plug-ins.
@@ -1396,6 +1407,288 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   in the group; pasdoc_check reports its Unit1 (3 problems) - owner
   asked whether to keep it. SteamInputDemo.sh is mode 100644 in git
   (Steam's install made every file executable anyway).
+- Push e2a4954 (20:06) VERIFIED: demos/DummyTest removed (owner forgot
+  it), Group3 applied - groupproj (10 dependencies) and CLAUDE.md
+  identical; pasdoc / project checks 0 problems. Working copy reset.
+- Owner (20:18-20:23): capabilities? ISteamInput (SDK 1.65) has NO
+  per-pad capability call (GetSessionInputConfigurationSettings is a
+  per-session family bitmask: PS 1, Xbox 2, Generic 4, Switch 8).
+  controller_caps in exported layouts is an undocumented internal mask
+  (not in our generated layouts; decoding it would need exports from
+  several pads). OWNER'S CHOICE: a run-time PROBE reporting what a pad
+  has beyond its type's profile. Zip Probe1 (follows Notes5),
+  SteamInputDemo only: OriginFamily (SDK origin families are contiguous
+  ranges - named first / last constants), ExpectedFamily /
+  ExpectsMotion / ExpectsBackButtons per type, IsBackButtonOrigin (SDK
+  grip / L4..R5 / Y1 Y2 / Horipad names; Frame analog grips and 2026
+  grip sensors excluded); ProbeOrigin in LogOrigins (reset per layout);
+  accelerometer / gyroscope from GetMotionData in ReadActions (non-zero
+  accel / rotation speed); ProbeText -> banner third line "Detected
+  beyond the <type> profile: ..." + log lines. All 53 origin constants
+  checked against SDKTypes. docs/SteamInputMapping.md section 5: "When
+  the type is not the whole story (handhelds)". NOT YET COMPILED.
+  Expected on the Ally: motion sensors (accelerometer + gyroscope); back
+  buttons: Y1 Button, Y2 Button; controls report as LenovoLegionGo.
+  On the plain Xbox pad: nothing.
+- Owner (20:23): new input devices ON ORDER - PS4 DualShock 4 (official;
+  gyro + touchpad, the real thing after the clone), Logitech G920 wheel
+  and Thrustmaster T.Flight Hotas One (flight stick + throttle). Wheel and
+  HOTAS are not gamepads: Steam Input may report them as Generic or not
+  at all (they are DirectInput / HID devices) - expect "interesting".
+- Owner (20:30-20:36): the OS each app runs under in every main form
+  caption (SteamOS: native or Proton; maybe macOS too) - "and Build
+  number" (read as the OS build number; the Steam app build id needs
+  ISteamApps and would come after Steam starts - offered, not done).
+  Zip Caption1 (follows Probe1): TSteamLib.RunningOS (lib/Steamworks.
+  API): Windows = RtlGetVersion ("Windows 11 (10.0 build 26100)"); under
+  Wine (ntdll exports wine_get_version) "Wine <ver>", "Proton <ver>
+  (Wine <ver>)" when STEAM_COMPAT_DATA_PATH is set (version = last word
+  of the prefix's version file, "proton-" stripped - FORMAT UNCONFIRMED),
+  then the host from wine_get_host_version (sysname / release) + its
+  os-release or SystemVersion.plist read through Z:, then ", reporting
+  <Windows version>"; Linux = os-release PRETTY_NAME (+ VERSION_ID if
+  missing, + "build BUILD_ID"), "<host> in <runtime>" when
+  /run/host/os-release exists (pressure-vessel), + ", Linux kernel
+  <osrelease>"; macOS = SystemVersion.plist ProductVersion + build. Files
+  read by a loop (proc files report size 0). PlatformDescription = target
+  + " build on " + RunningOS + Rosetta / WOW64 - so the core's
+  "Platform:" log line carries it too (SteamConsole gets it that way).
+  Captions: SteamDemo / VCL / LCL / SteamInputDemo / VirtualGamepad
+  append it in FormCreate (the two input demos also log it);
+  LogReceiver appends TOSVersion.ToString (no Steam unit there). Game
+  Mode on SteamOS shows no title bar - the log line is what shows it
+  there. NOT YET COMPILED (Delphi or FPC). Packages must be rebuilt.
+- ROG ALLY PROBE RUN (owner, 20:41-20:43, Probe1 build - before
+  Caption1: its Platform line still "Linux x64 build"): PROBE1 WORKS -
+  banner "Detected beyond the Xbox One / Series controller profile:
+  motion sensors (accelerometer + gyroscope); back buttons: Y2 Button,
+  Y1 Button; controls report as LenovoLegionGo" (exactly as expected);
+  accel (0, 4, 10) = m/s^2 again. Steam's adapted binding puts Y2 on
+  ButtonA and Y1 on ButtonX, BUT pressing a back paddle logged ButtonY +
+  ButtonB together (20:42:44, 20:43:18, 20:43:23) and never ButtonA /
+  ButtonX: Steam does not see a Y1 / Y2 press at all, it sees B + Y -
+  so the paddles are remapped BELOW Steam (Ally firmware mapping set in
+  Armoury Crate on Windows and kept in the device, or SteamOS's Ally
+  driver) - unconfirmed which; Steam's Test Device Inputs would tell.
+  Not our code. LogReceiver's header showed TOSVersion inside the
+  container: "Steam Runtime 3 (sniper) #1 SMP ... (Version 7.2.7)" -
+  the container, not SteamOS. Zip Caption2 (follows Caption1):
+  TRemoteLogSender.Start takes an optional APlatform (default '' =
+  TOSVersion.ToString, '|' replaced); SteamInputDemo passes
+  TSteamLib.PlatformDescription. The "NO action has a binding" line
+  (seen twice, each time just before "every action INACTIVE" when the
+  Ally's Steam / QAM button was used) now names the overlay case too.
+  CORRECTION (owner, 20:53): Steam's Settings > Controller > Test shows
+  the paddles as their OWN buttons, L4 and R4, triggering nothing else -
+  so my "remapped BELOW Steam" was WRONG. The B / Y comes from Steam's
+  handling of OUR layout: controller_xboxone.vdf had no back-paddle
+  source, so Steam filled the paddles in itself (the origin list said
+  Y2 -> ButtonA, Y1 -> ButtonX, yet presses arrived as ButtonB /
+  ButtonY - that mismatch is unexplained; most likely one paddle = B,
+  the other = Y, pressed together in the log). Zip Paddles1 (follows
+  Caption2): gen_input_mapping.py controller_xboxone = GYRO + back=4
+  (gyro + button_back_left / _right / _left_upper / _right_upper, as on
+  the Deck / triton) - for handhelds that report XBoxOneController (Ally)
+  and Xbox Elite paddles; a plain Xbox pad has none of these sources.
+  Regenerated controller_xboxone.vdf (both demos; only file whose content
+  changed). SteamInputMapping.md paragraph. TO TEST: Ally - which actions
+  L4 / R4 now fire (BackLeftUpper / BackRightUpper expected, or the lower
+  pair), Gyro bound; plain Xbox pad - still passes (Gyro / paddles "not
+  bound (optional)"). If Steam rejects or ignores the extra sources on a
+  plain pad, split an Ally-only layout instead (no separate type exists,
+  though). After pushing, Steam may keep the old layout until it reloads
+  the game's layouts (View Controller Settings / restart).
+- Owner (20:57): "apply all Linux / SteamOS fixes to the demos that have
+  not had them yet". Zip LinuxAll1 (follows Paddles1):
+  * SteamDemo (FMX, has 3 TListBox, no menu): FmxLinuxGtkGlobal (4th
+    identical copy; .dpr before uMain, .dproj, gen_projects), stderr
+    start-up markers in the .dpr, AddLog to stderr first + flushed
+    (POSIX), a failed log file reported with path + error, ICU launcher
+    src/SteamDemo.sh deployed Linux64.
+  * SteamConsole: ICU launcher src/SteamConsole.sh (the RTL bug is in
+    System's init, so consoles die too); output is already stdout.
+  * VirtualGamepad: ICU launcher src/VirtualGamepad.sh (it had the GTK
+    unit, menu fix, markers, stderr log already).
+  * Not applied, on purpose: FmxLinuxMenu in SteamDemo (no TMainMenu);
+    SteamDemoVCL (Windows only); SteamDemoLCL (FPC / LCL - neither bug
+    is in FPC's RTL or the LCL; untested in sniper though); LogReceiver
+    launcher (a desktop tool, never started by Steam - outside the
+    container the host's ICU is complete).
+  * project_check.py: SHARED table - FmxLinuxMenu in 3 projects,
+    FmxLinuxGtkGlobal in 4, the launcher script in 4 (named per program,
+    content identical) - all must stay identical.
+  * Each program's Linux launch command on the partner site would be
+    <name>.sh (only SteamInputDemo is on Steam). NOT YET COMPILED.
+- LAUNCHER PLAN (owner, 21:09-21:18, "for later"): one AppID, a
+  front-end launcher as the only launch option, children SteamDemo /
+  SteamInputDemo / VirtualGamepad (+ Exit), launcher hides while a child
+  runs. Written up as docs/Launcher.md (owner wrote "Laucher.md"),
+  listed in docs/README.md. Key points: launcher stays alive (playtime /
+  Running state); real child processes (macOS: the bundle's binary via
+  posix_spawn, never `open`); only the launcher restarts through Steam;
+  children detect it by an env var set by the launcher
+  (TSTEAMAPI_LAUNCHER_PID, optional parent-pid check) - SteamAppId /
+  SteamGameId cannot tell; launcher shuts Steam Input + SteamAPI down
+  while a child runs (one holder); ONE action manifest per AppID, so the
+  launcher's actions join the shared manifest; Linux children inherit
+  the ICU LD_LIBRARY_PATH from Launcher.sh. Open: pad navigation (Menu
+  set or own set), depot folder names, "Back to launcher" in children.
+  Zip Launcher1 (follows LinuxAll1). Zip Todo1 (follows Launcher1): the
+  launcher is an END-OF-PROJECT to-do (CLAUDE.md top + README).
+- ROG ALLY RUN 2 (owner, 21:31-21:34, "paddles still wrong"): the
+  bindings were IDENTICAL to the Probe1 run - Y2 Button on ButtonA, Y1 on
+  ButtonX, and Gyro / every Back* action "not bound" - so Steam did NOT
+  use Paddles1's controller_xboxone.vdf (that file binds gyro and the
+  four button_back_* sources). The paddles again logged as ButtonB /
+  ButtonY presses, one at a time this time (21:33:37-43: B, Y, B, Y ...),
+  so most likely one paddle = B and the other = Y in Steam's adapted
+  layout - although its origin list says Y2 -> A, Y1 -> X (unexplained).
+  Also: "Platform: Linux x64 build" in BOTH the demo's line and the
+  core's, i.e. the Steamworks package (lib/Steamworks.API.pas, Caption1)
+  was NOT rebuilt for Linux64 before this build - the demo's uMain.pas
+  had Caption1 (it logs "Platform:" in FormCreate). Likely causes for the
+  layout: the game folder on the Ally still holds the OLD .vdf (only the
+  executable replaced), or Steam kept its cached copy. Zip Revision1
+  (follows Todo1): gen_input_mapping.py LAYOUT_REVISION = 1 written as
+  minor_revision into EVERY layout (all 11 x 2 regenerated - content
+  change, not only line endings); SteamInputDemo's configuration callback
+  reads major / minor_revision from the file next to the program
+  (LayoutFileRevision) and logs "CURRENT file" or "Layout revision
+  MISMATCH ... OLDER copy" (the old files report 0.0). ASSUMPTION, to be
+  confirmed by the next run: m_unMajorRevision / m_unMinorRevision ARE
+  the layout file's major_revision / minor_revision. SteamInputMapping.md
+  section "Which copy of the layout did Steam load?". NOT YET COMPILED.
+- ROG ALLY RUN 3 (owner 21:49-21:52, Revision1 build): COMPILED, and the
+  check WORKS: "Layout revision MISMATCH: Steam loaded 0.0, but
+  controller_xboxone.vdf next to the program is 0.1" - so the new file IS
+  in the game folder and Steam uses an older copy (Gyro / Back* still
+  unbound confirms it independently of the revision assumption). Valve's
+  action-manifest page: the manifest path override "will be remembered
+  for the rest of the Steam session"; nothing documented about layout
+  caching - so most likely Steam must be RESTARTED after layouts change.
+  Platform lines still "Linux x64 build" -> Steamworks package still not
+  rebuilt for Linux64. One A + X pair (21:49:38, pressed together,
+  released together) may be both paddles = the Y2 -> A / Y1 -> X
+  bindings Steam reports; the many single B / Y presses may be the face
+  buttons - asked the owner to press each paddle ALONE once. Zip
+  Revision2 (follows Revision1): mismatch message says restart Steam;
+  SteamInputMapping.md: restart Steam after layout changes, partner-site
+  setting "Custom Configuration (Bundled with Game)".
+- Owner (21:58, screenshot from a laptop + Xbox One pad, kept outside the
+  repo): Steam's "Load new Layout" > Official Layouts shows THREE entries
+  all titled "Official Layout for G3DGames - SteamInputDemo default
+  layout" / "Default bindings for the TSteamAPI Steam Input test" - the
+  MANIFEST's localization title, not each layout's own (Titles1 had put
+  per-controller titles only in each layout's localization block, while
+  the layout header said "#title" - Steam resolved the token from the
+  manifest). Three = the layouts that fit an Xbox pad (xboxone, xbox360,
+  generic, presumably); FOUR on the Ally - so on the Ally a pick among
+  identical names may well have chosen a layout without gyro / paddles,
+  which could also explain the revision 0.0 / unbound gyro. Zip Titles2
+  (follows Revision2): layout title / description are LITERAL text
+  ("SteamInputDemo - Xbox One / Series (r2)", description names the
+  .vdf and revision); LAYOUT_REVISION = 2; all 22 layouts regenerated
+  (manifest unchanged); SteamInputMapping.md section "Telling the
+  official layouts apart". Steam must reload (restart) to show the new
+  titles.
+- ROG ALLY RUN 4 (owner 22:14-22:15, Titles2): the browser now showed
+  distinct titles and the owner CHOSE "SteamInputDemo - Xbox One / Series
+  (r2)" - yet Steam reported revision 0.0, Gyro and all Back* still
+  unbound, Y2 -> ButtonA, Y1 -> ButtonX, and the paddles still produced
+  B / Y presses (22:15:35-38). CONCLUSIONS: (1) my Revision1 assumption
+  was WRONG - m_unMajorRevision / m_unMinorRevision are NOT the layout
+  file's revision; the "MISMATCH / OLDER copy / restart Steam" message
+  was misleading (the Ally run 3 reading built on it was wrong too).
+  Zip Ally5 (follows Titles2): the demo now logs both numbers as
+  information only; docs section rewritten (the title's "(rN)" is the
+  real indicator). (2) Our controller_xboxone layout IS loaded, but its
+  gyro group and button_back_* groups do not reach the Ally: Steam
+  presents the Ally's controls with LenovoLegionGo origins, and the
+  Xbox One source names (gyro, button_back_left / _right / _upper) are
+  evidently not the ones Steam maps the Ally's paddles / gyro to; Steam
+  fills the paddles itself (Y2 -> A, Y1 -> X; presses observed as B / Y,
+  still unexplained). Valve's documented controller_type list has no
+  Legion Go / Ally / SteamOS-handheld entry (ESteamInputType 15
+  SteamOSHandheld exists). NEXT (asked): on the Ally, bind the paddles
+  and gyro in Steam's own layout editor for this game, then export it
+  (Export Layout / steam://dumpcontrollerconfig?appid=2275430) - Steam's
+  file will name the controller_type and the source names it uses for
+  the Ally's paddles and gyro, as the triton export did.
+- OWNER (22:37): ROG Ally paddles PARKED - "too much time on buttons
+  hardly anyone uses". State left: controller_xboxone layout binds gyro +
+  four button_back_* sources (Paddles1) - harmless on the Ally (they just
+  do not reach it), but NOT yet re-run on a plain Xbox pad (expected:
+  Gyro / Back* "not bound (optional)"); if that pad misbehaves, revert
+  controller_xboxone to STANDARD sources (gen_input_mapping.py) and bump
+  LAYOUT_REVISION. Kept: literal "(rN)" layout titles, the probe, the
+  information-only revision log line. To resume: the Ally layout export
+  described above. Zip Park1 (follows Ally5): this note.
+- OWNER (22:43-22:46): VirtualGamepad starts with motion OFF; a LONG press
+  of Start (LONG_PRESS_MS = 800, once per hold - FStartUsed) shows an
+  overlay menu (FMX TRectangle, Align Contents, created in code by
+  CreateOverlay) and activates the Menu action set. Items: Return to App,
+  Enable / Disable Motion (greyed out until the pad has sent real motion
+  data - FHasMotion, the same test as ApplyMotion), Enable / Disable
+  Remote Logging (SteamInputDemo's sender code; also File > Send log to
+  receiver; search path ..\..\RemoteLogging\src added), Exit (queued
+  with ForceQueue so Steam is not shut down inside the poll). D-pad up /
+  down move (greyed items skipped, no wrap), A chooses, B returns; a
+  mouse click on an item works too. Switching motion on recenters (the
+  orientation then = front view). New manifest actions Menu/MenuUp +
+  MenuDown on dpad_north / _south (gen_input_mapping.py; shared with
+  SteamInputDemo, which ignores them); LAYOUT_REVISION 3 -> titles "(r3)".
+  NOT COMPILED here (no Delphi) and not run: check that the 2D overlay
+  draws above the Gorilla3D viewport. Zip Overlay1 (follows Park1).
+- OWNER (23:00) on Overlay1: works on Xbox and PS5 (PS5: motion item
+  selectable). Steam Controller: D-pad moves the model but NOT the menu.
+  The r3 triton / gordon layouts DO bind MenuUp / MenuDown (checked), so
+  Steam most likely used an older copy of the layout for that pad (no log
+  sent - unconfirmed). Fix: OpenOverlay asks DigitalActionOrigins for
+  every Menu action; if any is unbound, FMenuUsesInGame - the InGame set
+  stays active and the overlay reads DPadUp / DPadDown / ButtonA /
+  ButtonB (MenuFallback), logged. Every choice now closes the overlay;
+  item renamed Start / Stop Remote Logging. Zip Overlay2 (follows
+  Overlay1).
+- OWNER (23:07): README title is now just "Steamworks for Delphi"
+  ("(FMX first, then VCL and FPC)" removed) - goes in the next zip.
+- OWNER (23:21): VirtualGamepad - with more than one pad connected the
+  overlay's TOP row names a controller between left / right arrows
+  (U+25C0 / U+25B6, "n of m", "- shown" for the current one); D-pad left
+  / right goes through the pads (wrapping, FMenuPads taken when the
+  overlay opens, FMenuPadIndex); A on the row makes it the shown pad
+  (FChosenPad, RefreshControllers prefers it while connected; ResetState
+  forgets it) and closes the menu; moving alone changes nothing. A change
+  in the number of pads closes the overlay. New Menu actions MenuLeft /
+  MenuRight on dpad_west / _east, LAYOUT_REVISION 4 ("(r4)"); fallback
+  maps them to DPadLeft / DPadRight. Log panel (memLog, splLog), the live
+  line (lblLive) and the info lines (lblPadInfo) REMOVED - the banner is
+  one line (name + "n of m connected - hold Start to change"); the log
+  goes to the file, stderr and the LogReceiver; FLogLines (TStringList,
+  last 20000 lines, freed in Destroy) keeps the backlog for remote
+  logging. ReadActions / ReadMenuActions are procedures now. Zip Pads2
+  (follows Overlay2) - also carries the README title change.
+- OWNER (23:31): FOSS licence, MIT if everything allows. LICENSE (MIT,
+  "Copyright (c) 2026 G3DGames" - holder name is the owner's to change)
+  at the root; README "Licence" section lists what it does NOT cover:
+  models/ (CC0, own LICENSE), Gorilla.Animation.Parallel.pas (Gorilla3D
+  author's code, included with permission, licence NOT stated - ask him
+  whether MIT is fine), the Steamworks SDK (not in the repo; Valve's
+  licence) + trademarks. Sprite3DCamera.pas is the owner's own code
+  (Sprite3D repo has no licence file) - covered by MIT as his choice.
+  Zip Licence1 (follows Pads2).
+- OWNER (23:33): README title "Steamworks for Pascal" (not Delphi). Zip
+  Title2 (follows Licence1).
+- OWNER (23:39): the Xbox One model's sticks moved the wrong way
+  vertically. FStickYSign: +1 for MODEL_XBOX, -1 (the sample's sign) for
+  PS5 / Steam Controller; x stays negated on all. Zip Stick1 (follows
+  Title2). If PS5 / Steam Controller turn out wrong too, the sign table
+  is per model file.
+- OWNER (23:42): Steam Controller model the same, PS5 right. FStickYSign
+  is now -1 for MODEL_PS only, +1 for Xbox and Steam Controller. Zip
+  Stick2 (follows Stick1).
+- OWNER (23:50): on the non-PS5 models left / right was mirrored too.
+  FStickSign now applies to x AND y: -1 (sample) for MODEL_PS, +1 for
+  Xbox and Steam Controller. Zip Stick3 (follows Stick2).
 
 ## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
 State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to

@@ -12,6 +12,7 @@
 | [fmx-menu-bug-fix.md](fmx-menu-bug-fix.md) | FMX main menu on Linux shows only first letters: replacing it with an FMX menu bar (short, with code) |
 | [fmx-steamos-gtk3-bug-fix.md](fmx-steamos-gtk3-bug-fix.md) | Getting an FMX game to start in Steam's Linux runtime: use Runtime 3.0, and make GTK 3 globally visible (short, with code) |
 | [fmx-steamos-gtk3-bug.md](fmx-steamos-gtk3-bug.md) | Bug report for Embarcadero: FMX on Linux crashes inside Steam Linux Runtime 3.0 when a TListBox is created (GTK functions looked up in the global scope); FMX cannot run in Runtime 4.0 (no GTK 3) |
+| [Launcher.md](Launcher.md) | PLAN (not built yet): one AppID with a front-end launcher that starts SteamDemo, SteamInputDemo and VirtualGamepad as child processes - Steam set-up, detecting the launcher, Steam Input, platform notes, open decisions |
 | [ComponentIcons.md](ComponentIcons.md) | Brief for the palette icons: every current and planned component, format and sizes |
 | [../README.md](../README.md) | Project overview, design notes, Steam's quirks ("Known issues") |
 

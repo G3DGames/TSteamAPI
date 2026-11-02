@@ -32,7 +32,8 @@ project's releases for people without Delphi.
    through the firewall on **private** networks. **File -> Exit** closes it.
 2. In the program on the device, choose **File -> Send log to receiver**
    - in SteamInputDemo also **DPadUp + Y + LeftBumper held together** on
-   the controller (SteamOS shows every main window full screen, the menu
+   the controller, in VirtualGamepad **Start Remote Logging** in the
+   overlay menu (hold Start) (SteamOS shows every main window full screen, the menu
    is awkward there). It looks for receivers for 2.5 seconds in the
    background and connects to the one that answers - no questions on the
    device (if several answer, the first; the log names them all). None:

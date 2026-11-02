@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"#title"
-	"description"		"#description"
+	"title"		"SteamInputDemo - PlayStation 4 (r4)"
+	"description"		"Default layout for the PlayStation 4 (controller_ps4.vdf, revision 4) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
 	"controller_type"		"controller_ps4"
 	"major_revision"		"0"
-	"minor_revision"		"0"
+	"minor_revision"		"4"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -83,6 +83,10 @@
 			{
 				"MenuConfirm"		"#Action_MenuConfirm"
 				"MenuBack"		"#Action_MenuBack"
+				"MenuUp"		"#Action_MenuUp"
+				"MenuDown"		"#Action_MenuDown"
+				"MenuLeft"		"#Action_MenuLeft"
+				"MenuRight"		"#Action_MenuRight"
 			}
 		}
 	}
@@ -90,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - PlayStation 4"
-			"description"		"Default layout for the PlayStation 4 - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
+			"title"		"SteamInputDemo - PlayStation 4 (r4)"
+			"description"		"Default layout for the PlayStation 4 (controller_ps4.vdf, revision 4) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -125,6 +129,10 @@
 			"Action_BackRightUpper"		"Upper right back paddle (R4)"
 			"Action_MenuConfirm"		"Confirm"
 			"Action_MenuBack"		"Back (with Confirm: back to every control)"
+			"Action_MenuUp"		"Menu: up"
+			"Action_MenuDown"		"Menu: down"
+			"Action_MenuLeft"		"Menu: left"
+			"Action_MenuRight"		"Menu: right"
 		}
 	}
 	"group"
@@ -522,6 +530,58 @@
 		"mode"		"dpad"
 		"inputs"
 		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuUp"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuDown"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuLeft"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Menu MenuRight"
+						}
+					}
+				}
+			}
 		}
 	}
 	"group"

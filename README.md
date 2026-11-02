@@ -1,4 +1,4 @@
-# Steamworks for Delphi (FMX first, then VCL and FPC)
+# Steamworks for Pascal
 
 A Pascal binding of the Steamworks SDK **1.65**, built as a small **core**
 (the Steam client part every other interface depends on) plus **plug-ins**,
@@ -36,9 +36,26 @@ thread or your own loop; CGE, Gorilla3D, Skia4Delphi, PasVulkan, ...),
 layouts, origins to physical buttons)
 and [one page per component / plug-in](docs/components/README.md).
 
+## Licence
+
+MIT - see [LICENSE](LICENSE). It covers everything in this repository
+except:
+
+* `models/` - the 3D gamepad models are CC0 1.0 (public domain
+  dedication), see [models/LICENSE](models/LICENSE).
+* `demos/VirtualGamepad/src/Gorilla.Animation.Parallel.pas` - written for
+  this project by Gorilla3D's author and included with his permission; it
+  is his code and NOT under this project's MIT licence unless he says so.
+* The Steamworks SDK is not in this repository: each developer copies
+  Valve's redistributables into `redistributable_bin/` under Valve's own
+  Steamworks SDK licence. Steam, Xbox and PlayStation are trademarks of
+  their owners; this project is not affiliated with Valve, Microsoft or
+  Sony.
+
 ## Repository layout
 
 ```
+LICENSE                     MIT (exceptions: README "Licence")
 Steamworks.groupproj        project group: demos + packages
 lib/                        framework-free library (Delphi + FPC)
   Steamworks.inc            compiler / packing settings - include in every unit
@@ -98,9 +115,18 @@ demos/
   VirtualGamepad/           3D gamepad visualiser (FMX + Gorilla3D 1.5.4, in
                             progress): the model of the connected pad (Xbox,
                             PS5 or Steam Controller from models/, by Steam's
-                            type), turned live by the pad's motion sensors,
-                            mouse orbits the camera; banner + live line of
-                            every pressed control; same manifest and layouts
+                            type), turned by the pad's motion sensors once
+                            switched on (off at start), mouse orbits the
+                            camera; hold Start for the overlay menu (Menu
+                            action set: D-pad, A, B) - with several pads a
+                            controller row (D-pad left / right, A shows
+                            that pad), Return to App,
+                            Enable / Disable Motion (greyed out without
+                            motion sensors), Start / Stop Remote
+                            Logging, Exit (each choice closes it); a
+                            one-line banner, the rest is the 3D view (no
+                            log panel: log file + remote logging); same
+                            manifest and layouts
                             as SteamInputDemo. Every button, stick and trigger
                             moves on the model, any number at once, through
                             TGorillaParallelAnimator (unit
@@ -306,9 +332,15 @@ it searches the executable folder and the macOS bundle (`Contents/MacOS`,
 OS error, raises warnings through an event instead of a logging framework, and
 takes symbol names as `string`. Bound pointers dangle once a library is freed,
 so `TSteamLib.Unload` clears its table before unloading.
-Before loading, the core logs the build target and how it runs
-(`TSteamLib.PlatformDescription`, e.g. `macOS x64 build, running under
-Rosetta 2`; Windows x86/x64 builds report WOW64 or ARM64 emulation).
+Before loading, the core logs the build target, the system it really runs
+on with its version and build number, and how it runs
+(`TSteamLib.PlatformDescription`, e.g. `macOS x64 build on macOS 15.1 build
+24B83, running under Rosetta 2`). `TSteamLib.RunningOS` names Wine and Proton
+when a Windows build runs under them, with the host system behind them (so a
+SteamOS player's Proton run and a native Linux run can be told apart), and
+the host plus Steam's runtime container for a Linux build started by Steam.
+Every demo appends the description to its main window's caption;
+LogReceiver, which uses no Steam unit, appends the RTL's `TOSVersion.ToString`.
 
 ### Initialisation (`TSteamworks.InitMode`)
 * `simAuto` (default): `SteamAPI_InitFlat` when exported (SDK 1.59+), else legacy init.
@@ -602,3 +634,9 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (both demos
   (needs C union support in the generator), HTMLSurface, Video,
   ParentalSettings, RemotePlay, Music.
 * Game-server API (`SteamGameServer_*`).
+
+### To do at the end of the project
+* **Front-end launcher** for the demos under one AppID (SteamDemo,
+  SteamInputDemo, VirtualGamepad and Exit): plan and open decisions in
+  [docs/Launcher.md](docs/Launcher.md). Not started on purpose - it comes
+  last, once the demos it launches are finished.

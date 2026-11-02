@@ -42,7 +42,11 @@ fi
 exec "$prog" "$@"
 ```
 
-`demos/SteamInputDemo/src/SteamInputDemo.sh` is the full version. It also
+`demos/SteamInputDemo/src/SteamInputDemo.sh` is the full version; every
+TSteamAPI program that Steam may start on Linux ships an identical copy
+named after itself (`SteamDemo.sh`, `SteamConsole.sh`, `VirtualGamepad.sh`)
+- the bug is in Delphi's `System` start-up, so console programs need it
+too. It also
 reports its choice on stderr, and can be tested without changing Steam's
 settings: rename the program to `<program>.bin` and copy the script in as
 `<program>`.

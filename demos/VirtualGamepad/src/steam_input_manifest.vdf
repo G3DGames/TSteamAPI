@@ -155,6 +155,10 @@
 			{
 				"MenuConfirm"		"#Action_MenuConfirm"
 				"MenuBack"		"#Action_MenuBack"
+				"MenuUp"		"#Action_MenuUp"
+				"MenuDown"		"#Action_MenuDown"
+				"MenuLeft"		"#Action_MenuLeft"
+				"MenuRight"		"#Action_MenuRight"
 			}
 		}
 	}
@@ -197,6 +201,10 @@
 			"Action_BackRightUpper"		"Upper right back paddle (R4)"
 			"Action_MenuConfirm"		"Confirm"
 			"Action_MenuBack"		"Back (with Confirm: back to every control)"
+			"Action_MenuUp"		"Menu: up"
+			"Action_MenuDown"		"Menu: down"
+			"Action_MenuLeft"		"Menu: left"
+			"Action_MenuRight"		"Menu: right"
 		}
 	}
 }

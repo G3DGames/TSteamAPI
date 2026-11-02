@@ -59,7 +59,8 @@ uses
 ```
 
 On Windows and macOS the unit compiles to nothing. TSteamAPI's FMX
-programs carry the same unit as `src/FmxLinuxGtkGlobal.pas`, which also
+programs (SteamDemo, SteamInputDemo, VirtualGamepad, LogReceiver) carry
+the same unit as `src/FmxLinuxGtkGlobal.pas`, which also
 writes a line to stderr saying whether each library was opened.
 
 ## Checking a launch

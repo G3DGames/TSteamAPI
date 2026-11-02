@@ -91,7 +91,7 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <SanitizedProjectName>VirtualGamepad</SanitizedProjectName>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>src;..\..\RemoteLogging\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_IncludePath>src;$(DCC_IncludePath)</DCC_IncludePath>
         <DCC_DcuOutput>.\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
@@ -343,10 +343,24 @@ copy /Y "$(PROJECTDIR)\..\..\models\SteamController_Animated.glb" "$(OUTPUTDIR)"
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="src\VirtualGamepad.sh" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>VirtualGamepad.sh</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="..\..\redistributable_bin\linux64\libsteam_api.so" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
                         <RemoteDir>.\</RemoteDir>
                         <RemoteName>libsteam_api.so</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="src\VirtualGamepad.sh" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>VirtualGamepad.sh</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

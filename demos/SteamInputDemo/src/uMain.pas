@@ -219,6 +219,17 @@ type
     FConfigTexts: array of string;
     { When the controller now read was first read (see LAYOUT_WAIT_MS). }
     FActiveSince: TDateTime;
+    { Capability probe of the controller read: an accelerometer was seen
+      (non-zero acceleration in the motion data). }
+    FSeenAccel: Boolean;
+    { Capability probe: a gyroscope was seen (non-zero rotation speed). }
+    FSeenGyro: Boolean;
+    { Capability probe: back / grip buttons bound in the current layout
+      (Steam's names, comma separated; '' = none). }
+    FSeenBackButtons: string;
+    { Capability probe: the origin sets (device families) the bound
+      origins belong to, e.g. 'XBoxOne, LenovoLegionGo'. }
+    FSeenFamilies: string;
     { Status messages of @link(FSender), written to the log. }
     procedure RemoteLogStatus(Sender: TObject; const AText: string);
     { Starts sending the log: searches for receivers in the background
@@ -271,6 +282,14 @@ type
       LeftBumper together start sending the log (@link(StartRemoteLog));
       returns the live-state text. }
     function ReadActions(P: TSteamInputPlugin): string;
+    { Forgets what the capability probe saw (another controller). }
+    procedure ResetProbe;
+    { Notes one bound origin for the capability probe (its family, and
+      whether it is a back / grip button). }
+    procedure ProbeOrigin(P: TSteamInputPlugin; AOrigin: EInputActionOrigin);
+    { "Detected beyond the <type> profile: ..." for the banner and the log;
+      '' when the probe found nothing the type does not promise. }
+    function ProbeText(T: ESteamInputType): string;
     { Start-up trace (POSIX): names each component on stderr as the form
       file creates it, so a crash while the form loads names its culprit
       (Steam's Linux runtime crashed SteamInputDemo there, 2026-11-01). }
@@ -295,7 +314,7 @@ implementation
 {$R *.fmx}
 
 uses
-  System.IOUtils, System.DateUtils, System.StrUtils, FmxLinuxMenu
+  System.IOUtils, System.DateUtils, System.StrUtils, Steamworks.API, FmxLinuxMenu
 {$IFDEF MSWINDOWS}
   , Winapi.ShellAPI   // not Winapi.Windows: its TBitmap would hide FMX's here
 {$ENDIF}
@@ -446,6 +465,41 @@ begin
   end;
 end;
 
+{ "major.minor" from a layout file's major_revision / minor_revision keys
+  (tools/gen_input_mapping.py writes them), '' when unreadable. }
+function LayoutFileRevision(const AFileName: string): string;
+  function Value(const AText, AKey: string): string;
+  var
+    P, Q, R: Integer;
+  begin
+    Result := '';
+    P := Pos('"' + AKey + '"', AText);
+    if P = 0 then
+      Exit;
+    Q := PosEx('"', AText, P + Length(AKey) + 2);
+    if Q = 0 then
+      Exit;
+    R := PosEx('"', AText, Q + 1);
+    if R > Q then
+      Result := Copy(AText, Q + 1, R - Q - 1);
+  end;
+var
+  Text, Major, Minor: string;
+begin
+  Result := '';
+  try
+    if not TFile.Exists(AFileName) then
+      Exit;
+    Text := TFile.ReadAllText(AFileName);
+  except
+    Exit;
+  end;
+  Major := Value(Text, 'major_revision');
+  Minor := Value(Text, 'minor_revision');
+  if (Major <> '') and (Minor <> '') then
+    Result := Major + '.' + Minor;
+end;
+
 { The controller_type Steam looks for in the manifest's "configurations" for
   this type ('' when no name is known). Elite / DualSense Edge pads report
   the base type but have layout names of their own; a single Joy-Con is
@@ -511,6 +565,133 @@ begin
     k_ESteamInputType_Switch2ProController, k_ESteamInputType_SwitchJoyConPair,
     k_ESteamInputType_SteamDeckController, k_ESteamInputType_SteamController2026] then
     Result := Result + ', bound to the Gyro action';
+end;
+
+{ The SDK's origin set (device family) an origin belongs to. The
+  EInputActionOrigin values are contiguous per family (SDK 1.65), from its
+  first to its last (Reserved) member.
+  @param(O The origin.)
+  @returns(Family name as in the SDK, '' for none.) }
+function OriginFamily(O: EInputActionOrigin): string;
+begin
+  if (O >= k_EInputActionOrigin_SteamController_A) and (O <= k_EInputActionOrigin_SteamController_Reserved10) then
+    Result := 'SteamController'
+  else if (O >= k_EInputActionOrigin_PS4_X) and (O <= k_EInputActionOrigin_PS4_Reserved10) then
+    Result := 'PS4'
+  else if (O >= k_EInputActionOrigin_XBoxOne_A) and (O <= k_EInputActionOrigin_XBoxOne_Reserved10) then
+    Result := 'XBoxOne'
+  else if (O >= k_EInputActionOrigin_XBox360_A) and (O <= k_EInputActionOrigin_XBox360_Reserved10) then
+    Result := 'XBox360'
+  else if (O >= k_EInputActionOrigin_Switch_A) and (O <= k_EInputActionOrigin_Switch_Reserved20) then
+    Result := 'Switch'
+  else if (O >= k_EInputActionOrigin_PS5_X) and (O <= k_EInputActionOrigin_PS5_Reserved20) then
+    Result := 'PS5'
+  else if (O >= k_EInputActionOrigin_SteamDeck_A) and (O <= k_EInputActionOrigin_SteamDeck_Reserved20) then
+    Result := 'SteamDeck'
+  else if (O >= k_EInputActionOrigin_Horipad_M1) and (O <= k_EInputActionOrigin_Horipad_R4) then
+    Result := 'Horipad'
+  else if (O >= k_EInputActionOrigin_LenovoLegionGo_A) and (O <= k_EInputActionOrigin_LenovoLegionGo_Reserved20) then
+    Result := 'LenovoLegionGo'
+  else if (O >= k_EInputActionOrigin_Generic_L4) and (O <= k_EInputActionOrigin_Generic_MISC8) then
+    Result := 'Generic'
+  else if (O >= k_EInputActionOrigin_Switch2_A) and (O <= k_EInputActionOrigin_Switch2_Reserved10) then
+    Result := 'Switch2'
+  else if (O >= k_EInputActionOrigin_SteamController2026_A) and (O <= k_EInputActionOrigin_SteamController2026_Reserved20) then
+    Result := 'SteamController2026'
+  else if (O >= k_EInputActionOrigin_SteamFrameController_A_Click) and (O <= k_EInputActionOrigin_SteamFrameController_Reserved20) then
+    Result := 'SteamFrameController'
+  else
+    Result := '';
+end;
+
+{ The origin family a controller type's buttons normally report (a Switch
+  Pro with Steam's button swap off reports XBox360 - see
+  docs/SteamInputMapping.md section 5).
+  @param(T The type.)
+  @returns(Family name as in @link(OriginFamily), '' when not known.) }
+function ExpectedFamily(T: ESteamInputType): string;
+begin
+  case T of
+    k_ESteamInputType_SteamController:          Result := 'SteamController';
+    k_ESteamInputType_XBox360Controller:        Result := 'XBox360';
+    k_ESteamInputType_XBoxOneController:        Result := 'XBoxOne';
+    k_ESteamInputType_GenericGamepad:           Result := 'Generic';
+    k_ESteamInputType_PS4Controller:            Result := 'PS4';
+    k_ESteamInputType_PS5Controller:            Result := 'PS5';
+    k_ESteamInputType_SwitchProController, k_ESteamInputType_SwitchJoyConPair,
+    k_ESteamInputType_SwitchJoyConSingle:       Result := 'Switch';
+    k_ESteamInputType_SteamDeckController:      Result := 'SteamDeck';
+    k_ESteamInputType_Switch2ProController:     Result := 'Switch2';
+    k_ESteamInputType_SteamController2026:      Result := 'SteamController2026';
+    k_ESteamInputType_SteamFrameControllerPair: Result := 'SteamFrameController';
+  else
+    Result := '';
+  end;
+end;
+
+{ Whether a controller type has motion sensors (accelerometer and
+  gyroscope), as @link(MotionText) describes it.
+  @param(T The type.)
+  @returns(True for the types with motion sensors.) }
+function ExpectsMotion(T: ESteamInputType): Boolean;
+begin
+  Result := StartsText('yes', MotionText(T));
+end;
+
+{ Whether a controller type has back / grip buttons as standard (the 2015
+  Steam Controller's grips, the Deck's and the 2026 Steam Controller's
+  L4 / L5 / R4 / R5). Elite / Edge pads report their base type, so their
+  paddles show up as "beyond the profile".
+  @param(T The type.)
+  @returns(True when the type has them.) }
+function ExpectsBackButtons(T: ESteamInputType): Boolean;
+begin
+  Result := T in [k_ESteamInputType_SteamController, k_ESteamInputType_SteamDeckController,
+    k_ESteamInputType_SteamController2026];
+end;
+
+{ Whether an origin is a back / grip button (the SDK 1.65 names: grips,
+  L4 / L5 / R4 / R5, Legion Go Y1 / Y2, Horipad M1 / M2 / L4 / R4). The Steam
+  Frame's analog grips and the 2026 controller's grip sensors are not
+  buttons and are not counted.
+  @param(O The origin.)
+  @returns(True for a back / grip button.) }
+function IsBackButtonOrigin(O: EInputActionOrigin): Boolean;
+begin
+  case O of
+    k_EInputActionOrigin_SteamController_LeftGrip, k_EInputActionOrigin_SteamController_RightGrip,
+    k_EInputActionOrigin_XBoxOne_LeftGrip_Lower, k_EInputActionOrigin_XBoxOne_LeftGrip_Upper,
+    k_EInputActionOrigin_XBoxOne_RightGrip_Lower, k_EInputActionOrigin_XBoxOne_RightGrip_Upper,
+    k_EInputActionOrigin_Switch_LeftGrip_Lower, k_EInputActionOrigin_Switch_LeftGrip_Upper,
+    k_EInputActionOrigin_Switch_RightGrip_Lower, k_EInputActionOrigin_Switch_RightGrip_Upper,
+    k_EInputActionOrigin_PS5_LeftGrip, k_EInputActionOrigin_PS5_RightGrip,
+    k_EInputActionOrigin_SteamDeck_L4, k_EInputActionOrigin_SteamDeck_R4,
+    k_EInputActionOrigin_SteamDeck_L5, k_EInputActionOrigin_SteamDeck_R5,
+    k_EInputActionOrigin_Horipad_M1, k_EInputActionOrigin_Horipad_M2,
+    k_EInputActionOrigin_Horipad_L4, k_EInputActionOrigin_Horipad_R4,
+    k_EInputActionOrigin_LenovoLegionGo_Y1, k_EInputActionOrigin_LenovoLegionGo_Y2,
+    k_EInputActionOrigin_Generic_L4, k_EInputActionOrigin_Generic_R4,
+    k_EInputActionOrigin_Generic_L5, k_EInputActionOrigin_Generic_R5,
+    k_EInputActionOrigin_SteamController2026_L4, k_EInputActionOrigin_SteamController2026_R4,
+    k_EInputActionOrigin_SteamController2026_L5, k_EInputActionOrigin_SteamController2026_R5:
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+{ Adds AItem to a comma-separated list unless it is already in it.
+  @param(AList The list.)
+  @param(AItem The item.)
+  @returns(True if it was added.) }
+function AddUnique(var AList: string; const AItem: string): Boolean;
+begin
+  Result := (AItem <> '') and (Pos(', ' + AItem + ',', ', ' + AList + ',') = 0);
+  if Result then
+    if AList = '' then
+      AList := AItem
+    else
+      AList := AList + ', ' + AItem;
 end;
 
 { Readable name of an analog source mode. }
@@ -596,6 +777,10 @@ begin
     end;
   end;
   AddLog('FormCreate started');
+  // Which build runs on which system (native or Proton / Wine on SteamOS,
+  // Rosetta 2 on macOS, Steam's Linux runtime container ...)
+  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
+  AddLog('Platform: ' + TSteamLib.PlatformDescription);
   if LogFileError <> '' then
     AddLog('Log file NOT written: ' + LogFileError);
   // Linux: FMX's menu bar instead of GTK's, which shows only first letters
@@ -736,6 +921,7 @@ begin
   FResolveWarned := False;
   FOriginsLogged := False;
   FMotionLogged := False;
+  ResetProbe;
   FPollErrors := 0;
   FStateText := '';
 end;
@@ -877,7 +1063,7 @@ begin
   // the log so far first, so the receiver gets the whole run
   for I := 0 to memLog.Lines.Count - 1 do
     FSender.Send(memLog.Lines[I]);
-  FSender.Start(AHost, APort, 'SteamInputDemo');
+  FSender.Start(AHost, APort, 'SteamInputDemo', TSteamLib.PlatformDescription);
   mnuRemoteLog.Text := 'Stop sending log';
   AddLog(Format('[remote log] sending to %s:%d - click Yes in LogReceiver', [AHost, APort]));
 end;
@@ -925,6 +1111,7 @@ begin
     FPressed[A] := False;
   FOriginsLogged := False;
   FMotionLogged := False;
+  ResetProbe;
   FSetActiveState := -1;
   FActiveSince := Now;
   AddLog('Reading ' + ControllerText(P, FActive));
@@ -1034,15 +1221,44 @@ end;
 
 procedure TfrmInput.InputConfigurationLoaded(Sender: TObject; const AData: SteamInputConfigurationLoaded_t);
 var
-  Text: string;
+  Text, FileName, FileRev, SteamRev: string;
   I: Integer;
   Found: Boolean;
+  P: TSteamInputPlugin;
 begin
   AddLog(Format('OnSteamInputConfigurationLoaded: app %d, handle %s, mapping by %s, revision %d.%d, '
     + 'uses Steam Input API %s, uses gamepad API %s',
     [AData.m_unAppID, UIntToStr(AData.m_ulDeviceHandle), AData.m_ulMappingCreator.ToString,
      AData.m_unMajorRevision, AData.m_unMinorRevision,
      BoolToStr(AData.m_bUsesSteamInputAPI, True), BoolToStr(AData.m_bUsesGamepadAPI, True)]));
+  // Which COPY of our layout did Steam load? Each generated layout carries
+  // a revision (tools/gen_input_mapping.py LAYOUT_REVISION) that Steam
+  // reports back here. Owner's ROG Ally run 2026-11-01: a changed layout
+  // made no difference - an old copy (game folder or Steam's cache) is the
+  // likely reason, and this line settles it.
+  P := Input;
+  if (P <> nil) and (AData.m_ulMappingCreator.Value = 0) then
+  begin
+    FileName := LayoutTypeName(P.GetInputTypeForHandle(AData.m_ulDeviceHandle));
+    if (FileName <> '') and (ExtractFilePath(ManifestPath) <> '') then
+    begin
+      FileName := TPath.Combine(ExtractFilePath(ManifestPath), FileName + '.vdf');
+      FileRev := LayoutFileRevision(FileName);
+      SteamRev := Format('%d.%d', [AData.m_unMajorRevision, AData.m_unMinorRevision]);
+      // NOT a check: the owner chose the "(r2)" layout in Steam's browser
+      // on the ROG Ally (2026-11-01) and Steam still reported 0.0, so
+      // Steam's revision is not the file's minor_revision. Both are logged;
+      // the layout's title ("... (rN)") in Steam's browser is what shows
+      // which copy Steam has.
+      if FileRev = '' then
+        AddLog('  Layout file ' + FileName + ': no revision found (not ours, or unreadable)')
+      else
+        AddLog('  Revisions: Steam reports ' + SteamRev + ', ' + ExtractFileName(FileName)
+          + ' next to the program is ' + FileRev + ' (Steam''s number is not the file''s - '
+          + 'the "(r' + Copy(FileRev, Pos('.', FileRev) + 1, MaxInt) + ')" in the layout''s title in '
+          + 'Steam''s layout browser shows which copy Steam has)');
+    end;
+  end;
   // remember which layout this controller got, for the banner: creator 0 =
   // the game's own default layout (ours), anything else = a layout made by a
   // player or a Steam template
@@ -1116,7 +1332,8 @@ begin
   for I := 0 to High(FConfigHandles) do
     if FConfigHandles[I] = FActive then
       Loaded := FConfigTexts[I];
-  Key := Format('%s/%d/%d/%s', [UIntToStr(FActive), Ord(T), Length(FControllers), Loaded]);
+  Key := Format('%s/%d/%d/%s/%s', [UIntToStr(FActive), Ord(T), Length(FControllers), Loaded,
+    ProbeText(T)]);
   if Key = FPadKey then
     Exit;
   FPadKey := Key;
@@ -1161,6 +1378,8 @@ begin
     Info := Format('Steam type %s (%d) - %s - 3D model %s - motion sensors %s'
       + sLineBreak + '%s',
       [InputTypeId(T), Ord(T), Layout, ModelName(T), MotionText(T), Loaded]);
+    if ProbeText(T) <> '' then
+      Info := Info + sLineBreak + ProbeText(T);
   end;
   lblPadName.Text := PadName;
   lblPadInfo.Text := Info;
@@ -1263,6 +1482,7 @@ begin
     FActive := FControllers[Sel];
     FOriginsLogged := False;
     FMotionLogged := False;
+    ResetProbe;
     FSetActiveState := -1;
     FActiveSince := Now;
     AddLog('Reading ' + ControllerText(P, FActive));
@@ -1335,6 +1555,9 @@ begin
   if FOriginsLogged or (FActive = 0) then
     Exit;
   FOriginsLogged := True;
+  // the origin part of the capability probe describes THIS layout
+  FSeenBackButtons := '';
+  FSeenFamilies := '';
   // Steam returns no origins at all for a pad that is going away (Linux
   // run 20:59: every PS5 action "NOT BOUND", the PS5 disconnected 5 s
   // later). Then "a different layout" would be wrong: say it once instead.
@@ -1355,8 +1578,9 @@ begin
   AddLog('Bindings on ' + ControllerText(P, FActive) + ':');
   if NoneBound then
     AddLog('  NO action has a binding on this pad right now - Steam reports this while a pad is '
-      + 'disconnecting (switched off, Bluetooth lost) or when it uses a layout without our actions '
-      + 'at all; if the pad stays, choose the game''s official layout in Steam (File > View '
+      + 'disconnecting (switched off, Bluetooth lost), for a moment while Steam''s overlay / '
+      + 'Quick Access menu takes the pad (the set goes inactive next), or when it uses a layout '
+      + 'without our actions at all; if the pad stays, choose the game''s official layout in Steam (File > View '
       + 'Controller Settings)');
   lbBindings.BeginUpdate;
   try
@@ -1379,6 +1603,7 @@ begin
       Text := '';
       for I := 0 to High(Origins) do
       begin
+        ProbeOrigin(P, Origins[I]);
         if Text <> '' then
           Text := Text + ', ';
         OriginName := P.GetStringForActionOrigin(Origins[I]);
@@ -1411,6 +1636,12 @@ begin
   finally
     lbBindings.EndUpdate;
   end;
+  // capability probe: what the bound origins say (back buttons, origin
+  // sets); motion is added by ReadActions as it arrives
+  AddLog(Format('Origin sets of the bound controls: %s; back / grip buttons bound: %s',
+    [IfThen(FSeenFamilies = '', 'none', FSeenFamilies),
+     IfThen(FSeenBackButtons = '', 'none', FSeenBackButtons)]));
+  FPadKey := '';   // the banner shows the probe
 end;
 
 procedure TfrmInput.SwitchSet(ASet: TInputSet);
@@ -1437,6 +1668,62 @@ begin
     lblState.Text := ' Live state - action set MENU (MenuConfirm = A, MenuBack = B; A + B '
       + 'together returns), motion';
   end;
+end;
+
+procedure TfrmInput.ResetProbe;
+begin
+  FSeenAccel := False;
+  FSeenGyro := False;
+  FSeenBackButtons := '';
+  FSeenFamilies := '';
+end;
+
+procedure TfrmInput.ProbeOrigin(P: TSteamInputPlugin; AOrigin: EInputActionOrigin);
+var
+  Name: string;
+begin
+  AddUnique(FSeenFamilies, OriginFamily(AOrigin));
+  if IsBackButtonOrigin(AOrigin) then
+  begin
+    Name := P.GetStringForActionOrigin(AOrigin);
+    if Name = '' then
+      Name := 'origin ' + IntToStr(Ord(AOrigin));
+    AddUnique(FSeenBackButtons, Name);
+  end;
+end;
+
+function TfrmInput.ProbeText(T: ESteamInputType): string;
+var
+  Extra, Expected: string;
+  Parts: TArray<string>;
+  I: Integer;
+begin
+  Extra := '';
+  // motion sensors the type does not promise (ROG Ally: "Xbox One", gyro)
+  if (FSeenAccel or FSeenGyro) and not ExpectsMotion(T) then
+    if FSeenAccel and FSeenGyro then
+      AddUnique(Extra, 'motion sensors (accelerometer + gyroscope)')
+    else if FSeenGyro then
+      AddUnique(Extra, 'gyroscope')
+    else
+      AddUnique(Extra, 'accelerometer');
+  // back buttons the type does not have (Ally: Legion Go Y1 / Y2; Elite /
+  // Edge paddles) - only those the current layout binds can be seen
+  if (FSeenBackButtons <> '') and not ExpectsBackButtons(T) then
+    Extra := Extra + IfThen(Extra <> '', '; ', '') + 'back buttons: ' + FSeenBackButtons;
+  // origin sets other than the type's own (Ally: Lenovo Legion Go buttons)
+  Expected := ExpectedFamily(T);
+  if Expected <> '' then
+  begin
+    Parts := FSeenFamilies.Split([', ']);
+    for I := 0 to High(Parts) do
+      if not SameText(Parts[I], Expected) then
+        Extra := Extra + IfThen(Extra <> '', '; ', '') + 'controls report as ' + Parts[I];
+  end;
+  if Extra = '' then
+    Result := ''
+  else
+    Result := 'Detected beyond the ' + InputTypeName(T) + ' profile: ' + Extra;
 end;
 
 function TfrmInput.ReadActions(P: TSteamInputPlugin): string;
@@ -1553,6 +1840,22 @@ begin
           + 'Game Bar) or another window');
     FSetActiveState := Ord(AnyActive);
     M := P.GetMotionData(FActive);
+    // capability probe: real sensor readings, whatever the type claims (a
+    // pad without sensors reports zeros and the identity rotation)
+    if not FSeenAccel and ((M.posAccelX <> 0) or (M.posAccelY <> 0) or (M.posAccelZ <> 0)) then
+    begin
+      FSeenAccel := True;
+      FPadKey := '';
+      AddLog(Format('Probe: accelerometer detected (accel %s %s %s)',
+        [F2(M.posAccelX), F2(M.posAccelY), F2(M.posAccelZ)]));
+    end;
+    if not FSeenGyro and ((M.rotVelX <> 0) or (M.rotVelY <> 0) or (M.rotVelZ <> 0)) then
+    begin
+      FSeenGyro := True;
+      FPadKey := '';
+      AddLog(Format('Probe: gyroscope detected (rotation speed %s %s %s)',
+        [F2(M.rotVelX), F2(M.rotVelY), F2(M.rotVelZ)]));
+    end;
     Lines.Add('');
     Lines.Add(Format('Motion   quat %s %s %s %s', [F2(M.rotQuatX), F2(M.rotQuatY), F2(M.rotQuatZ), F2(M.rotQuatW)]));
     Lines.Add(Format('         accel %s %s %s', [F2(M.posAccelX), F2(M.posAccelY), F2(M.posAccelZ)]));

@@ -221,8 +221,17 @@ leaves one out:
 | `BackLeftUpper`, `BackRightUpper` *(optional)* | upper back paddles - L4 / R4 | `switch`: `button_back_left_upper` / `_right_upper` - Steam Deck, 2026 Steam Controller (confirmed on the 2026 pad) |
 
 `Start` together with `RightTrigger` pulled past 0.25 switches to the
-`Menu` set (`MenuConfirm` = `ButtonA`, `MenuBack` = `ButtonB`); pressing
-both together returns. Combinations are bad design for a game but right for
+`Menu` set (`MenuConfirm` = `ButtonA`, `MenuBack` = `ButtonB`, `MenuUp` /
+`MenuDown` / `MenuLeft` / `MenuRight` = the D-pad); pressing A and B
+together returns.
+VirtualGamepad uses the same `Menu` set for its overlay menu: holding
+`Start` for 0.8 s opens it, the D-pad moves (left / right: the controller
+row, shown when several pads are connected), A chooses, B returns. When
+the layout Steam loaded for the pad binds nothing to a Menu action (an
+older copy of the layout, before r4, or a player's layout - checked with
+GetDigitalActionOrigins when the overlay opens), the overlay stays on the
+`InGame` set and reads its D-pad, `ButtonA` and `ButtonB` instead; the log
+says so. Combinations are bad design for a game but right for
 a tool that tests pads: `Start`, `A` and `B` alone stay ordinary buttons to
 watch, and a set switch replaces what the Live state panel shows, so it
 must never happen by accident. While the Guide / Xbox button has opened
@@ -376,6 +385,81 @@ a Switch model is planned):
 | `SteamController2026` | Steam Controller |
 | `SwitchProController`, `Switch2ProController`, `SwitchJoyConPair` | Switch model when available; the Xbox one meanwhile (positions still match - see the table) |
 | anything else (`GenericGamepad`, the 2015 Steam Controller, ...) | Xbox One |
+
+### When the type is not the whole story (handhelds)
+
+The type is what Steam *says* the pad is. SteamOS handhelds and some
+third-party pads report a standard type but have more than it. The ROG
+Ally, for example, reports `XBoxOneController`, yet it has a gyroscope and
+two back buttons, and its buttons report **Lenovo Legion Go** origins
+(A = 410, LB = 414, Menu = 416, back buttons Y1 / Y2 = 448 / 449). Its
+sticks and triggers report Xbox One origins.
+
+Steam Input has no call that reports a pad's capabilities. SteamInputDemo
+therefore probes at run time and shows anything beyond the type's profile
+in its banner ("Detected beyond the Xbox One / Series controller profile:
+..."):
+
+- **Motion sensors:** `GetMotionData` returning non-zero acceleration
+  (accelerometer) or rotation speed (gyroscope). A pad without sensors
+  returns zeros and the identity rotation. This is hardware evidence,
+  whatever the layout.
+- **Back buttons:** origins from the SDK's back and grip set bound to any
+  action (grips, L4 / L5 / R4 / R5, Legion Go Y1 / Y2, ...). Only buttons
+  the current layout binds can be seen.
+- **Origin sets:** every `EInputActionOrigin` family occupies its own
+  number range (SteamController 1-49, PS4 50-113, XBoxOne 114-152,
+  XBox360 153-191, Switch 192-257, PS5 258-332, SteamDeck 333-405,
+  Horipad 406-409, LenovoLegionGo 410-478, Generic 479-494, Switch2
+  495-541, SteamController2026 542-616, SteamFrameController 617-694 in
+  SDK 1.65). A bound origin from another family than the type's own shows
+  what the hardware really is.
+
+Because the Ally reports as an Xbox One pad, it loads the Xbox One
+layout. A layout that has no source for a control leaves that control to
+Steam: before the Xbox One layout bound gyro and back buttons, the
+Ally's back buttons (L4 / R4 in Steam's *Test Device Inputs*) arrived in
+the game as face buttons (ButtonB / ButtonY), and its gyro was unbound.
+The generated Xbox One layout therefore also binds `gyro` and the four
+`button_back_*` sources, like the Steam Deck layout. A plain Xbox pad has
+none of them, so for it nothing changes. The same layout serves the Xbox
+Elite pads' paddles.
+
+The Ally's acceleration is in m/s^2 (about 9.8 at rest), while the PS5
+and the Steam Controller give raw counts (about 16,400 = 1 g). Don't
+assume one unit.
+
+### Which copy of the layout did Steam load?
+
+Every generated layout carries a revision (`LAYOUT_REVISION` in
+tools/gen_input_mapping.py, written as `minor_revision` and as "(rN)" at
+the end of the layout's title; raise it by one whenever a layout's
+content changes). The TITLE is what tells you which copy Steam has: Steam's
+layout browser shows it. The revision Steam reports to the game
+(`SteamInputConfigurationLoaded_t.m_unMajorRevision` / `m_unMinorRevision`)
+is NOT the file's: with the "(r2)" layout chosen on a ROG Ally
+(2026-11-01) Steam still reported 0.0. SteamInputDemo logs both, for
+information only.
+
+Steam reads the manifest and its layouts when it first needs them -
+Valve's documentation says the manifest path is "remembered for the rest
+of the Steam session" - so after changing layouts, restart Steam (on
+SteamOS: restart Steam or the device) before testing. For a released
+game the partner site's Steam Input setting must be "Custom
+Configuration (Bundled with Game)" with the manifest's path, so the
+files in the depot are what Steam reads.
+
+### Telling the official layouts apart in Steam's browser
+
+Steam's layout browser lists, under Official Layouts, every layout of
+the game that suits the connected pad - an Xbox pad gets the Xbox One,
+Xbox 360 and generic layouts, the ROG Ally one more. A layout whose
+`title` is a `#token` shows the token's text from the MANIFEST's
+localization, so all of them carried the same title (2026-11-01). The
+generator therefore writes each layout's title and description as plain
+text, with the revision: "SteamInputDemo - Xbox One / Series (r2)".
+Pick the entry that names your pad; the "(rN)" shows which copy Steam
+has (the log's revision line says the same).
 
 ### When Steam keeps loading another layout
 

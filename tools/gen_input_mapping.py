@@ -110,6 +110,13 @@ SETS = [
     ("Menu", "#Set_Menu", [
         ("button", "MenuConfirm", "#Action_MenuConfirm", None),
         ("button", "MenuBack", "#Action_MenuBack", None),
+        # D-pad up / down: VirtualGamepad's overlay menu moves between its
+        # items with these (owner 2026-11-01)
+        ("button", "MenuUp", "#Action_MenuUp", None),
+        ("button", "MenuDown", "#Action_MenuDown", None),
+        # D-pad left / right: the overlay's controller row (several pads)
+        ("button", "MenuLeft", "#Action_MenuLeft", None),
+        ("button", "MenuRight", "#Action_MenuRight", None),
     ]),
 ]
 
@@ -136,6 +143,8 @@ LOCALIZATION = {"english": [
     ("Action_BackLeftUpper", "Upper left back paddle (L4)"),
     ("Action_BackRightUpper", "Upper right back paddle (R4)"),
     ("Action_MenuConfirm", "Confirm"), ("Action_MenuBack", "Back (with Confirm: back to every control)"),
+    ("Action_MenuUp", "Menu: up"), ("Action_MenuDown", "Menu: down"),
+    ("Action_MenuLeft", "Menu: left"), ("Action_MenuRight", "Menu: right"),
 ]}
 
 # Default bindings per set: (source, input or None, action). input None =
@@ -178,6 +187,10 @@ BINDINGS = {
     "Menu": [
         ("button_diamond", "button_a", "MenuConfirm"),
         ("button_diamond", "button_b", "MenuBack"),
+        ("dpad", "dpad_north", "MenuUp"),
+        ("dpad", "dpad_south", "MenuDown"),
+        ("dpad", "dpad_west", "MenuLeft"),
+        ("dpad", "dpad_east", "MenuRight"),
     ],
 }
 
@@ -209,7 +222,13 @@ PLAYSTATION = GYRO + ["center_trackpad"]
 # (upper) - Steam Deck naming; the 2015 pad's two grips from a community
 # guide.
 CONTROLLERS = {
-    "controller_xboxone": dict(sources=STANDARD),
+    # Xbox One also carries gyro and the four back-paddle sources: handhelds
+    # that report themselves as an Xbox One pad (ROG Ally, owner 2026-11-01:
+    # gyro + two paddles shown as L4 / R4 in Steam's Test Device Inputs, but
+    # with no source in this layout Steam bound them to face buttons by
+    # itself) and the Xbox Elite pads get them; a plain Xbox pad has none of
+    # them, so nothing changes there (the actions stay "not bound").
+    "controller_xboxone": dict(sources=GYRO, back=4),
     "controller_xbox360": dict(sources=STANDARD),
     "controller_ps5": dict(sources=PLAYSTATION),
     "controller_ps4": dict(sources=PLAYSTATION),
@@ -307,20 +326,41 @@ def manifest():
     return w.text()
 
 
+# Layout revision written into EVERY layout (minor_revision): Steam reports
+# it back in SteamInputConfigurationLoaded_t (m_unMajorRevision /
+# m_unMinorRevision), so the demo's log tells which copy Steam really
+# loaded. RAISE IT BY ONE WHENEVER A LAYOUT'S CONTENT CHANGES.
+#   1 - 2026-11-01: Xbox One layout gains gyro + back paddles (ROG Ally)
+#   2 - 2026-11-01: literal per-controller titles (see layout())
+#   3 - 2026-11-01: Menu set gains MenuUp / MenuDown on the D-pad
+#       (VirtualGamepad's overlay menu)
+#   4 - 2026-11-01: Menu set gains MenuLeft / MenuRight on the D-pad
+#       (the overlay's controller row)
+LAYOUT_REVISION = 4
+
+
 def layout(ctype):
     cfg = CONTROLLERS[ctype]
     sources, replace, back = cfg["sources"], cfg.get("replace", {}), cfg.get("back", 0)
     modes = dict(MODES, **cfg.get("modes", {}))
+    # Title / description are LITERAL text, not "#title" tokens: Steam
+    # resolved "#title" from the MANIFEST's localization, so every official
+    # layout showed the same manifest title in Steam's layout browser
+    # (owner's screenshot 2026-11-01: three identical "SteamInputDemo
+    # default layout" entries on a laptop, four on the ROG Ally). The
+    # revision is in the title so the browser shows which copy Steam has.
+    title = f"SteamInputDemo - {CONTROLLER_NAMES[ctype]} (r{LAYOUT_REVISION})"
+    description = (f"Default layout for the {CONTROLLER_NAMES[ctype]} ({ctype}.vdf, revision "
+                   f"{LAYOUT_REVISION}) - TSteamAPI Steam Input test (AppID 2275430): one action "
+                   f"per physical control.")
     w = W()
     w.open("controller_mappings")
-    for k, v in (("version", "3"), ("revision", "1"), ("title", "#title"), ("description", "#description"),
-                 ("controller_type", ctype), ("major_revision", "0"), ("minor_revision", "0"),
+    for k, v in (("version", "3"), ("revision", "1"), ("title", title), ("description", description),
+                 ("controller_type", ctype), ("major_revision", "0"), ("minor_revision", str(LAYOUT_REVISION)),
                  ("Timestamp", "0")):
         w.kv(k, v)
     write_actions(w)
-    write_localization(w, f"SteamInputDemo - {CONTROLLER_NAMES[ctype]}",
-                       f"Default layout for the {CONTROLLER_NAMES[ctype]} - TSteamAPI Steam Input test "
-                       f"(AppID 2275430): one action per physical control.")
+    write_localization(w, title, description)
     gid = 0
     presets = []
     for set_name, _, _ in SETS:

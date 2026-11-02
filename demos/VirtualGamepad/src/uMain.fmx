@@ -13,54 +13,18 @@ object frmGamepad: TfrmGamepad
   object pnlPad: TPanel
     Align = Top
     Size.Width = 1100.000000000000000000
-    Size.Height = 108.000000000000000000
+    Size.Height = 44.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 0
     object lblPadName: TLabel
-      Align = Top
+      Align = Client
       Margins.Left = 8.000000000000000000
       Position.X = 8.000000000000000000
-      Size.Width = 1092.000000000000000000
-      Size.Height = 36.000000000000000000
-      Size.PlatformDefault = False
-      Text = 'No controller'
-    end
-    object lblPadInfo: TLabel
-      Align = Top
-      Margins.Left = 8.000000000000000000
-      Position.X = 8.000000000000000000
-      Position.Y = 36.000000000000000000
       Size.Width = 1092.000000000000000000
       Size.Height = 44.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Steam is opened automatically.'
+      Text = 'No controller'
     end
-    object lblLive: TLabel
-      Align = Client
-      Margins.Left = 8.000000000000000000
-      Size.Width = 1092.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      Text = 'Live: -'
-    end
-  end
-  object memLog: TMemo
-    ReadOnly = True
-    Align = Bottom
-    Position.Y = 650.000000000000000000
-    Size.Width = 1100.000000000000000000
-    Size.Height = 150.000000000000000000
-    Size.PlatformDefault = False
-    TabOrder = 1
-  end
-  object splLog: TSplitter
-    Align = Bottom
-    Cursor = crVSplit
-    MinSize = 60.000000000000000000
-    Position.Y = 644.000000000000000000
-    Size.Width = 1100.000000000000000000
-    Size.Height = 6.000000000000000000
-    Size.PlatformDefault = False
   end
   object tmPoll: TTimer
     Enabled = False
@@ -84,6 +48,10 @@ object frmGamepad: TfrmGamepad
         Text = 'View Controller Settings...'
         OnClick = mnuLayoutClick
       end
+      object mnuRemoteLog: TMenuItem
+        Text = 'Send log to receiver...'
+        OnClick = mnuRemoteLogClick
+      end
       object mnuSep1: TMenuItem
         Text = '-'
       end
@@ -95,7 +63,7 @@ object frmGamepad: TfrmGamepad
     object mnuView: TMenuItem
       Text = 'View'
       object mnuMotion: TMenuItem
-        Text = 'Follow pad motion: on'
+        Text = 'Follow pad motion: off'
         OnClick = mnuMotionClick
       end
       object mnuRecenter: TMenuItem

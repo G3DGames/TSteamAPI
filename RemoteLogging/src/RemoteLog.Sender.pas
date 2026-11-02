@@ -73,8 +73,13 @@ type
     { Stops the session and frees the sender. }
     destructor Destroy; override;
     { Starts streaming to AHost:APort. AApp names the program in the
-      receiver (e.g. 'SteamInputDemo'). Queued lines are kept. }
-    procedure Start(const AHost: string; APort: Word; const AApp: string);
+      receiver (e.g. 'SteamInputDemo'). APlatform is the platform text the
+      receiver shows; '' = the RTL's TOSVersion.ToString (which inside Steam's
+      Linux runtime names the container, not the host - a caller that knows
+      better, such as TSteamLib.PlatformDescription, passes its own; '|' is
+      replaced, it separates the greeting's fields). Queued lines are kept. }
+    procedure Start(const AHost: string; APort: Word; const AApp: string;
+      const APlatform: string = '');
     { Ends the session. While connected, it first waits up to AFlushMs for the
       queued lines to be sent; lines still queued then are dropped. }
     procedure Stop(AFlushMs: Integer = 1000);
@@ -320,9 +325,10 @@ begin
   inherited;
 end;
 
-procedure TRemoteLogSender.Start(const AHost: string; APort: Word; const AApp: string);
+procedure TRemoteLogSender.Start(const AHost: string; APort: Word; const AApp: string;
+  const APlatform: string);
 var
-  Machine, Session: string;
+  Machine, Session, PlatformText: string;
 begin
   Stop;
   FHost := AHost;
@@ -336,7 +342,11 @@ begin
   // one session id for the whole run: the receiver accepts a reconnect of
   // it without asking again and appends to the same file
   Session := FormatDateTime('yyyymmdd-hhnnss', Now) + '-' + IntToHex(Random($10000), 4);
-  FHello := RL_HELLO + ' ' + AApp + RL_FIELD_SEPARATOR + TOSVersion.ToString + RL_FIELD_SEPARATOR
+  PlatformText := APlatform;
+  if PlatformText = '' then
+    PlatformText := TOSVersion.ToString;
+  PlatformText := StringReplace(PlatformText, RL_FIELD_SEPARATOR, '/', [rfReplaceAll]);
+  FHello := RL_HELLO + ' ' + AApp + RL_FIELD_SEPARATOR + PlatformText + RL_FIELD_SEPARATOR
     + Machine + RL_FIELD_SEPARATOR + Session;
   FThread := TRemoteLogThread.Create(Self);
 end;
