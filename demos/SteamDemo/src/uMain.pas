@@ -11,7 +11,11 @@
   User, Apps, RemoteStorage, Screenshots, Timeline, UGC - dropped on the form
   with their events wired; Test components runs it, see btnTestClick). It
   starts and stops Steam on demand and logs everything the core reports, so
-  the Debug log can be pasted back as test evidence. Every log line is also
+  the Debug log can be pasted back as test evidence. The buttons are enabled
+  only when they make sense (Start while Steam is stopped, the others while
+  it runs). File menu: Auto Start Steam (on / off, saved per user - see
+  SettingsFolder), Take Screenshot (this window to Steam), Copy Log, Exit; on Linux FmxLinuxMenu swaps the menu for
+  FMX's own menu bar. Every log line is also
   appended to SteamDemo.log (next to the executable; the documents folder on
   Android) as it is written, so the log survives if the process is killed. }
 unit uMain;
@@ -23,7 +27,7 @@ uses
   System.Generics.Collections,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
   FMX.Controls.Presentation, FMX.Memo.Types, FMX.ScrollBox, FMX.Memo,
-  FMX.Layouts, FMX.Objects, FMX.ListBox, FMX.TabControl,
+  FMX.Layouts, FMX.Objects, FMX.ListBox, FMX.TabControl, FMX.Menus,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.Callbacks, Steamworks.Core, Steamworks.Components,
   Steamworks.FMX,
   Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
@@ -85,10 +89,28 @@ type
     btnInfo: TButton;
     { Shuts Steam down. }
     btnStop: TButton;
-    { Copies the log to the clipboard. }
-    btnCopy: TButton;
     { Runs the base test of the seven plug-in components on the Components tab. }
     btnTest: TButton;
+    { Main menu (only the File menu). On Linux FormCreate replaces it with
+      FMX's own menu bar (FmxLinuxMenu) and this field becomes @nil; the
+      item fields below then point at the copies. }
+    MainMenu1: TMainMenu;
+    { The File menu. }
+    mnuFile: TMenuItem;
+    { Auto Start Steam: on / off (the state is in the text, which every
+      platform's menu shows). }
+    mnuAutoStart: TMenuItem;
+    { Writes a screenshot of this window to Steam (enabled while Steam runs). }
+    mnuTakeScreenshot: TMenuItem;
+    { Copies the log to the clipboard. }
+    mnuCopyLog: TMenuItem;
+    { Separator above Exit. }
+    mnuSep1: TMenuItem;
+    { Closes the program. }
+    mnuExit: TMenuItem;
+    { Starts Steam once the window is up when Auto Start Steam is on
+      (enabled by FormCreate, disables itself). }
+    tmAutoStart: TTimer;
     { Tabs: Output (the log), Personal, Achievements, Components. }
     tabMain: TTabControl;
     { Output tab. }
@@ -140,8 +162,8 @@ type
     { ISteamRemoteStorage component (component test): asynchronous write /
       read of @link(TEST_CLOUD_FILE), local file changes. }
     SteamRemoteStorage1: TSteamRemoteStorage;
-    { ISteamScreenshots component (component test): screenshot requested /
-      ready while the test hooks screenshots. }
+    { ISteamScreenshots component: hook on / off in the component test;
+      File > Take Screenshot writes one, OnScreenshotReady tags it. }
     SteamScreenshots1: TSteamScreenshots;
     { ISteamTimeline component (component test): event and game phase
       recording queries. }
@@ -161,8 +183,16 @@ type
     procedure btnInfoClick(Sender: TObject);
     { Handler of @link(btnStop). }
     procedure btnStopClick(Sender: TObject);
-    { Handler of @link(btnCopy). }
-    procedure btnCopyClick(Sender: TObject);
+    { File > Auto Start Steam: toggles and saves the setting. }
+    procedure mnuAutoStartClick(Sender: TObject);
+    { File > Take Screenshot: this window to the user's Steam screenshots. }
+    procedure mnuTakeScreenshotClick(Sender: TObject);
+    { File > Copy Log: the log to the clipboard. }
+    procedure mnuCopyLogClick(Sender: TObject);
+    { File > Exit. }
+    procedure mnuExitClick(Sender: TObject);
+    { Handler of @link(tmAutoStart): starts Steam once. }
+    procedure tmAutoStartTimer(Sender: TObject);
     { SteamAPI1.OnLog: core log messages. }
     procedure SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
     { SteamAPI1.OnInitialized: Steam started. }
@@ -246,6 +276,10 @@ type
   private
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
+    { Auto Start Steam setting (File menu), saved in @link(FSettingsFile). }
+    FAutoStart: Boolean;
+    { The per-user settings file (SteamDemo.ini in SettingsFolder). }
+    FSettingsFile: string;
     { Component test state, indexed by the CT_ constants. }
     FTests: array[0..CT_COUNT - 1] of TComponentTestState;
     { Requests awaiting an answer: key '<CT index>:<name>', value the
@@ -263,6 +297,19 @@ type
     FCloudData: TBytes;
     { Game phase id the Timeline test used (unique per run). }
     FPhaseID: string;
+    { Starts Steam (Start button or Auto Start Steam) and logs AWhy. }
+    procedure StartSteam(const AWhy: string);
+    { Enables the buttons that make sense now: Start while Steam is not
+      running, Show info / Stop / Test components (and File > Take
+      Screenshot) while it is. }
+    procedure UpdateControls;
+    { Shows the Auto Start Steam state in its menu item's text. }
+    procedure UpdateAutoStartText;
+    { Reads @link(FAutoStart) from the settings file (off when there is
+      none or it cannot be read; the reason is logged). }
+    procedure LoadSettings;
+    { Writes @link(FAutoStart) to the settings file, creating its folder. }
+    procedure SaveSettings;
     { Fills @link(lbComponents) with one row per tested component. }
     procedure FillTestList;
     { Shows FTests[AIndex] in its @link(lbComponents) row. }
@@ -282,7 +329,7 @@ type
     function Answered(AIndex: Integer; const AName: string): Boolean;
     { Ends the test once nothing is pending. }
     procedure CheckTestsDone;
-    { Ends the test: cleans up (unhooks screenshots, cancels the auth ticket,
+    { Ends the test: cleans up (cancels the auth ticket,
       releases the query), logs a verdict per component. AReason is logged
       when not ''. }
     procedure FinishTests(const AReason: string);
@@ -294,8 +341,8 @@ type
     procedure TestApps;
     { TSteamRemoteStorage: reads + FileWriteAsync (then FileReadAsync). }
     procedure TestRemoteStorage;
-    { TSteamScreenshots: with the overlay HookScreenshots + TriggerScreenshot
-      (then WriteScreenshot); without it WriteScreenshot directly. }
+    { TSteamScreenshots: HookScreenshots on / off and IsScreenshotsHooked -
+      no picture (File > Take Screenshot writes one on demand). }
     procedure TestScreenshots;
     { TSteamTimeline: game mode, tooltip, game phase, event + the two
       recording queries. }
@@ -303,7 +350,8 @@ type
     { TSteamUGC: reads + a Workshop query + GetWorkshopEULAStatus. }
     procedure TestUGC;
     { Captures this window with SteamFormToRGB (Steamworks.FMX), writes it
-      with WriteScreenshot and logs it.
+      with WriteScreenshot and logs it (File > Take Screenshot, and a
+      request while screenshots are hooked).
       @returns(The screenshot handle, 0 when the capture failed or Steam
         refused it.) }
     function WriteFormScreenshot(AShots: TSteamScreenshotsPlugin): ScreenshotHandle;
@@ -328,7 +376,42 @@ implementation
 {$R *.fmx}
 
 uses
-  System.IOUtils, System.DateUtils, FMX.Platform, Steamworks.API;
+  System.IOUtils, System.DateUtils, System.IniFiles, FMX.Platform, Steamworks.API,
+  FmxLinuxMenu;
+
+const
+  { Vendor folder of the settings (under the OS's per-user settings folder). }
+  SETTINGS_VENDOR = 'G3DGames';
+  { The program's folder inside it, and the settings file's base name. }
+  SETTINGS_APP = 'SteamDemo';
+
+{ The OS's usual per-user folder for this program's settings:
+  Windows %APPDATA%\G3DGames\SteamDemo (roaming AppData), macOS
+  ~/Library/Application Support/G3DGames/SteamDemo, Linux
+  $XDG_CONFIG_HOME/G3DGames/SteamDemo (default ~/.config/...), Android the
+  app's private documents folder. Never next to the executable: that folder
+  is read-only for a game installed by Steam (and inside Steam's Linux
+  runtime). The folder may not exist yet. }
+function SettingsFolder: string;
+{$IF defined(LINUX) and not defined(ANDROID)}
+var
+  Config: string;
+{$ENDIF}
+begin
+{$IF defined(ANDROID)}
+  Result := TPath.GetDocumentsPath;
+{$ELSEIF defined(MSWINDOWS)}
+  Result := TPath.Combine(TPath.Combine(TPath.GetHomePath, SETTINGS_VENDOR), SETTINGS_APP);
+{$ELSEIF defined(MACOS)}
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetHomePath,
+    'Library/Application Support'), SETTINGS_VENDOR), SETTINGS_APP);
+{$ELSE}
+  Config := GetEnvironmentVariable('XDG_CONFIG_HOME');
+  if Config = '' then
+    Config := TPath.Combine(TPath.GetHomePath, '.config');
+  Result := TPath.Combine(TPath.Combine(Config, SETTINGS_VENDOR), SETTINGS_APP);
+{$ENDIF}
+end;
 
 const
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
@@ -376,6 +459,12 @@ begin
   if LogFileError <> '' then
     AddLog('Log file could not be created (' + LogFileError + '); logging to the window'
       {$IFDEF POSIX} + ' and stderr'{$ENDIF} + ' only');
+  AddLog('FormCreate started');
+  // Linux: FMX's menu bar instead of GTK's, which shows only first letters
+  // (FmxLinuxMenu). After the log (a crash in it still leaves a line), and
+  // before anything else touches a menu item.
+  ReplaceMainMenu(Self, MainMenu1);
+  AddLog('Main menu ready (on Linux: replaced by FMX''s own menu bar)');
   // Which build runs on which system (native or Proton / Wine on SteamOS,
   // Rosetta 2 on macOS, Steam's Linux runtime container ...)
   Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
@@ -401,11 +490,22 @@ begin
   AddLog(Format('Update mode (from the form): %s, delivery %s, interval %d ms',
     [UpdateModeText(SteamAPI1.UpdateMode), DeliveryText(SteamAPI1.Delivery),
      SteamAPI1.CallbackInterval]));
+  LoadSettings;
+  UpdateAutoStartText;
+  UpdateControls;
+  if FAutoStart then
+  begin
+    // Once the window is up, not from inside FormCreate
+    AddLog('Auto Start Steam is on: Steam starts when the window is up');
+    tmAutoStart.Enabled := True;
+  end;
 end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(SteamAPI1.IsRunning, True)]));
+  // Closed within the first 100 ms: Auto Start must not open Steam again
+  tmAutoStart.Enabled := False;
   if FTestsRunning then
     FinishTests('window closing');
   SteamAPI1.Close;
@@ -413,6 +513,7 @@ end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  tmAutoStart.Enabled := False;
   tmTests.Enabled := False;
   FreeAndNil(FPending);
 end;
@@ -440,13 +541,124 @@ begin
   end;
 end;
 
+procedure TfrmMain.StartSteam(const AWhy: string);
+begin
+  AddLog(AWhy);
+  if SteamAPI1.IsRunning then
+  begin
+    AddLog('Steam is already running');
+    UpdateControls;
+    Exit;
+  end;
+  // No second press while Open runs
+  btnStart.Enabled := False;
+  try
+    if SteamAPI1.Open then
+      AddLog('Open returned True: Steam is running')
+    else
+      AddLog('Open returned False: Steam did not start');
+  finally
+    UpdateControls;
+  end;
+end;
+
 procedure TfrmMain.btnStartClick(Sender: TObject);
 begin
-  AddLog('Start pressed');
-  if SteamAPI1.Open then
-    AddLog('Open returned True: Steam is running')
+  StartSteam('Start pressed');
+end;
+
+procedure TfrmMain.tmAutoStartTimer(Sender: TObject);
+begin
+  tmAutoStart.Enabled := False;
+  StartSteam('Auto Start Steam: starting Steam');
+end;
+
+procedure TfrmMain.UpdateControls;
+var
+  Running: Boolean;
+begin
+  Running := SteamAPI1.IsRunning;
+  btnStart.Enabled := not Running;
+  btnInfo.Enabled := Running;
+  btnStop.Enabled := Running;
+  btnTest.Enabled := Running;
+  if mnuTakeScreenshot <> nil then
+    mnuTakeScreenshot.Enabled := Running;
+end;
+
+procedure TfrmMain.UpdateAutoStartText;
+begin
+  if mnuAutoStart = nil then
+    Exit;
+  if FAutoStart then
+    mnuAutoStart.Text := 'Auto Start Steam: on'
   else
-    AddLog('Open returned False: Steam did not start');
+    mnuAutoStart.Text := 'Auto Start Steam: off';
+end;
+
+procedure TfrmMain.LoadSettings;
+var
+  Ini: TMemIniFile;
+begin
+  FAutoStart := False;
+  FSettingsFile := '';
+  try
+    FSettingsFile := TPath.Combine(SettingsFolder, SETTINGS_APP + '.ini');
+    if not TFile.Exists(FSettingsFile) then
+    begin
+      AddLog('Settings: ' + FSettingsFile + ' does not exist yet - defaults used (Auto Start Steam off)');
+      Exit;
+    end;
+    Ini := TMemIniFile.Create(FSettingsFile, TEncoding.UTF8);
+    try
+      FAutoStart := Ini.ReadBool('Steam', 'AutoStart', False);
+    finally
+      Ini.Free;
+    end;
+    AddLog('Settings read from ' + FSettingsFile + ': Auto Start Steam ' + IfThen(FAutoStart, 'on', 'off'));
+  except
+    on E: Exception do
+      AddLog('Settings could not be read (' + FSettingsFile + '): ' + E.Message + ' - defaults used');
+  end;
+end;
+
+procedure TfrmMain.SaveSettings;
+var
+  Ini: TMemIniFile;
+begin
+  if FSettingsFile = '' then
+  begin
+    AddLog('Settings NOT saved: no settings folder could be determined');
+    Exit;
+  end;
+  try
+    ForceDirectories(ExtractFilePath(FSettingsFile));
+    Ini := TMemIniFile.Create(FSettingsFile, TEncoding.UTF8);
+    try
+      Ini.WriteBool('Steam', 'AutoStart', FAutoStart);
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+    AddLog('Settings saved to ' + FSettingsFile);
+  except
+    on E: Exception do
+      AddLog('Settings NOT saved (' + FSettingsFile + '): ' + E.Message);
+  end;
+end;
+
+procedure TfrmMain.mnuAutoStartClick(Sender: TObject);
+begin
+  FAutoStart := not FAutoStart;
+  UpdateAutoStartText;
+  AddLog('File > Auto Start Steam: ' + IfThen(FAutoStart,
+    'on - Steam starts by itself the next time the program starts', 'off'));
+  SaveSettings;
+end;
+
+procedure TfrmMain.mnuExitClick(Sender: TObject);
+begin
+  Close;
 end;
 
 procedure TfrmMain.btnStopClick(Sender: TObject);
@@ -456,9 +668,10 @@ begin
   if FTestsRunning then
     FinishTests('Stop pressed');
   SteamAPI1.Close;
+  UpdateControls;
 end;
 
-procedure TfrmMain.btnCopyClick(Sender: TObject);
+procedure TfrmMain.mnuCopyLogClick(Sender: TObject);
 var
   Svc: IFMXClipboardService;
 begin
@@ -623,6 +836,7 @@ procedure TfrmMain.SteamInitialized(Sender: TObject);
 begin
   AddLog(Format('OnInitialized: pipe %d, user %d, %d plug-in(s) active',
     [SteamAPI1.Steam.Pipe, SteamAPI1.Steam.User, SteamAPI1.Steam.PluginCount]));
+  UpdateControls;
   LoadPersonal;
   LoadAchievements;
 end;
@@ -837,6 +1051,7 @@ procedure TfrmMain.SteamInitFailed(Sender: TObject; AResult: Integer; const AMes
 begin
   AddLog(Format('OnInitFailed: result %d (%s): %s',
     [AResult, SteamInitResultToString(ESteamAPIInitResult(AResult)), AMessage]));
+  UpdateControls;
 end;
 
 procedure TfrmMain.SteamShutdown(Sender: TObject);
@@ -846,6 +1061,8 @@ begin
   // (client exit): SteamAPI is already shut down, so no cleanup is possible
   if FTestsRunning then
     FinishTests('Steam shut down while the component test was running (no cleanup possible)');
+  // Also after a Steam client exit: Start becomes possible again
+  UpdateControls;
 end;
 
 procedure TfrmMain.SteamClientExit(Sender: TObject);
@@ -899,19 +1116,20 @@ end;
   components before: each is dropped on the form, linked to SteamAPI1 and has
   its events wired in uMain.fmx. Per component the test checks that it is
   attached, makes its synchronous calls through the component's Plugin
-  property (an exception = reads FAILED), and requests one or more
-  callbacks / call results that must arrive through the component's events
-  within TEST_TIMEOUT_MS. A component PASSES when it is attached, every call
-  returned and every requested answer arrived - whatever result code Steam
-  put in it (Steam Cloud or Workshop being off for the app is a Steam
-  setting, not a component fault; the codes are logged and shown).
-  Side effects: one picture of the demo's window is added to the user's Steam screenshots for this
-  app; TEST_CLOUD_FILE is written and deleted again; a timeline event and
-  game phase are recorded (only visible if background recording is on) and
-  the timeline game mode is left at Menus for the rest of the session.
-  Cleanup (unhook screenshots, cancel the auth ticket, release the Workshop
-  query, delete the cloud file) needs Steam: Stop and closing the window run
-  it first; after a Steam client exit it is impossible (and unneeded).
+  property (an exception = reads FAILED), and requests callbacks / call
+  results that must arrive through the component's events within
+  TEST_TIMEOUT_MS (Screenshots requests none: see TestScreenshots). A
+  component PASSES when it is attached, every call returned and every
+  requested answer arrived - whatever result code Steam put in it (Steam
+  Cloud or Workshop being off for the app is a Steam setting, not a
+  component fault; the codes are logged and shown).
+  Side effects: TEST_CLOUD_FILE is written and deleted again; a timeline
+  event and game phase are recorded (only visible if background recording
+  is on) and the timeline game mode is left at Menus for the rest of the
+  session. No screenshot is written (File > Take Screenshot does that, on
+  demand). Cleanup (cancel the auth ticket, release the Workshop query,
+  delete the cloud file) needs Steam: Stop and closing the window run it
+  first; after a Steam client exit it is impossible (and unneeded).
   --------------------------------------------------------------------------- }
 
 const
@@ -1085,11 +1303,6 @@ begin
   if SteamAPI1.IsRunning then
   begin
     try
-      if SteamScreenshots1.Plugin <> nil then
-      begin
-        SteamScreenshots1.Plugin.HookScreenshots(False);
-        AddLog('Test cleanup: HookScreenshots(False) - Steam takes screenshots itself again');
-      end;
       if (FAuthTicket <> k_HAuthTicketInvalid) and (SteamUser1.Plugin <> nil) then
       begin
         SteamUser1.Plugin.CancelAuthTicket(FAuthTicket);
@@ -1573,85 +1786,81 @@ begin
   RGB := SteamFormToRGB(Self, W, H);
   if RGB = nil then
   begin
-    AddLog('Test TSteamScreenshots: SteamFormToRGB returned nothing - window not captured');
+    AddLog('Screenshot: SteamFormToRGB returned nothing - window not captured');
     Exit;
   end;
   Result := AShots.WriteScreenshot(@RGB[0], Length(RGB), W, H);
-  AddLog(Format('Test TSteamScreenshots: window captured %dx%d (%d bytes RGB), WriteScreenshot -> handle %d (0 = failed)',
+  AddLog(Format('Screenshot: window captured %dx%d (%d bytes RGB), WriteScreenshot -> handle %d (0 = failed)',
     [W, H, Length(RGB), Result]));
+end;
+
+procedure TfrmMain.mnuTakeScreenshotClick(Sender: TObject);
+var
+  S: TSteamScreenshotsPlugin;
+begin
+  AddLog('File > Take Screenshot');
+  S := SteamScreenshots1.Plugin;
+  if (S = nil) or not SteamAPI1.IsRunning then
+  begin
+    AddLog('Screenshot: Steam is not running - press Start first');
+    Exit;
+  end;
+  try
+    // WriteScreenshot needs no overlay (TriggerScreenshot does); Steam
+    // answers with OnScreenshotReady, which tags the picture
+    if WriteFormScreenshot(S) <> 0 then
+      AddLog('Screenshot: waiting for OnScreenshotReady (callback 2301)');
+  except
+    on E: Exception do AddLog('Screenshot FAILED: ' + E.Message);
+  end;
 end;
 
 procedure TfrmMain.TestScreenshots;
 var
   S: TSteamScreenshotsPlugin;
-  Overlay: Boolean;
-  H: ScreenshotHandle;
+  Before, Hooked, Unhooked: Boolean;
 begin
   S := SteamScreenshots1.Plugin;
   if not BeginTest(CT_SHOTS, SteamScreenshots1, S) then
     Exit;
+  // No picture here: every run would add one to the user's screenshots
+  // (owner, 2026-11-02) - File > Take Screenshot writes one on demand and
+  // exercises WriteScreenshot / OnScreenshotReady / SetLocation. The test
+  // switches the hook on and off and checks that Steam reports each state.
   try
-    Overlay := (SteamUtils1.Plugin <> nil) and SteamUtils1.Plugin.IsOverlayEnabled;
-    AddLog(Format('Test TSteamScreenshots: hooked before the test %s, overlay in the process %s',
-      [BoolToStr(S.IsScreenshotsHooked, True), BoolToStr(Overlay, True)]));
-    if Overlay then
+    Before := S.IsScreenshotsHooked;
+    S.HookScreenshots(True);
+    Hooked := S.IsScreenshotsHooked;
+    S.HookScreenshots(False);
+    Unhooked := S.IsScreenshotsHooked;
+    AddLog(Format('Test TSteamScreenshots: hooked before %s, after HookScreenshots(True) %s, ' +
+      'after HookScreenshots(False) %s', [BoolToStr(Before, True), BoolToStr(Hooked, True),
+      BoolToStr(Unhooked, True)]));
+    if not Hooked or Unhooked then
     begin
-      // While hooked, Steam asks the game (callback 2302) instead of taking
-      // the screenshot itself; the game answers with WriteScreenshot
-      S.HookScreenshots(True);
-      AddLog('Test TSteamScreenshots: HookScreenshots(True), hooked now ' + BoolToStr(S.IsScreenshotsHooked, True) +
-        ', TriggerScreenshot - waiting for callback 2302');
-      Expect(CT_SHOTS, 'ScreenshotRequested');
-      S.TriggerScreenshot;
+      FTests[CT_SHOTS].ReadsOK := False;
+      FTests[CT_SHOTS].Note := 'hook state did NOT follow HookScreenshots';
     end
     else
-    begin
-      // TriggerScreenshot is carried out by the overlay: without it no
-      // ScreenshotRequested_t comes (first run, 2026-11-02 10:32 - likely
-      // cause, unconfirmed). WriteScreenshot needs no overlay and still
-      // proves OnScreenshotReady.
-      FTests[CT_SHOTS].Note := 'no overlay: TriggerScreenshot / OnScreenshotRequested not testable, ' +
-        'WriteScreenshot tested directly';
-      AddLog('Test TSteamScreenshots: the overlay is not in this process (start the demo from Steam ' +
-        'to test TriggerScreenshot); writing a screenshot directly - waiting for callback 2301');
-      H := WriteFormScreenshot(S);
-      if H <> 0 then
-        Expect(CT_SHOTS, 'ScreenshotReady')
-      else
-        FTests[CT_SHOTS].ReadsOK := False;
-    end;
+      FTests[CT_SHOTS].Note := 'hook on / off OK; File > Take Screenshot tests writing one';
   except
-    on E: Exception do ReadFailed(CT_SHOTS, 'screenshot calls', E);
+    on E: Exception do ReadFailed(CT_SHOTS, 'HookScreenshots / IsScreenshotsHooked', E);
   end;
 end;
 
 procedure TfrmMain.ScreenshotRequested(Sender: TObject; const AData: ScreenshotRequested_t);
 var
   S: TSteamScreenshotsPlugin;
-  H: ScreenshotHandle;
 begin
+  // Only while screenshots are hooked (the demo never leaves them hooked):
+  // then Steam takes none itself and every request must be answered
   AddLog('TSteamScreenshots.OnScreenshotRequested');
   S := SteamScreenshots1.Plugin;
-  if S = nil then
-    Exit;
-  // Hooked screenshots must always be answered, also outside the test (F12
-  // while the test runs)
+  if S <> nil then
   try
-    H := WriteFormScreenshot(S);
-    if Answered(CT_SHOTS, 'ScreenshotRequested') then
-    begin
-      if H <> 0 then
-        Expect(CT_SHOTS, 'ScreenshotReady')
-      else
-        FTests[CT_SHOTS].ReadsOK := False;
-      CheckTestsDone;
-    end;
+    WriteFormScreenshot(S);
   except
-    on E: Exception do
-    begin
-      ReadFailed(CT_SHOTS, 'WriteScreenshot', E);
-      CheckTestsDone;
-    end;
+    on E: Exception do AddLog('Screenshot FAILED: ' + E.Message);
   end;
 end;
 
@@ -1661,20 +1870,13 @@ var
 begin
   AddLog(Format('TSteamScreenshots.OnScreenshotReady: handle %d, result %s',
     [AData.m_hLocal, ResultText(AData.m_eResult)]));
-  if not Answered(CT_SHOTS, 'ScreenshotReady') then
-    Exit;
-  if FTests[CT_SHOTS].Note <> '' then
-    FTests[CT_SHOTS].Note := FTests[CT_SHOTS].Note + ', ';
-  FTests[CT_SHOTS].Note := FTests[CT_SHOTS].Note + 'screenshot ' + ResultText(AData.m_eResult);
   S := SteamScreenshots1.Plugin;
   if (S <> nil) and (AData.m_eResult = k_EResultOK) then
   try
-    AddLog('Test TSteamScreenshots: SetLocation ' +
-      BoolToStr(S.SetLocation(AData.m_hLocal, 'SteamDemo component test'), True));
+    AddLog('Screenshot: SetLocation ' + BoolToStr(S.SetLocation(AData.m_hLocal, 'SteamDemo'), True));
   except
-    on E: Exception do ReadFailed(CT_SHOTS, 'SetLocation', E);
+    on E: Exception do AddLog('Screenshot: SetLocation FAILED: ' + E.Message);
   end;
-  CheckTestsDone;
 end;
 
 { --- TSteamTimeline --- }

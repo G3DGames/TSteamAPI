@@ -54,8 +54,10 @@ PROJECTS = [
     dict(name="SteamDemo", dir="demos\\SteamDemo", kind="app", framework="FMX",
          platforms=ALL_PLATFORMS, default="Win64",
          # FmxLinuxGtkGlobal: same file as SteamInputDemo's (Steam Linux
-         # runtime, TListBox crash); no menu, so no FmxLinuxMenu
-         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas")],
+         # runtime, TListBox crash); FmxLinuxMenu: same file as
+         # SteamInputDemo's (File menu since 2026-11-02, Linux menu bar fix)
+         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
          search="src", redist=True, depends=["SteamworksFMX"],
          # ICU launcher (docs/fmx-steamos-icu-bug.md); Linux64 only

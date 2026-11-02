@@ -13,6 +13,9 @@ uses
   // crashes in Steam's Linux runtime 3.0 when a TListBox is created
   // (docs/fmx-steamos-gtk3-bug.md); compiles to nothing off Linux
   FmxLinuxGtkGlobal in 'src\FmxLinuxGtkGlobal.pas',
+  // Linux: FMX's own menu bar instead of GTK's, which shows only the first
+  // letter of each menu (docs/fmx-menu-bug-fix.md); a no-op elsewhere
+  FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   uMain in 'src\uMain.pas' {frmMain};
 
 begin

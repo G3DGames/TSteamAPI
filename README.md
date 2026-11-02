@@ -35,6 +35,8 @@ thread or your own loop; CGE, Gorilla3D, Skia4Delphi, PasVulkan, ...),
 [Steam Input mapping](docs/SteamInputMapping.md) (action manifests, default
 layouts, origins to physical buttons)
 and [one page per component / plug-in](docs/components/README.md).
+The full API reference (every unit, class and member) is generated with
+PasDoc - see [Generating the API reference](#generating-the-api-reference-pasdoc).
 
 ## Licence
 
@@ -175,6 +177,8 @@ tools/
   pasdoc_check.py           PasDoc coverage, ASCII and comment-nesting check
   pasdoc.bat                PasDoc API reference: docs/html/delphi (FMX + VCL), docs/html/fpc (LCL),
                             docs/chm/delphi, docs/chm/fpc (HTML Help, compiled with hhc.exe)
+  pasdoc.sh                 Linux / macOS: the FPC part only - docs/html/fpc (sh tools/pasdoc.sh)
+                            Both need pasdoc: https://github.com/pasdoc/pasdoc/releases/
   gen_docs.py               generates docs/components/TSteam<Name>.md from the plug-in units
   gen_input_mapping.py      writes the Steam Input manifest and default layouts (SteamInputDemo, VirtualGamepad)
   doc_extras/               hand-written overview text merged into those pages
@@ -208,6 +212,15 @@ Step by step, with every alarming-looking message explained:
    running and logged in. Debug builds export `SteamAppId=2275430`, so no
    `steam_appid.txt` is needed. On Windows the post-build event copies the DLL
    next to the executable and fails the build if it is missing; on macOS / Linux it is deployed with the app.
+   SteamDemo's buttons are enabled only when they make sense (**Start
+   Steam** while Steam is stopped; **Show info**, **Stop Steam** and **Test
+   components** while it runs). Its **File** menu has **Auto Start Steam**
+   (on / off, remembered per user in the OS's settings folder:
+   `%APPDATA%\G3DGames\SteamDemo\SteamDemo.ini` on Windows,
+   `~/Library/Application Support/G3DGames/SteamDemo` on macOS,
+   `~/.config/G3DGames/SteamDemo` on Linux), **Take Screenshot** (a picture
+   of the window to your Steam screenshots; needs no Steam overlay),
+   **Copy Log** and **Exit**.
    After **Start Steam**, **Test components** runs SteamDemo's base test of
    the plug-in components the other demos do not use (TSteamUtils,
    TSteamUser, TSteamApps, TSteamRemoteStorage, TSteamScreenshots,
@@ -217,9 +230,10 @@ Step by step, with every alarming-looking message explained:
    **Components** tab shows PASS / FAIL per component, the log has the
    details. A component passes when its answers arrive, whatever result
    code Steam puts in them (Steam Cloud or Workshop being off for the app
-   is a Steam setting). Side effects: one picture of the demo's window is added to your
-   Steam screenshots for the app, a small Steam Cloud file is written and
-   deleted, and a timeline event / game phase is recorded.
+   is a Steam setting). Side effects: a small Steam Cloud file is written
+   and deleted, and a timeline event / game phase is recorded. The test
+   writes no screenshot (it only switches the screenshot hook on and off);
+   use File > Take Screenshot for that.
 4. To use the components at design time, for the IDE's platform (Win64 for
    the 64-bit IDE, Win32 for the 32-bit IDE):
    1. **Build** (do not install) the runtime packages `Steamworks`, then
@@ -552,8 +566,9 @@ Windows', normal behaviour. Each says why and what to do.
 > component test does.
 
 > **FMX menus on Linux show only first letters ("F" for "File").**
-> That is FMX's native GTK menu bar on Linux, not this library. SteamInputDemo
-> and LogReceiver replace their TMainMenu with an FMX TMenuBar at start-up
+> That is FMX's native GTK menu bar on Linux, not this library. SteamDemo,
+> SteamInputDemo, VirtualGamepad and LogReceiver replace their TMainMenu
+> with an FMX TMenuBar at start-up
 > (unit `FmxLinuxMenu`, `ReplaceMainMenu`, first thing in `OnCreate`); copy
 > that unit into your own FMX programs. Do not simply move the menu items to a
 > TMenuBar and free the TMainMenu - that crashes in libgobject or floods the
@@ -659,6 +674,56 @@ fpc -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc SteamConsole.dpr
 
 FPC / Lazarus build output (`*.o`, `*.ppu`, `lib/<cpu>-<os>/`, `backup/`,
 `*.lps`, extensionless demo executables, ...) is ignored by `.gitignore`.
+
+## Generating the API reference (PasDoc)
+
+Every unit, type and member of the library has a PasDoc comment, so a
+complete API reference can be generated from the sources. It is not in the
+repository: generate it locally (the output folders are git-ignored).
+
+**1. Install PasDoc** from <https://github.com/pasdoc/pasdoc/releases/>:
+download the archive for your OS, unpack it and put its `bin` folder on
+the `PATH` (or set the `PASDOC` environment variable to the full path of
+the pasdoc executable). Tested with PasDoc 1.0.5. Both scripts check for
+PasDoc first and point to that page if it is missing.
+
+**2. Run the script for your OS** (from any folder - it switches to the
+repository root itself):
+
+| OS | Command | Generates |
+|---|---|---|
+| Windows | `tools\pasdoc.bat` | `docs\html\delphi`, `docs\html\fpc`, `docs\chm\delphi`, `docs\chm\fpc` |
+| Linux / macOS | `sh tools/pasdoc.sh` | `docs/html/fpc` |
+
+Open `index.html` in an HTML folder, or the `TSteamAPI.chm` file in a
+`chm` folder (Windows Help viewer). Each script deletes its output folders
+first, so nothing is left over from an earlier run, and ends with a
+summary line (exit code 0 = success; `pasdoc.bat` returns the number of
+failed steps).
+
+**Two views of the same library:**
+
+* **Delphi** (`delphi` folders): `Steamworks.FMX` and `Steamworks.VCL` plus
+  `lib/` and `lib/plugins/`, as Delphi compiles them - including the
+  overloads that take anonymous methods (`reference to`).
+* **Free Pascal / Lazarus** (`fpc` folders): `Steamworks.LCL` plus `lib/`
+  and `lib/plugins/`, as FPC 3.2.2 compiles them - without those overloads.
+
+Both describe the Win64 build (PasDoc defines no platform symbols itself,
+so the scripts choose one); the platform-specific parts are internal, so
+the public API is the same on every platform. The `.Reg` units
+(design-time registration) are left out.
+
+**The .chm files (Windows only)** need Microsoft HTML Help Workshop's
+compiler, `hhc.exe`. `pasdoc.bat` looks for it in the Workshop's default
+folder (`%ProgramFiles(x86)%\HTML Help Workshop`); set `HHC` to its full path
+if it is elsewhere. Without it the HTML Help projects (`.hhp`) are still
+written, but not compiled, and the script says so.
+
+To write PasDoc comments for your own changes, see the rules in
+`CLAUDE.md` ("Source rules"); `python3 tools/pasdoc_check.py` reports
+any undocumented item. The Markdown pages in `docs/components/` are a
+separate, shorter guide (written by hand or by `tools/gen_docs.py`).
 
 ## Checks before delivery
 ```

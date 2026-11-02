@@ -47,23 +47,13 @@ object frmMain: TfrmMain
       Text = 'Stop Steam'
       OnClick = btnStopClick
     end
-    object btnCopy: TButton
-      Position.X = 392.000000000000000000
-      Position.Y = 10.000000000000000000
-      Size.Width = 120.000000000000000000
-      Size.Height = 28.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 3
-      Text = 'Copy log'
-      OnClick = btnCopyClick
-    end
     object btnTest: TButton
-      Position.X = 520.000000000000000000
+      Position.X = 392.000000000000000000
       Position.Y = 10.000000000000000000
       Size.Width = 140.000000000000000000
       Size.Height = 28.000000000000000000
       Size.PlatformDefault = False
-      TabOrder = 4
+      TabOrder = 3
       Text = 'Test components'
       OnClick = btnTestClick
     end
@@ -244,6 +234,40 @@ object frmMain: TfrmMain
         Viewport.Height = 442.000000000000000000
       end
     end
+  end
+  object MainMenu1: TMainMenu
+    Left = 488
+    Top = 8
+    object mnuFile: TMenuItem
+      Text = 'File'
+      object mnuAutoStart: TMenuItem
+        Text = 'Auto Start Steam: off'
+        OnClick = mnuAutoStartClick
+      end
+      object mnuTakeScreenshot: TMenuItem
+        Enabled = False
+        Text = 'Take Screenshot'
+        OnClick = mnuTakeScreenshotClick
+      end
+      object mnuCopyLog: TMenuItem
+        Text = 'Copy Log'
+        OnClick = mnuCopyLogClick
+      end
+      object mnuSep1: TMenuItem
+        Text = '-'
+      end
+      object mnuExit: TMenuItem
+        Text = 'Exit'
+        OnClick = mnuExitClick
+      end
+    end
+  end
+  object tmAutoStart: TTimer
+    Enabled = False
+    Interval = 100
+    OnTimer = tmAutoStartTimer
+    Left = 488
+    Top = 64
   end
   object tmTests: TTimer
     Enabled = False

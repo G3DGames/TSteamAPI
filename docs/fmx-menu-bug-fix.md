@@ -26,8 +26,9 @@ end;
 ```
 
 The unit is `FmxLinuxMenu.pas`; there are identical copies in
-`demos/SteamInputDemo/src`, `demos/VirtualGamepad/src` and
-`RemoteLogging/LogReceiver/src`. The core of it:
+`demos/SteamDemo/src`, `demos/SteamInputDemo/src`,
+`demos/VirtualGamepad/src` and `RemoteLogging/LogReceiver/src`
+(`tools/project_check.py` reports any difference). The core of it:
 
 ```pascal
 {$IF defined(LINUX) and not defined(ANDROID)}

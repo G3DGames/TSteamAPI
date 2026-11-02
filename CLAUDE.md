@@ -148,7 +148,12 @@ Project AppID: 2275430.
   SteamDemo (FMX only, 2026-11-02) also holds the other seven plug-in
   components (SteamUtils1, SteamUser1, SteamApps1, SteamRemoteStorage1,
   SteamScreenshots1, SteamTimeline1, SteamUGC1) for the component base
-  test (Test components button, Components tab); VCL / LCL do not. The VCL
+  test (Test components button, Components tab); VCL / LCL do not.
+  SteamDemo (FMX only, owner 11:40) also has a File menu (Auto Start
+  Steam: on / off, Copy Log, Exit - the Copy log button is gone), buttons
+  enabled by state (UpdateControls) and a per-user settings file
+  (SettingsFolder + SteamDemo.ini, TMemIniFile) - the first demo setting
+  that is saved; VCL / LCL twins not done. The VCL
   and LCL units are near-twins - keep them in step. Demo sources must not
   include Steamworks.inc. The Lazarus designer needs the Lazarus package
   installed (below) to open SteamDemoLCL's form; without it, Cancel its
@@ -209,7 +214,94 @@ Project AppID: 2275430.
   CPUX86_64); include path lib; .Reg units left out. The output folders
   are git-ignored by the owner's docs/.gitignore (2026-11-02; the root
   .gitignore still has the older docs/html/ line). .bat files are CRLF
-  (.gitattributes).
+  (.gitattributes). The script first deletes ONLY those four output
+  folders (owner, 11:20); a folder it cannot delete (file open) counts as
+  a failed step.
+  FIRST RUN (owner, 11:24, PasDoc 1.0.5 snapshot / FPC 3.2.2 Win64): all
+  four runs OK, 21 / 20 units, both .chm compiled by hhc 4.74 (1.33 / 1.32
+  MB, ~4,600 topics). The ONLY warnings: 40 x "Cannot evaluate ...
+  FPC_FULLVERSION >= 30301, assuming true" (FPC runs) - which put the
+  anonymous-method overloads into the FPC 3.2.2 docs. Zip Doc3: the test in
+  lib/Steamworks.inc sits inside {$ifndef PASDOC} (no compiler defines
+  PASDOC: compiled code unchanged, no rebuild) and pasdoc.bat passes
+  --define PASDOC. No warnings for the compound {$if} conditions or the
+  three same-named TSteamAPI classes.
+  SECOND RUN (owner, 12:01, Doc3 build): ZERO warnings; the clean step
+  deleted all four folders; 21 / 20 units; both .chm compiled. The FPC
+  .chm shrank from 1,324,350 to 1,311,262 bytes (the Delphi one: 1,334,006
+  -> 1,334,008) = the anonymous-method overloads are gone from the FPC
+  view, as intended. PASDOC DOCS COMPLETE (Windows).
+  Zip Doc4 (owner, 11:29): tools/pasdoc.sh for Linux / macOS - FPC HTML
+  only (docs/html/fpc; no .chm, hhc is Windows-only), POSIX sh, LF
+  (.gitattributes), run as "sh tools/pasdoc.sh" (no executable bit needed:
+  the owner's zips come from Windows). SAME defines as the .bat's FPC runs
+  (Win64 view) so docs/html/fpc is identical whichever OS made it. Both
+  scripts first check pasdoc is installed (PASDOC = full path, or on the
+  PATH; .bat: if exist / where) and otherwise point to
+  https://github.com/pasdoc/pasdoc/releases/ and exit 1. pasdoc.sh tested
+  here with no pasdoc (message, exit 1) and a stand-in pasdoc (47
+  arguments, title as one); the .bat could not be run here.
+- OWNER'S BUILD 11:33: SteamDemo E2003 SteamFormToRGB undeclared - the
+  SteamworksFMX package had not been rebuilt for Win64 after Shot1 (the
+  demo links Steamworks.FMX.dcu from the Dcp folder). Not a code error.
+- OWNER (11:40): SteamDemo buttons let you stop Steam that is not
+  running. Zip Menu3 (follows Doc4):
+  * UpdateControls: Start enabled only while Steam is NOT running; Show
+    info, Stop, Test components only while it is. Called from FormCreate,
+    StartSteam (Start disabled during Open, restored after), Stop,
+    OnInitialized, OnInitFailed, OnShutdown (covers Steam client exit;
+    the core sets FState before raising OnShutdown, so IsRunning is
+    already False there).
+  * TMainMenu File: "Auto Start Steam: on/off" (state in the TEXT, the
+    project's convention for toggles, shows on every platform's menu),
+    Copy Log (was the button), separator, Exit. tmAutoStart (100 ms, off
+    in the form) starts Steam once after FormCreate when the setting is
+    on. Toggling saves at once and logs where.
+  * Settings: SettingsFolder - Windows TPath.GetHomePath (roaming
+    AppData)\G3DGames\SteamDemo, macOS ~/Library/Application Support/
+    G3DGames/SteamDemo, Linux $XDG_CONFIG_HOME (default ~/.config)/
+    G3DGames/SteamDemo, Android the documents folder; file SteamDemo.ini,
+    [Steam] AutoStart. Never next to the exe (read-only for a Steam
+    install / the Linux runtime - the LinuxRT3 "LATER" note).
+  * Linux FMX fixes: SteamDemo now has a menu, so FmxLinuxMenu (FOURTH
+    identical copy; MENU_DIRS in project_check.py, which now also covers
+    FmxLinuxGtkGlobal for SteamDemo) in .dpr / .dproj / gen_projects.py,
+    and SteamInputDemo's FormCreate order: log file, "FormCreate
+    started", ReplaceMainMenu, "Main menu ready". FmxLinuxGtkGlobal, the
+    ICU launcher and the stderr markers were already there. The
+    StartupTrace / ReadState hooks (crash diagnostics, not fixes) were
+    not copied.
+  * Docs: README step 3 (buttons, File menu, settings paths), README
+    Known issues menu entry and docs/fmx-menu-bug-fix.md list SteamDemo.
+  NO PACKAGE REBUILD. NOT YET COMPILED.
+- OWNER (11:45): README section "Generating the API reference (PasDoc)"
+  (before "Checks before delivery") + a link from the Documentation line
+  at the top: install from github.com/pasdoc/pasdoc/releases (tested
+  1.0.5), pasdoc.bat / pasdoc.sh and their folders, the Delphi vs FPC
+  views, the .chm needing hhc.exe (HHC), pasdoc_check.py for new
+  comments. In zip Menu3.
+  Independent review of Menu3 (no compiler): no compile errors, no
+  likely bugs. Fixed from its minor points: FormClose turns tmAutoStart
+  off (a close within 100 ms could have reopened Steam); FmxLinuxMenu's
+  header named two copies - now lists all four, changed in ALL FOUR
+  (comment only; still byte-identical). Confirmed by it: the swap
+  re-points mnuAutoStart to the copy; IsRunning is False in OnShutdown and
+  True in OnInitialized; TPath.GetHomePath = roaming AppData (Windows),
+  home (macOS / Linux).
+- OWNER (12:24): a screenshot on every component-test run would fill the
+  user's Steam screenshot page. Zip Menu4 (follows Menu3): File > Take
+  Screenshot (enabled only while Steam runs - UpdateControls) writes the
+  window with WriteFormScreenshot (SteamFormToRGB + WriteScreenshot, no
+  overlay needed); OnScreenshotReady tags any screenshot (SetLocation
+  "SteamDemo"); OnScreenshotRequested answers only while hooked (the demo
+  never leaves them hooked). The Screenshots component test now writes NO
+  picture and requests no callback: HookScreenshots(True) / (False) with
+  IsScreenshotsHooked checked after each (PASS = attached, calls OK, the
+  state followed; answers 0 of 0). The cleanup's HookScreenshots(False)
+  (and its misleading log line) is gone. README step 3 updated.
+  NO PACKAGE REBUILD. NOT YET COMPILED. Still open: TriggerScreenshot with
+  the overlay present (a run started from Steam) - no longer part of any
+  test; the README Known issues entry stays.
 - Callback updating (owner, 2026-10-30: "threaded is vital" for game
   engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
   Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror
@@ -1996,8 +2088,17 @@ uMain.pas), CompTest3 (follows CompTest2: CLAUDE.md, uMain.pas), Shot1
 (follows CompTest3: CLAUDE.md, README.md, fmx/Steamworks.FMX.pas,
 uMain.pas, docs/components/TSteamAPI.md + TSteamScreenshots.md,
 tools/doc_extras/Screenshots.md), Doc1 (follows Shot1: tools/pasdoc.bat,
-.gitattributes, README.md, CLAUDE.md). Nothing to delete. Shot1 needs the
-SteamworksFMX runtime package rebuilt (CompTest1-3 and Doc1 need none).
+.gitattributes, README.md, CLAUDE.md), Doc2 (follows Doc1: tools/pasdoc.bat,
+CLAUDE.md), Doc3 (follows Doc2: lib/Steamworks.inc, tools/pasdoc.bat,
+CLAUDE.md), Doc4 (follows Doc3: tools/pasdoc.sh (new), tools/pasdoc.bat,
+README.md, CLAUDE.md), Menu3 (follows Doc4: SteamDemo .dpr / .dproj /
+src/uMain.pas / .fmx / src/FmxLinuxMenu.pas (new), FmxLinuxMenu.pas in
+SteamInputDemo / VirtualGamepad / LogReceiver (header comment),
+tools/gen_projects.py, tools/project_check.py, README.md,
+docs/fmx-menu-bug-fix.md, CLAUDE.md), Menu4 (follows Menu3: SteamDemo
+src/uMain.pas / .fmx, README.md, CLAUDE.md). Nothing to delete. Shot1 needs the
+SteamworksFMX runtime package rebuilt (CompTest1-3, Doc1-3 need none; Doc3 touches lib/Steamworks.inc
+only inside {$ifndef PASDOC}).
 NEXT SESSION FIRST: verify the CompTest1-3 + Shot1 push as in "Syncing safely",
 then read the owner's SteamDemo log of Test components (one row per
 component; "Component test finished: N of 7 components PASS").

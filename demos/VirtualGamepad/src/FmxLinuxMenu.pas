@@ -11,9 +11,10 @@
   bar on screen). On other platforms it does nothing.
 
   Method tested by the owner in another project (GDEMFetch, Delphi 13,
-  Ubuntu / GTK 3, October 2026). Two identical copies live in this
-  repository - demos/SteamInputDemo/src and RemoteLogging/LogReceiver/src,
-  because projects use only their own sources; tools/project_check.py
+  Ubuntu / GTK 3, October 2026). Identical copies live in this
+  repository - in the src folder of SteamDemo, SteamInputDemo,
+  VirtualGamepad and RemoteLogging/LogReceiver - because projects use only
+  their own sources; tools/project_check.py lists them (MENU_DIRS) and
   reports any difference. }
 unit FmxLinuxMenu;
 

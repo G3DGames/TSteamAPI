@@ -89,11 +89,10 @@ for dirpath, _, files in os.walk(os.path.join(ROOT, "demos")):
 # FmxLinuxMenu only where a form has a TMainMenu; the ICU launcher script
 # is named after its program (it starts <name> from <name>.sh).
 MENU_DIRS = ["demos/SteamInputDemo/src", "RemoteLogging/LogReceiver/src",
-             "demos/VirtualGamepad/src"]
+             "demos/VirtualGamepad/src", "demos/SteamDemo/src"]
 SHARED = {
     "FmxLinuxMenu.pas": [f"{d}/FmxLinuxMenu.pas" for d in MENU_DIRS],
-    "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas"
-                              for d in MENU_DIRS + ["demos/SteamDemo/src"]],
+    "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas" for d in MENU_DIRS],
     "ICU launcher": [f"demos/{n}/src/{n}.sh"
                      for n in ("SteamInputDemo", "SteamDemo", "SteamConsole", "VirtualGamepad")],
 }

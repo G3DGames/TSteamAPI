@@ -43,10 +43,15 @@
   {$packenum 4}
   {$scopedenums off}
   // FPC 3.3.1+ (trunk) supports function references / anonymous functions.
+  // PasDoc cannot evaluate FPC_FULLVERSION (it would assume True); its FPC
+  // pages show FPC 3.2.2, the target, without them. No compiler defines
+  // PASDOC, so compiled code is unaffected.
+  {$ifndef PASDOC}
   {$if FPC_FULLVERSION >= 30301}
     {$modeswitch functionreferences}
     {$modeswitch anonymousfunctions}
     {$define STEAMWORKS_ANONYMOUS_METHODS}
+  {$endif}
   {$endif}
 {$else}
   {$ifdef MSWINDOWS}

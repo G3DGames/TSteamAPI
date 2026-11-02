@@ -301,6 +301,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="src\FmxLinuxGtkGlobal.pas"/>
+        <DCCReference Include="src\FmxLinuxMenu.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmMain</Form>
             <FormType>fmx</FormType>
