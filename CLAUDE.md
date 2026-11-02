@@ -3009,6 +3009,76 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   REBUILD RUNTIME PACKAGE STEAMWORKSFMX (every platform) - fmx/ changed.
   NOT YET COMPILED.
 
+- FIRST macOS ARM64 RUN (owner, 21:51, SteamDemoLCL, FPC 3.2.2 /
+  Lazarus, macOS 27.0.1, not an .app bundle, aarch64-darwin/): first start
+  "Cannot load libsteam_api.dylib" (not copied - manual for Lazarus, as
+  docs/Install-Lazarus-FPC.md says); after copying it Steam started, 23
+  plug-ins. Component test 29 / 30 (three runs): only Screenshots FAILS -
+  IsScreenshotsHooked stays False after HookScreenshots(True) (overlay
+  off; on Windows the hook takes with the overlay off too). Cause
+  UNKNOWN: a macOS Steam-client difference or FPC aarch64-darwin bool
+  passing (C bool param as Pascal Boolean; Apple's ABI wants the caller
+  to extend small arguments). Every callback payload check passed (e.g.
+  1221 is 704 bytes here, 712 on Windows - the FPC ARM64 layouts are
+  right). Pair test as HOST against SteamDemoVCL on Windows, accounts
+  FRIENDS: 7 / 8 - Friends failed although friends: Steam kept sending
+  FriendRichPresenceUpdate (336) for the peer, app 2275430, with status ""
+  every 5 s; the Mac's own value read back fine. Zip Mac1 (follows
+  Handover7): the pair test logs every rich-presence key / value of the
+  peer on each update (0 keys = nothing arrived; another key = a key
+  mismatch); the screenshot note gives the overlay state. Open: the
+  guest's (VCL) log for that run; File > Take Screenshot on the Mac (LCL
+  SteamFormToRGB on Cocoa + WriteScreenshot); a Mac run started from
+  Steam (overlay). NO PACKAGE REBUILD. NOT YET COMPILED.
+  GUEST LOG (VCL, Windows, 21:56): the Friends row failed THERE too -
+  Steam sent 336 for the Mac account with status "" every 5 s, its own
+  value read back fine. So in that run rich presence crossed in NEITHER
+  direction (at 20:23, both on Windows, both ways within a second). The
+  API path works on both sides; suspected environment: the main account
+  signed in on two Steam clients (Windows PC + Mac), or the Mac client not
+  counting the app as running (started outside Steam). To check: the
+  guest's friends list ("In-Game" for the Mac account?) and Mac1's key
+  logging.
+- DELPHI FMX ON macOS ARM64 (owner, 22:12, PAServer .app, dylib deployed
+  to Contents/MacOS fine): component test 29 / 30 - Screenshots the same
+  hook result as FPC -> NOT an FPC bool problem: the macOS Steam client
+  keeps the hook off. Pair test as host against VCL / Windows (friends):
+  7 / 8, rich presence empty BOTH ways again (the guest read "" too). So
+  rich presence does not cross whenever the main account runs on the Mac,
+  with either compiler - Steam environment, not the binding (still open:
+  the main account possibly signed in on the Windows PC as well; check
+  with the PC's Steam signed out, and a Windows-Windows run to compare).
+  Payloads on macOS are smaller (pack 4 vs 8: 1023 36 / 40, 2101 24 / 32,
+  6002 12 / 16, 513 12 / 16, 504 20 / 24, 1221 704 / 712, server
+  responses 440 / 448): every size check passed with both compilers. The
+  Delphi .app found LogReceiver at once; the Lazarus build never did
+  (suspected: macOS Local Network permission of Lazarus - README).
+  Zip Mac2 (follows Mac1): the screenshot hook not taken on macOS is
+  information, not a FAIL ({$if defined(DARWIN) or defined(MACOS)});
+  README Known issues: the macOS hook and the Lazarus Local Network
+  permission. NO PACKAGE REBUILD. NOT YET COMPILED.
+- MAC2 RUN (owner, 22:24, Delphi FMX macOS ARM64 guest, VCL Windows
+  host on the tablet, friends): Mac2 compiled; component test 30 / 30
+  (Screenshots informational). Pair 7 / 8 on both: Mac1's key logging
+  says "0 key(s)" for the Windows peer on every update - Steam delivers
+  NOTHING for the peer to the Mac, and the Windows side reads "" for the
+  Mac account. Open question to the owner: was the main account's Steam
+  client on the Windows PC still signed in?
+  OWNER (22:27): yes - Steam was running on ALL machines (the main
+  account on the Windows PC AND the Mac). Most likely cause: two sessions
+  of the main account; Steam routes its rich presence to / from the other
+  one. To confirm: Steam > Exit on the Windows PC, then the Mac pair run.
+  OWNER (22:29): File > Take Screenshot WORKED on the Mac (Delphi FMX,
+  macOS ARM64): SteamFormToRGB (FMX) + WriteScreenshot reach the user's
+  screenshots although the hook never takes. The log lines for it
+  (handle, OnScreenshotReady, SetLocation) were not in the pasted log;
+  OWNER (22:31): picture and colours GOOD (right way up, RGB order
+  right) - SteamFormToRGB (FMX) confirmed on macOS ARM64.
+  Zip Mac3 (follows Mac2): these notes only. OWNER (22:32): pushing, then
+  the LCL build again on the Mac; remote logging still does not work from
+  the LCL build there (README Known issues: Local Network permission of
+  Lazarus / Terminal - unconfirmed).
+
 ## Handover (2026-11-02, end of ninth session) - READ THIS FIRST
 State: last verified push caa00b9 "All done bar server" (verified 20:28 -
 Fix14d to Fix20, 13 files, identical ignoring CRLF / BOM). Delivered since:

@@ -668,6 +668,22 @@ Windows', normal behaviour. Each says why and what to do.
 > it - with `SteamFormToRGB` (Steamworks.FMX / .VCL / .LCL), as the
 > SteamDemos' File > Take Screenshot does.
 
+> **On macOS, HookScreenshots does not take.**
+> `IsScreenshotsHooked` stays `False` after `HookScreenshots(True)` on the
+> macOS Steam client - seen 2026-11-02 on macOS ARM64 with both FPC (LCL)
+> and Delphi (FMX), overlay off; on Windows the hook takes with the
+> overlay off too. The component test reports it as information on macOS.
+> `WriteScreenshot` is not affected.
+
+> **macOS: "Send log to receiver" finds no LogReceiver from a Lazarus
+> build.** macOS asks each app for Local Network access; a program started
+> from Lazarus (not an .app of its own) runs under Lazarus' permission, and
+> when that is missing the discovery broadcast is dropped without an error
+> (seen 2026-11-02: the Delphi .app found the receiver at once, the
+> Lazarus build never did). Allow it in System Settings -> Privacy &
+> Security -> Local Network (Lazarus, or Terminal when started from
+> there). UNCONFIRMED until the permission has been checked.
+
 > **FMX menus on Linux show only first letters ("F" for "File").**
 > That is FMX's native GTK menu bar on Linux, not this library. SteamDemo,
 > SteamInputDemo, VirtualGamepad and LogReceiver replace their TMainMenu

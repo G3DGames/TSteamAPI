@@ -1180,12 +1180,27 @@ end;
 
 procedure TSteamPairTest.RichPresenceUpdate(Sender: TObject; const AData: FriendRichPresenceUpdate_t);
 var
-  S: string;
+  S, Keys, K: string;
+  I, N: Integer;
 begin
   if (FPhase <> ppRunning) or (AData.m_steamIDFriend <> FPeer) then
     Exit;
   S := FFriends.Plugin.GetFriendRichPresence(FPeer, 'status');
-  AddLog(Format('Friends: rich presence update for the peer (app %d): status "%s"', [AData.m_nAppID, S]));
+  // Every key Steam holds for the peer: tells "no value arrived" (0 keys)
+  // from "a value under another key / of another app" (2026-11-02, macOS
+  // ARM64 host: updates kept coming with status "" while the peers on
+  // Windows read each other at once)
+  Keys := '';
+  N := FFriends.Plugin.GetFriendRichPresenceKeyCount(FPeer);
+  for I := 0 to N - 1 do
+    if I < 8 then
+    begin
+      K := FFriends.Plugin.GetFriendRichPresenceKeyByIndex(FPeer, I);
+      Keys := Keys + Format('%s%s = "%s"', [IfThen(Keys = '', '', ', '), K,
+        FFriends.Plugin.GetFriendRichPresence(FPeer, K)]);
+    end;
+  AddLog(Format('Friends: rich presence update for the peer (app %d): status "%s"; %d key(s)%s',
+    [AData.m_nAppID, S, N, IfThen(N > 0, ': ' + Keys, '')]));
   if S = FPeerStatus then
     RowDone(PT_FRIENDS, True, Format('peer persona "%s"; rich presence set here, the peer''s read ("%s")',
       [FFriends.Plugin.GetFriendPersonaName(FPeer), S]));
