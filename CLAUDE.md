@@ -918,7 +918,7 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   Anything Gorilla3D lacks (seeking a clip, driving a joint) is a
   request to its developer, not a workaround.
 
-## Seventh session (2026-10-31, in progress)
+## Seventh session (2026-10-31 - 2026-11-02, ended)
 - Handover2 push (90ef3e9 / 4ed5295 "Passover"): uRemoteLogTarget.* gone,
   FmxLinuxMenu.pas in both places, project_check / pasdoc_check 0
   problems. File-by-file comparison not done (zip not here).
@@ -1689,8 +1689,79 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
 - OWNER (23:50): on the non-PS5 models left / right was mirrored too.
   FStickSign now applies to x AND y: -1 (sample) for MODEL_PS, +1 for
   Xbox and Steam Controller. Zip Stick3 (follows Stick2).
+- Push c3d4bf1 "Better Virtualpad" (2026-11-02 00:10) VERIFIED: every
+  file delivered since e2a4954 (Probe1 ... Stick3, 56 files) identical
+  ignoring CRLF / BOM, except IDE re-saves of SteamConsole.dproj
+  (entries reordered; both SteamConsole.sh DeployFile entries kept) and
+  SteamDemo.dproj (default Release / Linux64, extra platform sections;
+  SteamDemo.sh + FmxLinuxGtkGlobal kept) - accepted. Group Dependencies
+  intact; pasdoc / project checks 0 problems. Working copy reset to
+  origin/main.
 
-## Handover (2026-10-31, end of sixth session) - READ THIS FIRST
+## Handover (2026-11-02, end of seventh session) - READ THIS FIRST
+State: pushed and verified c3d4bf1 "Better Virtualpad" (see the last
+note above). Nothing delivered after it except this file (zip Handover3,
+follows the push). Nothing to delete.
+NEXT SESSION FIRST: verify the Handover3 push as in "Syncing safely"
+(CLAUDE.md identical; pasdoc_check.py / project_check.py 0 problems).
+
+### Done this session (details in "Seventh session" above)
+1. VirtualGamepad (FMX + Gorilla3D) is a working visualiser: model by
+   pad type, Sprite3D orbit camera (vendored unchanged), the Gorilla3D
+   author's TGorillaParallelAnimator (in the repo with his permission)
+   playing every button / stick / trigger at once; per-model stick sign
+   (FStickSign: PS5 -1, Xbox / Steam Controller +1 - owner-confirmed
+   orientation for PS5; Xbox / Steam Controller fixed on his reports -
+   Stick3 CONFIRMED by the owner, 2026-11-02 00:14). Motion OFF at start. Long press
+   of Start (0.8 s) -> overlay menu on the Menu action set: controller
+   row (several pads; D-pad left / right, A switches), Return to App,
+   Enable / Disable Motion (greyed without motion data), Start / Stop
+   Remote Logging, Exit; each choice closes it; falls back to the InGame
+   set's D-pad / A / B when the loaded layout lacks Menu bindings. No log
+   panel: one-line banner, log to file / stderr / LogReceiver.
+2. Manifest Menu set: MenuConfirm, MenuBack, MenuUp / Down / Left /
+   Right (D-pad); LAYOUT_REVISION 4, literal per-controller layout
+   titles "SteamInputDemo - <pad> (rN)".
+3. Linux / SteamOS: FmxLinuxGtkGlobal (GTK RTLD_GLOBAL, Runtime 3.0
+   sniper) and the ICU launcher <name>.sh in SteamDemo, SteamInputDemo,
+   SteamConsole, VirtualGamepad (+ GTK unit in LogReceiver); both
+   Embarcadero bugs documented (docs/fmx-steamos-*.md); SteamInputDemo
+   PROVEN from Steam on Ubuntu and on SteamOS (ROG Ally, Game Mode).
+4. TSteamLib.RunningOS / PlatformDescription (OS, build, Wine / Proton,
+   container) in every caption and the log; LogReceiver shows the
+   sender's platform. NOT YET seen on Linux: the Steamworks package was
+   not rebuilt for Linux64 at the time ("Linux x64 build" only).
+5. SteamInputDemo capability probe (motion, back buttons, origin
+   families beyond the type) - proven on the Ally.
+6. Docs: Launcher.md (end-of-project plan), SteamInputMapping.md
+   (layout copies, titles, Menu set, handhelds); LICENSE (MIT) + README
+   "Licence" section with exceptions; README title "Steamworks for
+   Pascal".
+
+### Next / open
+- CONFIRMED (owner, 2026-11-02 00:14, Windows): Stick3 sticks right on
+  every model; the overlay works (with several pads). NOT YET TRIED:
+  Remote Logging from VirtualGamepad (overlay or File menu), and any
+  non-Windows build of VirtualGamepad (Linux / SteamOS / macOS - incl.
+  the 2D overlay above the Gorilla3D view there).
+- Steam Controller menu: the layout Steam loaded lacked the Menu
+  bindings (fallback now covers it) - a log of OpenOverlay's "binds
+  nothing to ..." line would confirm which copy Steam used.
+- Rebuild the Steamworks package for Linux64 / macOS so RunningOS shows.
+- Plain Xbox pad with the Paddles1 xboxone layout (gyro + back sources):
+  expected Gyro / Back* "not bound (optional)"; if not, revert to
+  STANDARD and bump LAYOUT_REVISION.
+- ROG Ally paddles / gyro PARKED (owner); to resume: export Steam's own
+  Ally layout (steam://dumpcontrollerconfig?appid=2275430).
+- Gorilla.Animation.Parallel.pas licence: ask its author whether MIT is
+  fine (README excludes it until then). LICENSE holder "G3DGames" - the
+  owner may change it. models/LICENSE still says <your name>.
+- Devices on order: PS4 DualShock 4, Logitech G920 wheel, Thrustmaster
+  T.Flight Hotas One (expect Generic / no Steam Input).
+- Launcher (docs/Launcher.md): END of the project only.
+- Older open items: the sixth-session handover below ("Still open").
+
+## Handover (2026-10-31, end of sixth session)
 State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to
 LinuxPass1 (117 files identical ignoring CRLF / BOM; the IDE re-saved
 SteamConsole / Steamworks / SteamworksFMX / SteamInputDemo / LogReceiver
