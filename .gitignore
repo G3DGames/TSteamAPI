@@ -59,7 +59,9 @@ heap.trc
 redistributable_bin/*
 !redistributable_bin/README.md
 
-# PasDoc output
+# PasDoc output (tools/pasdoc.bat / pasdoc.sh; docs/.gitignore covers
+# docs/html and docs/chm) and a log of it redirected to the root
+/pasdoc.log
 docs/html/
 
 # Python bytecode of the tools

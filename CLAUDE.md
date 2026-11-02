@@ -302,6 +302,25 @@ Project AppID: 2275430.
   NO PACKAGE REBUILD. NOT YET COMPILED. Still open: TriggerScreenshot with
   the overlay present (a run started from Steam) - no longer part of any
   test; the README Known issues entry stays.
+- PUSH 9125bd3 "Testing untested components" (12:29, two commits on top
+  of 6175ace: c8a83bf "Before pasdoc" + 9125bd3) VERIFIED against a
+  separate clone: all 21 files delivered in CompTest1-3, Shot1, Doc1-4,
+  Menu3, Menu4 present and identical (line endings / BOM aside) except
+  SteamDemo.dproj = IDE re-save (default Config / Platform, ProjectName;
+  FmxLinuxMenu reference, 8 post-build events, 22 DeployFile entries
+  kept). Also pushed, not delivered: the owner's docs/.gitignore (html/,
+  chm/), IDE re-saves of SteamInputDemo.dproj (default platform,
+  ProjectName), LogReceiver.dproj (OSX64 / OSXARM64 config groups) and
+  VirtualGamepad.dproj (deploy entries reordered; still 8 post-build, 101
+  DeployFile) - accepted; group Dependencies kept (12). pasdoc_check /
+  project_check 0 problems on the clone; gen_docs.py and
+  gen_input_mapping.py reproduce every committed file (CRLF only).
+  PROBLEM: pasdoc.log (UTF-16, PowerShell redirect of pasdoc.bat) was
+  committed at the root - a build log with 4 local paths
+  (c:\src\Steamworks\docs\chm\...), against the "no paths from anyone's
+  computers in a tracked file" rule. Zip Sync1: .gitignore ignores
+  /pasdoc.log; the owner removes the tracked copy
+  (git rm --cached pasdoc.log). Working copy reset to origin/main.
 - Callback updating (owner, 2026-10-30: "threaded is vital" for game
   engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
   Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror
@@ -2080,28 +2099,16 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   NOT YET COMPILED.
 
 ## Handover (2026-11-02, end of eighth session) - READ THIS FIRST
-State: last verified push 6175ace "Claude Fable Reviewed" (= Review1;
-checked 2026-11-02 09:45, see "Ninth session"). Delivered since:
-CompTest1 (follows Review1: CLAUDE.md, README.md, demos/SteamDemo/src/
-uMain.pas + uMain.fmx), CompTest2 (follows CompTest1: CLAUDE.md,
-uMain.pas), CompTest3 (follows CompTest2: CLAUDE.md, uMain.pas), Shot1
-(follows CompTest3: CLAUDE.md, README.md, fmx/Steamworks.FMX.pas,
-uMain.pas, docs/components/TSteamAPI.md + TSteamScreenshots.md,
-tools/doc_extras/Screenshots.md), Doc1 (follows Shot1: tools/pasdoc.bat,
-.gitattributes, README.md, CLAUDE.md), Doc2 (follows Doc1: tools/pasdoc.bat,
-CLAUDE.md), Doc3 (follows Doc2: lib/Steamworks.inc, tools/pasdoc.bat,
-CLAUDE.md), Doc4 (follows Doc3: tools/pasdoc.sh (new), tools/pasdoc.bat,
-README.md, CLAUDE.md), Menu3 (follows Doc4: SteamDemo .dpr / .dproj /
-src/uMain.pas / .fmx / src/FmxLinuxMenu.pas (new), FmxLinuxMenu.pas in
-SteamInputDemo / VirtualGamepad / LogReceiver (header comment),
-tools/gen_projects.py, tools/project_check.py, README.md,
-docs/fmx-menu-bug-fix.md, CLAUDE.md), Menu4 (follows Menu3: SteamDemo
-src/uMain.pas / .fmx, README.md, CLAUDE.md). Nothing to delete. Shot1 needs the
-SteamworksFMX runtime package rebuilt (CompTest1-3, Doc1-3 need none; Doc3 touches lib/Steamworks.inc
-only inside {$ifndef PASDOC}).
-NEXT SESSION FIRST: verify the CompTest1-3 + Shot1 push as in "Syncing safely",
-then read the owner's SteamDemo log of Test components (one row per
-component; "Component test finished: N of 7 components PASS").
+State: last verified push 9125bd3 "Testing untested components" (=
+CompTest1-3, Shot1, Doc1-4, Menu3, Menu4; verified 2026-11-02 12:30, see
+"Ninth session"). Delivered since: Sync1 (follows Menu4: .gitignore,
+CLAUDE.md). Nothing to delete in the zip, but pasdoc.log must be removed
+from the repository by hand (see the ninth-session note).
+NEXT SESSION FIRST: verify the Sync1 push as in "Syncing safely" (2 files;
+pasdoc.log gone from the tree). Then, still open: SteamDemo Win64 run of
+Menu4 (buttons, File menu, Auto Start setting file, Take Screenshot, Test
+components 7 of 7), VCL / LCL twins of the SteamDemo changes (offered),
+TriggerScreenshot with the overlay (a run started from Steam).
 
 ### Done this session (details in "Eighth session" above)
 1. demos/VirtualGamepadLCL: the visualiser for Lazarus / FPC 3.2.2 with
