@@ -200,6 +200,15 @@
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Timeline.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.UGC.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Input.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Matchmaking.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Parties.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Music.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.HTTP.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.HTMLSurface.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Inventory.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Video.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.ParentalSettings.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.RemotePlay.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

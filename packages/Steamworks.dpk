@@ -28,6 +28,15 @@ contains
   Steamworks.Plugin.Screenshots in '..\lib\plugins\Steamworks.Plugin.Screenshots.pas',
   Steamworks.Plugin.Timeline in '..\lib\plugins\Steamworks.Plugin.Timeline.pas',
   Steamworks.Plugin.UGC in '..\lib\plugins\Steamworks.Plugin.UGC.pas',
-  Steamworks.Plugin.Input in '..\lib\plugins\Steamworks.Plugin.Input.pas';
+  Steamworks.Plugin.Input in '..\lib\plugins\Steamworks.Plugin.Input.pas',
+  Steamworks.Plugin.Matchmaking in '..\lib\plugins\Steamworks.Plugin.Matchmaking.pas',
+  Steamworks.Plugin.Parties in '..\lib\plugins\Steamworks.Plugin.Parties.pas',
+  Steamworks.Plugin.Music in '..\lib\plugins\Steamworks.Plugin.Music.pas',
+  Steamworks.Plugin.HTTP in '..\lib\plugins\Steamworks.Plugin.HTTP.pas',
+  Steamworks.Plugin.HTMLSurface in '..\lib\plugins\Steamworks.Plugin.HTMLSurface.pas',
+  Steamworks.Plugin.Inventory in '..\lib\plugins\Steamworks.Plugin.Inventory.pas',
+  Steamworks.Plugin.Video in '..\lib\plugins\Steamworks.Plugin.Video.pas',
+  Steamworks.Plugin.ParentalSettings in '..\lib\plugins\Steamworks.Plugin.ParentalSettings.pas',
+  Steamworks.Plugin.RemotePlay in '..\lib\plugins\Steamworks.Plugin.RemotePlay.pas';
 
 end.

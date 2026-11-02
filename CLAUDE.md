@@ -1,5 +1,9 @@
 # CLAUDE.md - working rules for this repository
 
+**OWNER'S IDE (2026-11-02): the 32-bit Delphi 13 IDE. Design-time packages
+(dcl...) are built and installed for Win32. The 64-bit IDE is for later -
+do not assume it.**
+
 Read README.md first, then this file. Keep both up to date with every change.
 
 ## Starting a new session (read this first)
@@ -16,9 +20,9 @@ Read README.md first, then this file. Keep both up to date with every change.
   it OUTSIDE the repository (scratchpad) - it is never committed and does not
   survive the session. For compile/run results rely on the owner's logs.
   clang IS available: tools/verify_generated.py uses it to check layouts.
-- Owner's setup: Delphi 13 (Studio 37.0, 64-bit IDE, so design packages are
-  built Win64 with dcc64); SDK 1.65 copied into `redistributable_bin/` (all
-  seven libraries, verified by check_redist.py).
+- Owner's setup: Delphi 13 (Studio 37.0), the 32-BIT IDE (see the top of this
+  file; design packages Win32 / dcc32); SDK 1.65 copied into
+  `redistributable_bin/` (all seven libraries, verified by check_redist.py).
 - Read the newest "Handover" section (marked READ THIS FIRST) for where work stopped.
 
 ## To do at the END of the project (owner, 2026-11-01)
@@ -321,6 +325,149 @@ Project AppID: 2275430.
   computers in a tracked file" rule. Zip Sync1: .gitignore ignores
   /pasdoc.log; the owner removes the tracked copy
   (git rm --cached pasdoc.log). Working copy reset to origin/main.
+- PUSH 4cf2471 (12:31) VERIFIED: Sync1's .gitignore and CLAUDE.md
+  identical, pasdoc.log deleted from the tree (it stays in the history of
+  9125bd3 - only c:\src\Steamworks paths, not worth a history rewrite),
+  checks 0 problems, group Dependencies kept (12). Working copy reset.
+  Nothing delivered since (this note goes out with the next zip).
+- MENU4 WIN64 RUN (owner, 12:33): FormCreate started -> Main menu ready
+  first; settings READ from <roaming AppData>\G3DGames\SteamDemo\
+  SteamDemo.ini (Auto Start off; the file already existed); component
+  test 7 OF 7 PASS - Screenshots "answers 0 of 0; hook on / off OK", NO
+  picture written; File > Auto Start Steam on -> saved to the same file.
+  Not yet in a log: Auto Start on the next start, File > Take Screenshot,
+  Copy Log, Exit (and the button states are visual only).
+- MENU4 SECOND RUN (owner, 12:34-12:37): Auto Start read as ON ->
+  "starting Steam" -> Open OK; owner's picture shows Start disabled, the
+  other three enabled. File > Take Screenshot: window captured 720x500
+  (1,080,000 bytes RGB = 720 x 500 x 3), handle 9, OnScreenshotReady OK,
+  SetLocation True - captured the visible tab (Output). Show info x2, Test
+  components 7 OF 7 PASS (no picture), Stop: worker stopped, shut down,
+  OnShutdown. Copy Log worked (the pasted log is it; its own "copied" line
+  is written after the copy). Open questions: 720x500 = the form's
+  LOGICAL size - right at 100 % display scaling, too small above that
+  (asked the owner); auto start fired 4.1 s after FormCreate (100 ms
+  timer - probably the debugger's start-up; check outside the IDE). Not
+  yet seen: buttons after Stop, File > Exit.
+- MENU4 THIRD RUN (owner, 12:39, SteamDemo.log file): buttons after Stop
+  as expected (owner) - BUTTON STATES CONFIRMED. Auto start again 3.8 s
+  after FormCreate; FormClose with Steam running False (Exit or the
+  window's close button - not distinguishable). Zip Menu5 (follows
+  Sync1): File > Exit logs "File > Exit"; the auto-start line says how
+  many ms after FormCreate it fired (FCreateTicks) and the timer's
+  interval, to find what holds up the first message loop (asked whether
+  that run was outside the IDE). NO PACKAGE REBUILD.
+- MENU5 RUN (owner, 12:42): File > Exit logged, then FormClose (Steam
+  running True) and a clean shutdown - EXIT CONFIRMED; Menu4 / Menu5
+  checklist COMPLETE on Win64. Auto start "3813 ms after FormCreate; the
+  timer is 100 ms". Owner (12:44): the window frame appears at once, its
+  CONTENTS ~4 s later = FMX's first paint (canvas / style / controls)
+  blocks the message loop; FormCreate itself takes ~20 ms. Not our code;
+  Auto Start fires as soon as the contents are up. Open (optional): is a
+  blank FMX form as slow on that machine (then GPU driver / environment).
+- ALL CURRENT COMPONENTS BASE-TESTED ON WIN64 (owner 12:46): TSteamAPI x3
+  frameworks, Friends / UserStats (SteamDemo x3), Input (input demos, all
+  owner's pads), the other seven (Test components, 7 / 7 three times).
+  More pads are on order - nothing to test until they arrive.
+- OWNER'S PLAN (12:48): write the REMAINING components, then a complete
+  Win64 test, then a full macOS ARM64 test, finally Linux / SteamOS.
+  Remaining interfaces (SDK 1.65 has 28; done: Utils, User, Friends, Apps,
+  UserStats, RemoteStorage, Screenshots, Timeline, UGC, Input; Client is
+  the core):
+  * Batch 2a (generator only): HTTP, Inventory, Matchmaking, Parties,
+    Music, RemotePlay, Video, ParentalSettings, HTMLSurface.
+  * Batch 2b: NetworkingSockets, NetworkingMessages, NetworkingUtils,
+    Networking (old P2P) - the generator must emit VARIANT RECORDS for C
+    unions (SteamNetworkingIdentity, SteamNetworkingIPAddr,
+    SteamNetworkingConfigValue_t, ...; 8 more structs embed them) and
+    exercises Steamworks.AlignNatural.inc for the first time.
+  * Batch 2c: MatchmakingServers - response objects
+    (ISteamMatchmakingServerListResponse, ...PingResponse,
+    ...PlayersResponse, ...RulesResponse) are C++ vtable objects: a
+    hand-written shim like Input's.
+  * DECIDED (owner): ISteamController SKIPPED (deprecated by Valve,
+    ISteamInput replaces it - document it); GameServer / GameServerStats
+    LATER (separate SteamGameServer_Init path + core work + a server
+    demo), AFTER the full Win64 round.
+  Each batch gets a SteamDemo test like Test components. BLOCKED ON: the
+  SDK's public/steam folder (zip from the owner; unpack in the scratchpad,
+  never commit).
+- SDK HEADERS SUPPLIED (owner, 13:06, AllSteamHeaders.zip = public/steam
+  with steam_api.json and lib/). Baseline: regeneration reproduced every
+  committed generated file (CRLF only); verify_generated.py 836 layouts /
+  459 flat signatures / 24 by-value lowerings identical.
+- BATCH 2A (zip Batch2a, follows Menu5):
+  * gen_steam_api.py PLUGINS + Matchmaking, Parties, Music, HTTP,
+    HTMLSurface, Inventory, Video, ParentalSettings, RemotePlay (189
+    methods). One method NOT generated: ISteamParties.
+    GetBeaconLocationData (SteamPartyBeaconLocation_t BY VALUE - needs a
+    per-platform shim like Input's; documented). Raw-pointer methods left
+    as they are (Inventory 14, HTTP 4, Matchmaking 3, ...).
+  * FLAG_ENUMS (new): EHTMLKeyModifiers (0/1/2/4) and
+    ESteamInputConfigurationEnableType (0/1/2/4/8, Valve: bitmask) are
+    Integer types + constants now - the heuristic (len > 3 and max > 8)
+    missed them; the Input one was a latent batch-1 bug (unused as a
+    parameter type, so nothing breaks). Check new SDKs for more.
+  * Callback ownership: header AND id range (k_iSteam<Name>Callbacks bases
+    from steam_api_internal.h; CALLBACK_BASE_ALIAS Input -> Controller,
+    whose 2800 base Input's callbacks use). Before it, Matchmaking and
+    Parties (both in isteammatchmaking.h) each got all 17 lobby + party
+    events. The ten existing plug-ins regenerate UNCHANGED.
+  * verify_generated.py strips C++ scope prefixes
+    (ISteamHTMLSurface::EHTMLMouseButton). Now 836 layouts, 647 flat
+    signatures (188 new), 24 by-value lowerings - all identical.
+  * Packages: Steamworks.dpk / .dproj, SteamworksLCL.lpk, gen_projects.py
+    PLUGINS; design/Steamworks.Reg.pas and lcl/Steamworks.LCL.Reg.pas
+    regenerated (19 components). Component icons: 20 needed now.
+  * Docs: tools/doc_extras/<Name>.md for the nine (every identifier
+    checked against the units), generated docs/components pages, the
+    components index, README (layout, install list, component list,
+    status: Controller not bound - deprecated; game servers later).
+  * SteamDemo Test components 7 -> 16 components: answers requested from
+    Matchmaking (RequestLobbyList, max 1 -> 510), HTTP (GET
+    api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/ -> 2101, body
+    start logged, request released), HTMLSurface (Init + CreateBrowser
+    -> 4501, browser removed at once, Shutdown at the end), Inventory
+    (GetAllItems -> 4700, item count, result destroyed), Video
+    (GetOPFSettings -> 4624); reads only for Parties, Music,
+    ParentalSettings, RemotePlay (nothing harmless to ask for).
+  REBUILD BOTH RUNTIME PACKAGES (Steamworks: new units; SteamworksFMX
+  depends on it) AND REINSTALL dclSteamworks (new components).
+  NOT YET COMPILED.
+  Independent review (no compiler): ONE CERTAIN COMPILE ERROR fixed -
+  RemotePlay.GetInput had `var pInput: RemotePlayInput_t`, a C-union
+  struct the generator skips (undeclared): Param() now keeps a single
+  out-pointer to a SKIPPED struct a raw Pointer. Also fixed: Valve spells
+  one base k_ISteamParentalSettingsCallbacks (capital I) - regex
+  k_[iI]Steam. Confirmed by it: the id-range rule is right for all 19
+  interfaces; old units unchanged; SteamDemo names / cleanup correct.
+  FOR LATER BATCHES (exceptions table needed): GameServer would lose
+  GSPolicyResponse_t (115, in User's range), GameServerStats
+  GSStatsUnloaded_t (1108, UserStats' range), NetworkingSockets
+  SteamNetworkingFakeIPResult_t (1223, declared in steamnetworkingfakeip.h -
+  header rule misses it). Minor, left: Inventory GetResultItemProperty /
+  GetItemDefinitionProperty cannot pass NULL for the property name (the
+  "list names" form - use Flat); HTMLSurface LoadURL post data '' instead
+  of NULL (probably fine); Parties GetAvailableBeaconLocations takes the
+  array as one var record (pass the first element). Video test:
+  GetOPFSettings may not answer for a non-video app (reviewer ~40 %) - the
+  log says so if it times out.
+- BATCH 2A FIRST BUILD + RUN (owner, 13:44, Win64 Debug, 32-bit IDE with
+  Win32 design packages): ALL NINE NEW UNITS COMPILED FIRST TIME (no
+  errors). 18 plug-in classes linked (Input not in SteamDemo). Test
+  components 16 OF 16 PASS: HTTP 200, 71 bytes of JSON
+  ({"servertime":...}), request released; HTMLSurface Init True, browser
+  ready (4501) in 156 ms and removed, Shutdown True - NO overlay needed;
+  Matchmaking 0 lobbies; Inventory GetAllItems -> result 1 Fail (no
+  inventory service for the app), a second unrelated result (handle 0,
+  OK) correctly ignored, 4702 definition update seen; Video
+  GetOPFSettings ANSWERS (InvalidParam) - the review's doubt settled;
+  Music enabled, status 3, volume 1.00; Parties / ParentalSettings /
+  RemotePlay reads sane. FINDING: OnLobbyMatchList fired TWICE for one
+  request - 510 as call result and as plain callback (Steam posts both);
+  the component passes on both. Documented in doc_extras/Matchmaking.md
+  (use RequestLobbyListAsync or ignore the repeat). Other call results
+  may do the same - watch for it.
 - Callback updating (owner, 2026-10-30: "threaded is vital" for game
   engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
   Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror
@@ -2099,13 +2246,15 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   NOT YET COMPILED.
 
 ## Handover (2026-11-02, end of eighth session) - READ THIS FIRST
-State: last verified push 9125bd3 "Testing untested components" (=
-CompTest1-3, Shot1, Doc1-4, Menu3, Menu4; verified 2026-11-02 12:30, see
-"Ninth session"). Delivered since: Sync1 (follows Menu4: .gitignore,
-CLAUDE.md). Nothing to delete in the zip, but pasdoc.log must be removed
-from the repository by hand (see the ninth-session note).
-NEXT SESSION FIRST: verify the Sync1 push as in "Syncing safely" (2 files;
-pasdoc.log gone from the tree). Then, still open: SteamDemo Win64 run of
+State: last verified push 4cf2471 (= everything up to Sync1, pasdoc.log
+removed; verified 2026-11-02 12:32, see "Ninth session"). Delivered
+since: Menu5 (follows Sync1: demos/SteamDemo/src/uMain.pas, CLAUDE.md),
+Batch2a (follows Menu5: 41 files - 9 new plug-in units, 9 doc_extras, 9
+component pages, generator / verifier / packages / SteamDemo / docs).
+Nothing to delete. Batch2a needs both runtime packages rebuilt and
+dclSteamworks reinstalled.
+NEXT SESSION FIRST: verify the latest push as in "Syncing safely". Then,
+still open: SteamDemo Win64 run of
 Menu4 (buttons, File menu, Auto Start setting file, Take Screenshot, Test
 components 7 of 7), VCL / LCL twins of the SteamDemo changes (offered),
 TriggerScreenshot with the overlay (a run started from Steam).

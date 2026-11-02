@@ -63,7 +63,30 @@ PLUGINS = {
     "ISteamTimeline": "Timeline",
     "ISteamUGC": "UGC",
     "ISteamInput": "Input",
+    # Batch 2a (2026-11-02): interfaces with no C unions and no C++ callback
+    # objects - generator only
+    "ISteamMatchmaking": "Matchmaking",
+    "ISteamParties": "Parties",
+    "ISteamMusic": "Music",
+    "ISteamHTTP": "HTTP",
+    "ISteamHTMLSurface": "HTMLSurface",
+    "ISteamInventory": "Inventory",
+    "ISteamVideo": "Video",
+    "ISteamParentalSettings": "ParentalSettings",
+    "ISteamRemotePlay": "RemotePlay",
 }
+
+# Bit-flag enums the heuristic below cannot recognise (few, small powers of
+# two, no "Flag" in the name): Valve documents them as bitmasks, so they
+# become Integer types whose k_ constants can be or-ed (2026-11-02:
+# Ctrl+Shift = k_eHTMLKeyModifier_CtrlDown or k_eHTMLKeyModifier_ShiftDown).
+# Check every new SDK for more: an enum of 0 / 1 / 2 / 4 values may be
+# either a list (EHTMLMouseButton) or flags.
+FLAG_ENUMS = {"EHTMLKeyModifiers", "ESteamInputConfigurationEnableType"}
+
+# Interfaces whose callbacks use another interface's id base
+# (k_iSteam<Base>Callbacks): ISteamInput kept ISteamController's 2800 range.
+CALLBACK_BASE_ALIAS = {"Input": "Controller"}
 
 # Declared by hand in lib/Steamworks.Types.pas (read at run time as well).
 PASCAL_KEYWORDS = set("""and array as asm begin case class const constructor destructor dispinterface
@@ -163,6 +186,17 @@ class SDK:
         self.structs = {s["struct"]: s for s in self.json["structs"] + self.json["callback_structs"]}
         self.region = {name: self._region(name) for name in self.structs}
 
+    def callback_bases(self):
+        """{'Matchmaking': 500, ...} from 'enum { k_iSteam<Name>Callbacks = N };'
+        in the headers (steam_api_internal.h)."""
+        if not hasattr(self, "_bases"):
+            self._bases = {}
+            for t in self.headers.values():
+                # Valve spells one base k_ISteamParentalSettingsCallbacks
+                for m in re.finditer(r"\bk_[iI]Steam(\w+?)Callbacks\s*=\s*(\d+)", t):
+                    self._bases[m.group(1)] = int(m.group(2))
+        return self._bases
+
     def _hand_names(self):
         text = open(os.path.join(ROOT, "lib", "Steamworks.Types.pas"), encoding="utf-8-sig").read()
         iface = text.split("\nimplementation")[0]
@@ -190,7 +224,7 @@ class SDK:
         for e in self.enums.values():
             nums = [v for _, v in e["values"]]
             ascending = all(b > a for a, b in zip(nums, nums[1:]))
-            flags = ("Flag" in e["name"] or
+            flags = (e["name"] in FLAG_ENUMS or "Flag" in e["name"] or
                      (len(nums) > 3 and max(nums) > 8 and all(n == 0 or n & (n - 1) == 0 for n in nums)))
             e["pascal"] = ascending and not flags
 
@@ -667,7 +701,10 @@ class Param:
             # a single out-value; buffers (followed by a count) and const struct
             # pointers (often optional NULL) stay raw pointers
             pas = "TSteamID" if base == "CSteamID" else m.base(base)
-            if pas:
+            # a struct the types unit skipped (C union, opaque) is not
+            # declared: such a parameter stays a raw Pointer (2026-11-02:
+            # ISteamRemotePlay.GetInput's RemotePlayInput_t)
+            if pas and base not in unit.types.skipped_structs:
                 self.kind, self.ftype = "var", pas
 
 
@@ -695,11 +732,23 @@ class PluginUnit:
             if re.search(r"\bclass\s+" + re.escape(self.iface["classname"]) + r"\b[^;]*?\{", txt):
                 header = h
                 break
+        # One header can declare several interfaces (isteammatchmaking.h:
+        # Matchmaking, MatchmakingServers, Parties): a callback also has to
+        # lie in this interface's id range, k_iSteam<Name>Callbacks up to the
+        # next base (steam_api_internal.h). Input's callbacks still use the
+        # Controller base. No base for the interface: header rule only.
+        key = CALLBACK_BASE_ALIAS.get(self.name, self.name)
+        bases = sdk.callback_bases()
+        mine = bases.get(key)
         out = []
         for c in sorted(sdk.json["callback_structs"], key=lambda c: c["callback_id"]):
             n = c["struct"]
             if n in sdk.hand_types or n in self.types.skipped_structs:
                 continue
+            if mine is not None:
+                owner = max((v, k) for k, v in bases.items() if v <= c["callback_id"])[1]
+                if owner != key:
+                    continue
             if sdk.region[n][0] == header:
                 base = n[:-2] if n.endswith("_t") else n
                 out.append(dict(struct=n, id=c["callback_id"], base=base,

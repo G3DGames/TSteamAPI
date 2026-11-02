@@ -105,6 +105,42 @@
         <UnitName Value="Steamworks.Plugin.Input"/>
       </Item>
       <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Matchmaking.pas"/>
+        <UnitName Value="Steamworks.Plugin.Matchmaking"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Parties.pas"/>
+        <UnitName Value="Steamworks.Plugin.Parties"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Music.pas"/>
+        <UnitName Value="Steamworks.Plugin.Music"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.HTTP.pas"/>
+        <UnitName Value="Steamworks.Plugin.HTTP"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.HTMLSurface.pas"/>
+        <UnitName Value="Steamworks.Plugin.HTMLSurface"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Inventory.pas"/>
+        <UnitName Value="Steamworks.Plugin.Inventory"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Video.pas"/>
+        <UnitName Value="Steamworks.Plugin.Video"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.ParentalSettings.pas"/>
+        <UnitName Value="Steamworks.Plugin.ParentalSettings"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.RemotePlay.pas"/>
+        <UnitName Value="Steamworks.Plugin.RemotePlay"/>
+      </Item>
+      <Item>
         <Filename Value="../lib/Steamworks.inc"/>
         <Type Value="Include"/>
       </Item>

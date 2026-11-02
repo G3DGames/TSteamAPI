@@ -7,9 +7,11 @@
   only the Debug-only settings are made in FormCreate. Four tabs: Output (the
   log), Personal (the user's avatar, persona, Steam ids, level, country and the
   friends list with avatars), Achievements (icons, unlock state) and
-  Components (the base test of the other seven plug-in components - Utils,
-  User, Apps, RemoteStorage, Screenshots, Timeline, UGC - dropped on the form
-  with their events wired; Test components runs it, see btnTestClick). It
+  Components (the base test of the other 16 plug-in components - Utils,
+  User, Apps, RemoteStorage, Screenshots, Timeline, UGC, Matchmaking,
+  Parties, Music, HTTP, HTMLSurface, Inventory, Video, ParentalSettings,
+  RemotePlay - dropped on the form with their events wired; Test components
+  runs it, see btnTestClick). It
   starts and stops Steam on demand and logs everything the core reports, so
   the Debug log can be pasted back as test evidence. The buttons are enabled
   only when they make sense (Start while Steam is stopped, the others while
@@ -32,7 +34,10 @@ uses
   Steamworks.FMX,
   Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
   Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage,
-  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC;
+  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC,
+  Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties, Steamworks.Plugin.Music,
+  Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface, Steamworks.Plugin.Inventory,
+  Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay;
 
 const
   { AppID of this project on Steam. }
@@ -51,8 +56,29 @@ const
   CT_TIMELINE = 5;
   { Component test: index of TSteamUGC. }
   CT_UGC = 6;
+  { Component test: index of TSteamMatchmaking (batch 2a from here on). }
+  CT_MATCHMAKING = 7;
+  { Component test: index of TSteamParties. }
+  CT_PARTIES = 8;
+  { Component test: index of TSteamMusic. }
+  CT_MUSIC = 9;
+  { Component test: index of TSteamHTTP. }
+  CT_HTTP = 10;
+  { Component test: index of TSteamHTMLSurface. }
+  CT_HTML = 11;
+  { Component test: index of TSteamInventory. }
+  CT_INVENTORY = 12;
+  { Component test: index of TSteamVideo. }
+  CT_VIDEO = 13;
+  { Component test: index of TSteamParentalSettings. }
+  CT_PARENTAL = 14;
+  { Component test: index of TSteamRemotePlay. }
+  CT_REMOTEPLAY = 15;
   { Number of components the component test covers. }
-  CT_COUNT = 7;
+  CT_COUNT = 16;
+  { URL the HTTP test fetches: Steam's own Web API server-info call (no key
+    needed, small JSON answer). }
+  TEST_HTTP_URL = 'https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/';
   { A requested callback / call result that has not arrived after this many
     milliseconds is reported as NO ANSWER and the component fails. }
   TEST_TIMEOUT_MS = 20000;
@@ -89,7 +115,7 @@ type
     btnInfo: TButton;
     { Shuts Steam down. }
     btnStop: TButton;
-    { Runs the base test of the seven plug-in components on the Components tab. }
+    { Runs the base test of the 16 plug-in components on the Components tab. }
     btnTest: TButton;
     { Main menu (only the File menu). On Linux FormCreate replaces it with
       FMX's own menu bar (FmxLinuxMenu) and this field becomes @nil; the
@@ -171,6 +197,24 @@ type
     { ISteamUGC component (component test): Workshop query, EULA status,
       subscription and install events. }
     SteamUGC1: TSteamUGC;
+    { ISteamMatchmaking component (component test): lobby list request. }
+    SteamMatchmaking1: TSteamMatchmaking;
+    { ISteamParties component (component test): beacon counts (reads only). }
+    SteamParties1: TSteamParties;
+    { ISteamMusic component (component test): Steam music player state (reads only). }
+    SteamMusic1: TSteamMusic;
+    { ISteamHTTP component (component test): one GET request. }
+    SteamHTTP1: TSteamHTTP;
+    { ISteamHTMLSurface component (component test): browser created and removed. }
+    SteamHTMLSurface1: TSteamHTMLSurface;
+    { ISteamInventory component (component test): GetAllItems result. }
+    SteamInventory1: TSteamInventory;
+    { ISteamVideo component (component test): broadcasting state, OPF settings. }
+    SteamVideo1: TSteamVideo;
+    { ISteamParentalSettings component (component test): lock / block state (reads only). }
+    SteamParentalSettings1: TSteamParentalSettings;
+    { ISteamRemotePlay component (component test): session count (reads only). }
+    SteamRemotePlay1: TSteamRemotePlay;
     { Debug-only settings and the log file. }
     procedure FormCreate(Sender: TObject);
     { Frees the component test's pending list. }
@@ -273,6 +317,19 @@ type
     procedure UGCSubscribedListChanged(Sender: TObject; const AData: UserSubscribedItemsListChanged_t);
     { SteamUGC1.OnItemInstalled (callback 3405; not requested by the test). }
     procedure UGCItemInstalled(Sender: TObject; const AData: ItemInstalled_t);
+    { SteamMatchmaking1.OnLobbyMatchList (call result 510). }
+    procedure MatchmakingLobbyMatchList(Sender: TObject; const AData: LobbyMatchList_t);
+    { SteamHTTP1.OnHTTPRequestCompleted (call result 2101): status, body
+      size and the start of the body; the request is released. }
+    procedure HTTPRequestCompleted(Sender: TObject; const AData: HTTPRequestCompleted_t);
+    { SteamHTMLSurface1.OnHTML_BrowserReady (call result 4501): the browser
+      is removed again. }
+    procedure HTMLBrowserReady(Sender: TObject; const AData: HTML_BrowserReady_t);
+    { SteamInventory1.OnSteamInventoryResultReady (callback 4700): item
+      count; the result is destroyed. }
+    procedure InventoryResultReady(Sender: TObject; const AData: SteamInventoryResultReady_t);
+    { SteamVideo1.OnGetOPFSettingsResult (callback 4624). }
+    procedure VideoOPFSettingsResult(Sender: TObject; const AData: GetOPFSettingsResult_t);
   private
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
@@ -280,6 +337,9 @@ type
     FAutoStart: Boolean;
     { The per-user settings file (SteamDemo.ini in SettingsFolder). }
     FSettingsFile: string;
+    { TThread.GetTickCount when FormCreate ran: the auto start logs how long
+      after it the window's message loop let its timer fire. }
+    FCreateTicks: Cardinal;
     { Component test state, indexed by the CT_ constants. }
     FTests: array[0..CT_COUNT - 1] of TComponentTestState;
     { Requests awaiting an answer: key '<CT index>:<name>', value the
@@ -297,6 +357,15 @@ type
     FCloudData: TBytes;
     { Game phase id the Timeline test used (unique per run). }
     FPhaseID: string;
+    { HTTP request the HTTP test sent; released when it completes or the
+      test ends (0 = none). }
+    FHTTPRequest: HTTPRequestHandle;
+    { @true while ISteamHTMLSurface is initialised by the HTMLSurface test
+      (Shutdown when the test ends). }
+    FHTMLInit: Boolean;
+    { Inventory result of the Inventory test; destroyed when it is ready or
+      the test ends (k_SteamInventoryResultInvalid = none). }
+    FInvResult: SteamInventoryResult_t;
     { Starts Steam (Start button or Auto Start Steam) and logs AWhy. }
     procedure StartSteam(const AWhy: string);
     { Enables the buttons that make sense now: Start while Steam is not
@@ -349,6 +418,24 @@ type
     procedure TestTimeline;
     { TSteamUGC: reads + a Workshop query + GetWorkshopEULAStatus. }
     procedure TestUGC;
+    { TSteamMatchmaking: favourites count + RequestLobbyList. }
+    procedure TestMatchmaking;
+    { TSteamParties: beacon counts (reads only). }
+    procedure TestParties;
+    { TSteamMusic: player state (reads only). }
+    procedure TestMusic;
+    { TSteamHTTP: one GET of @link(TEST_HTTP_URL). }
+    procedure TestHTTP;
+    { TSteamHTMLSurface: Init + CreateBrowser (browser removed when ready). }
+    procedure TestHTMLSurface;
+    { TSteamInventory: LoadItemDefinitions + GetAllItems. }
+    procedure TestInventory;
+    { TSteamVideo: IsBroadcasting + GetOPFSettings. }
+    procedure TestVideo;
+    { TSteamParentalSettings: lock and block state (reads only). }
+    procedure TestParentalSettings;
+    { TSteamRemotePlay: session count (reads only). }
+    procedure TestRemotePlay;
     { Captures this window with SteamFormToRGB (Steamworks.FMX), writes it
       with WriteScreenshot and logs it (File > Take Screenshot, and a
       request while screenshots are hooked).
@@ -459,6 +546,7 @@ begin
   if LogFileError <> '' then
     AddLog('Log file could not be created (' + LogFileError + '); logging to the window'
       {$IFDEF POSIX} + ' and stderr'{$ENDIF} + ' only');
+  FCreateTicks := TThread.GetTickCount;
   AddLog('FormCreate started');
   // Linux: FMX's menu bar instead of GTK's, which shows only first letters
   // (FmxLinuxMenu). After the log (a crash in it still leaves a line), and
@@ -480,6 +568,7 @@ begin
   tabMain.TabIndex := 0;
   FPending := TDictionary<string, Cardinal>.Create;
   FUGCQuery := k_UGCQueryHandleInvalid;
+  FInvResult := k_SteamInventoryResultInvalid;
   FillTestList;
   AddLog(Format('Steamworks demo, AppID %d, %d plug-in class(es) linked',
     [SteamAPI1.AppID, Length(TSteamworks.RegisteredPlugins)]));
@@ -570,7 +659,8 @@ end;
 procedure TfrmMain.tmAutoStartTimer(Sender: TObject);
 begin
   tmAutoStart.Enabled := False;
-  StartSteam('Auto Start Steam: starting Steam');
+  StartSteam(Format('Auto Start Steam: starting Steam (%d ms after FormCreate; the timer is %d ms)',
+    [Integer(TThread.GetTickCount - FCreateTicks), tmAutoStart.Interval]));
 end;
 
 procedure TfrmMain.UpdateControls;
@@ -658,6 +748,7 @@ end;
 
 procedure TfrmMain.mnuExitClick(Sender: TObject);
 begin
+  AddLog('File > Exit');
   Close;
 end;
 
@@ -1112,8 +1203,8 @@ end;
 { ---------------------------------------------------------------------------
   Component test (Components tab, Test components button)
 
-  The base test of the seven plug-in components that no demo used as
-  components before: each is dropped on the form, linked to SteamAPI1 and has
+  The base test of the 16 plug-in components that no other demo uses as
+  components: each is dropped on the form, linked to SteamAPI1 and has
   its events wired in uMain.fmx. Per component the test checks that it is
   attached, makes its synchronous calls through the component's Plugin
   property (an exception = reads FAILED), and requests callbacks / call
@@ -1135,7 +1226,9 @@ end;
 const
   { Row titles of the Components tab, indexed by the CT_ constants. }
   TestNames: array[0..CT_COUNT - 1] of string = ('TSteamUtils', 'TSteamUser',
-    'TSteamApps', 'TSteamRemoteStorage', 'TSteamScreenshots', 'TSteamTimeline', 'TSteamUGC');
+    'TSteamApps', 'TSteamRemoteStorage', 'TSteamScreenshots', 'TSteamTimeline', 'TSteamUGC',
+    'TSteamMatchmaking', 'TSteamParties', 'TSteamMusic', 'TSteamHTTP', 'TSteamHTMLSurface',
+    'TSteamInventory', 'TSteamVideo', 'TSteamParentalSettings', 'TSteamRemotePlay');
 
 { A NUL-terminated UTF-8 buffer from Steam as a string. }
 function SteamText(P: PAnsiChar): string;
@@ -1317,12 +1410,26 @@ begin
       if (SteamRemoteStorage1.Plugin <> nil) and SteamRemoteStorage1.Plugin.FileExists(TEST_CLOUD_FILE) then
         AddLog('Test cleanup: ' + TEST_CLOUD_FILE + ' still there, FileDelete ' +
           BoolToStr(SteamRemoteStorage1.Plugin.FileDelete(TEST_CLOUD_FILE), True));
+      if (FHTTPRequest <> 0) and (SteamHTTP1.Plugin <> nil) then
+        AddLog('Test cleanup: ReleaseHTTPRequest (request never completed): ' +
+          BoolToStr(SteamHTTP1.Plugin.ReleaseHTTPRequest(FHTTPRequest), True));
+      if (FInvResult <> k_SteamInventoryResultInvalid) and (SteamInventory1.Plugin <> nil) then
+      begin
+        SteamInventory1.Plugin.DestroyResult(FInvResult);
+        AddLog('Test cleanup: inventory result ' + IntToStr(FInvResult) + ' destroyed (never ready)');
+      end;
+      if FHTMLInit and (SteamHTMLSurface1.Plugin <> nil) then
+        AddLog('Test cleanup: ISteamHTMLSurface.Shutdown ' +
+          BoolToStr(SteamHTMLSurface1.Plugin.Shutdown, True));
     except
       on E: Exception do AddLog('Test cleanup failed: ' + E.Message);
     end;
   end;
   FAuthTicket := k_HAuthTicketInvalid;
   FUGCQuery := k_UGCQueryHandleInvalid;
+  FHTTPRequest := 0;
+  FHTMLInit := False;
+  FInvResult := k_SteamInventoryResultInvalid;
   Passed := 0;
   for I := 0 to CT_COUNT - 1 do
   begin
@@ -1363,6 +1470,15 @@ begin
   TestScreenshots;
   TestTimeline;
   TestUGC;
+  TestMatchmaking;
+  TestParties;
+  TestMusic;
+  TestHTTP;
+  TestHTMLSurface;
+  TestInventory;
+  TestVideo;
+  TestParentalSettings;
+  TestRemotePlay;
   tmTests.Enabled := True;
   CheckTestsDone;
 end;
@@ -2037,6 +2153,301 @@ procedure TfrmMain.UGCItemInstalled(Sender: TObject; const AData: ItemInstalled_
 begin
   AddLog(Format('TSteamUGC.OnItemInstalled: app %d, item %s (not requested by the test)',
     [AData.m_unAppID, UIntToStr(AData.m_nPublishedFileId)]));
+end;
+
+
+{ --- Batch 2a: TSteamMatchmaking ... TSteamRemotePlay --- }
+
+procedure TfrmMain.TestMatchmaking;
+var
+  M: TSteamMatchmakingPlugin;
+begin
+  M := SteamMatchmaking1.Plugin;
+  if not BeginTest(CT_MATCHMAKING, SteamMatchmaking1, M) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamMatchmaking: %d favourite / history game servers', [M.GetFavoriteGameCount]));
+    // Any lobbies of this app, at most one: the answer is what counts
+    M.AddRequestLobbyListResultCountFilter(1);
+    ExpectCall(CT_MATCHMAKING, 'RequestLobbyList', M.RequestLobbyList);
+  except
+    on E: Exception do ReadFailed(CT_MATCHMAKING, 'Matchmaking calls', E);
+  end;
+end;
+
+procedure TfrmMain.MatchmakingLobbyMatchList(Sender: TObject; const AData: LobbyMatchList_t);
+begin
+  AddLog(Format('TSteamMatchmaking.OnLobbyMatchList: %d lobbies matching', [AData.m_nLobbiesMatching]));
+  if Answered(CT_MATCHMAKING, 'RequestLobbyList') then
+  begin
+    FTests[CT_MATCHMAKING].Note := Format('%d lobbies', [AData.m_nLobbiesMatching]);
+    CheckTestsDone;
+  end;
+end;
+
+procedure TfrmMain.TestParties;
+var
+  P: TSteamPartiesPlugin;
+  Locations: UInt32;
+  HasLocations: Boolean;
+begin
+  P := SteamParties1.Plugin;
+  if not BeginTest(CT_PARTIES, SteamParties1, P) then
+    Exit;
+  try
+    Locations := 0;
+    HasLocations := P.GetNumAvailableBeaconLocations(Locations);
+    AddLog(Format('Test TSteamParties: %d active beacons, beacon locations %s (%d)',
+      [P.GetNumActiveBeacons, BoolToStr(HasLocations, True), Locations]));
+    FTests[CT_PARTIES].Note := 'reads only (a beacon would be a real party)';
+  except
+    on E: Exception do ReadFailed(CT_PARTIES, 'Parties reads', E);
+  end;
+end;
+
+procedure TfrmMain.TestMusic;
+var
+  M: TSteamMusicPlugin;
+begin
+  M := SteamMusic1.Plugin;
+  if not BeginTest(CT_MUSIC, SteamMusic1, M) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamMusic: enabled %s, playing %s, playback status %d, volume %.2f',
+      [BoolToStr(M.BIsEnabled, True), BoolToStr(M.BIsPlaying, True), Ord(M.GetPlaybackStatus),
+       M.GetVolume]));
+    FTests[CT_MUSIC].Note := 'reads only (the music player is the user''s)';
+  except
+    on E: Exception do ReadFailed(CT_MUSIC, 'Music reads', E);
+  end;
+end;
+
+procedure TfrmMain.TestHTTP;
+var
+  H: TSteamHTTPPlugin;
+  Call: SteamAPICall_t;
+begin
+  H := SteamHTTP1.Plugin;
+  if not BeginTest(CT_HTTP, SteamHTTP1, H) then
+    Exit;
+  try
+    FHTTPRequest := H.CreateHTTPRequest(k_EHTTPMethodGET, TEST_HTTP_URL);
+    if FHTTPRequest = 0 then
+    begin
+      FTests[CT_HTTP].ReadsOK := False;
+      FTests[CT_HTTP].Note := 'CreateHTTPRequest returned 0';
+      AddLog('Test TSteamHTTP: CreateHTTPRequest returned 0 (invalid handle)');
+      Exit;
+    end;
+    Call := k_uAPICallInvalid;
+    if not H.SendHTTPRequest(FHTTPRequest, Call) then
+      AddLog('Test TSteamHTTP: SendHTTPRequest returned False');
+    AddLog('Test TSteamHTTP: GET ' + TEST_HTTP_URL + ', request ' + UIntToStr(FHTTPRequest));
+    ExpectCall(CT_HTTP, 'SendHTTPRequest', Call);
+  except
+    on E: Exception do ReadFailed(CT_HTTP, 'HTTP calls', E);
+  end;
+end;
+
+procedure TfrmMain.HTTPRequestCompleted(Sender: TObject; const AData: HTTPRequestCompleted_t);
+var
+  H: TSteamHTTPPlugin;
+  Body: TBytes;
+  Size: UInt32;
+  ShowBytes: Integer;
+  Start: string;
+begin
+  AddLog(Format('TSteamHTTP.OnHTTPRequestCompleted: request %s, successful %s, HTTP status %d, %d bytes',
+    [UIntToStr(AData.m_hRequest), BoolToStr(AData.m_bRequestSuccessful, True), Ord(AData.m_eStatusCode),
+     AData.m_unBodySize]));
+  if (AData.m_hRequest <> FHTTPRequest) or not Answered(CT_HTTP, 'SendHTTPRequest') then
+    Exit;
+  FTests[CT_HTTP].Note := Format('HTTP %d, %d bytes', [Ord(AData.m_eStatusCode), AData.m_unBodySize]);
+  H := SteamHTTP1.Plugin;
+  if H <> nil then
+  try
+    Size := 0;
+    if AData.m_bRequestSuccessful and H.GetHTTPResponseBodySize(FHTTPRequest, Size) and (Size > 0) then
+    begin
+      SetLength(Body, Size);
+      if H.GetHTTPResponseBodyData(FHTTPRequest, @Body[0], Size) then
+      begin
+        // The start of Steam's JSON answer, on one line
+        // (no System.Math here: its IfThen would hide System.StrUtils')
+        ShowBytes := Integer(Size);
+        if ShowBytes > 80 then
+          ShowBytes := 80;
+        Start := TEncoding.UTF8.GetString(Body, 0, ShowBytes);
+        Start := StringReplace(StringReplace(Start, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+        AddLog('Test TSteamHTTP: body starts: ' + Start);
+      end;
+    end;
+    AddLog('Test TSteamHTTP: ReleaseHTTPRequest ' + BoolToStr(H.ReleaseHTTPRequest(FHTTPRequest), True));
+    FHTTPRequest := 0;
+  except
+    on E: Exception do ReadFailed(CT_HTTP, 'HTTP response', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TfrmMain.TestHTMLSurface;
+var
+  H: TSteamHTMLSurfacePlugin;
+begin
+  H := SteamHTMLSurface1.Plugin;
+  if not BeginTest(CT_HTML, SteamHTMLSurface1, H) then
+    Exit;
+  try
+    FHTMLInit := H.Init;
+    AddLog('Test TSteamHTMLSurface: Init ' + BoolToStr(FHTMLInit, True));
+    if not FHTMLInit then
+    begin
+      FTests[CT_HTML].ReadsOK := False;
+      FTests[CT_HTML].Note := 'Init returned False';
+      Exit;
+    end;
+    // No URL is loaded: the browser is removed as soon as it is ready, so
+    // none of the page callbacks Valve requires handlers for can come
+    ExpectCall(CT_HTML, 'CreateBrowser', H.CreateBrowser('', ''));
+  except
+    on E: Exception do ReadFailed(CT_HTML, 'HTMLSurface calls', E);
+  end;
+end;
+
+procedure TfrmMain.HTMLBrowserReady(Sender: TObject; const AData: HTML_BrowserReady_t);
+begin
+  AddLog(Format('TSteamHTMLSurface.OnHTML_BrowserReady: browser %d', [AData.unBrowserHandle]));
+  if not Answered(CT_HTML, 'CreateBrowser') then
+    Exit;
+  FTests[CT_HTML].Note := Format('browser %d created and removed', [AData.unBrowserHandle]);
+  if (SteamHTMLSurface1.Plugin <> nil) and (AData.unBrowserHandle <> INVALID_HTMLBROWSER) then
+  try
+    SteamHTMLSurface1.Plugin.RemoveBrowser(AData.unBrowserHandle);
+    AddLog(Format('Test TSteamHTMLSurface: browser %d removed', [AData.unBrowserHandle]));
+  except
+    on E: Exception do ReadFailed(CT_HTML, 'RemoveBrowser', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TfrmMain.TestInventory;
+var
+  I: TSteamInventoryPlugin;
+begin
+  I := SteamInventory1.Plugin;
+  if not BeginTest(CT_INVENTORY, SteamInventory1, I) then
+    Exit;
+  try
+    AddLog('Test TSteamInventory: LoadItemDefinitions ' + BoolToStr(I.LoadItemDefinitions, True));
+    FInvResult := k_SteamInventoryResultInvalid;
+    if I.GetAllItems(FInvResult) then
+    begin
+      AddLog('Test TSteamInventory: GetAllItems, result handle ' + IntToStr(FInvResult) +
+        ' - waiting for callback 4700');
+      Expect(CT_INVENTORY, 'GetAllItems');
+    end
+    else
+    begin
+      Inc(FTests[CT_INVENTORY].Sent);
+      FTests[CT_INVENTORY].Missing := 'GetAllItems (returned False)';
+      AddLog('Test TSteamInventory: GetAllItems returned False');
+    end;
+  except
+    on E: Exception do ReadFailed(CT_INVENTORY, 'Inventory calls', E);
+  end;
+end;
+
+procedure TfrmMain.InventoryResultReady(Sender: TObject; const AData: SteamInventoryResultReady_t);
+var
+  I: TSteamInventoryPlugin;
+  Count: UInt32;
+begin
+  AddLog(Format('TSteamInventory.OnSteamInventoryResultReady: result %d, %s',
+    [AData.m_handle, ResultText(AData.m_result)]));
+  if (AData.m_handle <> FInvResult) or not Answered(CT_INVENTORY, 'GetAllItems') then
+    Exit;
+  FTests[CT_INVENTORY].Note := 'result ' + ResultText(AData.m_result);
+  I := SteamInventory1.Plugin;
+  if I <> nil then
+  try
+    // nil array: only the item count
+    Count := 0;
+    if I.GetResultItems(FInvResult, nil, Count) then
+      AddLog(Format('Test TSteamInventory: %d items', [Count]));
+    I.DestroyResult(FInvResult);
+    AddLog('Test TSteamInventory: result destroyed');
+    FInvResult := k_SteamInventoryResultInvalid;
+  except
+    on E: Exception do ReadFailed(CT_INVENTORY, 'GetResultItems / DestroyResult', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TfrmMain.TestVideo;
+var
+  V: TSteamVideoPlugin;
+  Viewers: Integer;
+  Broadcasting: Boolean;
+begin
+  V := SteamVideo1.Plugin;
+  if not BeginTest(CT_VIDEO, SteamVideo1, V) then
+    Exit;
+  try
+    Viewers := 0;
+    Broadcasting := V.IsBroadcasting(Viewers);
+    AddLog(Format('Test TSteamVideo: broadcasting %s, %d viewers', [BoolToStr(Broadcasting, True), Viewers]));
+    // OPF (360 video) settings of this app: it has none, the answer counts
+    V.GetOPFSettings(APP_ID);
+    AddLog('Test TSteamVideo: GetOPFSettings - waiting for callback 4624 (UNVERIFIED that Steam ' +
+      'answers for an app without 360 video; NO ANSWER here would be that, not a component fault)');
+    Expect(CT_VIDEO, 'GetOPFSettings');
+  except
+    on E: Exception do ReadFailed(CT_VIDEO, 'Video calls', E);
+  end;
+end;
+
+procedure TfrmMain.VideoOPFSettingsResult(Sender: TObject; const AData: GetOPFSettingsResult_t);
+begin
+  AddLog(Format('TSteamVideo.OnGetOPFSettingsResult: result %s, video app %d',
+    [ResultText(AData.m_eResult), AData.m_unVideoAppID]));
+  if Answered(CT_VIDEO, 'GetOPFSettings') then
+  begin
+    FTests[CT_VIDEO].Note := 'OPF settings ' + ResultText(AData.m_eResult);
+    CheckTestsDone;
+  end;
+end;
+
+procedure TfrmMain.TestParentalSettings;
+var
+  P: TSteamParentalSettingsPlugin;
+begin
+  P := SteamParentalSettings1.Plugin;
+  if not BeginTest(CT_PARENTAL, SteamParentalSettings1, P) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamParentalSettings: lock enabled %s, locked %s, this app blocked %s / in block list %s, ' +
+      'store blocked %s', [BoolToStr(P.BIsParentalLockEnabled, True), BoolToStr(P.BIsParentalLockLocked, True),
+      BoolToStr(P.BIsAppBlocked(APP_ID), True), BoolToStr(P.BIsAppInBlockList(APP_ID), True),
+      BoolToStr(P.BIsFeatureBlocked(k_EFeatureStore), True)]));
+    FTests[CT_PARENTAL].Note := 'reads only';
+  except
+    on E: Exception do ReadFailed(CT_PARENTAL, 'ParentalSettings reads', E);
+  end;
+end;
+
+procedure TfrmMain.TestRemotePlay;
+var
+  R: TSteamRemotePlayPlugin;
+begin
+  R := SteamRemotePlay1.Plugin;
+  if not BeginTest(CT_REMOTEPLAY, SteamRemotePlay1, R) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamRemotePlay: %d Remote Play sessions', [R.GetSessionCount]));
+    FTests[CT_REMOTEPLAY].Note := 'reads only (a session needs a second device)';
+  except
+    on E: Exception do ReadFailed(CT_REMOTEPLAY, 'RemotePlay reads', E);
+  end;
 end;
 
 end.

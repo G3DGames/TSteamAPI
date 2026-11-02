@@ -85,6 +85,15 @@ lib/                        framework-free library (Delphi + FPC)
     Steamworks.Plugin.UGC.pas            ISteamUGC (Workshop)
     Steamworks.Plugin.Input.pas          ISteamInput (controllers; three methods
                                          hand-written per platform - by-value structs)
+    Steamworks.Plugin.Matchmaking.pas    ISteamMatchmaking (lobbies, favourite servers)
+    Steamworks.Plugin.Parties.pas        ISteamParties (party beacons)
+    Steamworks.Plugin.Music.pas          ISteamMusic (the Steam music player)
+    Steamworks.Plugin.HTTP.pas           ISteamHTTP (HTTP requests through Steam)
+    Steamworks.Plugin.HTMLSurface.pas    ISteamHTMLSurface (off-screen web browser)
+    Steamworks.Plugin.Inventory.pas      ISteamInventory (Steam Inventory items)
+    Steamworks.Plugin.Video.pas          ISteamVideo (broadcasting, video apps)
+    Steamworks.Plugin.ParentalSettings.pas  ISteamParentalSettings (Family View)
+    Steamworks.Plugin.RemotePlay.pas     ISteamRemotePlay (Remote Play / Together)
 fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread),
                             SteamImageToBitmap, SteamFormToRGB (screenshots)
@@ -224,7 +233,10 @@ Step by step, with every alarming-looking message explained:
    After **Start Steam**, **Test components** runs SteamDemo's base test of
    the plug-in components the other demos do not use (TSteamUtils,
    TSteamUser, TSteamApps, TSteamRemoteStorage, TSteamScreenshots,
-   TSteamTimeline, TSteamUGC): each is on the form with its events wired;
+   TSteamTimeline, TSteamUGC, TSteamMatchmaking, TSteamParties,
+   TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory,
+   TSteamVideo, TSteamParentalSettings, TSteamRemotePlay - 16): each is on
+   the form with its events wired;
    the test checks it is attached, makes its synchronous calls and waits up
    to 20 s for one or more callbacks / call results through its events. The
    **Components** tab shows PASS / FAIL per component, the log has the
@@ -247,7 +259,9 @@ Step by step, with every alarming-looking message explained:
    2. **Install** `dclSteamworks` (the plug-in components: TSteamUtils,
       TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats,
       TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC,
-      TSteamInput) and
+      TSteamInput, TSteamMatchmaking, TSteamParties, TSteamMusic, TSteamHTTP,
+      TSteamHTMLSurface, TSteamInventory, TSteamVideo,
+      TSteamParentalSettings, TSteamRemotePlay) and
       `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
       (the VCL TSteamAPI). They appear on the "Steamworks"
       palette page.
@@ -305,7 +319,9 @@ events (FMX now; VCL and LCL next), all built on `TCustomSteamAPI` in
 `Steamworks.Components`, which holds the whole lifecycle. Each generated
 plug-in unit also declares a component named after the interface -
 `TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`, `TSteamUserStats`,
-`TSteamRemoteStorage`, `TSteamScreenshots`, `TSteamTimeline`, `TSteamUGC`, `TSteamInput` - that works with any framework:
+`TSteamRemoteStorage`, `TSteamScreenshots`, `TSteamTimeline`, `TSteamUGC`, `TSteamInput`,
+`TSteamMatchmaking`, `TSteamParties`, `TSteamMusic`, `TSteamHTTP`, `TSteamHTMLSurface`,
+`TSteamInventory`, `TSteamVideo`, `TSteamParentalSettings`, `TSteamRemotePlay` - that works with any framework:
 
 * `SteamAPI` links it to the root; at run time a component whose owner has
   exactly one `TSteamAPI` links itself.
@@ -743,10 +759,15 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three 
 * Update modes (timer / worker thread / manual) - tested on Win64 with
   Delphi 13 and FPC 3.2.2.
 * Components for FMX, VCL and LCL (Lazarus package) - tested on Win64.
-* Next batches: HTTP, Inventory, Matchmaking, Parties, Networking*
-  (needs C union support in the generator), HTMLSurface, Video,
-  ParentalSettings, RemotePlay, Music.
-* Game-server API (`SteamGameServer_*`).
+* Batch 2a (2026-11-02, not yet compiled): Matchmaking, Parties, Music,
+  HTTP, HTMLSurface, Inventory, Video, ParentalSettings, RemotePlay - one
+  page each and a SteamDemo test. Not bound: `ISteamParties.
+  GetBeaconLocationData` (struct by value - needs a per-platform shim).
+* Next: Networking* (needs C union support in the generator), then
+  MatchmakingServers (C++ response objects - a vtable shim).
+* Later: the game-server API (`SteamGameServer_*`, ISteamGameServer /
+  GameServerStats). ISteamController is not bound: Valve deprecated it in
+  favour of ISteamInput.
 
 ### To do at the end of the project
 * **Front-end launcher** for the demos under one AppID (SteamDemo,

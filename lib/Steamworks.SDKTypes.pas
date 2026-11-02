@@ -1059,13 +1059,9 @@ type
     k_EGamePerformanceSetting_Ultra = 4,
     k_EGamePerformanceSetting_Custom = 5
   );
-  { Steam enum EHTMLKeyModifiers. (Declared inside ISteamHTMLSurface.) }
-  EHTMLKeyModifiers = (
-    k_eHTMLKeyModifier_None = 0,
-    k_eHTMLKeyModifier_AltDown = 1,
-    k_eHTMLKeyModifier_CtrlDown = 2,
-    k_eHTMLKeyModifier_ShiftDown = 4
-  );
+  { Steam enum EHTMLKeyModifiers. (Declared inside ISteamHTMLSurface.) Integer-typed: values are
+    the k_ constants below (bit flags, unordered or duplicate values). }
+  EHTMLKeyModifiers = Integer;
   { Steam enum EHTMLMouseButton. (Declared inside ISteamHTMLSurface.) }
   EHTMLMouseButton = (
     eHTMLMouseButton_Left = 0,
@@ -2443,14 +2439,9 @@ type
     ESteamInputActionEventType_DigitalAction = 0,
     ESteamInputActionEventType_AnalogAction = 1
   );
-  { Individual values are used by the GetSessionInputConfigurationSettings bitmask. }
-  ESteamInputConfigurationEnableType = (
-    k_ESteamInputConfigurationEnableType_None = 0,
-    k_ESteamInputConfigurationEnableType_Playstation = 1,
-    k_ESteamInputConfigurationEnableType_Xbox = 2,
-    k_ESteamInputConfigurationEnableType_Generic = 4,
-    k_ESteamInputConfigurationEnableType_Switch = 8
-  );
+  { Individual values are used by the GetSessionInputConfigurationSettings bitmask. Integer-typed:
+    values are the k_ constants below (bit flags, unordered or duplicate values). }
+  ESteamInputConfigurationEnableType = Integer;
   { These values are passed into GetGlyphPNGForActionOrigin. }
   ESteamInputGlyphSize = (
     k_ESteamInputGlyphSize_Small = 0,
@@ -5806,6 +5797,14 @@ const
   k_EFriendFlagChatMember = EFriendFlags(4096);
   { Value of @link(EFriendFlags). }
   k_EFriendFlagAll = EFriendFlags(65535);
+  { Value of @link(EHTMLKeyModifiers). }
+  k_eHTMLKeyModifier_None = EHTMLKeyModifiers(0);
+  { Value of @link(EHTMLKeyModifiers). }
+  k_eHTMLKeyModifier_AltDown = EHTMLKeyModifiers(1);
+  { Value of @link(EHTMLKeyModifiers). }
+  k_eHTMLKeyModifier_CtrlDown = EHTMLKeyModifiers(2);
+  { Value of @link(EHTMLKeyModifiers). }
+  k_eHTMLKeyModifier_ShiftDown = EHTMLKeyModifiers(4);
   { Value of @link(EItemState). }
   k_EItemStateNone = EItemState(0);
   { Value of @link(EItemState). }
@@ -5938,6 +5937,16 @@ const
   k_ESteamControllerLEDFlag_SetColor = ESteamControllerLEDFlag(0);
   { Value of @link(ESteamControllerLEDFlag). }
   k_ESteamControllerLEDFlag_RestoreUserDefault = ESteamControllerLEDFlag(1);
+  { Value of @link(ESteamInputConfigurationEnableType). }
+  k_ESteamInputConfigurationEnableType_None = ESteamInputConfigurationEnableType(0);
+  { Value of @link(ESteamInputConfigurationEnableType). }
+  k_ESteamInputConfigurationEnableType_Playstation = ESteamInputConfigurationEnableType(1);
+  { Value of @link(ESteamInputConfigurationEnableType). }
+  k_ESteamInputConfigurationEnableType_Xbox = ESteamInputConfigurationEnableType(2);
+  { Value of @link(ESteamInputConfigurationEnableType). }
+  k_ESteamInputConfigurationEnableType_Generic = ESteamInputConfigurationEnableType(4);
+  { Value of @link(ESteamInputConfigurationEnableType). }
+  k_ESteamInputConfigurationEnableType_Switch = ESteamInputConfigurationEnableType(8);
   { Value of @link(ESteamInputGlyphStyle). }
   ESteamInputGlyphStyle_Knockout = ESteamInputGlyphStyle(0);
   { Value of @link(ESteamInputGlyphStyle). }

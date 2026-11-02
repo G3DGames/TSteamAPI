@@ -24,13 +24,23 @@ link to it.
 | [TSteamTimeline](TSteamTimeline.md) | ISteamTimeline | Game recording: events, game phases, game mode |
 | [TSteamUGC](TSteamUGC.md) | ISteamUGC | Workshop: query, create, update, subscribe, install |
 | [TSteamInput](TSteamInput.md) | ISteamInput | Controllers: action sets, digital / analog / motion data, rumble |
+| [TSteamMatchmaking](TSteamMatchmaking.md) | ISteamMatchmaking | Lobbies: find, create, join, chat, lobby data; favourite servers |
+| [TSteamParties](TSteamParties.md) | ISteamParties | Party beacons: open slots others can join |
+| [TSteamMusic](TSteamMusic.md) | ISteamMusic | The Steam music player: state, play / pause, volume |
+| [TSteamHTTP](TSteamHTTP.md) | ISteamHTTP | HTTP requests through the Steam client |
+| [TSteamHTMLSurface](TSteamHTMLSurface.md) | ISteamHTMLSurface | Off-screen web browser rendered into the game |
+| [TSteamInventory](TSteamInventory.md) | ISteamInventory | Steam Inventory items: list, drop, consume, purchase |
+| [TSteamVideo](TSteamVideo.md) | ISteamVideo | Broadcasting state; video-app URLs |
+| [TSteamParentalSettings](TSteamParentalSettings.md) | ISteamParentalSettings | Family View: blocked features and apps |
+| [TSteamRemotePlay](TSteamRemotePlay.md) | ISteamRemotePlay | Remote Play sessions, Remote Play Together |
 
-More interfaces (HTTP, Inventory, Matchmaking, Networking, ...) are
-generated in later batches; each gets a page here.
+Still to come: the Networking interfaces and the server browser
+(MatchmakingServers), later the game-server API. ISteamController is not
+bound (deprecated by Valve; use TSteamInput).
 
 ## How these pages are made
 
-The interface pages (`TSteamUtils.md` ... `TSteamUGC.md`) are
+The interface pages (`TSteamUtils.md`, `TSteamUGC.md`, ...) are
 **generated** from the generated units by `tools/gen_docs.py` - every
 method, property, event and payload record is listed, with Valve's SDK
 comments. The overview text at the top of each page comes from

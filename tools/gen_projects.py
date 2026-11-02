@@ -27,7 +27,12 @@ LIB = ["Steamworks.Types", "Steamworks.DynLib", "Steamworks.Versions", "Steamwor
 PLUGINS = ["Steamworks.Plugin.Utils", "Steamworks.Plugin.User", "Steamworks.Plugin.Friends",
            "Steamworks.Plugin.Apps", "Steamworks.Plugin.UserStats",
            "Steamworks.Plugin.RemoteStorage", "Steamworks.Plugin.Screenshots",
-           "Steamworks.Plugin.Timeline", "Steamworks.Plugin.UGC", "Steamworks.Plugin.Input"]
+           "Steamworks.Plugin.Timeline", "Steamworks.Plugin.UGC", "Steamworks.Plugin.Input",
+           # batch 2a (2026-11-02)
+           "Steamworks.Plugin.Matchmaking", "Steamworks.Plugin.Parties", "Steamworks.Plugin.Music",
+           "Steamworks.Plugin.HTTP", "Steamworks.Plugin.HTMLSurface", "Steamworks.Plugin.Inventory",
+           "Steamworks.Plugin.Video", "Steamworks.Plugin.ParentalSettings",
+           "Steamworks.Plugin.RemotePlay"]
 # Delphi platforms with a Steam redistributable. Linux32 and LinuxARM64 are
 # FPC-only (Delphi has no such targets); see README.
 ALL_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64", "Android64"]

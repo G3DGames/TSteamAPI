@@ -201,6 +201,10 @@ def check_flat(sdk_dir):
 
     def c_size(ct):
         ct = " ".join(re.sub(r"\bconst\b", "", ct).split())
+        # Types declared inside an interface are written with its scope in
+        # steam_api_flat.h (ISteamHTMLSurface::EHTMLMouseButton); the
+        # Pascal binding declares them at unit level
+        ct = re.sub(r"\b\w+::", "", ct)
         if "*" in ct or "&" in ct:
             return "P"
         return csize.get(ct, pascal_size(ct))

@@ -360,4 +360,54 @@ object frmMain: TfrmMain
     Left = 656
     Top = 232
   end
+  object SteamMatchmaking1: TSteamMatchmaking
+    SteamAPI = SteamAPI1
+    OnLobbyMatchList = MatchmakingLobbyMatchList
+    Left = 600
+    Top = 288
+  end
+  object SteamParties1: TSteamParties
+    SteamAPI = SteamAPI1
+    Left = 656
+    Top = 288
+  end
+  object SteamMusic1: TSteamMusic
+    SteamAPI = SteamAPI1
+    Left = 600
+    Top = 344
+  end
+  object SteamHTTP1: TSteamHTTP
+    SteamAPI = SteamAPI1
+    OnHTTPRequestCompleted = HTTPRequestCompleted
+    Left = 656
+    Top = 344
+  end
+  object SteamHTMLSurface1: TSteamHTMLSurface
+    SteamAPI = SteamAPI1
+    OnHTML_BrowserReady = HTMLBrowserReady
+    Left = 600
+    Top = 400
+  end
+  object SteamInventory1: TSteamInventory
+    SteamAPI = SteamAPI1
+    OnSteamInventoryResultReady = InventoryResultReady
+    Left = 656
+    Top = 400
+  end
+  object SteamVideo1: TSteamVideo
+    SteamAPI = SteamAPI1
+    OnGetOPFSettingsResult = VideoOPFSettingsResult
+    Left = 600
+    Top = 456
+  end
+  object SteamParentalSettings1: TSteamParentalSettings
+    SteamAPI = SteamAPI1
+    Left = 656
+    Top = 456
+  end
+  object SteamRemotePlay1: TSteamRemotePlay
+    SteamAPI = SteamAPI1
+    Left = 600
+    Top = 512
+  end
 end
