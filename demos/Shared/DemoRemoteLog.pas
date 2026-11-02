@@ -204,6 +204,9 @@ begin
   end;
   if Length(AFound) = 0 then
   begin
+    // what the socket saw (FPC sender; '' with the Delphi one)
+    if (Sender is TRemoteLogDiscovery) and (TRemoteLogDiscovery(Sender).Diagnostics <> '') then
+      Log('search ' + IntToStr(FTries) + ': ' + TRemoteLogDiscovery(Sender).Diagnostics);
     if FTries < SEARCH_TRIES then
     begin
       Inc(FTries);

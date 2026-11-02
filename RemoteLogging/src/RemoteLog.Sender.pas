@@ -116,6 +116,8 @@ type
     FFound: TRemoteLogReceiverArray;
     { Why the search could not run, or ''. }
     FError: string;
+    { See @link(Diagnostics). }
+    FDiag: string;
     { Calls @link(FOnDone) (main thread). }
     procedure DoDone;
   protected
@@ -126,6 +128,9 @@ type
     constructor Create(ATimeoutMs: Integer; AOnDone: TRemoteLogDiscoveredEvent);
     { Waits for the search to end and drops an undelivered result. }
     destructor Destroy; override;
+    { What the socket saw during the search: always '' here (the FPC
+      sender fills it; same API on both). }
+    property Diagnostics: string read FDiag;
   end;
 
 implementation

@@ -69,7 +69,12 @@ type
     { Listens for receiver announcements for ATimeoutMs milliseconds and
       returns every receiver heard (each host:port once). Blocks the caller
       for that time. @raises(Exception if the UDP port cannot be opened) }
-    class function Discover(ATimeoutMs: Integer = 2500): TRemoteLogReceiverArray; static;
+    class function Discover(ATimeoutMs: Integer = 2500): TRemoteLogReceiverArray; overload; static;
+    { @link(Discover), and ADiag says what the socket saw (packets, bytes,
+      the first text, receive errors, the time-out option's result) - for a
+      search that hears nothing although announcements arrive (2026-11-02,
+      macOS ARM64: nc heard the receiver, the FPC build did not). }
+    class function Discover(ATimeoutMs: Integer; out ADiag: string): TRemoteLogReceiverArray; overload; static;
     { Creates a stopped sender. }
     constructor Create;
     { Stops the session and frees the sender. }
@@ -113,6 +118,8 @@ type
     FFound: TRemoteLogReceiverArray;
     { Why the search could not run, or ''. }
     FError: string;
+    { What the socket saw (see TRemoteLogSender.Discover). }
+    FDiag: string;
     { Calls @link(FOnDone) (main thread). }
     procedure DoDone;
   protected
@@ -123,6 +130,8 @@ type
     constructor Create(ATimeoutMs: Integer; AOnDone: TRemoteLogDiscoveredEvent);
     { Waits for the search to end and drops an undelivered result. }
     destructor Destroy; override;
+    { What the socket saw during the search (valid in the handler). }
+    property Diagnostics: string read FDiag;
   end;
 
 implementation
@@ -158,13 +167,13 @@ const
 { Sets how long a blocking receive on S may wait.
   @param(S The socket.)
   @param(AMs Milliseconds.) }
-procedure SetReceiveTimeout(S: TSocket; AMs: Integer);
+function SetReceiveTimeout(S: TSocket; AMs: Integer): Integer;
 {$IFDEF MSWINDOWS}
 var
   Ms: DWord;
 begin
   Ms := AMs;
-  fpSetSockOpt(S, SOL_SOCKET, SO_RCVTIMEO, @Ms, SizeOf(Ms));
+  Result := fpSetSockOpt(S, SOL_SOCKET, SO_RCVTIMEO, @Ms, SizeOf(Ms));
 end;
 {$ELSE}
 var
@@ -172,7 +181,7 @@ var
 begin
   TV.tv_sec := AMs div 1000;
   TV.tv_usec := (AMs mod 1000) * 1000;
-  fpSetSockOpt(S, SOL_SOCKET, SO_RCVTIMEO, @TV, SizeOf(TV));
+  Result := fpSetSockOpt(S, SOL_SOCKET, SO_RCVTIMEO, @TV, SizeOf(TV));
 end;
 {$ENDIF}
 
@@ -409,6 +418,15 @@ end;
 
 class function TRemoteLogSender.Discover(ATimeoutMs: Integer): TRemoteLogReceiverArray;
 var
+  Diag: string;
+begin
+  Result := Discover(ATimeoutMs, Diag);
+end;
+
+class function TRemoteLogSender.Discover(ATimeoutMs: Integer; out ADiag: string): TRemoteLogReceiverArray;
+var
+  Packets, Errors, LastErr, OptRes, FirstOptRes, LastLen: Integer;
+  FirstText: string;
   S: TSocket;
   Addr, From: TInetSockAddr;
   FromLen: TSockLen;
@@ -423,6 +441,13 @@ var
   Info: TRemoteLogReceiverInfo;
 begin
   Result := nil;
+  ADiag := '';
+  Packets := 0;
+  Errors := 0;
+  LastErr := 0;
+  FirstOptRes := 1;
+  LastLen := 0;
+  FirstText := '';
   S := fpSocket(AF_INET, SOCK_DGRAM, 0);
   if S = NO_SOCKET then
     raise Exception.CreateFmt('no UDP socket (error %d)', [SocketError]);
@@ -448,12 +473,25 @@ begin
         Break;
       if Left > 250 then
         Left := 250;
-      SetReceiveTimeout(S, Left);
+      OptRes := SetReceiveTimeout(S, Left);
+      if FirstOptRes = 1 then
+        FirstOptRes := OptRes;
       FromLen := SizeOf(From);
       N := fpRecvFrom(S, @Buf[0], SizeOf(Buf) - 1, 0, @From, @FromLen);
       if N <= 0 then
+      begin
+        if N < 0 then
+        begin
+          Inc(Errors);
+          LastErr := SocketError;
+        end;
         Continue;   // timeout slice
+      end;
+      Inc(Packets);
+      LastLen := N;
       SetString(Msg, PAnsiChar(@Buf[0]), N);
+      if FirstText = '' then
+        FirstText := Copy(Trim(string(Msg)), 1, 60);
       // TSTEAMAPI-LOGRECEIVER <version> <tcp port> <name ...>
       Parts.Clear;
       Parts.Delimiter := ' ';
@@ -483,6 +521,13 @@ begin
       SetLength(Result, Length(Result) + 1);
       Result[High(Result)] := Info;
     until False;
+    // receive errors are mostly the time-out slices (EAGAIN); the count
+    // and the option's result still tell a broken time-out from silence
+    ADiag := Format('UDP %d: %d packet(s)', [RL_DISCOVERY_PORT, Packets]);
+    if Packets > 0 then
+      ADiag := ADiag + Format(' (last %d bytes, first "%s")', [LastLen, FirstText]);
+    ADiag := ADiag + Format(', %d receive error(s) (last %d), SO_RCVTIMEO -> %d',
+      [Errors, LastErr, FirstOptRes]);
   finally
     CloseSocket(S);
     Parts.Free;
@@ -624,7 +669,7 @@ end;
 procedure TRemoteLogDiscovery.Execute;
 begin
   try
-    FFound := TRemoteLogSender.Discover(FTimeoutMs);
+    FFound := TRemoteLogSender.Discover(FTimeoutMs, FDiag);
   except
     on E: Exception do
     begin

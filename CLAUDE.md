@@ -3078,6 +3078,35 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   the LCL build again on the Mac; remote logging still does not work from
   the LCL build there (README Known issues: Local Network permission of
   Lazarus / Terminal - unconfirmed).
+  OWNER (22:42 / 22:45): run from Terminal, Steam itself prints "Using
+  broadcast address on Mac OS X will fail, need to enumerate network
+  interfaces" (its LAN server list - not ours; we only LISTEN on UDP
+  47811). `nc -u -l 47811` in the same Terminal heard
+  "TSTEAMAPI-LOGRECEIVER 1 47812 <name>" AT ONCE -> NOT the Local Network
+  permission: the FPC listener (RemoteLog.SenderFPC.Discover) hears
+  nothing on macOS although packets arrive. Cause unknown (statically
+  checked: bind INADDR_ANY + SO_REUSEADDR / SO_REUSEPORT, SO_RCVTIMEO with
+  BaseUnix TTimeVal, recvfrom). Zip RLog2 (follows Mac3): Discover(ATimeout,
+  out ADiag) counts packets / bytes / first text / receive errors / the
+  SO_RCVTIMEO result; TRemoteLogDiscovery.Diagnostics (also in the Delphi
+  sender, always ''); DemoRemoteLog logs it after each empty search. The
+  README "Local Network" entry is probably WRONG - fix it once the
+  diagnostics say why. NO PACKAGE REBUILD. NOT YET COMPILED.
+- MAC LCL RUN 2 (owner, 22:39, SteamDemoLCL FPC 3.2.2 macOS ARM64 host,
+  VCL Windows guest, after Steam > Exit on the Windows PC): component
+  test 30 / 30 (Screenshots informational), PAIR 8 / 8 - rich presence
+  read at once ("1 key(s): status = ..."). BUT the guest (VCL, Windows)
+  still read "" for the Mac account the whole minute: 7 / 8 there. So the
+  second session was ONE cause (Mac now reads Windows), the other
+  direction (Windows reading the Mac account) is still open - the
+  tablet saw a persona change $A for the main account at 22:36 (status +
+  gone offline: the PC's Steam exiting). Next check: does the tablet's
+  friends list show the main account "In-Game" while the Mac copy runs
+  (a Mac client may not report a game started outside Steam)? The guest
+  ran an old VCL build without Mac1's key logging. docs/TestSetup.md
+  says exactly this (zip RLog2, re-sent). macOS
+  ARM64 is now done for both compilers bar the FPC remote-log listener
+  and LCL SteamFormToRGB on Cocoa (File > Take Screenshot not tried yet).
 
 ## Handover (2026-11-02, end of ninth session) - READ THIS FIRST
 State: last verified push caa00b9 "All done bar server" (verified 20:28 -
