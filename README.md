@@ -94,15 +94,21 @@ lib/                        framework-free library (Delphi + FPC)
     Steamworks.Plugin.Video.pas          ISteamVideo (broadcasting, video apps)
     Steamworks.Plugin.ParentalSettings.pas  ISteamParentalSettings (Family View)
     Steamworks.Plugin.RemotePlay.pas     ISteamRemotePlay (Remote Play / Together)
+    Steamworks.Plugin.Networking.pas     ISteamNetworking (old P2P packets, deprecated)
+    Steamworks.Plugin.NetworkingSockets.pas  ISteamNetworkingSockets (connections)
+    Steamworks.Plugin.NetworkingMessages.pas ISteamNetworkingMessages (P2P messages)
+    Steamworks.Plugin.NetworkingUtils.pas    ISteamNetworkingUtils (relay network, ping)
 fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread),
                             SteamImageToBitmap, SteamFormToRGB (screenshots)
   Steamworks.FMX.Reg.pas    design-time registration of the FMX TSteamAPI
 vcl/                        VCL only (Delphi, Windows)
-  Steamworks.VCL.pas        TSteamAPI for VCL (VCL TTimer), SteamImageToBitmap
+  Steamworks.VCL.pas        TSteamAPI for VCL (VCL TTimer), SteamImageToBitmap,
+                            SteamFormToRGB (screenshots)
   Steamworks.VCL.Reg.pas    design-time registration of the VCL TSteamAPI
 lcl/                        LCL only (Lazarus / Free Pascal)
-  Steamworks.LCL.pas        TSteamAPI for LCL (LCL TTimer), SteamImageToBitmap
+  Steamworks.LCL.pas        TSteamAPI for LCL (LCL TTimer), SteamImageToBitmap,
+                            SteamFormToRGB (screenshots)
 design/
   Steamworks.Reg.pas        GENERATED: registers the plug-in components (all frameworks)
 packages/                   Steamworks (runtime: lib + plug-ins + components, no framework),
@@ -115,7 +121,11 @@ demos/
   SteamDemo/                FMX demo: SteamDemo.dproj + .dpr, form in src/ (uMain.pas / .fmx)
   SteamDemoVCL/             VCL demo (Delphi project), form in src/ (uMain.pas / .dfm)
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
-                            - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form
+                            - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form,
+                              File menu (Auto Start Steam, Take Screenshot, Copy Log, Exit) and
+                              the Components tab (base test of 20 more plug-in components)
+  Shared/                   SteamComponentTest.pas: the component test of SteamDemoVCL and
+                            SteamDemoLCL (Delphi + FPC, no UI; creates its own components)
   SteamConsole/             console smoke test (no framework; FPC-ready)
   SteamInputDemo/           Steam Input test (FMX): action manifest in src/, the
                             connected controller identified at the top, live
@@ -196,6 +206,8 @@ tools/
   gen_projects.py           creates missing .dproj / .dpk / .groupproj (IDE-saved files win)
   gen_steam_api.py          generates SDKTypes and the plug-ins from the SDK (see below)
   verify_generated.py       checks generated layouts and signatures against the SDK headers
+  LayoutProbe/              GENERATED console program (verify_generated.py --probe): prints
+                            the record layout a compiler really produced (--compare checks it)
   plugin_extras/            hand-written parts merged into generated plug-ins
 ```
 
@@ -235,7 +247,9 @@ Step by step, with every alarming-looking message explained:
    TSteamUser, TSteamApps, TSteamRemoteStorage, TSteamScreenshots,
    TSteamTimeline, TSteamUGC, TSteamMatchmaking, TSteamParties,
    TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory,
-   TSteamVideo, TSteamParentalSettings, TSteamRemotePlay - 16): each is on
+   TSteamVideo, TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking,
+   TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils
+   - 20): each is on
    the form with its events wired;
    the test checks it is attached, makes its synchronous calls and waits up
    to 20 s for one or more callbacks / call results through its events. The
@@ -243,7 +257,8 @@ Step by step, with every alarming-looking message explained:
    details. A component passes when its answers arrive, whatever result
    code Steam puts in them (Steam Cloud or Workshop being off for the app
    is a Steam setting). Side effects: a small Steam Cloud file is written
-   and deleted, and a timeline event / game phase is recorded. The test
+   and deleted, a timeline event / game phase is recorded, and a socket
+   pair inside the program sends itself one message. The test
    writes no screenshot (it only switches the screenshot hook on and off);
    use File > Take Screenshot for that.
 4. To use the components at design time, for the IDE's platform (Win64 for
@@ -261,7 +276,9 @@ Step by step, with every alarming-looking message explained:
       TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC,
       TSteamInput, TSteamMatchmaking, TSteamParties, TSteamMusic, TSteamHTTP,
       TSteamHTMLSurface, TSteamInventory, TSteamVideo,
-      TSteamParentalSettings, TSteamRemotePlay) and
+      TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking,
+      TSteamNetworkingSockets, TSteamNetworkingMessages,
+      TSteamNetworkingUtils) and
       `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
       (the VCL TSteamAPI). They appear on the "Steamworks"
       palette page.
@@ -321,7 +338,9 @@ plug-in unit also declares a component named after the interface -
 `TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`, `TSteamUserStats`,
 `TSteamRemoteStorage`, `TSteamScreenshots`, `TSteamTimeline`, `TSteamUGC`, `TSteamInput`,
 `TSteamMatchmaking`, `TSteamParties`, `TSteamMusic`, `TSteamHTTP`, `TSteamHTMLSurface`,
-`TSteamInventory`, `TSteamVideo`, `TSteamParentalSettings`, `TSteamRemotePlay` - that works with any framework:
+`TSteamInventory`, `TSteamVideo`, `TSteamParentalSettings`, `TSteamRemotePlay`,
+`TSteamNetworking`, `TSteamNetworkingSockets`, `TSteamNetworkingMessages`,
+`TSteamNetworkingUtils` - that works with any framework:
 
 * `SteamAPI` links it to the root; at run time a component whose owner has
   exactly one `TSteamAPI` links itself.
@@ -550,12 +569,33 @@ python3 tools/project_check.py
 ```
 
 `verify_generated.py` compiles the SDK headers with clang (any OS; no
-platform SDKs needed) for Win64, Win32, Linux x86_64 and macOS ARM64 and
+platform SDKs needed) for Win64, Win32, Linux x86_64, macOS ARM64 and the
+FPC-only targets Linux32 (i686) and LinuxARM64 (aarch64), and
 compares every generated record's size, alignment and field offsets with the
 C layout, and every flat signature with `steam_api_flat.h`. The generator
-prints what it could not generate and why (structs containing C unions -
-`steam_api.json` lists union members as separate fields - and structs only
-forward-declared in the public headers). New interfaces are added to the
+prints what it could not generate and why (structs only forward-declared
+in the public headers, functions taking a struct by value). Structs with a
+C union (`steam_api.json` lists only one union member) are hand-written
+Pascal variant records in `tools/sdk_extras/<Struct>.pas.txt`; the
+generator copies them into `Steamworks.SDKTypes` and the verifier checks
+every field offset by name against the C headers.
+
+Those checks model Delphi's record rules. FPC aligns a record-typed field
+by the nested record's size rather than its alignment (a packed 8-byte
+`TSteamID` lands on an 8-byte boundary), so under FPC the generated
+records are `packed` with explicit `_fpcpad` byte fields where C has
+padding, per target class (Win64, Win32, 64-bit Unix, Linux32). To measure
+what a compiler really produces, build and run the generated probe, then
+compare its output with the C layout of the same target:
+
+```
+python3 tools/verify_generated.py <sdk>/public/steam --probe tools/LayoutProbe/LayoutProbe.dpr
+fpc -Mdelphi -Fulib -Filib -FUtools/LayoutProbe -FEtools/LayoutProbe tools/LayoutProbe/LayoutProbe.dpr
+tools/LayoutProbe/LayoutProbe > probe.txt
+python3 tools/verify_generated.py <sdk>/public/steam --compare probe.txt x86_64-pc-windows-msvc
+```
+
+New interfaces are added to the
 `PLUGINS` table in `gen_steam_api.py` and `tools/gen_projects.py`.
 
 ## SDK 1.65 notes
@@ -578,8 +618,8 @@ Windows', normal behaviour. Each says why and what to do.
 > no screenshot is taken and no `OnScreenshotRequested` arrives, without
 > any error (observed 2026-11-02, Win64, started from the IDE).
 > `WriteScreenshot` needs no overlay: capture the frame yourself and write
-> it - in FMX with `SteamFormToRGB` (Steamworks.FMX), as SteamDemo's
-> component test does.
+> it - with `SteamFormToRGB` (Steamworks.FMX / .VCL / .LCL), as the
+> SteamDemos' File > Take Screenshot does.
 
 > **FMX menus on Linux show only first letters ("F" for "File").**
 > That is FMX's native GTK menu bar on Linux, not this library. SteamDemo,
@@ -668,8 +708,11 @@ Windows', normal behaviour. Each says why and what to do.
   `demos/SteamDemoLCL/<cpu>-<os>/` (e.g. `x86_64-win64/`); copy the Steam
   library for that platform from `redistributable_bin` next to it
   (`win64/steam_api64.dll` on Windows 64-bit). It has the same form as the
-  VCL demo (Output, Personal, Achievements), with the Steam components in
-  `src/uMain.lfm`. To open that form in the designer, install
+  VCL demo (buttons enabled by state, File menu, tabs Output, Personal,
+  Achievements, Components), with the Steam root and the Friends / UserStats
+  components in `src/uMain.lfm`; **Test components** runs
+  `demos/Shared/SteamComponentTest.pas` (20 components, created by that
+  unit - the same tests as the FMX SteamDemo). To open that form in the designer, install
   `packages/SteamworksLCL.lpk` first (docs/Install-Lazarus-FPC.md); before
   that, if Lazarus offers to remove unknown classes, choose Cancel.
 * **VirtualGamepadLCL** (Castle Game Engine): register Castle Game Engine's
@@ -759,12 +802,18 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three 
 * Update modes (timer / worker thread / manual) - tested on Win64 with
   Delphi 13 and FPC 3.2.2.
 * Components for FMX, VCL and LCL (Lazarus package) - tested on Win64.
-* Batch 2a (2026-11-02, not yet compiled): Matchmaking, Parties, Music,
+* Batch 2a (2026-11-02, tested on Win64): Matchmaking, Parties, Music,
   HTTP, HTMLSurface, Inventory, Video, ParentalSettings, RemotePlay - one
   page each and a SteamDemo test. Not bound: `ISteamParties.
   GetBeaconLocationData` (struct by value - needs a per-platform shim).
-* Next: Networking* (needs C union support in the generator), then
-  MatchmakingServers (C++ response objects - a vtable shim).
+* Batch 2b (2026-11-02, not yet compiled): Networking, NetworkingSockets,
+  NetworkingMessages, NetworkingUtils, with C union support (hand-written
+  variant records: SteamNetworkingIdentity, SteamNetworkingIPAddr,
+  SteamNetworkingConfigValue_t, SteamInputActionEvent_t,
+  RemotePlayInput_t) - one page each and a SteamDemo test. Not bound:
+  `ISteamNetworking.CreateListenSocket` / `CreateConnectionSocket`
+  (deprecated `SteamIPAddress_t` by value).
+* Next: MatchmakingServers (C++ response objects - a vtable shim).
 * Later: the game-server API (`SteamGameServer_*`, ISteamGameServer /
   GameServerStats). ISteamController is not bound: Valve deprecated it in
   favour of ISteamInput.

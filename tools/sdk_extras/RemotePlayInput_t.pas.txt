@@ -1,0 +1,22 @@
+  { Steam struct RemotePlayInput_t: one mouse or keyboard event of a Remote
+    Play Together guest (ISteamRemotePlay GetInput); m_eType says which
+    union member is valid; 64 bytes (isteamremoteplay.h, callback
+    alignment). Hand-written (tools/sdk_extras/RemotePlayInput_t.pas.txt).
+    C type: RemotePlayInput_t. }
+  RemotePlayInput_t = record
+    { The Remote Play session. }
+    m_unSessionID: RemotePlaySessionID_t;
+    { The kind of event (k_ERemotePlayInput...). }
+    m_eType: ERemotePlayInputType;
+    case Integer of
+      { Mouse motion. }
+      0: (m_MouseMotion: RemotePlayInputMouseMotion_t);
+      { Mouse button down / up. }
+      1: (m_eMouseButton: ERemotePlayMouseButton);
+      { Mouse wheel. }
+      2: (m_MouseWheel: RemotePlayInputMouseWheel_t);
+      { Key down / up. }
+      3: (m_Key: RemotePlayInputKey_t);
+      { Fixes the struct at 64 bytes. }
+      4: (padding: array[0..55] of AnsiChar);
+  end;

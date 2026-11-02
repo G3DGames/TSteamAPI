@@ -2756,7 +2756,7 @@ type
 
   // --- structs ----------------------------------------------------------------
   { Steam struct FriendGameInfo_t. (isteamfriends.h, callback alignment.) }
-  FriendGameInfo_t = record
+  FriendGameInfo_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CGameID m_gameID). }
     m_gameID: CGameID;
     { C field @code(uint32 m_unGameIP). }
@@ -2775,7 +2775,7 @@ type
   { servernetadr_t is all the addressing info the serverbrowser needs to know about a game server,
     namely: its IP, its connection port, and its query port. (matchmakingtypes.h, natural
     alignment.) }
-  servernetadr_t = record
+  servernetadr_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint16 m_usConnectionPort). Private in the SDK. }
     m_usConnectionPort: UInt16;
     { C field @code(uint16 m_usQueryPort). Private in the SDK. }
@@ -2789,7 +2789,7 @@ type
 
 {$I Steamworks.AlignNatural.inc}
   { Data describing a single server. (matchmakingtypes.h, natural alignment.) }
-  gameserveritem_t = record
+  gameserveritem_t = {$ifdef FPC}packed{$endif} record
     { C field @code(servernetadr_t m_NetAdr). }
     m_NetAdr: servernetadr_t;
     { C field @code(int m_nPing). }
@@ -2804,6 +2804,21 @@ type
     m_szMap: array[0..31] of AnsiChar;
     { C field @code(char [64] m_szGameDescription). }
     m_szGameDescription: array[0..63] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..1] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_nAppID). }
     m_nAppID: UInt32;
     { C field @code(int m_nPlayers). }
@@ -2816,6 +2831,21 @@ type
     m_bPassword: Boolean;
     { C field @code(bool m_bSecure). }
     m_bSecure: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad13: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad13: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad13: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad13: array[0..1] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_ulTimeLastPlayed). }
     m_ulTimeLastPlayed: UInt32;
     { C field @code(int m_nServerVersion). }
@@ -2886,7 +2916,7 @@ type
   PInputMotionData_t = ^InputMotionData_t;
 
   { Steam struct LeaderboardEntry_t. (isteamuserstats.h, callback alignment.) }
-  LeaderboardEntry_t = record
+  LeaderboardEntry_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDUser). }
     m_steamIDUser: TSteamID;
     { C field @code(int32 m_nGlobalRank). }
@@ -2895,6 +2925,15 @@ type
     m_nScore: Int32;
     { C field @code(int32 m_cDetails). }
     m_cDetails: Int32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(UGCHandle_t m_hUGC). }
     m_hUGC: UGCHandle_t;
   end;
@@ -2906,7 +2945,7 @@ type
     misleading. The "key" is better understood as "filter operation code" and the "value" is the
     operand to this filter operation. The meaning of the operand depends upon the filter.
     (matchmakingtypes.h, natural alignment.) }
-  MatchMakingKeyValuePair_t = record
+  MatchMakingKeyValuePair_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [256] m_szKey). }
     m_szKey: array[0..255] of AnsiChar;
     { C field @code(char [256] m_szValue). }
@@ -2917,7 +2956,7 @@ type
 {$I Steamworks.AlignDefault.inc}
 
   { Steam struct P2PSessionState_t. (isteamnetworking.h, callback alignment.) }
-  P2PSessionState_t = record
+  P2PSessionState_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_bConnectionActive). }
     m_bConnectionActive: UInt8;
     { C field @code(uint8 m_bConnecting). }
@@ -2934,13 +2973,28 @@ type
     m_nRemoteIP: UInt32;
     { C field @code(uint16 m_nRemotePort). }
     m_nRemotePort: UInt16;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(P2PSessionState_t). }
   PP2PSessionState_t = ^P2PSessionState_t;
 
   { Key event data, valid when m_eType is k_ERemotePlayInputKeyDown or k_ERemotePlayInputKeyUp.
     (isteamremoteplay.h, callback alignment.) }
-  RemotePlayInputKey_t = record
+  RemotePlayInputKey_t = {$ifdef FPC}packed{$endif} record
     { C field @code(int m_eScancode). }
     m_eScancode: Integer;
     { C field @code(uint32 m_unModifiers). }
@@ -2953,9 +3007,24 @@ type
 
   { Mouse motion event data, valid when m_eType is k_ERemotePlayInputMouseMotion.
     (isteamremoteplay.h, callback alignment.) }
-  RemotePlayInputMouseMotion_t = record
+  RemotePlayInputMouseMotion_t = {$ifdef FPC}packed{$endif} record
     { C field @code(bool m_bAbsolute). }
     m_bAbsolute: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(float m_flNormalizedX). }
     m_flNormalizedX: Single;
     { C field @code(float m_flNormalizedY). }
@@ -2970,7 +3039,7 @@ type
 
   { Mouse wheel event data, valid when m_eType is k_ERemotePlayInputMouseWheel.
     (isteamremoteplay.h, callback alignment.) }
-  RemotePlayInputMouseWheel_t = record
+  RemotePlayInputMouseWheel_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ERemotePlayMouseWheelDirection m_eDirection). }
     m_eDirection: ERemotePlayMouseWheelDirection;
     { C field @code(float m_flAmount). }
@@ -2979,8 +3048,129 @@ type
   { Pointer to @link(RemotePlayInputMouseWheel_t). }
   PRemotePlayInputMouseWheel_t = ^RemotePlayInputMouseWheel_t;
 
+  { Steam struct RemotePlayInput_t: one mouse or keyboard event of a Remote
+    Play Together guest (ISteamRemotePlay GetInput); m_eType says which
+    union member is valid; 64 bytes (isteamremoteplay.h, callback
+    alignment). Hand-written (tools/sdk_extras/RemotePlayInput_t.pas.txt).
+    C type: RemotePlayInput_t. }
+  RemotePlayInput_t = record
+    { The Remote Play session. }
+    m_unSessionID: RemotePlaySessionID_t;
+    { The kind of event (k_ERemotePlayInput...). }
+    m_eType: ERemotePlayInputType;
+    case Integer of
+      { Mouse motion. }
+      0: (m_MouseMotion: RemotePlayInputMouseMotion_t);
+      { Mouse button down / up. }
+      1: (m_eMouseButton: ERemotePlayMouseButton);
+      { Mouse wheel. }
+      2: (m_MouseWheel: RemotePlayInputMouseWheel_t);
+      { Key down / up. }
+      3: (m_Key: RemotePlayInputKey_t);
+      { Fixes the struct at 64 bytes. }
+      4: (padding: array[0..55] of AnsiChar);
+  end;
+  { Pointer to @link(RemotePlayInput_t). }
+  PRemotePlayInput_t = ^RemotePlayInput_t;
+
+  { The IPv4 form of @link(SteamNetworkingIPAddr): an IPv6 address with the
+    IPv4-mapped prefix ::ffff:0:0/96. C type: SteamNetworkingIPAddr::IPv4MappedAddress. }
+  SteamNetworkingIPAddr_IPv4MappedAddress = packed record
+    { Always 0. }
+    m_8zeros: UInt64;
+    { Always 0. }
+    m_0000: UInt16;
+    { Always $FFFF. }
+    m_ffff: UInt16;
+    { The IPv4 address, network byte order (most significant byte first). }
+    m_ip: array[0..3] of UInt8;
+  end;
+  { Steam struct SteamNetworkingIPAddr: an IPv6 or IPv4 address and a port
+    (steamnetworkingtypes.h, pack(1)). In C the address is a union of
+    m_ipv6 and m_ipv4 followed by m_port; a Pascal variant part must come
+    last, so m_port is declared in the m_ipv6 variant - it is at offset 16
+    either way. Hand-written (tools/sdk_extras/SteamNetworkingIPAddr.pas.txt).
+    C type: SteamNetworkingIPAddr. }
+  SteamNetworkingIPAddr = packed record
+    case Integer of
+      { IPv6 address bytes, network byte order; then the port. }
+      0: (m_ipv6: array[0..15] of UInt8;
+          { Port, HOST byte order. }
+          m_port: UInt16);
+      { The same 16 bytes as an IPv4-mapped address. }
+      1: (m_ipv4: SteamNetworkingIPAddr_IPv4MappedAddress);
+  end;
+  { Pointer to @link(SteamNetworkingIPAddr). }
+  PSteamNetworkingIPAddr = ^SteamNetworkingIPAddr;
+
+  { Steam struct SteamNetworkingIdentity: who is on the other end of a
+    connection - a SteamID, an IP address, a string or bytes; m_eType says
+    which union member is valid (steamnetworkingtypes.h, pack(1)).
+    Hand-written (tools/sdk_extras/SteamNetworkingIdentity.pas.txt).
+    C type: SteamNetworkingIdentity. }
+  SteamNetworkingIdentity = packed record
+    { Which member below is valid (k_ESteamNetworkingIdentityType_...). }
+    m_eType: ESteamNetworkingIdentityType;
+    { Bytes used in the union (set by Valve's Set... helpers). }
+    m_cbSize: Integer;
+    case Integer of
+      { k_ESteamNetworkingIdentityType_SteamID. }
+      0: (m_steamID64: UInt64);
+      { k_ESteamNetworkingIdentityType_PSN. }
+      1: (m_PSNID: UInt64);
+      { k_ESteamNetworkingIdentityType_GenericString (NUL-terminated). }
+      2: (m_szGenericString: array[0..31] of AnsiChar);
+      { k_ESteamNetworkingIdentityType_XboxPairwiseID (NUL-terminated). }
+      3: (m_szXboxPairwiseID: array[0..32] of AnsiChar);
+      { k_ESteamNetworkingIdentityType_GenericBytes. }
+      4: (m_genericBytes: array[0..31] of UInt8);
+      { k_ESteamNetworkingIdentityType_UnknownType: the identity as a string. }
+      5: (m_szUnknownRawString: array[0..127] of AnsiChar);
+      { k_ESteamNetworkingIdentityType_IPAddress. }
+      6: (m_ip: SteamNetworkingIPAddr);
+      { Reserved: fixes the size of the union. }
+      7: (m_reserved: array[0..31] of UInt32);
+  end;
+  { Pointer to @link(SteamNetworkingIdentity). }
+  PSteamNetworkingIdentity = ^SteamNetworkingIdentity;
+
+  { Analog part of a @link(SteamInputActionEvent_t). C type:
+    SteamInputActionEvent_t::AnalogAction_t. }
+  SteamInputActionEvent_t_AnalogAction_t = packed record
+    { The analog action that changed. }
+    actionHandle: InputAnalogActionHandle_t;
+    { Its new data. }
+    analogActionData: InputAnalogActionData_t;
+  end;
+  { Digital part of a @link(SteamInputActionEvent_t). C type:
+    SteamInputActionEvent_t::DigitalAction_t. }
+  SteamInputActionEvent_t_DigitalAction_t = packed record
+    { The digital action that changed. }
+    actionHandle: InputDigitalActionHandle_t;
+    { Its new data. }
+    digitalActionData: InputDigitalActionData_t;
+  end;
+  { Steam struct SteamInputActionEvent_t: one action change, passed to the
+    callback set with ISteamInput EnableActionEventCallbacks; eEventType
+    says which union member is valid (isteaminput.h, pack(1)).
+    Hand-written (tools/sdk_extras/SteamInputActionEvent_t.pas.txt).
+    C type: SteamInputActionEvent_t. }
+  SteamInputActionEvent_t = packed record
+    { The controller. }
+    controllerHandle: InputHandle_t;
+    { Analog or digital (k_ESteamInputActionEventType_...). }
+    eEventType: ESteamInputActionEventType;
+    case Integer of
+      { k_ESteamInputActionEventType_AnalogAction. }
+      0: (analogAction: SteamInputActionEvent_t_AnalogAction_t);
+      { k_ESteamInputActionEventType_DigitalAction. }
+      1: (digitalAction: SteamInputActionEvent_t_DigitalAction_t);
+  end;
+  { Pointer to @link(SteamInputActionEvent_t). }
+  PSteamInputActionEvent_t = ^SteamInputActionEvent_t;
+
   { Steam struct SteamItemDetails_t. (isteaminventory.h, callback alignment.) }
-  SteamItemDetails_t = record
+  SteamItemDetails_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamItemInstanceID_t m_itemId). }
     m_itemId: SteamItemInstanceID_t;
     { C field @code(SteamItemDef_t m_iDefinition). }
@@ -2993,8 +3183,40 @@ type
   { Pointer to @link(SteamItemDetails_t). }
   PSteamItemDetails_t = ^SteamItemDetails_t;
 
+  { Describe the state of a connection. (steamnetworkingtypes.h, callback alignment.) }
+  SteamNetConnectionInfo_t = {$ifdef FPC}packed{$endif} record
+    { C field @code(SteamNetworkingIdentity m_identityRemote). }
+    m_identityRemote: SteamNetworkingIdentity;
+    { C field @code(int64 m_nUserData). }
+    m_nUserData: Int64;
+    { C field @code(HSteamListenSocket m_hListenSocket). }
+    m_hListenSocket: HSteamListenSocket;
+    { C field @code(SteamNetworkingIPAddr m_addrRemote). }
+    m_addrRemote: SteamNetworkingIPAddr;
+    { C field @code(uint16 m__pad1). }
+    m__pad1: UInt16;
+    { C field @code(SteamNetworkingPOPID m_idPOPRemote). }
+    m_idPOPRemote: SteamNetworkingPOPID;
+    { C field @code(SteamNetworkingPOPID m_idPOPRelay). }
+    m_idPOPRelay: SteamNetworkingPOPID;
+    { C field @code(ESteamNetworkingConnectionState m_eState). }
+    m_eState: ESteamNetworkingConnectionState;
+    { C field @code(int m_eEndReason). }
+    m_eEndReason: Integer;
+    { C field @code(char [128] m_szEndDebug). }
+    m_szEndDebug: array[0..127] of AnsiChar;
+    { C field @code(char [128] m_szConnectionDescription). }
+    m_szConnectionDescription: array[0..127] of AnsiChar;
+    { C field @code(int m_nFlags). }
+    m_nFlags: Integer;
+    { C field @code(uint32 [63] reserved). }
+    reserved: array[0..62] of UInt32;
+  end;
+  { Pointer to @link(SteamNetConnectionInfo_t). }
+  PSteamNetConnectionInfo_t = ^SteamNetConnectionInfo_t;
+
   { Quick status of a particular lane. (steamnetworkingtypes.h, callback alignment.) }
-  SteamNetConnectionRealTimeLaneStatus_t = record
+  SteamNetConnectionRealTimeLaneStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(int m_cbPendingUnreliable). }
     m_cbPendingUnreliable: Integer;
     { C field @code(int m_cbPendingReliable). }
@@ -3013,7 +3235,7 @@ type
 
   { Quick connection state, pared down to something you could call more frequently without it
     being too big of a perf hit. (steamnetworkingtypes.h, callback alignment.) }
-  SteamNetConnectionRealTimeStatus_t = record
+  SteamNetConnectionRealTimeStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ESteamNetworkingConnectionState m_eState). }
     m_eState: ESteamNetworkingConnectionState;
     { C field @code(int m_nPing). }
@@ -3049,6 +3271,96 @@ type
   PSteamNetConnectionRealTimeStatus_t = ^SteamNetConnectionRealTimeStatus_t;
 
 {$I Steamworks.AlignNatural.inc}
+  { The value of a @link(SteamNetworkingConfigValue_t): the C union m_val;
+    m_eDataType says which member is valid. C type:
+    decltype(SteamNetworkingConfigValue_t::m_val). }
+  SteamNetworkingConfigValue_t_Value = record
+    case Integer of
+      { k_ESteamNetworkingConfig_Int32. }
+      0: (m_int32: Int32);
+      { k_ESteamNetworkingConfig_Int64. }
+      1: (m_int64: Int64);
+      { k_ESteamNetworkingConfig_Float. }
+      2: (m_float: Single);
+      { k_ESteamNetworkingConfig_String (the caller keeps the text alive). }
+      3: (m_string: PAnsiChar);
+      { k_ESteamNetworkingConfig_Ptr (a callback function pointer). }
+      4: (m_ptr: Pointer);
+  end;
+  { Steam struct SteamNetworkingConfigValue_t: one configuration option, as
+    passed in arrays to ConnectByIPAddress, CreateListenSocketIP, ... -
+    m_eValue names the option, m_eDataType the member of m_val that holds it
+    (steamnetworkingtypes.h, natural alignment). The C union is named, so
+    the value is read as in Valve's documentation: Opt.m_val.m_int32.
+    Hand-written (tools/sdk_extras/SteamNetworkingConfigValue_t.pas.txt).
+    C type: SteamNetworkingConfigValue_t. }
+  SteamNetworkingConfigValue_t = record
+    { The option (k_ESteamNetworkingConfig_...). }
+    m_eValue: ESteamNetworkingConfigValue;
+    { Which member of m_val is valid. }
+    m_eDataType: ESteamNetworkingConfigDataType;
+    { The value. }
+    m_val: SteamNetworkingConfigValue_t_Value;
+  end;
+  { Pointer to @link(SteamNetworkingConfigValue_t). }
+  PSteamNetworkingConfigValue_t = ^SteamNetworkingConfigValue_t;
+{$I Steamworks.AlignDefault.inc}
+
+{$I Steamworks.AlignNatural.inc}
+  { A message that has been received. (steamnetworkingtypes.h, natural alignment.) }
+  SteamNetworkingMessage_t = {$ifdef FPC}packed{$endif} record
+    { C field @code(void * m_pData). }
+    m_pData: Pointer;
+    { C field @code(int m_cbSize). }
+    m_cbSize: Integer;
+    { C field @code(HSteamNetConnection m_conn). }
+    m_conn: HSteamNetConnection;
+    { C field @code(SteamNetworkingIdentity m_identityPeer). }
+    m_identityPeer: SteamNetworkingIdentity;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$endif}
+{$endif}
+    { C field @code(int64 m_nConnUserData). }
+    m_nConnUserData: Int64;
+    { C field @code(SteamNetworkingMicroseconds m_usecTimeReceived). }
+    m_usecTimeReceived: SteamNetworkingMicroseconds;
+    { C field @code(int64 m_nMessageNumber). }
+    m_nMessageNumber: Int64;
+    { C field @code(void (*)(SteamNetworkingMessage_t *) m_pfnFreeData). }
+    m_pfnFreeData: Pointer;
+    { C field @code(void (*)(SteamNetworkingMessage_t *) m_pfnRelease). }
+    m_pfnRelease: Pointer;
+    { C field @code(int m_nChannel). }
+    m_nChannel: Integer;
+    { C field @code(int m_nFlags). }
+    m_nFlags: Integer;
+    { C field @code(int64 m_nUserData). }
+    m_nUserData: Int64;
+    { C field @code(uint16 m_idxLane). }
+    m_idxLane: UInt16;
+    { C field @code(uint16 _pad1__). }
+    _pad1__: UInt16;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad14: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad14: array[0..3] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad14: array[0..3] of Byte;
+{$endif}
+{$endif}
+  end;
+  { Pointer to @link(SteamNetworkingMessage_t). }
+  PSteamNetworkingMessage_t = ^SteamNetworkingMessage_t;
+{$I Steamworks.AlignDefault.inc}
+
+{$I Steamworks.AlignNatural.inc}
   { Object that describes a "location" on the Internet with sufficient detail that we can
     reasonably estimate an upper bound on the ping between the two hosts, even if a direct route
     between the hosts is not possible, and the connection must be routed through the Steam
@@ -3059,7 +3371,7 @@ type
     persist it in a file or database! If you need to do that, convert it to a string
     representation using the methods in ISteamNetworkingUtils(). (steamnetworkingtypes.h, natural
     alignment.) }
-  SteamNetworkPingLocation_t = record
+  SteamNetworkPingLocation_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 [512] m_data). }
     m_data: array[0..511] of UInt8;
   end;
@@ -3068,19 +3380,34 @@ type
 {$I Steamworks.AlignDefault.inc}
 
   { Steam struct SteamParamStringArray_t. (isteamremotestorage.h, callback alignment.) }
-  SteamParamStringArray_t = record
+  SteamParamStringArray_t = {$ifdef FPC}packed{$endif} record
     { C field @code(const char ** m_ppStrings). }
     m_ppStrings: Pointer;
     { C field @code(int32 m_nNumStrings). }
     m_nNumStrings: Int32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamParamStringArray_t). }
   PSteamParamStringArray_t = ^SteamParamStringArray_t;
 
   { Steam struct SteamPartyBeaconLocation_t. (isteammatchmaking.h, callback alignment.) }
-  SteamPartyBeaconLocation_t = record
+  SteamPartyBeaconLocation_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ESteamPartyBeaconLocationType m_eType). }
     m_eType: ESteamPartyBeaconLocationType;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulLocationID). }
     m_ulLocationID: UInt64;
   end;
@@ -3088,7 +3415,7 @@ type
   PSteamPartyBeaconLocation_t = ^SteamPartyBeaconLocation_t;
 
   { Details for a single published file/UGC. (isteamugc.h, callback alignment.) }
-  SteamUGCDetails_t = record
+  SteamUGCDetails_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EResult m_eResult). }
@@ -3103,6 +3430,21 @@ type
     m_rgchTitle: array[0..128] of AnsiChar;
     { C field @code(char [8000] m_rgchDescription). }
     m_rgchDescription: array[0..7999] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulSteamIDOwner). }
     m_ulSteamIDOwner: UInt64;
     { C field @code(uint32 m_rtimeCreated). }
@@ -3121,6 +3463,15 @@ type
     m_bTagsTruncated: Boolean;
     { C field @code(char [1025] m_rgchTags). }
     m_rgchTags: array[0..1024] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad16: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad16: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(UGCHandle_t m_hFile). }
     m_hFile: UGCHandle_t;
     { C field @code(UGCHandle_t m_hPreviewFile). }
@@ -3141,6 +3492,15 @@ type
     m_flScore: Single;
     { C field @code(uint32 m_unNumChildren). }
     m_unNumChildren: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad26: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad26: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulTotalFilesSize). }
     m_ulTotalFilesSize: UInt64;
   end;
@@ -3152,7 +3512,7 @@ type
     Usually this will have occurred before the game has launched, and should only be seen if the
     user has dropped connection due to a networking issue or a Steam server update. Subscribe with
     @code(SteamServersConnected_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  SteamServersConnected_t = record
+  SteamServersConnected_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -3163,11 +3523,26 @@ type
     Steam client is not connected, and has failed in it's retry to establish a connection.
     Subscribe with @code(SteamServerConnectFailure_t_k_iCallback). (isteamuser.h, callback
     alignment.) }
-  SteamServerConnectFailure_t = record
+  SteamServerConnectFailure_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(bool m_bStillRetrying). }
     m_bStillRetrying: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamServerConnectFailure_t). }
   PSteamServerConnectFailure_t = ^SteamServerConnectFailure_t;
@@ -3175,7 +3550,7 @@ type
   { Callback 103: called if the client has lost connection to the Steam servers real-time services
     will be disabled until a matching SteamServersConnected_t has been posted. Subscribe with
     @code(SteamServersDisconnected_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  SteamServersDisconnected_t = record
+  SteamServersDisconnected_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -3187,7 +3562,7 @@ type
     client should immediately disconnect upon receiving this message. This can usually occur if
     the user doesn't have rights to play on the game server. Subscribe with
     @code(ClientGameServerDeny_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  ClientGameServerDeny_t = record
+  ClientGameServerDeny_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint32 m_uAppID). }
     m_uAppID: UInt32;
     { C field @code(uint32 m_unGameServerIP). }
@@ -3206,7 +3581,7 @@ type
     m_bSecure is true if the game server should display itself as secure to users, false
     otherwise. Subscribe with @code(GSPolicyResponse_t_k_iCallback). (isteamgameserver.h, callback
     alignment.) }
-  GSPolicyResponse_t = record
+  GSPolicyResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_bSecure). }
     m_bSecure: UInt8;
   end;
@@ -3218,7 +3593,7 @@ type
     reset any stored Steam state and reconnect. This usually occurs in the rare event the Steam
     client has some kind of fatal error. Subscribe with @code(IPCFailure_t_k_iCallback).
     (isteamuser.h, callback alignment.) }
-  IPCFailure_t = record
+  IPCFailure_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_eFailureType). }
     m_eFailureType: UInt8;
   end;
@@ -3227,7 +3602,7 @@ type
 
   { Callback 125: Signaled whenever licenses change. Subscribe with
     @code(LicensesUpdated_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  LicensesUpdated_t = record
+  LicensesUpdated_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -3236,7 +3611,7 @@ type
 
   { Callback 143: callback for BeginAuthSession. Subscribe with
     @code(ValidateAuthTicketResponse_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  ValidateAuthTicketResponse_t = record
+  ValidateAuthTicketResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_SteamID). }
     m_SteamID: TSteamID;
     { C field @code(EAuthSessionResponse m_eAuthSessionResponse). }
@@ -3250,20 +3625,44 @@ type
   { Callback 152: called when a user has responded to a microtransaction authorization request.
     Subscribe with @code(MicroTxnAuthorizationResponse_t_k_iCallback). (isteamuser.h, callback
     alignment.) }
-  MicroTxnAuthorizationResponse_t = record
+  MicroTxnAuthorizationResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint32 m_unAppID). }
     m_unAppID: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulOrderID). }
     m_ulOrderID: UInt64;
     { C field @code(uint8 m_bAuthorized). }
     m_bAuthorized: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(MicroTxnAuthorizationResponse_t). }
   PMicroTxnAuthorizationResponse_t = ^MicroTxnAuthorizationResponse_t;
 
   { Callback 154: Result from RequestEncryptedAppTicket. Subscribe with
     @code(EncryptedAppTicketResponse_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  EncryptedAppTicketResponse_t = record
+  EncryptedAppTicketResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -3272,7 +3671,7 @@ type
 
   { Callback 163: callback for GetAuthSessionTicket. Subscribe with
     @code(GetAuthSessionTicketResponse_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  GetAuthSessionTicketResponse_t = record
+  GetAuthSessionTicketResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HAuthTicket m_hAuthTicket). }
     m_hAuthTicket: HAuthTicket;
     { C field @code(EResult m_eResult). }
@@ -3283,7 +3682,7 @@ type
 
   { Callback 164: sent to your game in response to a steam://gamewebcallback/ command. Subscribe
     with @code(GameWebCallback_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  GameWebCallback_t = record
+  GameWebCallback_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [256] m_szURL). }
     m_szURL: array[0..255] of AnsiChar;
   end;
@@ -3292,7 +3691,7 @@ type
 
   { Callback 165: sent to your game in response to ISteamUser::RequestStoreAuthURL. Subscribe with
     @code(StoreAuthURLResponse_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  StoreAuthURLResponse_t = record
+  StoreAuthURLResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [512] m_szURL). }
     m_szURL: array[0..511] of AnsiChar;
   end;
@@ -3301,9 +3700,24 @@ type
 
   { Callback 166: sent in response to ISteamUser::GetMarketEligibility. Subscribe with
     @code(MarketEligibilityResponse_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  MarketEligibilityResponse_t = record
+  MarketEligibilityResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(bool m_bAllowed). }
     m_bAllowed: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(EMarketNotAllowedReasonFlags m_eNotAllowedReason). }
     m_eNotAllowedReason: EMarketNotAllowedReasonFlags;
     { C field @code(RTime32 m_rtAllowedAtTime). }
@@ -3321,13 +3735,28 @@ type
     and returns info about remaining gameplay time. This callback is fired asynchronously in
     response to timers triggering. It is also fired in response to calls to GetDurationControl().
     Subscribe with @code(DurationControl_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  DurationControl_t = record
+  DurationControl_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(AppId_t m_appid). }
     m_appid: AppId_t;
     { C field @code(bool m_bApplicable). }
     m_bApplicable: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(int32 m_csecsLast5h). }
     m_csecsLast5h: Int32;
     { C field @code(EDurationControlProgress m_progress). }
@@ -3344,7 +3773,7 @@ type
 
   { Callback 168: callback for GetTicketForWebApi. Subscribe with
     @code(GetTicketForWebApiResponse_t_k_iCallback). (isteamuser.h, callback alignment.) }
-  GetTicketForWebApiResponse_t = record
+  GetTicketForWebApiResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HAuthTicket m_hAuthTicket). }
     m_hAuthTicket: HAuthTicket;
     { C field @code(EResult m_eResult). }
@@ -3359,7 +3788,7 @@ type
 
   { Callback 201: client has been approved to connect to this game server. Subscribe with
     @code(GSClientApprove_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  GSClientApprove_t = record
+  GSClientApprove_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_SteamID). }
     m_SteamID: TSteamID;
     { C field @code(CSteamID m_OwnerSteamID). }
@@ -3370,7 +3799,7 @@ type
 
   { Callback 202: client has been denied to connection to this game server. Subscribe with
     @code(GSClientDeny_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  GSClientDeny_t = record
+  GSClientDeny_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_SteamID). }
     m_SteamID: TSteamID;
     { C field @code(EDenyReason m_eDenyReason). }
@@ -3383,7 +3812,7 @@ type
 
   { Callback 203: request the game server should kick the user. Subscribe with
     @code(GSClientKick_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  GSClientKick_t = record
+  GSClientKick_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_SteamID). }
     m_SteamID: TSteamID;
     { C field @code(EDenyReason m_eDenyReason). }
@@ -3394,20 +3823,35 @@ type
 
   { Callback 206: client achievement info. Subscribe with
     @code(GSClientAchievementStatus_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  GSClientAchievementStatus_t = record
+  GSClientAchievementStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_SteamID). }
     m_SteamID: UInt64;
     { C field @code(char [128] m_pchAchievement). }
     m_pchAchievement: array[0..127] of AnsiChar;
     { C field @code(bool m_bUnlocked). }
     m_bUnlocked: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(GSClientAchievementStatus_t). }
   PGSClientAchievementStatus_t = ^GSClientAchievementStatus_t;
 
   { Callback 207: GS gameplay stats info. Subscribe with @code(GSGameplayStats_t_k_iCallback).
     (isteamgameserver.h, callback alignment.) }
-  GSGameplayStats_t = record
+  GSGameplayStats_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(int32 m_nRank). }
@@ -3422,7 +3866,7 @@ type
 
   { Callback 208: send as a reply to RequestUserGroupStatus(). Subscribe with
     @code(GSClientGroupStatus_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  GSClientGroupStatus_t = record
+  GSClientGroupStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_SteamIDUser). }
     m_SteamIDUser: TSteamID;
     { C field @code(CSteamID m_SteamIDGroup). }
@@ -3437,28 +3881,67 @@ type
 
   { Callback 209: Sent as a reply to GetServerReputation(). Subscribe with
     @code(GSReputation_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  GSReputation_t = record
+  GSReputation_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(uint32 m_unReputationScore). }
     m_unReputationScore: UInt32;
     { C field @code(bool m_bBanned). }
     m_bBanned: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_unBannedIP). }
     m_unBannedIP: UInt32;
     { C field @code(uint16 m_usBannedPort). }
     m_usBannedPort: UInt16;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..5] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..5] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..1] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulBannedGameID). }
     m_ulBannedGameID: UInt64;
     { C field @code(uint32 m_unBanExpires). }
     m_unBanExpires: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(GSReputation_t). }
   PGSReputation_t = ^GSReputation_t;
 
   { Callback 210: Sent as a reply to AssociateWithClan(). Subscribe with
     @code(AssociateWithClanResult_t_k_iCallback). (isteamgameserver.h, callback alignment.) }
-  AssociateWithClanResult_t = record
+  AssociateWithClanResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -3468,7 +3951,7 @@ type
   { Callback 211: Sent as a reply to ComputeNewPlayerCompatibility(). Subscribe with
     @code(ComputeNewPlayerCompatibilityResult_t_k_iCallback). (isteamgameserver.h, callback
     alignment.) }
-  ComputeNewPlayerCompatibilityResult_t = record
+  ComputeNewPlayerCompatibilityResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(int m_cPlayersThatDontLikeCandidate). }
@@ -3485,11 +3968,20 @@ type
 
   { Callback 304: called when a friends' status changes. Subscribe with
     @code(PersonaStateChange_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  PersonaStateChange_t = record
+  PersonaStateChange_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamID). }
     m_ulSteamID: UInt64;
     { C field @code(int m_nChangeFlags). }
     m_nChangeFlags: Integer;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(PersonaStateChange_t). }
   PPersonaStateChange_t = ^PersonaStateChange_t;
@@ -3497,11 +3989,26 @@ type
   { Callback 331: posted when game overlay activates or deactivates the game can use this to be
     pause or resume single player games. Subscribe with @code(GameOverlayActivated_t_k_iCallback).
     (isteamfriends.h, callback alignment.) }
-  GameOverlayActivated_t = record
+  GameOverlayActivated_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_bActive). }
     m_bActive: UInt8;
     { C field @code(bool m_bUserInitiated). }
     m_bUserInitiated: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..1] of Byte;
+{$endif}
+{$endif}
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
     { C field @code(uint32 m_dwOverlayPID). }
@@ -3514,7 +4021,7 @@ type
     list game client should attempt to connect to specified server when this is received.
     Subscribe with @code(GameServerChangeRequested_t_k_iCallback). (isteamfriends.h, callback
     alignment.) }
-  GameServerChangeRequested_t = record
+  GameServerChangeRequested_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [64] m_rgchServer). }
     m_rgchServer: array[0..63] of AnsiChar;
     { C field @code(char [64] m_rgchPassword). }
@@ -3526,7 +4033,7 @@ type
   { Callback 333: called when the user tries to join a lobby from their friends list game client
     should attempt to connect to specified lobby when this is received. Subscribe with
     @code(GameLobbyJoinRequested_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  GameLobbyJoinRequested_t = record
+  GameLobbyJoinRequested_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDLobby). }
     m_steamIDLobby: TSteamID;
     { C field @code(CSteamID m_steamIDFriend). }
@@ -3538,7 +4045,7 @@ type
   { Callback 334: called when an avatar is loaded in from a previous GetLargeFriendAvatar() call
     if the image wasn't already available. Subscribe with @code(AvatarImageLoaded_t_k_iCallback).
     (isteamfriends.h, callback alignment.) }
-  AvatarImageLoaded_t = record
+  AvatarImageLoaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamID). }
     m_steamID: TSteamID;
     { C field @code(int m_iImage). }
@@ -3553,13 +4060,28 @@ type
 
   { Callback 335: marks the return of a request officer list call. Subscribe with
     @code(ClanOfficerListResponse_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  ClanOfficerListResponse_t = record
+  ClanOfficerListResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDClan). }
     m_steamIDClan: TSteamID;
     { C field @code(int m_cOfficers). }
     m_cOfficers: Integer;
     { C field @code(uint8 m_bSuccess). }
     m_bSuccess: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(ClanOfficerListResponse_t). }
   PClanOfficerListResponse_t = ^ClanOfficerListResponse_t;
@@ -3567,7 +4089,7 @@ type
   { Callback 336: callback indicating updated data about friends rich presence information.
     Subscribe with @code(FriendRichPresenceUpdate_t_k_iCallback). (isteamfriends.h, callback
     alignment.) }
-  FriendRichPresenceUpdate_t = record
+  FriendRichPresenceUpdate_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDFriend). }
     m_steamIDFriend: TSteamID;
     { C field @code(AppId_t m_nAppID). }
@@ -3579,7 +4101,7 @@ type
   { Callback 337: called when the user tries to join a game from their friends list rich presence
     will have been set with the "connect" key which is set here. Subscribe with
     @code(GameRichPresenceJoinRequested_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  GameRichPresenceJoinRequested_t = record
+  GameRichPresenceJoinRequested_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDFriend). }
     m_steamIDFriend: TSteamID;
     { C field @code(char [256] m_rgchConnect). }
@@ -3590,7 +4112,7 @@ type
 
   { Callback 338: a chat message has been received for a clan chat the game has joined. Subscribe
     with @code(GameConnectedClanChatMsg_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  GameConnectedClanChatMsg_t = record
+  GameConnectedClanChatMsg_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDClanChat). }
     m_steamIDClanChat: TSteamID;
     { C field @code(CSteamID m_steamIDUser). }
@@ -3603,7 +4125,7 @@ type
 
   { Callback 339: a user has joined a clan chat. Subscribe with
     @code(GameConnectedChatJoin_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  GameConnectedChatJoin_t = record
+  GameConnectedChatJoin_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDClanChat). }
     m_steamIDClanChat: TSteamID;
     { C field @code(CSteamID m_steamIDUser). }
@@ -3614,7 +4136,7 @@ type
 
   { Callback 340: a user has left the chat we're in. Subscribe with
     @code(GameConnectedChatLeave_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  GameConnectedChatLeave_t = record
+  GameConnectedChatLeave_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDClanChat). }
     m_steamIDClanChat: TSteamID;
     { C field @code(CSteamID m_steamIDUser). }
@@ -3629,7 +4151,7 @@ type
 
   { Callback 341: a DownloadClanActivityCounts() call has finished. Subscribe with
     @code(DownloadClanActivityCountsResult_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  DownloadClanActivityCountsResult_t = record
+  DownloadClanActivityCountsResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(bool m_bSuccess). }
     m_bSuccess: Boolean;
   end;
@@ -3638,7 +4160,7 @@ type
 
   { Callback 342: a JoinClanChatRoom() call has finished. Subscribe with
     @code(JoinClanChatRoomCompletionResult_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  JoinClanChatRoomCompletionResult_t = record
+  JoinClanChatRoomCompletionResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDClanChat). }
     m_steamIDClanChat: TSteamID;
     { C field @code(EChatRoomEnterResponse m_eChatRoomEnterResponse). }
@@ -3649,7 +4171,7 @@ type
 
   { Callback 343: a chat message has been received from a user. Subscribe with
     @code(GameConnectedFriendChatMsg_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  GameConnectedFriendChatMsg_t = record
+  GameConnectedFriendChatMsg_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDUser). }
     m_steamIDUser: TSteamID;
     { C field @code(int m_iMessageID). }
@@ -3660,7 +4182,7 @@ type
 
   { Callback 344: Steam struct FriendsGetFollowerCount_t. Subscribe with
     @code(FriendsGetFollowerCount_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  FriendsGetFollowerCount_t = record
+  FriendsGetFollowerCount_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID m_steamID). }
@@ -3673,20 +4195,35 @@ type
 
   { Callback 345: Steam struct FriendsIsFollowing_t. Subscribe with
     @code(FriendsIsFollowing_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  FriendsIsFollowing_t = record
+  FriendsIsFollowing_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID m_steamID). }
     m_steamID: TSteamID;
     { C field @code(bool m_bIsFollowing). }
     m_bIsFollowing: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(FriendsIsFollowing_t). }
   PFriendsIsFollowing_t = ^FriendsIsFollowing_t;
 
   { Callback 346: Steam struct FriendsEnumerateFollowingList_t. Subscribe with
     @code(FriendsEnumerateFollowingList_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  FriendsEnumerateFollowingList_t = record
+  FriendsEnumerateFollowingList_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID [50] m_rgSteamID). }
@@ -3701,7 +4238,7 @@ type
 
   { Callback 348: Invoked when the status of unread messages changes. Subscribe with
     @code(UnreadChatMessagesChanged_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  UnreadChatMessagesChanged_t = record
+  UnreadChatMessagesChanged_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -3711,7 +4248,7 @@ type
   { Callback 349: Dispatched when an overlay browser instance is navigated to a protocol/scheme
     registered by RegisterProtocolInOverlayBrowser(). Subscribe with
     @code(OverlayBrowserProtocolNavigation_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  OverlayBrowserProtocolNavigation_t = record
+  OverlayBrowserProtocolNavigation_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [1024] rgchURI). }
     rgchURI: array[0..1023] of AnsiChar;
   end;
@@ -3720,7 +4257,7 @@ type
 
   { Callback 350: A user's equipped profile items have changed. Subscribe with
     @code(EquippedProfileItemsChanged_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  EquippedProfileItemsChanged_t = record
+  EquippedProfileItemsChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamID). }
     m_steamID: TSteamID;
   end;
@@ -3729,7 +4266,7 @@ type
 
   { Callback 351: Steam struct EquippedProfileItems_t. Subscribe with
     @code(EquippedProfileItems_t_k_iCallback). (isteamfriends.h, callback alignment.) }
-  EquippedProfileItems_t = record
+  EquippedProfileItems_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID m_steamID). }
@@ -3746,6 +4283,21 @@ type
     m_bHasMiniProfileBackground: Boolean;
     { C field @code(bool m_bFromCache). }
     m_bFromCache: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad8: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(EquippedProfileItems_t). }
   PEquippedProfileItems_t = ^EquippedProfileItems_t;
@@ -3753,7 +4305,7 @@ type
   { Callback 502: a server was added/removed from the favorites list, you should refresh now.
     Subscribe with @code(FavoritesListChanged_t_k_iCallback). (isteammatchmaking.h, callback
     alignment.) }
-  FavoritesListChanged_t = record
+  FavoritesListChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint32 m_nIP). }
     m_nIP: UInt32;
     { C field @code(uint32 m_nQueryPort). }
@@ -3766,6 +4318,21 @@ type
     m_nFlags: UInt32;
     { C field @code(bool m_bAdd). }
     m_bAdd: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(AccountID_t m_unAccountId). }
     m_unAccountId: AccountID_t;
   end;
@@ -3778,7 +4345,7 @@ type
     parameter "+connect_lobby <64-bit lobby id>", or with the callback GameLobbyJoinRequested_t if
     they're already in-game. Subscribe with @code(LobbyInvite_t_k_iCallback).
     (isteammatchmaking.h, callback alignment.) }
-  LobbyInvite_t = record
+  LobbyInvite_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDUser). }
     m_ulSteamIDUser: UInt64;
     { C field @code(uint64 m_ulSteamIDLobby). }
@@ -3793,15 +4360,39 @@ type
     be set to k_EChatRoomEnterResponseSuccess on success, or a higher value on failure (see enum
     EChatRoomEnterResponse). Subscribe with @code(LobbyEnter_t_k_iCallback). (isteammatchmaking.h,
     callback alignment.) }
-  LobbyEnter_t = record
+  LobbyEnter_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
     { C field @code(uint32 m_rgfChatPermissions). }
     m_rgfChatPermissions: UInt32;
     { C field @code(bool m_bLocked). }
     m_bLocked: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_EChatRoomEnterResponse). }
     m_EChatRoomEnterResponse: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LobbyEnter_t). }
   PLobbyEnter_t = ^LobbyEnter_t;
@@ -3810,13 +4401,28 @@ type
     member, use GetLobbyMemberData() to access per-user details if m_ulSteamIDMember ==
     m_ulSteamIDLobby, use GetLobbyData() to access lobby metadata. Subscribe with
     @code(LobbyDataUpdate_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  LobbyDataUpdate_t = record
+  LobbyDataUpdate_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
     { C field @code(uint64 m_ulSteamIDMember). }
     m_ulSteamIDMember: UInt64;
     { C field @code(uint8 m_bSuccess). }
     m_bSuccess: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LobbyDataUpdate_t). }
   PLobbyDataUpdate_t = ^LobbyDataUpdate_t;
@@ -3824,7 +4430,7 @@ type
   { Callback 506: The lobby chat room state has changed this is usually sent when a user has
     joined or left the lobby. Subscribe with @code(LobbyChatUpdate_t_k_iCallback).
     (isteammatchmaking.h, callback alignment.) }
-  LobbyChatUpdate_t = record
+  LobbyChatUpdate_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
     { C field @code(uint64 m_ulSteamIDUserChanged). }
@@ -3833,6 +4439,15 @@ type
     m_ulSteamIDMakingChange: UInt64;
     { C field @code(uint32 m_rgfChatMemberStateChange). }
     m_rgfChatMemberStateChange: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LobbyChatUpdate_t). }
   PLobbyChatUpdate_t = ^LobbyChatUpdate_t;
@@ -3840,13 +4455,28 @@ type
   { Callback 507: A chat message for this lobby has been sent use GetLobbyChatEntry( m_iChatID )
     to retrieve the contents of this message. Subscribe with @code(LobbyChatMsg_t_k_iCallback).
     (isteammatchmaking.h, callback alignment.) }
-  LobbyChatMsg_t = record
+  LobbyChatMsg_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
     { C field @code(uint64 m_ulSteamIDUser). }
     m_ulSteamIDUser: UInt64;
     { C field @code(uint8 m_eChatEntryType). }
     m_eChatEntryType: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_iChatID). }
     m_iChatID: UInt32;
   end;
@@ -3857,7 +4487,7 @@ type
     a SetLobbyGameServer() it's up to the individual clients to take action on this; the usual
     game behavior is to leave the lobby and connect to the specified game server. Subscribe with
     @code(LobbyGameCreated_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  LobbyGameCreated_t = record
+  LobbyGameCreated_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
     { C field @code(uint64 m_ulSteamIDGameServer). }
@@ -3866,6 +4496,21 @@ type
     m_unIP: UInt32;
     { C field @code(uint16 m_usPort). }
     m_usPort: UInt16;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LobbyGameCreated_t). }
   PLobbyGameCreated_t = ^LobbyGameCreated_t;
@@ -3873,7 +4518,7 @@ type
   { Callback 510: Number of matching lobbies found iterate the returned lobbies with
     GetLobbyByIndex(), from values 0 to m_nLobbiesMatching-1. Subscribe with
     @code(LobbyMatchList_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  LobbyMatchList_t = record
+  LobbyMatchList_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint32 m_nLobbiesMatching). }
     m_nLobbiesMatching: UInt32;
   end;
@@ -3883,13 +4528,28 @@ type
   { Callback 512: posted if a user is forcefully removed from a lobby can occur if a user loses
     connection to Steam. Subscribe with @code(LobbyKicked_t_k_iCallback). (isteammatchmaking.h,
     callback alignment.) }
-  LobbyKicked_t = record
+  LobbyKicked_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
     { C field @code(uint64 m_ulSteamIDAdmin). }
     m_ulSteamIDAdmin: UInt64;
     { C field @code(uint8 m_bKickedDueToDisconnect). }
     m_bKickedDueToDisconnect: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LobbyKicked_t). }
   PLobbyKicked_t = ^LobbyKicked_t;
@@ -3898,9 +4558,18 @@ type
     this point, the lobby has been joined and is ready for use a LobbyEnter_t callback will also
     be received (since the local user is joining their own lobby). Subscribe with
     @code(LobbyCreated_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  LobbyCreated_t = record
+  LobbyCreated_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulSteamIDLobby). }
     m_ulSteamIDLobby: UInt64;
   end;
@@ -3911,7 +4580,7 @@ type
     this point, the lobby has been joined and is ready for use a LobbyEnter_t callback will also
     be received (since the local user is joining their own lobby). Subscribe with
     @code(FavoritesListAccountsUpdated_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  FavoritesListAccountsUpdated_t = record
+  FavoritesListAccountsUpdated_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -3920,7 +4589,7 @@ type
 
   { Callback 701: The country of the user changed. Subscribe with @code(IPCountry_t_k_iCallback).
     (isteamutils.h, callback alignment.) }
-  IPCountry_t = record
+  IPCountry_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -3930,7 +4599,7 @@ type
   { Callback 702: Fired when running on a handheld PC or laptop with less than 10 minutes of
     battery is left, fires then every minute. Subscribe with @code(LowBatteryPower_t_k_iCallback).
     (isteamutils.h, callback alignment.) }
-  LowBatteryPower_t = record
+  LowBatteryPower_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_nMinutesBatteryLeft). }
     m_nMinutesBatteryLeft: UInt8;
   end;
@@ -3939,7 +4608,7 @@ type
 
   { Callback 705: callback for CheckFileSignature. Subscribe with
     @code(CheckFileSignature_t_k_iCallback). (isteamutils.h, callback alignment.) }
-  CheckFileSignature_t = record
+  CheckFileSignature_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ECheckFileSignature m_eCheckFileSignature). }
     m_eCheckFileSignature: ECheckFileSignature;
   end;
@@ -3948,9 +4617,24 @@ type
 
   { Callback 714: Full Screen gamepad text input has been closed. Subscribe with
     @code(GamepadTextInputDismissed_t_k_iCallback). (isteamutils.h, callback alignment.) }
-  GamepadTextInputDismissed_t = record
+  GamepadTextInputDismissed_t = {$ifdef FPC}packed{$endif} record
     { C field @code(bool m_bSubmitted). }
     m_bSubmitted: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_unSubmittedText). }
     m_unSubmittedText: UInt32;
     { C field @code(AppId_t m_unAppID). }
@@ -3961,7 +4645,7 @@ type
 
   { Callback 736: Steam struct AppResumingFromSuspend_t. Subscribe with
     @code(AppResumingFromSuspend_t_k_iCallback). (isteamutils.h, callback alignment.) }
-  AppResumingFromSuspend_t = record
+  AppResumingFromSuspend_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -3970,7 +4654,7 @@ type
 
   { Callback 738: The floating on-screen keyboard has been closed. Subscribe with
     @code(FloatingGamepadTextInputDismissed_t_k_iCallback). (isteamutils.h, callback alignment.) }
-  FloatingGamepadTextInputDismissed_t = record
+  FloatingGamepadTextInputDismissed_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -3979,7 +4663,7 @@ type
 
   { Callback 739: The text filtering dictionary has changed. Subscribe with
     @code(FilterTextDictionaryChanged_t_k_iCallback). (isteamutils.h, callback alignment.) }
-  FilterTextDictionaryChanged_t = record
+  FilterTextDictionaryChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(int m_eLanguage). }
     m_eLanguage: Integer;
   end;
@@ -3988,7 +4672,7 @@ type
 
   { Callback 1005: posted after the user gains ownership of DLC & that DLC is installed. Subscribe
     with @code(DlcInstalled_t_k_iCallback). (isteamapps.h, callback alignment.) }
-  DlcInstalled_t = record
+  DlcInstalled_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
   end;
@@ -4001,7 +4685,7 @@ type
     game is already running. The new params can be queried with GetLaunchQueryParam and
     GetLaunchCommandLine. Subscribe with @code(NewUrlLaunchParameters_t_k_iCallback).
     (isteamapps.h, callback alignment.) }
-  NewUrlLaunchParameters_t = record
+  NewUrlLaunchParameters_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -4011,7 +4695,7 @@ type
   { Callback 1021: response to RequestAppProofOfPurchaseKey/RequestAllProofOfPurchaseKeys for
     supporting third-party CD keys, or other proof-of-purchase systems. Subscribe with
     @code(AppProofOfPurchaseKeyResponse_t_k_iCallback). (isteamapps.h, callback alignment.) }
-  AppProofOfPurchaseKeyResponse_t = record
+  AppProofOfPurchaseKeyResponse_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(uint32 m_nAppID). }
@@ -4026,9 +4710,18 @@ type
 
   { Callback 1023: response to GetFileDetails. Subscribe with
     @code(FileDetailsResult_t_k_iCallback). (isteamapps.h, callback alignment.) }
-  FileDetailsResult_t = record
+  FileDetailsResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulFileSize). }
     m_ulFileSize: UInt64;
     { C field @code(uint8 [20] m_FileSHA). }
@@ -4041,11 +4734,26 @@ type
 
   { Callback 1030: called for games in Timed Trial mode. Subscribe with
     @code(TimedTrialStatus_t_k_iCallback). (isteamapps.h, callback alignment.) }
-  TimedTrialStatus_t = record
+  TimedTrialStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_unAppID). }
     m_unAppID: AppId_t;
     { C field @code(bool m_bIsOffline). }
     m_bIsOffline: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_unSecondsAllowed). }
     m_unSecondsAllowed: UInt32;
     { C field @code(uint32 m_unSecondsPlayed). }
@@ -4057,24 +4765,42 @@ type
   { Callback 1101: called when the latests stats and achievements have been received from the
     server. Subscribe with @code(UserStatsReceived_t_k_iCallback). (isteamuserstats.h, callback
     alignment.) }
-  UserStatsReceived_t = record
+  UserStatsReceived_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_nGameID). }
     m_nGameID: UInt64;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID m_steamIDUser). }
     m_steamIDUser: TSteamID;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(UserStatsReceived_t). }
   PUserStatsReceived_t = ^UserStatsReceived_t;
 
   { Callback 1102: result of a request to store the user stats for a game. Subscribe with
     @code(UserStatsStored_t_k_iCallback). (isteamuserstats.h, callback alignment.) }
-  UserStatsStored_t = record
+  UserStatsStored_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_nGameID). }
     m_nGameID: UInt64;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(UserStatsStored_t). }
   PUserStatsStored_t = ^UserStatsStored_t;
@@ -4083,17 +4809,41 @@ type
     progress" call. If both m_nCurProgress and m_nMaxProgress are zero, that means the achievement
     has been fully unlocked. Subscribe with @code(UserAchievementStored_t_k_iCallback).
     (isteamuserstats.h, callback alignment.) }
-  UserAchievementStored_t = record
+  UserAchievementStored_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_nGameID). }
     m_nGameID: UInt64;
     { C field @code(bool m_bGroupAchievement). }
     m_bGroupAchievement: Boolean;
     { C field @code(char [128] m_rgchAchievementName). }
     m_rgchAchievementName: array[0..127] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 m_nCurProgress). }
     m_nCurProgress: UInt32;
     { C field @code(uint32 m_nMaxProgress). }
     m_nMaxProgress: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(UserAchievementStored_t). }
   PUserAchievementStored_t = ^UserAchievementStored_t;
@@ -4102,11 +4852,26 @@ type
     FindOrCreateLeaderboard() or FindLeaderboard() use CCallResult<> to map this async result to a
     member function. Subscribe with @code(LeaderboardFindResult_t_k_iCallback).
     (isteamuserstats.h, callback alignment.) }
-  LeaderboardFindResult_t = record
+  LeaderboardFindResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamLeaderboard_t m_hSteamLeaderboard). }
     m_hSteamLeaderboard: SteamLeaderboard_t;
     { C field @code(uint8 m_bLeaderboardFound). }
     m_bLeaderboardFound: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LeaderboardFindResult_t). }
   PLeaderboardFindResult_t = ^LeaderboardFindResult_t;
@@ -4115,13 +4880,22 @@ type
     ready to be retrieved, returned as a result of DownloadLeaderboardEntries() use CCallResult<>
     to map this async result to a member function. Subscribe with
     @code(LeaderboardScoresDownloaded_t_k_iCallback). (isteamuserstats.h, callback alignment.) }
-  LeaderboardScoresDownloaded_t = record
+  LeaderboardScoresDownloaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamLeaderboard_t m_hSteamLeaderboard). }
     m_hSteamLeaderboard: SteamLeaderboard_t;
     { C field @code(SteamLeaderboardEntries_t m_hSteamLeaderboardEntries). }
     m_hSteamLeaderboardEntries: SteamLeaderboardEntries_t;
     { C field @code(int m_cEntryCount). }
     m_cEntryCount: Integer;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(LeaderboardScoresDownloaded_t). }
   PLeaderboardScoresDownloaded_t = ^LeaderboardScoresDownloaded_t;
@@ -4130,15 +4904,45 @@ type
     UploadLeaderboardScore() use CCallResult<> to map this async result to a member function.
     Subscribe with @code(LeaderboardScoreUploaded_t_k_iCallback). (isteamuserstats.h, callback
     alignment.) }
-  LeaderboardScoreUploaded_t = record
+  LeaderboardScoreUploaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_bSuccess). }
     m_bSuccess: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(SteamLeaderboard_t m_hSteamLeaderboard). }
     m_hSteamLeaderboard: SteamLeaderboard_t;
     { C field @code(int32 m_nScore). }
     m_nScore: Int32;
     { C field @code(uint8 m_bScoreChanged). }
     m_bScoreChanged: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(int m_nGlobalRankNew). }
     m_nGlobalRankNew: Integer;
     { C field @code(int m_nGlobalRankPrevious). }
@@ -4149,9 +4953,24 @@ type
 
   { Callback 1107: Steam struct NumberOfCurrentPlayers_t. Subscribe with
     @code(NumberOfCurrentPlayers_t_k_iCallback). (isteamuserstats.h, callback alignment.) }
-  NumberOfCurrentPlayers_t = record
+  NumberOfCurrentPlayers_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint8 m_bSuccess). }
     m_bSuccess: UInt8;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(int32 m_cPlayers). }
     m_cPlayers: Int32;
   end;
@@ -4161,7 +4980,7 @@ type
   { Callback 1108: Callback indicating that a user's stats have been unloaded. Call
     RequestUserStats again to access stats for this user. Subscribe with
     @code(GSStatsUnloaded_t_k_iCallback). (isteamgameserverstats.h, callback alignment.) }
-  GSStatsUnloaded_t = record
+  GSStatsUnloaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDUser). }
     m_steamIDUser: TSteamID;
   end;
@@ -4171,7 +4990,7 @@ type
   { Callback 1108: Callback indicating that a user's stats have been unloaded. Call
     RequestUserStats again to access stats for this user. Subscribe with
     @code(UserStatsUnloaded_t_k_iCallback). (isteamuserstats.h, callback alignment.) }
-  UserStatsUnloaded_t = record
+  UserStatsUnloaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDUser). }
     m_steamIDUser: TSteamID;
   end;
@@ -4180,13 +4999,28 @@ type
 
   { Callback 1109: Callback indicating that an achievement icon has been fetched. Subscribe with
     @code(UserAchievementIconFetched_t_k_iCallback). (isteamuserstats.h, callback alignment.) }
-  UserAchievementIconFetched_t = record
+  UserAchievementIconFetched_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CGameID m_nGameID). }
     m_nGameID: CGameID;
     { C field @code(char [128] m_rgchAchievementName). }
     m_rgchAchievementName: array[0..127] of AnsiChar;
     { C field @code(bool m_bAchieved). }
     m_bAchieved: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(int m_nIconHandle). }
     m_nIconHandle: Integer;
   end;
@@ -4196,11 +5030,20 @@ type
   { Callback 1110: Callback indicating that global achievement percentages are fetched. Subscribe
     with @code(GlobalAchievementPercentagesReady_t_k_iCallback). (isteamuserstats.h, callback
     alignment.) }
-  GlobalAchievementPercentagesReady_t = record
+  GlobalAchievementPercentagesReady_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_nGameID). }
     m_nGameID: UInt64;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(GlobalAchievementPercentagesReady_t). }
   PGlobalAchievementPercentagesReady_t = ^GlobalAchievementPercentagesReady_t;
@@ -4208,9 +5051,18 @@ type
   { Callback 1111: call result indicating UGC has been uploaded, returned as a result of
     SetLeaderboardUGC(). Subscribe with @code(LeaderboardUGCSet_t_k_iCallback).
     (isteamuserstats.h, callback alignment.) }
-  LeaderboardUGCSet_t = record
+  LeaderboardUGCSet_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(SteamLeaderboard_t m_hSteamLeaderboard). }
     m_hSteamLeaderboard: SteamLeaderboard_t;
   end;
@@ -4220,11 +5072,20 @@ type
   { Callback 1112: callback indicating global stats have been received. Returned as a result of
     RequestGlobalStats(). Subscribe with @code(GlobalStatsReceived_t_k_iCallback).
     (isteamuserstats.h, callback alignment.) }
-  GlobalStatsReceived_t = record
+  GlobalStatsReceived_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_nGameID). }
     m_nGameID: UInt64;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(GlobalStatsReceived_t). }
   PGlobalStatsReceived_t = ^GlobalStatsReceived_t;
@@ -4232,7 +5093,7 @@ type
   { Callback 1201: callback notification - status of a socket has changed used as part of the
     CreateListenSocket() / CreateP2PConnectionSocket(). Subscribe with
     @code(SocketStatusCallback_t_k_iCallback). (isteamnetworking.h, callback alignment.) }
-  SocketStatusCallback_t = record
+  SocketStatusCallback_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SNetSocket_t m_hSocket). }
     m_hSocket: SNetSocket_t;
     { C field @code(SNetListenSocket_t m_hListenSocket). }
@@ -4249,7 +5110,7 @@ type
     SendP2PPacket() API in response, a call to AcceptP2PPacketsFromUser() needs to be made, if you
     want to talk with them. Subscribe with @code(P2PSessionRequest_t_k_iCallback).
     (isteamnetworking.h, callback alignment.) }
-  P2PSessionRequest_t = record
+  P2PSessionRequest_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDRemote). }
     m_steamIDRemote: TSteamID;
   end;
@@ -4261,7 +5122,7 @@ type
     attempts to send will retry making the connection (but will be dropped if we fail again).
     Subscribe with @code(P2PSessionConnectFail_t_k_iCallback). (isteamnetworking.h, callback
     alignment.) }
-  P2PSessionConnectFail_t = record
+  P2PSessionConnectFail_t = {$ifdef FPC}packed{$endif} record
     { C field @code(CSteamID m_steamIDRemote). }
     m_steamIDRemote: TSteamID;
     { C field @code(uint8 m_eP2PSessionError). }
@@ -4270,13 +5131,73 @@ type
   { Pointer to @link(P2PSessionConnectFail_t). }
   PP2PSessionConnectFail_t = ^P2PSessionConnectFail_t;
 
+  { Callback 1221: This callback is posted whenever a connection is created, destroyed, or changes
+    state. The m_info field will contain a complete description of the connection at the time the
+    change occurred and the callback was posted. In particular, m_eState will have the new
+    connection state. You will usually need to listen for this callback to know when: - A new
+    connection arrives on a listen socket. m_info.m_hListenSocket will be set, m_eOldState =
+    k_ESteamNetworkingConnectionState_None, and m_info.m_eState =
+    k_ESteamNetworkingConnectionState_Connecting. See ISteamNetworkigSockets::AcceptConnection. -
+    A connection you initiated has been accepted by the remote host. m_eOldState =
+    k_ESteamNetworkingConnectionState_Connecting, and m_info.m_eState =
+    k_ESteamNetworkingConnectionState_Connected. Some connections might transition to
+    k_ESteamNetworkingConnectionState_FindingRoute first. - A connection has been actively
+    rejected or closed by the remote host. m_eOldState =
+    k_ESteamNetworkingConnectionState_Connecting or k_ESteamNetworkingConnectionState_Connected,
+    and m_info.m_eState = k_ESteamNetworkingConnectionState_ClosedByPeer. m_info.m_eEndReason and
+    m_info.m_szEndDebug will have for more details. NOTE: upon receiving this callback, you must
+    still destroy the connection using ISteamNetworkingSockets::CloseConnection to free up local
+    resources. (The details passed to the function are not used in this case, since the connection
+    is already closed.) - A problem was detected with the connection, and it has been closed by
+    the local host. The most common failure is timeout, but other configuration or authentication
+    failures can cause this. m_eOldState = k_ESteamNetworkingConnectionState_Connecting or
+    k_ESteamNetworkingConnectionState_Connected, and m_info.m_eState =
+    k_ESteamNetworkingConnectionState_ProblemDetectedLocally. m_info.m_eEndReason and
+    m_info.m_szEndDebug will have for more details. NOTE: upon receiving this callback, you must
+    still destroy the connection using ISteamNetworkingSockets::CloseConnection to free up local
+    resources. (The details passed to the function are not used in this case, since the connection
+    is already closed.) Remember that callbacks are posted to a queue, and networking connections
+    can change at any time. It is possible that the connection has already changed state by the
+    time you process this callback. Also note that callbacks will be posted when connections are
+    created and destroyed by your own API calls. Subscribe with
+    @code(SteamNetConnectionStatusChangedCallback_t_k_iCallback). (isteamnetworkingsockets.h,
+    callback alignment.) }
+  SteamNetConnectionStatusChangedCallback_t = {$ifdef FPC}packed{$endif} record
+    { C field @code(HSteamNetConnection m_hConn). }
+    m_hConn: HSteamNetConnection;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
+    { C field @code(SteamNetConnectionInfo_t m_info). }
+    m_info: SteamNetConnectionInfo_t;
+    { C field @code(ESteamNetworkingConnectionState m_eOldState). }
+    m_eOldState: ESteamNetworkingConnectionState;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
+  end;
+  { Pointer to @link(SteamNetConnectionStatusChangedCallback_t). }
+  PSteamNetConnectionStatusChangedCallback_t = ^SteamNetConnectionStatusChangedCallback_t;
+
   { Callback 1222: A struct used to describe our readiness to participate in authenticated,
     encrypted communication. In order to do this we need: - The list of trusted CA certificates
     that might be relevant for this app. - A valid certificate issued by a CA. This callback is
     posted whenever the state of our readiness changes. Subscribe with
     @code(SteamNetAuthenticationStatus_t_k_iCallback). (isteamnetworkingsockets.h, callback
     alignment.) }
-  SteamNetAuthenticationStatus_t = record
+  SteamNetAuthenticationStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ESteamNetworkingAvailability m_eAvail). }
     m_eAvail: ESteamNetworkingAvailability;
     { C field @code(char [256] m_debugMsg). }
@@ -4285,12 +5206,57 @@ type
   { Pointer to @link(SteamNetAuthenticationStatus_t). }
   PSteamNetAuthenticationStatus_t = ^SteamNetAuthenticationStatus_t;
 
+  { Callback 1223: A struct used to describe a "fake IP" we have been assigned to use as an
+    identifier. This callback is posted when ISteamNetworkingSoockets::BeginAsyncRequestFakeIP
+    completes. See also ISteamNetworkingSockets::GetFakeIP. Subscribe with
+    @code(SteamNetworkingFakeIPResult_t_k_iCallback). (steamnetworkingfakeip.h, callback
+    alignment.) }
+  SteamNetworkingFakeIPResult_t = {$ifdef FPC}packed{$endif} record
+    { C field @code(EResult m_eResult). }
+    m_eResult: EResult;
+    { C field @code(SteamNetworkingIdentity m_identity). }
+    m_identity: SteamNetworkingIdentity;
+    { C field @code(uint32 m_unIP). }
+    m_unIP: UInt32;
+    { C field @code(uint16 [8] m_unPorts). }
+    m_unPorts: array[0..7] of UInt16;
+  end;
+  { Pointer to @link(SteamNetworkingFakeIPResult_t). }
+  PSteamNetworkingFakeIPResult_t = ^SteamNetworkingFakeIPResult_t;
+
+  { Callback 1251: Posted when a remote host is sending us a message, and we do not already have a
+    session with them. Subscribe with @code(SteamNetworkingMessagesSessionRequest_t_k_iCallback).
+    (isteamnetworkingmessages.h, pack(1).) }
+  SteamNetworkingMessagesSessionRequest_t = packed record
+    { C field @code(SteamNetworkingIdentity m_identityRemote). }
+    m_identityRemote: SteamNetworkingIdentity;
+  end;
+  { Pointer to @link(SteamNetworkingMessagesSessionRequest_t). }
+  PSteamNetworkingMessagesSessionRequest_t = ^SteamNetworkingMessagesSessionRequest_t;
+
+  { Callback 1252: Posted when we fail to establish a connection, or we detect that communications
+    have been disrupted it an unusual way. There is no notification when a peer proactively closes
+    the session. ("Closed by peer" is not a concept of UDP-style communications, and
+    SteamNetworkingMessages is primarily intended to make porting UDP code easy.) Remember:
+    callbacks are asynchronous. See notes on SendMessageToUser, and
+    k_nSteamNetworkingSend_AutoRestartBrokenSession in particular. Also, if a session times out
+    due to inactivity, no callbacks will be posted. The only way to detect that this is happening
+    is that querying the session state may return none, connecting, and findingroute again.
+    Subscribe with @code(SteamNetworkingMessagesSessionFailed_t_k_iCallback).
+    (isteamnetworkingmessages.h, pack(1).) }
+  SteamNetworkingMessagesSessionFailed_t = packed record
+    { C field @code(SteamNetConnectionInfo_t m_info). }
+    m_info: SteamNetConnectionInfo_t;
+  end;
+  { Pointer to @link(SteamNetworkingMessagesSessionFailed_t). }
+  PSteamNetworkingMessagesSessionFailed_t = ^SteamNetworkingMessagesSessionFailed_t;
+
 {$I Steamworks.AlignNatural.inc}
   { Callback 1281: A struct used to describe our readiness to use the relay network. To do this we
     first need to fetch the network configuration, which describes what POPs are available.
     Subscribe with @code(SteamRelayNetworkStatus_t_k_iCallback). (isteamnetworkingutils.h, natural
     alignment.) }
-  SteamRelayNetworkStatus_t = record
+  SteamRelayNetworkStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ESteamNetworkingAvailability m_eAvail). }
     m_eAvail: ESteamNetworkingAvailability;
     { C field @code(int m_bPingMeasurementInProgress). }
@@ -4309,13 +5275,31 @@ type
   { Callback 1307: The result of a call to FileShare(). Subscribe with
     @code(RemoteStorageFileShareResult_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageFileShareResult_t = record
+  RemoteStorageFileShareResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(UGCHandle_t m_hFile). }
     m_hFile: UGCHandle_t;
     { C field @code(char [260] m_rgchFilename). }
     m_rgchFilename: array[0..259] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStorageFileShareResult_t). }
   PRemoteStorageFileShareResult_t = ^RemoteStorageFileShareResult_t;
@@ -4323,13 +5307,37 @@ type
   { Callback 1309: The result of a call to PublishFile(). Subscribe with
     @code(RemoteStoragePublishFileResult_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStoragePublishFileResult_t = record
+  RemoteStoragePublishFileResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(bool m_bUserNeedsToAcceptWorkshopLegalAgreement). }
     m_bUserNeedsToAcceptWorkshopLegalAgreement: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStoragePublishFileResult_t). }
   PRemoteStoragePublishFileResult_t = ^RemoteStoragePublishFileResult_t;
@@ -4337,9 +5345,18 @@ type
   { Callback 1311: The result of a call to DeletePublishedFile(). Subscribe with
     @code(RemoteStorageDeletePublishedFileResult_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageDeletePublishedFileResult_t = record
+  RemoteStorageDeletePublishedFileResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
   end;
@@ -4349,13 +5366,22 @@ type
   { Callback 1312: The result of a call to EnumerateUserPublishedFiles(). Subscribe with
     @code(RemoteStorageEnumerateUserPublishedFilesResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageEnumerateUserPublishedFilesResult_t = record
+  RemoteStorageEnumerateUserPublishedFilesResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(int32 m_nResultsReturned). }
     m_nResultsReturned: Int32;
     { C field @code(int32 m_nTotalResultCount). }
     m_nTotalResultCount: Int32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t [50] m_rgPublishedFileId). }
     m_rgPublishedFileId: array[0..49] of PublishedFileId_t;
   end;
@@ -4365,9 +5391,18 @@ type
   { Callback 1313: The result of a call to SubscribePublishedFile(). Subscribe with
     @code(RemoteStorageSubscribePublishedFileResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageSubscribePublishedFileResult_t = record
+  RemoteStorageSubscribePublishedFileResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
   end;
@@ -4377,13 +5412,22 @@ type
   { Callback 1314: The result of a call to EnumerateSubscribePublishedFiles(). Subscribe with
     @code(RemoteStorageEnumerateUserSubscribedFilesResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageEnumerateUserSubscribedFilesResult_t = record
+  RemoteStorageEnumerateUserSubscribedFilesResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(int32 m_nResultsReturned). }
     m_nResultsReturned: Int32;
     { C field @code(int32 m_nTotalResultCount). }
     m_nTotalResultCount: Int32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t [50] m_rgPublishedFileId). }
     m_rgPublishedFileId: array[0..49] of PublishedFileId_t;
     { C field @code(uint32 [50] m_rgRTimeSubscribed). }
@@ -4395,9 +5439,18 @@ type
   { Callback 1315: The result of a call to UnsubscribePublishedFile(). Subscribe with
     @code(RemoteStorageUnsubscribePublishedFileResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageUnsubscribePublishedFileResult_t = record
+  RemoteStorageUnsubscribePublishedFileResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
   end;
@@ -4407,13 +5460,37 @@ type
   { Callback 1316: The result of a call to CommitPublishedFileUpdate(). Subscribe with
     @code(RemoteStorageUpdatePublishedFileResult_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageUpdatePublishedFileResult_t = record
+  RemoteStorageUpdatePublishedFileResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(bool m_bUserNeedsToAcceptWorkshopLegalAgreement). }
     m_bUserNeedsToAcceptWorkshopLegalAgreement: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStorageUpdatePublishedFileResult_t). }
   PRemoteStorageUpdatePublishedFileResult_t = ^RemoteStorageUpdatePublishedFileResult_t;
@@ -4421,9 +5498,18 @@ type
   { Callback 1317: The result of a call to UGCDownload(). Subscribe with
     @code(RemoteStorageDownloadUGCResult_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageDownloadUGCResult_t = record
+  RemoteStorageDownloadUGCResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(UGCHandle_t m_hFile). }
     m_hFile: UGCHandle_t;
     { C field @code(AppId_t m_nAppID). }
@@ -4432,6 +5518,15 @@ type
     m_nSizeInBytes: Int32;
     { C field @code(char [260] m_pchFileName). }
     m_pchFileName: array[0..259] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulSteamIDOwner). }
     m_ulSteamIDOwner: UInt64;
   end;
@@ -4441,9 +5536,18 @@ type
   { Callback 1318: The result of a call to GetPublishedFileDetails(). Subscribe with
     @code(RemoteStorageGetPublishedFileDetailsResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageGetPublishedFileDetailsResult_t = record
+  RemoteStorageGetPublishedFileDetailsResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nCreatorAppID). }
@@ -4454,6 +5558,21 @@ type
     m_rgchTitle: array[0..128] of AnsiChar;
     { C field @code(char [8000] m_rgchDescription). }
     m_rgchDescription: array[0..7999] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(UGCHandle_t m_hFile). }
     m_hFile: UGCHandle_t;
     { C field @code(UGCHandle_t m_hPreviewFile). }
@@ -4474,6 +5593,21 @@ type
     m_bTagsTruncated: Boolean;
     { C field @code(char [260] m_pchFileName). }
     m_pchFileName: array[0..259] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad16: array[0..0] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad16: array[0..0] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad16: array[0..0] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad16: array[0..0] of Byte;
+{$endif}
+{$endif}
     { C field @code(int32 m_nFileSize). }
     m_nFileSize: Int32;
     { C field @code(int32 m_nPreviewFileSize). }
@@ -4484,6 +5618,21 @@ type
     m_eFileType: EWorkshopFileType;
     { C field @code(bool m_bAcceptedForUse). }
     m_bAcceptedForUse: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad21: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad21: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad21: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad21: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStorageGetPublishedFileDetailsResult_t). }
   PRemoteStorageGetPublishedFileDetailsResult_t = ^RemoteStorageGetPublishedFileDetailsResult_t;
@@ -4491,13 +5640,22 @@ type
   { Callback 1319: Steam struct RemoteStorageEnumerateWorkshopFilesResult_t. Subscribe with
     @code(RemoteStorageEnumerateWorkshopFilesResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageEnumerateWorkshopFilesResult_t = record
+  RemoteStorageEnumerateWorkshopFilesResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(int32 m_nResultsReturned). }
     m_nResultsReturned: Int32;
     { C field @code(int32 m_nTotalResultCount). }
     m_nTotalResultCount: Int32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t [50] m_rgPublishedFileId). }
     m_rgPublishedFileId: array[0..49] of PublishedFileId_t;
     { C field @code(float [50] m_rgScore). }
@@ -4513,9 +5671,18 @@ type
   { Callback 1320: The result of GetPublishedItemVoteDetails. Subscribe with
     @code(RemoteStorageGetPublishedItemVoteDetailsResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageGetPublishedItemVoteDetailsResult_t = record
+  RemoteStorageGetPublishedItemVoteDetailsResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_unPublishedFileId). }
     m_unPublishedFileId: PublishedFileId_t;
     { C field @code(int32 m_nVotesFor). }
@@ -4533,11 +5700,20 @@ type
   { Callback 1321: User subscribed to a file for the app (from within the app or on the web).
     Subscribe with @code(RemoteStoragePublishedFileSubscribed_t_k_iCallback).
     (isteamremotestorage.h, callback alignment.) }
-  RemoteStoragePublishedFileSubscribed_t = record
+  RemoteStoragePublishedFileSubscribed_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStoragePublishedFileSubscribed_t). }
   PRemoteStoragePublishedFileSubscribed_t = ^RemoteStoragePublishedFileSubscribed_t;
@@ -4545,11 +5721,20 @@ type
   { Callback 1322: User unsubscribed from a file for the app (from within the app or on the web).
     Subscribe with @code(RemoteStoragePublishedFileUnsubscribed_t_k_iCallback).
     (isteamremotestorage.h, callback alignment.) }
-  RemoteStoragePublishedFileUnsubscribed_t = record
+  RemoteStoragePublishedFileUnsubscribed_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStoragePublishedFileUnsubscribed_t). }
   PRemoteStoragePublishedFileUnsubscribed_t = ^RemoteStoragePublishedFileUnsubscribed_t;
@@ -4557,11 +5742,20 @@ type
   { Callback 1323: Published file that a user owns was deleted (from within the app or the web).
     Subscribe with @code(RemoteStoragePublishedFileDeleted_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStoragePublishedFileDeleted_t = record
+  RemoteStoragePublishedFileDeleted_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStoragePublishedFileDeleted_t). }
   PRemoteStoragePublishedFileDeleted_t = ^RemoteStoragePublishedFileDeleted_t;
@@ -4569,9 +5763,18 @@ type
   { Callback 1324: The result of a call to UpdateUserPublishedItemVote(). Subscribe with
     @code(RemoteStorageUpdateUserPublishedItemVoteResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageUpdateUserPublishedItemVoteResult_t = record
+  RemoteStorageUpdateUserPublishedItemVoteResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
   end;
@@ -4581,13 +5784,31 @@ type
   { Callback 1325: The result of a call to GetUserPublishedItemVoteDetails(). Subscribe with
     @code(RemoteStorageUserVoteDetails_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageUserVoteDetails_t = record
+  RemoteStorageUserVoteDetails_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EWorkshopVote m_eVote). }
     m_eVote: EWorkshopVote;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStorageUserVoteDetails_t). }
   PRemoteStorageUserVoteDetails_t = ^RemoteStorageUserVoteDetails_t;
@@ -4595,13 +5816,22 @@ type
   { Callback 1326: Steam struct RemoteStorageEnumerateUserSharedWorkshopFilesResult_t. Subscribe
     with @code(RemoteStorageEnumerateUserSharedWorkshopFilesResult_t_k_iCallback).
     (isteamremotestorage.h, callback alignment.) }
-  RemoteStorageEnumerateUserSharedWorkshopFilesResult_t = record
+  RemoteStorageEnumerateUserSharedWorkshopFilesResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(int32 m_nResultsReturned). }
     m_nResultsReturned: Int32;
     { C field @code(int32 m_nTotalResultCount). }
     m_nTotalResultCount: Int32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t [50] m_rgPublishedFileId). }
     m_rgPublishedFileId: array[0..49] of PublishedFileId_t;
   end;
@@ -4611,13 +5841,31 @@ type
   { Callback 1327: Steam struct RemoteStorageSetUserPublishedFileActionResult_t. Subscribe with
     @code(RemoteStorageSetUserPublishedFileActionResult_t_k_iCallback). (isteamremotestorage.h,
     callback alignment.) }
-  RemoteStorageSetUserPublishedFileActionResult_t = record
+  RemoteStorageSetUserPublishedFileActionResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EWorkshopFileAction m_eAction). }
     m_eAction: EWorkshopFileAction;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStorageSetUserPublishedFileActionResult_t). }
   PRemoteStorageSetUserPublishedFileActionResult_t = ^RemoteStorageSetUserPublishedFileActionResult_t;
@@ -4625,7 +5873,7 @@ type
   { Callback 1328: Steam struct RemoteStorageEnumeratePublishedFilesByUserActionResult_t.
     Subscribe with @code(RemoteStorageEnumeratePublishedFilesByUserActionResult_t_k_iCallback).
     (isteamremotestorage.h, callback alignment.) }
-  RemoteStorageEnumeratePublishedFilesByUserActionResult_t = record
+  RemoteStorageEnumeratePublishedFilesByUserActionResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(EWorkshopFileAction m_eAction). }
@@ -4645,11 +5893,26 @@ type
   { Callback 1329: Called periodically while a PublishWorkshopFile is in progress. Subscribe with
     @code(RemoteStoragePublishFileProgress_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStoragePublishFileProgress_t = record
+  RemoteStoragePublishFileProgress_t = {$ifdef FPC}packed{$endif} record
     { C field @code(double m_dPercentFile). }
     m_dPercentFile: Double;
     { C field @code(bool m_bPreview). }
     m_bPreview: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStoragePublishFileProgress_t). }
   PRemoteStoragePublishFileProgress_t = ^RemoteStoragePublishFileProgress_t;
@@ -4657,11 +5920,20 @@ type
   { Callback 1330: Called when the content for a published file is updated. Subscribe with
     @code(RemoteStoragePublishedFileUpdated_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStoragePublishedFileUpdated_t = record
+  RemoteStoragePublishedFileUpdated_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulUnused). }
     m_ulUnused: UInt64;
   end;
@@ -4671,7 +5943,7 @@ type
   { Callback 1331: Called when a FileWriteAsync completes. Subscribe with
     @code(RemoteStorageFileWriteAsyncComplete_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageFileWriteAsyncComplete_t = record
+  RemoteStorageFileWriteAsyncComplete_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -4681,7 +5953,7 @@ type
   { Callback 1332: Called when a FileReadAsync completes. Subscribe with
     @code(RemoteStorageFileReadAsyncComplete_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageFileReadAsyncComplete_t = record
+  RemoteStorageFileReadAsyncComplete_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamAPICall_t m_hFileReadAsync). }
     m_hFileReadAsync: SteamAPICall_t;
     { C field @code(EResult m_eResult). }
@@ -4690,6 +5962,15 @@ type
     m_nOffset: UInt32;
     { C field @code(uint32 m_cubRead). }
     m_cubRead: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoteStorageFileReadAsyncComplete_t). }
   PRemoteStorageFileReadAsyncComplete_t = ^RemoteStorageFileReadAsyncComplete_t;
@@ -4698,7 +5979,7 @@ type
     session changes Note: only posted if this happens DURING the local app session. Subscribe with
     @code(RemoteStorageLocalFileChange_t_k_iCallback). (isteamremotestorage.h, callback
     alignment.) }
-  RemoteStorageLocalFileChange_t = record
+  RemoteStorageLocalFileChange_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -4708,7 +5989,7 @@ type
   { Callback 1800: called when the latests stats and achievements have been received from the
     server. Subscribe with @code(GSStatsReceived_t_k_iCallback). (isteamgameserverstats.h,
     callback alignment.) }
-  GSStatsReceived_t = record
+  GSStatsReceived_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID m_steamIDUser). }
@@ -4719,7 +6000,7 @@ type
 
   { Callback 1801: result of a request to store the user stats for a game. Subscribe with
     @code(GSStatsStored_t_k_iCallback). (isteamgameserverstats.h, callback alignment.) }
-  GSStatsStored_t = record
+  GSStatsStored_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(CSteamID m_steamIDUser). }
@@ -4730,26 +6011,68 @@ type
 
   { Callback 2101: Steam struct HTTPRequestCompleted_t. Subscribe with
     @code(HTTPRequestCompleted_t_k_iCallback). (isteamhttp.h, callback alignment.) }
-  HTTPRequestCompleted_t = record
+  HTTPRequestCompleted_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HTTPRequestHandle m_hRequest). }
     m_hRequest: HTTPRequestHandle;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulContextValue). }
     m_ulContextValue: UInt64;
     { C field @code(bool m_bRequestSuccessful). }
     m_bRequestSuccessful: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(EHTTPStatusCode m_eStatusCode). }
     m_eStatusCode: EHTTPStatusCode;
     { C field @code(uint32 m_unBodySize). }
     m_unBodySize: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(HTTPRequestCompleted_t). }
   PHTTPRequestCompleted_t = ^HTTPRequestCompleted_t;
 
   { Callback 2102: Steam struct HTTPRequestHeadersReceived_t. Subscribe with
     @code(HTTPRequestHeadersReceived_t_k_iCallback). (isteamhttp.h, callback alignment.) }
-  HTTPRequestHeadersReceived_t = record
+  HTTPRequestHeadersReceived_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HTTPRequestHandle m_hRequest). }
     m_hRequest: HTTPRequestHandle;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulContextValue). }
     m_ulContextValue: UInt64;
   end;
@@ -4758,9 +6081,18 @@ type
 
   { Callback 2103: Steam struct HTTPRequestDataReceived_t. Subscribe with
     @code(HTTPRequestDataReceived_t_k_iCallback). (isteamhttp.h, callback alignment.) }
-  HTTPRequestDataReceived_t = record
+  HTTPRequestDataReceived_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HTTPRequestHandle m_hRequest). }
     m_hRequest: HTTPRequestHandle;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulContextValue). }
     m_ulContextValue: UInt64;
     { C field @code(uint32 m_cOffset). }
@@ -4774,7 +6106,7 @@ type
   { Callback 2301: Screenshot successfully written or otherwise added to the library and can now
     be tagged. Subscribe with @code(ScreenshotReady_t_k_iCallback). (isteamscreenshots.h, callback
     alignment.) }
-  ScreenshotReady_t = record
+  ScreenshotReady_t = {$ifdef FPC}packed{$endif} record
     { C field @code(ScreenshotHandle m_hLocal). }
     m_hLocal: ScreenshotHandle;
     { C field @code(EResult m_eResult). }
@@ -4786,7 +6118,7 @@ type
   { Callback 2302: Screenshot has been requested by the user. Only sent if HookScreenshots() has
     been called, in which case Steam will not take the screenshot itself. Subscribe with
     @code(ScreenshotRequested_t_k_iCallback). (isteamscreenshots.h, callback alignment.) }
-  ScreenshotRequested_t = record
+  ScreenshotRequested_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -4796,7 +6128,7 @@ type
   { Callback 2801: called when a new controller has been connected, will fire once per controller
     if multiple new controllers connect in the same frame. Subscribe with
     @code(SteamInputDeviceConnected_t_k_iCallback). (isteaminput.h, callback alignment.) }
-  SteamInputDeviceConnected_t = record
+  SteamInputDeviceConnected_t = {$ifdef FPC}packed{$endif} record
     { C field @code(InputHandle_t m_ulConnectedDeviceHandle). }
     m_ulConnectedDeviceHandle: InputHandle_t;
   end;
@@ -4806,7 +6138,7 @@ type
   { Callback 2802: called when a new controller has been connected, will fire once per controller
     if multiple new controllers connect in the same frame. Subscribe with
     @code(SteamInputDeviceDisconnected_t_k_iCallback). (isteaminput.h, callback alignment.) }
-  SteamInputDeviceDisconnected_t = record
+  SteamInputDeviceDisconnected_t = {$ifdef FPC}packed{$endif} record
     { C field @code(InputHandle_t m_ulDisconnectedDeviceHandle). }
     m_ulDisconnectedDeviceHandle: InputHandle_t;
   end;
@@ -4816,9 +6148,18 @@ type
   { Callback 2803: called when a controller configuration has been loaded, will fire once per
     controller per focus change for Steam Input enabled controllers. Subscribe with
     @code(SteamInputConfigurationLoaded_t_k_iCallback). (isteaminput.h, callback alignment.) }
-  SteamInputConfigurationLoaded_t = record
+  SteamInputConfigurationLoaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_unAppID). }
     m_unAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(InputHandle_t m_ulDeviceHandle). }
     m_ulDeviceHandle: InputHandle_t;
     { C field @code(CSteamID m_ulMappingCreator). }
@@ -4831,6 +6172,21 @@ type
     m_bUsesSteamInputAPI: Boolean;
     { C field @code(bool m_bUsesGamepadAPI). }
     m_bUsesGamepadAPI: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..5] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..5] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamInputConfigurationLoaded_t). }
   PSteamInputConfigurationLoaded_t = ^SteamInputConfigurationLoaded_t;
@@ -4838,9 +6194,18 @@ type
   { Callback 2804: called when controller gamepad slots change - on Linux/macOS these slots are
     shared for all running apps. Subscribe with @code(SteamInputGamepadSlotChange_t_k_iCallback).
     (isteaminput.h, callback alignment.) }
-  SteamInputGamepadSlotChange_t = record
+  SteamInputGamepadSlotChange_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_unAppID). }
     m_unAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(InputHandle_t m_ulDeviceHandle). }
     m_ulDeviceHandle: InputHandle_t;
     { C field @code(ESteamInputType m_eDeviceType). }
@@ -4849,13 +6214,22 @@ type
     m_nOldGamepadSlot: Integer;
     { C field @code(int m_nNewGamepadSlot). }
     m_nNewGamepadSlot: Integer;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamInputGamepadSlotChange_t). }
   PSteamInputGamepadSlotChange_t = ^SteamInputGamepadSlotChange_t;
 
   { Callback 3401: Callback for querying UGC. Subscribe with
     @code(SteamUGCQueryCompleted_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  SteamUGCQueryCompleted_t = record
+  SteamUGCQueryCompleted_t = {$ifdef FPC}packed{$endif} record
     { C field @code(UGCQueryHandle_t m_handle). }
     m_handle: UGCQueryHandle_t;
     { C field @code(EResult m_eResult). }
@@ -4868,41 +6242,110 @@ type
     m_bCachedData: Boolean;
     { C field @code(char [256] m_rgchNextCursor). }
     m_rgchNextCursor: array[0..255] of AnsiChar;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamUGCQueryCompleted_t). }
   PSteamUGCQueryCompleted_t = ^SteamUGCQueryCompleted_t;
 
   { Callback 3402: Callback for requesting details on one piece of UGC. Subscribe with
     @code(SteamUGCRequestUGCDetailsResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  SteamUGCRequestUGCDetailsResult_t = record
+  SteamUGCRequestUGCDetailsResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamUGCDetails_t m_details). }
     m_details: SteamUGCDetails_t;
     { C field @code(bool m_bCachedData). }
     m_bCachedData: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamUGCRequestUGCDetailsResult_t). }
   PSteamUGCRequestUGCDetailsResult_t = ^SteamUGCRequestUGCDetailsResult_t;
 
   { Callback 3403: result for ISteamUGC::CreateItem(). Subscribe with
     @code(CreateItemResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  CreateItemResult_t = record
+  CreateItemResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(bool m_bUserNeedsToAcceptWorkshopLegalAgreement). }
     m_bUserNeedsToAcceptWorkshopLegalAgreement: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(CreateItemResult_t). }
   PCreateItemResult_t = ^CreateItemResult_t;
 
   { Callback 3404: result for ISteamUGC::SubmitItemUpdate(). Subscribe with
     @code(SubmitItemUpdateResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  SubmitItemUpdateResult_t = record
+  SubmitItemUpdateResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(bool m_bUserNeedsToAcceptWorkshopLegalAgreement). }
     m_bUserNeedsToAcceptWorkshopLegalAgreement: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
   end;
@@ -4911,9 +6354,18 @@ type
 
   { Callback 3405: a Workshop item has been installed or updated. Subscribe with
     @code(ItemInstalled_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  ItemInstalled_t = record
+  ItemInstalled_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_unAppID). }
     m_unAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(UGCHandle_t m_hLegacyContent). }
@@ -4926,46 +6378,94 @@ type
 
   { Callback 3406: result of DownloadItem(), existing item files can be accessed again. Subscribe
     with @code(DownloadItemResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  DownloadItemResult_t = record
+  DownloadItemResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_unAppID). }
     m_unAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(DownloadItemResult_t). }
   PDownloadItemResult_t = ^DownloadItemResult_t;
 
   { Callback 3407: result of AddItemToFavorites() or RemoveItemFromFavorites(). Subscribe with
     @code(UserFavoriteItemsListChanged_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  UserFavoriteItemsListChanged_t = record
+  UserFavoriteItemsListChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(bool m_bWasAddRequest). }
     m_bWasAddRequest: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(UserFavoriteItemsListChanged_t). }
   PUserFavoriteItemsListChanged_t = ^UserFavoriteItemsListChanged_t;
 
   { Callback 3408: The result of a call to SetUserItemVote(). Subscribe with
     @code(SetUserItemVoteResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  SetUserItemVoteResult_t = record
+  SetUserItemVoteResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(bool m_bVoteUp). }
     m_bVoteUp: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SetUserItemVoteResult_t). }
   PSetUserItemVoteResult_t = ^SetUserItemVoteResult_t;
 
   { Callback 3409: The result of a call to GetUserItemVote(). Subscribe with
     @code(GetUserItemVoteResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  GetUserItemVoteResult_t = record
+  GetUserItemVoteResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(EResult m_eResult). }
@@ -4976,13 +6476,28 @@ type
     m_bVotedDown: Boolean;
     { C field @code(bool m_bVoteSkipped). }
     m_bVoteSkipped: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..0] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..0] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..0] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..0] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(GetUserItemVoteResult_t). }
   PGetUserItemVoteResult_t = ^GetUserItemVoteResult_t;
 
   { Callback 3410: The result of a call to StartPlaytimeTracking(). Subscribe with
     @code(StartPlaytimeTrackingResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  StartPlaytimeTrackingResult_t = record
+  StartPlaytimeTrackingResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -4991,7 +6506,7 @@ type
 
   { Callback 3411: The result of a call to StopPlaytimeTracking(). Subscribe with
     @code(StopPlaytimeTrackingResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  StopPlaytimeTrackingResult_t = record
+  StopPlaytimeTrackingResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -5000,9 +6515,18 @@ type
 
   { Callback 3412: The result of a call to AddDependency. Subscribe with
     @code(AddUGCDependencyResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  AddUGCDependencyResult_t = record
+  AddUGCDependencyResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(PublishedFileId_t m_nChildPublishedFileId). }
@@ -5013,9 +6537,18 @@ type
 
   { Callback 3413: The result of a call to RemoveDependency. Subscribe with
     @code(RemoveUGCDependencyResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  RemoveUGCDependencyResult_t = record
+  RemoveUGCDependencyResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(PublishedFileId_t m_nChildPublishedFileId). }
@@ -5026,26 +6559,62 @@ type
 
   { Callback 3414: The result of a call to AddAppDependency. Subscribe with
     @code(AddAppDependencyResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  AddAppDependencyResult_t = record
+  AddAppDependencyResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(AddAppDependencyResult_t). }
   PAddAppDependencyResult_t = ^AddAppDependencyResult_t;
 
   { Callback 3415: The result of a call to RemoveAppDependency. Subscribe with
     @code(RemoveAppDependencyResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  RemoveAppDependencyResult_t = record
+  RemoveAppDependencyResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(RemoveAppDependencyResult_t). }
   PRemoveAppDependencyResult_t = ^RemoveAppDependencyResult_t;
@@ -5053,9 +6622,18 @@ type
   { Callback 3416: The result of a call to GetAppDependencies. Callback may be called multiple
     times until all app dependencies have been returned. Subscribe with
     @code(GetAppDependenciesResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  GetAppDependenciesResult_t = record
+  GetAppDependenciesResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
     { C field @code(AppId_t [32] m_rgAppIDs). }
@@ -5070,9 +6648,18 @@ type
 
   { Callback 3417: The result of a call to DeleteItem. Subscribe with
     @code(DeleteItemResult_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  DeleteItemResult_t = record
+  DeleteItemResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PublishedFileId_t m_nPublishedFileId). }
     m_nPublishedFileId: PublishedFileId_t;
   end;
@@ -5081,7 +6668,7 @@ type
 
   { Callback 3418: signal that the list of subscribed items changed. Subscribe with
     @code(UserSubscribedItemsListChanged_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  UserSubscribedItemsListChanged_t = record
+  UserSubscribedItemsListChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(AppId_t m_nAppID). }
     m_nAppID: AppId_t;
   end;
@@ -5090,7 +6677,7 @@ type
 
   { Callback 3420: Status of the user's acceptable/rejection of the app's specific Workshop EULA.
     Subscribe with @code(WorkshopEULAStatus_t_k_iCallback). (isteamugc.h, callback alignment.) }
-  WorkshopEULAStatus_t = record
+  WorkshopEULAStatus_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(AppId_t m_nAppID). }
@@ -5103,13 +6690,28 @@ type
     m_bAccepted: Boolean;
     { C field @code(bool m_bNeedsAction). }
     m_bNeedsAction: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(WorkshopEULAStatus_t). }
   PWorkshopEULAStatus_t = ^WorkshopEULAStatus_t;
 
   { Callback 4001: Steam struct PlaybackStatusHasChanged_t. Subscribe with
     @code(PlaybackStatusHasChanged_t_k_iCallback). (isteammusic.h, callback alignment.) }
-  PlaybackStatusHasChanged_t = record
+  PlaybackStatusHasChanged_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -5118,7 +6720,7 @@ type
 
   { Callback 4002: Steam struct VolumeHasChanged_t. Subscribe with
     @code(VolumeHasChanged_t_k_iCallback). (isteammusic.h, callback alignment.) }
-  VolumeHasChanged_t = record
+  VolumeHasChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(float m_flNewVolume). }
     m_flNewVolume: Single;
   end;
@@ -5127,7 +6729,7 @@ type
 
   { Callback 4501: The browser is ready for use. Subscribe with
     @code(HTML_BrowserReady_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_BrowserReady_t = record
+  HTML_BrowserReady_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
   end;
@@ -5136,9 +6738,15 @@ type
 
   { Callback 4502: the browser has a pending paint. Subscribe with
     @code(HTML_NeedsPaint_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_NeedsPaint_t = record
+  HTML_NeedsPaint_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pBGRA). }
     pBGRA: PAnsiChar;
     { C field @code(uint32 unWide). }
@@ -5168,9 +6776,15 @@ type
   { Callback 4503: The browser wanted to navigate to a new page NOTE - you MUST call
     AllowStartRequest in response to this callback. Subscribe with
     @code(HTML_StartRequest_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_StartRequest_t = record
+  HTML_StartRequest_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchURL). }
     pchURL: PAnsiChar;
     { C field @code(const char * pchTarget). }
@@ -5179,6 +6793,21 @@ type
     pchPostData: PAnsiChar;
     { C field @code(bool bIsRedirect). }
     bIsRedirect: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(HTML_StartRequest_t). }
   PHTML_StartRequest_t = ^HTML_StartRequest_t;
@@ -5186,7 +6815,7 @@ type
   { Callback 4504: The browser has been requested to close due to user interaction (usually from a
     javascript window.close() call). Subscribe with @code(HTML_CloseBrowser_t_k_iCallback).
     (isteamhtmlsurface.h, callback alignment.) }
-  HTML_CloseBrowser_t = record
+  HTML_CloseBrowser_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
   end;
@@ -5195,28 +6824,70 @@ type
 
   { Callback 4505: the browser is navigating to a new url. Subscribe with
     @code(HTML_URLChanged_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_URLChanged_t = record
+  HTML_URLChanged_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchURL). }
     pchURL: PAnsiChar;
     { C field @code(const char * pchPostData). }
     pchPostData: PAnsiChar;
     { C field @code(bool bIsRedirect). }
     bIsRedirect: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchPageTitle). }
     pchPageTitle: PAnsiChar;
     { C field @code(bool bNewNavigation). }
     bNewNavigation: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(HTML_URLChanged_t). }
   PHTML_URLChanged_t = ^HTML_URLChanged_t;
 
   { Callback 4506: A page is finished loading. Subscribe with
     @code(HTML_FinishedRequest_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_FinishedRequest_t = record
+  HTML_FinishedRequest_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchURL). }
     pchURL: PAnsiChar;
     { C field @code(const char * pchPageTitle). }
@@ -5227,9 +6898,15 @@ type
 
   { Callback 4507: a request to load this url in a new tab. Subscribe with
     @code(HTML_OpenLinkInNewTab_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_OpenLinkInNewTab_t = record
+  HTML_OpenLinkInNewTab_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchURL). }
     pchURL: PAnsiChar;
   end;
@@ -5238,9 +6915,15 @@ type
 
   { Callback 4508: the page has a new title now. Subscribe with
     @code(HTML_ChangedTitle_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_ChangedTitle_t = record
+  HTML_ChangedTitle_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchTitle). }
     pchTitle: PAnsiChar;
   end;
@@ -5249,7 +6932,7 @@ type
 
   { Callback 4509: results from a search. Subscribe with @code(HTML_SearchResults_t_k_iCallback).
     (isteamhtmlsurface.h, callback alignment.) }
-  HTML_SearchResults_t = record
+  HTML_SearchResults_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(uint32 unResults). }
@@ -5263,20 +6946,35 @@ type
   { Callback 4510: page history status changed on the ability to go backwards and forward.
     Subscribe with @code(HTML_CanGoBackAndForward_t_k_iCallback). (isteamhtmlsurface.h, callback
     alignment.) }
-  HTML_CanGoBackAndForward_t = record
+  HTML_CanGoBackAndForward_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(bool bCanGoBack). }
     bCanGoBack: Boolean;
     { C field @code(bool bCanGoForward). }
     bCanGoForward: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..1] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(HTML_CanGoBackAndForward_t). }
   PHTML_CanGoBackAndForward_t = ^HTML_CanGoBackAndForward_t;
 
   { Callback 4511: details on the visibility and size of the horizontal scrollbar. Subscribe with
     @code(HTML_HorizontalScroll_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_HorizontalScroll_t = record
+  HTML_HorizontalScroll_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(uint32 unScrollMax). }
@@ -5287,6 +6985,21 @@ type
     flPageScale: Single;
     { C field @code(bool bVisible). }
     bVisible: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 unPageSize). }
     unPageSize: UInt32;
   end;
@@ -5295,7 +7008,7 @@ type
 
   { Callback 4512: details on the visibility and size of the vertical scrollbar. Subscribe with
     @code(HTML_VerticalScroll_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_VerticalScroll_t = record
+  HTML_VerticalScroll_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(uint32 unScrollMax). }
@@ -5306,6 +7019,21 @@ type
     flPageScale: Single;
     { C field @code(bool bVisible). }
     bVisible: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad5: array[0..2] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint32 unPageSize). }
     unPageSize: UInt32;
   end;
@@ -5314,19 +7042,40 @@ type
 
   { Callback 4513: response to GetLinkAtPosition call. Subscribe with
     @code(HTML_LinkAtPosition_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_LinkAtPosition_t = record
+  HTML_LinkAtPosition_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(uint32 x). }
     x: UInt32;
     { C field @code(uint32 y). }
     y: UInt32;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad3: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchURL). }
     pchURL: PAnsiChar;
     { C field @code(bool bInput). }
     bInput: Boolean;
     { C field @code(bool bLiveLink). }
     bLiveLink: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..5] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad6: array[0..1] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(HTML_LinkAtPosition_t). }
   PHTML_LinkAtPosition_t = ^HTML_LinkAtPosition_t;
@@ -5334,9 +7083,15 @@ type
   { Callback 4514: show a Javascript alert dialog, call JSDialogResponse when the user dismisses
     this dialog (or right away to ignore it). Subscribe with @code(HTML_JSAlert_t_k_iCallback).
     (isteamhtmlsurface.h, callback alignment.) }
-  HTML_JSAlert_t = record
+  HTML_JSAlert_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchMessage). }
     pchMessage: PAnsiChar;
   end;
@@ -5346,9 +7101,15 @@ type
   { Callback 4515: show a Javascript confirmation dialog, call JSDialogResponse when the user
     dismisses this dialog (or right away to ignore it). Subscribe with
     @code(HTML_JSConfirm_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_JSConfirm_t = record
+  HTML_JSConfirm_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchMessage). }
     pchMessage: PAnsiChar;
   end;
@@ -5358,9 +7119,15 @@ type
   { Callback 4516: when received show a file open dialog then call FileLoadDialogResponse with the
     file(s) the user selected. Subscribe with @code(HTML_FileOpenDialog_t_k_iCallback).
     (isteamhtmlsurface.h, callback alignment.) }
-  HTML_FileOpenDialog_t = record
+  HTML_FileOpenDialog_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchTitle). }
     pchTitle: PAnsiChar;
     { C field @code(const char * pchInitialFile). }
@@ -5375,9 +7142,15 @@ type
     to give your application the opportunity to call CreateBrowser and set up a new browser in
     response to the attempted popup, if you wish to do so. Subscribe with
     @code(HTML_NewWindow_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_NewWindow_t = record
+  HTML_NewWindow_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchURL). }
     pchURL: PAnsiChar;
     { C field @code(uint32 unX). }
@@ -5390,13 +7163,19 @@ type
     unTall: UInt32;
     { C field @code(HHTMLBrowser unNewWindow_BrowserHandle_IGNORE). }
     unNewWindow_BrowserHandle_IGNORE: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad7: array[0..3] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(HTML_NewWindow_t). }
   PHTML_NewWindow_t = ^HTML_NewWindow_t;
 
   { Callback 4522: change the cursor to display. Subscribe with
     @code(HTML_SetCursor_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_SetCursor_t = record
+  HTML_SetCursor_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(uint32 eMouseCursor). }
@@ -5407,9 +7186,15 @@ type
 
   { Callback 4523: informational message from the browser. Subscribe with
     @code(HTML_StatusText_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_StatusText_t = record
+  HTML_StatusText_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchMsg). }
     pchMsg: PAnsiChar;
   end;
@@ -5418,9 +7203,15 @@ type
 
   { Callback 4524: show a tooltip. Subscribe with @code(HTML_ShowToolTip_t_k_iCallback).
     (isteamhtmlsurface.h, callback alignment.) }
-  HTML_ShowToolTip_t = record
+  HTML_ShowToolTip_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchMsg). }
     pchMsg: PAnsiChar;
   end;
@@ -5429,9 +7220,15 @@ type
 
   { Callback 4525: update the text of an existing tooltip. Subscribe with
     @code(HTML_UpdateToolTip_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_UpdateToolTip_t = record
+  HTML_UpdateToolTip_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(const char * pchMsg). }
     pchMsg: PAnsiChar;
   end;
@@ -5440,7 +7237,7 @@ type
 
   { Callback 4526: hide the tooltip you are showing. Subscribe with
     @code(HTML_HideToolTip_t_k_iCallback). (isteamhtmlsurface.h, callback alignment.) }
-  HTML_HideToolTip_t = record
+  HTML_HideToolTip_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
   end;
@@ -5450,7 +7247,7 @@ type
   { Callback 4527: The browser has restarted due to an internal failure, use this new handle
     value. Subscribe with @code(HTML_BrowserRestarted_t_k_iCallback). (isteamhtmlsurface.h,
     callback alignment.) }
-  HTML_BrowserRestarted_t = record
+  HTML_BrowserRestarted_t = {$ifdef FPC}packed{$endif} record
     { C field @code(HHTMLBrowser unBrowserHandle). }
     unBrowserHandle: HHTMLBrowser;
     { C field @code(HHTMLBrowser unOldBrowserHandle). }
@@ -5461,7 +7258,7 @@ type
 
   { Callback 4604: Steam struct BroadcastUploadStart_t. Subscribe with
     @code(BroadcastUploadStart_t_k_iCallback). (isteamvideo.h, callback alignment.) }
-  BroadcastUploadStart_t = record
+  BroadcastUploadStart_t = {$ifdef FPC}packed{$endif} record
     { C field @code(bool m_bIsRTMP). }
     m_bIsRTMP: Boolean;
   end;
@@ -5470,7 +7267,7 @@ type
 
   { Callback 4605: Steam struct BroadcastUploadStop_t. Subscribe with
     @code(BroadcastUploadStop_t_k_iCallback). (isteamvideo.h, callback alignment.) }
-  BroadcastUploadStop_t = record
+  BroadcastUploadStop_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EBroadcastUploadResult m_eResult). }
     m_eResult: EBroadcastUploadResult;
   end;
@@ -5479,7 +7276,7 @@ type
 
   { Callback 4611: Steam struct GetVideoURLResult_t. Subscribe with
     @code(GetVideoURLResult_t_k_iCallback). (isteamvideo.h, callback alignment.) }
-  GetVideoURLResult_t = record
+  GetVideoURLResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(AppId_t m_unVideoAppID). }
@@ -5492,7 +7289,7 @@ type
 
   { Callback 4624: Steam struct GetOPFSettingsResult_t. Subscribe with
     @code(GetOPFSettingsResult_t_k_iCallback). (isteamvideo.h, callback alignment.) }
-  GetOPFSettingsResult_t = record
+  GetOPFSettingsResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
     { C field @code(AppId_t m_unVideoAppID). }
@@ -5505,7 +7302,7 @@ type
     transition from "Pending" to "OK" or an error state. There will always be exactly one callback
     per handle. Subscribe with @code(SteamInventoryResultReady_t_k_iCallback). (isteaminventory.h,
     callback alignment.) }
-  SteamInventoryResultReady_t = record
+  SteamInventoryResultReady_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamInventoryResult_t m_handle). }
     m_handle: SteamInventoryResult_t;
     { C field @code(EResult m_result). }
@@ -5521,7 +7318,7 @@ type
     normal ResultReady callback will still be triggered immediately afterwards; this is an
     additional notification for your convenience. Subscribe with
     @code(SteamInventoryFullUpdate_t_k_iCallback). (isteaminventory.h, callback alignment.) }
-  SteamInventoryFullUpdate_t = record
+  SteamInventoryFullUpdate_t = {$ifdef FPC}packed{$endif} record
     { C field @code(SteamInventoryResult_t m_handle). }
     m_handle: SteamInventoryResult_t;
   end;
@@ -5533,7 +7330,7 @@ type
     other async request which required a definition update in order to process results from the
     server. Subscribe with @code(SteamInventoryDefinitionUpdate_t_k_iCallback).
     (isteaminventory.h, callback alignment.) }
-  SteamInventoryDefinitionUpdate_t = record
+  SteamInventoryDefinitionUpdate_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -5543,7 +7340,7 @@ type
   { Callback 4703: Returned. Subscribe with
     @code(SteamInventoryEligiblePromoItemDefIDs_t_k_iCallback). (isteaminventory.h, callback
     alignment.) }
-  SteamInventoryEligiblePromoItemDefIDs_t = record
+  SteamInventoryEligiblePromoItemDefIDs_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_result). }
     m_result: EResult;
     { C field @code(CSteamID m_steamID). }
@@ -5552,6 +7349,21 @@ type
     m_numEligiblePromoItemDefs: Integer;
     { C field @code(bool m_bCachedData). }
     m_bCachedData: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad4: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamInventoryEligiblePromoItemDefIDs_t). }
   PSteamInventoryEligiblePromoItemDefIDs_t = ^SteamInventoryEligiblePromoItemDefIDs_t;
@@ -5559,9 +7371,18 @@ type
   { Callback 4704: Triggered from StartPurchase call. Subscribe with
     @code(SteamInventoryStartPurchaseResult_t_k_iCallback). (isteaminventory.h, callback
     alignment.) }
-  SteamInventoryStartPurchaseResult_t = record
+  SteamInventoryStartPurchaseResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_result). }
     m_result: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(uint64 m_ulOrderID). }
     m_ulOrderID: UInt64;
     { C field @code(uint64 m_ulTransID). }
@@ -5573,7 +7394,7 @@ type
   { Callback 4705: Triggered from RequestPrices. Subscribe with
     @code(SteamInventoryRequestPricesResult_t_k_iCallback). (isteaminventory.h, callback
     alignment.) }
-  SteamInventoryRequestPricesResult_t = record
+  SteamInventoryRequestPricesResult_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_result). }
     m_result: EResult;
     { C field @code(char [4] m_rgchCurrency). }
@@ -5586,7 +7407,7 @@ type
   { Callback 5001: Callback for querying UGC. Subscribe with
     @code(SteamParentalSettingsChanged_t_k_iCallback). (isteamparentalsettings.h, natural
     alignment.) }
-  SteamParentalSettingsChanged_t = record
+  SteamParentalSettingsChanged_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -5598,9 +7419,18 @@ type
     ID. If successful, the connect string contains game-specific instructions to connect to the
     game with that party. Subscribe with @code(JoinPartyCallback_t_k_iCallback).
     (isteammatchmaking.h, callback alignment.) }
-  JoinPartyCallback_t = record
+  JoinPartyCallback_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PartyBeaconID_t m_ulBeaconID). }
     m_ulBeaconID: PartyBeaconID_t;
     { C field @code(CSteamID m_SteamIDBeaconOwner). }
@@ -5614,9 +7444,18 @@ type
   { Callback 5302: Response to CreateBeacon request. If successful, the beacon ID is provided.
     Subscribe with @code(CreateBeaconCallback_t_k_iCallback). (isteammatchmaking.h, callback
     alignment.) }
-  CreateBeaconCallback_t = record
+  CreateBeaconCallback_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad1: array[0..3] of Byte;
+{$endif}
+{$endif}
     { C field @code(PartyBeaconID_t m_ulBeaconID). }
     m_ulBeaconID: PartyBeaconID_t;
   end;
@@ -5628,7 +7467,7 @@ type
     calling OnReservationCompleted(). Otherwise, Steam may timeout their reservation eventually.
     Subscribe with @code(ReservationNotificationCallback_t_k_iCallback). (isteammatchmaking.h,
     callback alignment.) }
-  ReservationNotificationCallback_t = record
+  ReservationNotificationCallback_t = {$ifdef FPC}packed{$endif} record
     { C field @code(PartyBeaconID_t m_ulBeaconID). }
     m_ulBeaconID: PartyBeaconID_t;
     { C field @code(CSteamID m_steamIDJoiner). }
@@ -5639,7 +7478,7 @@ type
 
   { Callback 5304: Response to ChangeNumOpenSlots call. Subscribe with
     @code(ChangeNumOpenSlotsCallback_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  ChangeNumOpenSlotsCallback_t = record
+  ChangeNumOpenSlotsCallback_t = {$ifdef FPC}packed{$endif} record
     { C field @code(EResult m_eResult). }
     m_eResult: EResult;
   end;
@@ -5649,7 +7488,7 @@ type
   { Callback 5305: The list of possible Party beacon locations has changed. Subscribe with
     @code(AvailableBeaconLocationsUpdated_t_k_iCallback). (isteammatchmaking.h, callback
     alignment.) }
-  AvailableBeaconLocationsUpdated_t = record
+  AvailableBeaconLocationsUpdated_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -5658,7 +7497,7 @@ type
 
   { Callback 5306: The list of active beacons may have changed. Subscribe with
     @code(ActiveBeaconsUpdated_t_k_iCallback). (isteammatchmaking.h, callback alignment.) }
-  ActiveBeaconsUpdated_t = record
+  ActiveBeaconsUpdated_t = {$ifdef FPC}packed{$endif} record
     { Placeholder: the C++ struct is empty (sizeof = 1). }
     _dummy: Byte;
   end;
@@ -5668,7 +7507,7 @@ type
   { Callback 5701: Steam struct SteamRemotePlaySessionConnected_t. Subscribe with
     @code(SteamRemotePlaySessionConnected_t_k_iCallback). (isteamremoteplay.h, callback
     alignment.) }
-  SteamRemotePlaySessionConnected_t = record
+  SteamRemotePlaySessionConnected_t = {$ifdef FPC}packed{$endif} record
     { C field @code(RemotePlaySessionID_t m_unSessionID). }
     m_unSessionID: RemotePlaySessionID_t;
   end;
@@ -5678,7 +7517,7 @@ type
   { Callback 5702: Steam struct SteamRemotePlaySessionDisconnected_t. Subscribe with
     @code(SteamRemotePlaySessionDisconnected_t_k_iCallback). (isteamremoteplay.h, callback
     alignment.) }
-  SteamRemotePlaySessionDisconnected_t = record
+  SteamRemotePlaySessionDisconnected_t = {$ifdef FPC}packed{$endif} record
     { C field @code(RemotePlaySessionID_t m_unSessionID). }
     m_unSessionID: RemotePlaySessionID_t;
   end;
@@ -5688,7 +7527,7 @@ type
   { Callback 5703: Steam struct SteamRemotePlayTogetherGuestInvite_t. Subscribe with
     @code(SteamRemotePlayTogetherGuestInvite_t_k_iCallback). (isteamremoteplay.h, callback
     alignment.) }
-  SteamRemotePlayTogetherGuestInvite_t = record
+  SteamRemotePlayTogetherGuestInvite_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [1024] m_szConnectURL). }
     m_szConnectURL: array[0..1023] of AnsiChar;
   end;
@@ -5698,7 +7537,7 @@ type
   { Callback 5704: Steam struct SteamRemotePlaySessionAvatarLoaded_t. Subscribe with
     @code(SteamRemotePlaySessionAvatarLoaded_t_k_iCallback). (isteamremoteplay.h, callback
     alignment.) }
-  SteamRemotePlaySessionAvatarLoaded_t = record
+  SteamRemotePlaySessionAvatarLoaded_t = {$ifdef FPC}packed{$endif} record
     { C field @code(RemotePlaySessionID_t m_unSessionID). }
     m_unSessionID: RemotePlaySessionID_t;
     { C field @code(int m_iImage). }
@@ -5714,7 +7553,7 @@ type
   { Callback 6001: Callback for querying UGC. Subscribe with
     @code(SteamTimelineGamePhaseRecordingExists_t_k_iCallback). (isteamtimeline.h, callback
     alignment.) }
-  SteamTimelineGamePhaseRecordingExists_t = record
+  SteamTimelineGamePhaseRecordingExists_t = {$ifdef FPC}packed{$endif} record
     { C field @code(char [64] m_rgchPhaseID). }
     m_rgchPhaseID: array[0..63] of AnsiChar;
     { C field @code(uint64 m_ulRecordingMS). }
@@ -5732,11 +7571,26 @@ type
   { Callback 6002: Callback for querying UGC. Subscribe with
     @code(SteamTimelineEventRecordingExists_t_k_iCallback). (isteamtimeline.h, callback
     alignment.) }
-  SteamTimelineEventRecordingExists_t = record
+  SteamTimelineEventRecordingExists_t = {$ifdef FPC}packed{$endif} record
     { C field @code(uint64 m_ulEventID). }
     m_ulEventID: UInt64;
     { C field @code(bool m_bRecordingExists). }
     m_bRecordingExists: Boolean;
+{$ifdef FPC}
+{$if defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..6] of Byte;
+{$elseif not defined(MSWINDOWS) and defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$elseif not defined(MSWINDOWS) and not defined(CPU64)}
+    { Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py). }
+    _fpcpad2: array[0..2] of Byte;
+{$endif}
+{$endif}
   end;
   { Pointer to @link(SteamTimelineEventRecordingExists_t). }
   PSteamTimelineEventRecordingExists_t = ^SteamTimelineEventRecordingExists_t;
@@ -6701,8 +8555,16 @@ const
   P2PSessionRequest_t_k_iCallback = 1202;
   { Callback id of @link(P2PSessionConnectFail_t) (1203). }
   P2PSessionConnectFail_t_k_iCallback = 1203;
+  { Callback id of @link(SteamNetConnectionStatusChangedCallback_t) (1221). }
+  SteamNetConnectionStatusChangedCallback_t_k_iCallback = 1221;
   { Callback id of @link(SteamNetAuthenticationStatus_t) (1222). }
   SteamNetAuthenticationStatus_t_k_iCallback = 1222;
+  { Callback id of @link(SteamNetworkingFakeIPResult_t) (1223). }
+  SteamNetworkingFakeIPResult_t_k_iCallback = 1223;
+  { Callback id of @link(SteamNetworkingMessagesSessionRequest_t) (1251). }
+  SteamNetworkingMessagesSessionRequest_t_k_iCallback = 1251;
+  { Callback id of @link(SteamNetworkingMessagesSessionFailed_t) (1252). }
+  SteamNetworkingMessagesSessionFailed_t_k_iCallback = 1252;
   { Callback id of @link(SteamRelayNetworkStatus_t) (1281). }
   SteamRelayNetworkStatus_t_k_iCallback = 1281;
   { Callback id of @link(RemoteStorageFileShareResult_t) (1307). }

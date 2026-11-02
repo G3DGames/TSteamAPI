@@ -468,6 +468,238 @@ Project AppID: 2275430.
   the component passes on both. Documented in doc_extras/Matchmaking.md
   (use RequestLobbyListAsync or ignore the repeat). Other call results
   may do the same - watch for it.
+- Push 93a9cba "Batch2a" (= Menu5, Batch2a, Doc5) verified 2026-11-02
+  13:50 against the clone.
+- BATCH 2B (zip Batch2b, follows Doc5; owner "proceed"):
+  * C UNIONS: hand-written Pascal variant records in
+    tools/sdk_extras/<Struct>.pas.txt (first line "C type: <name>" marker
+    in the PasDoc text): SteamNetworkingIPAddr (+ IPv4MappedAddress),
+    SteamNetworkingIdentity, SteamNetworkingConfigValue_t (+ _Value),
+    SteamInputActionEvent_t (+ Analog/DigitalAction_t), RemotePlayInput_t.
+    The generator (TypesUnit.union_extras) copies them into
+    Steamworks.SDKTypes at the right place (struct_order takes their
+    dependencies from the text) with a P-pointer; structs that embed them
+    (SteamNetConnectionInfo_t, SteamNetworkingMessage_t,
+    SteamNetConnectionStatusChangedCallback_t, FakeIPResult,
+    MessagesSessionRequest / Failed, ...) are generated normally now.
+    steam_api.json lists ONE member per union, so the positional layout
+    check cannot cover them: verify_generated.py parses `case ... of`
+    variants (PascalLayout.record with variant layout = each variant from
+    the end of the fixed part) and checks every field BY NAME with clang
+    __builtin_offsetof (check_named, "C type:" markers). Deliberate breaks
+    were caught. Delphi rule: the variant part must be last.
+  * PLUGINS + Networking, NetworkingSockets, NetworkingMessages,
+    NetworkingUtils. CALLBACK_EXTRA {NetworkingSockets:
+    SteamNetworkingFakeIPResult_t} (declared in steamnetworkingfakeip.h).
+    NOT bound: ISteamNetworking CreateListenSocket / CreateConnectionSocket
+    (deprecated SteamIPAddress_t BY VALUE).
+  * tools/plugin_extras/NetworkingSockets.pas.txt / NetworkingMessages:
+    ReleaseMessage (binds SteamAPI_SteamNetworkingMessage_t_Release),
+    ReceiveMessages(conn / channel, var array of PSteamNetworkingMessage_t),
+    Sockets also ReceiveMessagesOnGroup.
+  * Param fixes: COUNT_NAME also matches nListSz (n...Sz), (u|un|n)Max...,
+    ...BufferSize; ARRAY_AFTER_COUNT {pLanes} (count BEFORE the array). So
+    RemotePlay.GetInput, Parties.GetAvailableBeaconLocations (the "minor,
+    left" item above), NetworkingUtils.GetPOPList and
+    NetworkingSockets.GetConnectionRealTimeStatus(pLanes) take a Pointer
+    now. Parties.pas is the only changed old unit (that one line).
+    verify_generated: "intptr_t" size "P".
+  * Result: 860 layouts (215 structs x 4), 36 named (9 records x 4, 40
+    fields), 761 flat signatures, 24 by-value - all identical.
+  * Packages / Reg units (23 components) / gen_projects.py; doc_extras for
+    the four + Input.md (EnableActionEventCallbacks - record now declared)
+    and RemotePlay.md (GetInput) updated; components index; README.
+  * SteamDemo Test components 16 -> 20: NetworkingSockets GetIdentity
+    (type 16 + SteamID64 = SteamUser GetSteamID: proves the union record),
+    CreateSocketPair (no loopback), one reliable message 1 -> 2,
+    ReceiveMessages, data compared, ReleaseMessage, CloseConnection(1)
+    -> waits for 1221 ClosedByPeer on connection 2, then closes it
+    (cleanup closes leftovers); NetworkingUtils GetLocalTimestamp x2,
+    InitRelayNetworkAccess, GetRelayNetworkStatus (1281 logged, not
+    waited for); Networking IsP2PPacketAvailable / GetP2PSessionState and
+    NetworkingMessages ReceiveMessages(0): reads only.
+  REBUILD BOTH RUNTIME PACKAGES AND REINSTALL dclSteamworks (Win32).
+  NOT YET COMPILED.
+  Independent review (no compiler): no compile, crash or layout findings
+  in the demo, the helpers or the variant records (declaration order
+  checked). One fixed: F_MessageRelease was bound as REQUIRED and
+  ReleaseMessage silently did nothing without it (every message would
+  leak) - now optional like the other exports, and ReleaseMessage raises
+  ESteamworksError when it is missing.
+- OWNER (14:11) "as this involves networking how is fpc affected", then
+  (14:13) "make everything fpc friendly I'll test that after the fmx
+  test", (14:14/14:15) "update steamdemovcl + lcl as well". Same zip
+  (Batch2b, re-delivered):
+  * verify_generated.py TARGETS + i686-unknown-linux-gnu (Linux32) and
+    aarch64-unknown-linux-gnu (LinuxARM64), both FPC-only, default record
+    alignment 4 as Steamworks.inc sets. NATURAL_CAP {i686-linux: 4}:
+    i386 System V aligns int64 / double to 4 inside structs and FPC's
+    {$packrecords C} follows that (FPC maxCrecordalign 4 on i386-linux -
+    from memory, UNVERIFIED by an FPC build). Without the cap
+    SteamNetworkingMessage_t differs (C 200 bytes, align 4) - so the check
+    is sensitive. Now 1290 layouts (215 x 6) and 54 named (9 x 6), all
+    identical. The FPC SIDE of Linux32 / LinuxARM64 is still unbuilt.
+  * demos/Shared/SteamComponentTest.pas (NEW): the 20-component test as a
+    framework-free class (TSteamComponentTest; Delphi + FPC, no generics,
+    no TEncoding / UnixToDateTime / TThread.GetTickCount - own helpers),
+    a port of the FMX SteamDemo's test code. It CREATES its 20 components
+    (owned by it, events wired in code, SteamAPI set last); the form calls
+    Start / Tick (1 s timer) / Finish (before Steam closes) and shows
+    OnRowChanged. DemoSettingsFolder (APPDATA / ~/Library/Application
+    Support / XDG) - same SteamDemo.ini as the FMX demo. The FMX demo is
+    UNCHANGED (keeps its own copy; keep the two in step).
+  * SteamDemoVCL and SteamDemoLCL brought up to the FMX demo: buttons
+    enabled by state, Copy log button -> File menu (Auto Start Steam as a
+    checked item, Take Screenshot, Copy Log, Exit), tmAutoStart (100 ms),
+    tmTests, Components tab (TListView), Stop / FormClose / OnShutdown
+    finish the test first. Projects: .dpr/.dproj (VCL), .lpr/.lpi (LCL,
+    OtherUnitFiles src;../Shared).
+  * vcl/Steamworks.VCL + lcl/Steamworks.LCL: SteamBitmapToRGB and
+    SteamFormToRGB (GetFormImage; LCL via TLazIntfImage) - Forms moved to
+    the interface uses. UNTESTED.
+  REBUILD ALL RUNTIME PACKAGES: STEAMWORKS, STEAMWORKSFMX, STEAMWORKSVCL
+  (vcl/ changed), AND THE LAZARUS PACKAGE STEAMWORKSLCL (lcl/ changed);
+  REINSTALL DCLSTEAMWORKS. NOT YET COMPILED.
+  Independent review (no compiler, Delphi 13 + FPC 3.2.2): no findings in
+  the shared unit (30 event signatures checked by script, pending-list
+  logic equal to the FMX TDictionary version), the VCL / LCL forms (every
+  field / object / handler matches), the VCL / LCL screenshot helpers
+  (GetFormImage result freed by the caller - correct) or the projects.
+  Risk noted: LCL GetFormImage relies on PaintTo, which Cocoa / GTK2 may
+  support poorly - check the screenshot on the first macOS / Linux run.
+- BATCH 2B FMX RUN (owner, 14:40, Win64 Debug, Auto Start on): ALL FOUR
+  NETWORKING UNITS COMPILED FIRST TIME; 22 plug-in classes linked. TEST
+  COMPONENTS 20 OF 20 PASS. Union records proven on Win64: GetIdentity
+  type 16 + SteamID64 = the logged-on user; payload size checks passed
+  for 1221 (712 bytes, SteamNetConnectionStatusChangedCallback_t with
+  identity + IP address unions) and 1281 (272). Socket pair: 26 bytes
+  sent, received identical, message number 1; remote identity type 1
+  (IP address / localhost). FINDINGS: (1) closing connection 1 ALSO gives
+  a 1221 for connection 1 itself (3 -> 0 None) besides conn 2's 3 -> 4
+  ClosedByPeer, and conn 2 posts 4 -> 0 after its own close - the test
+  only acts on conn 2 / ClosedByPeer, so correct; (2) the relay network
+  starts by itself when the plug-ins initialise (1281 at start-up,
+  "Attempt #1 to fetch config"), reached availability 100 ("Relays: 25
+  valid") about 6 s after start; (3) two GetLocalTimestamp calls in a row
+  can return the same value (test accepts equal); (4) connection handles
+  were logged as negative numbers (UInt32 through %d) - zip Fix6 logs
+  them with %u (FMX uMain + Shared/SteamComponentTest). Inventory again
+  4700 for an unrelated result 0 (OK), ours Fail - as before.
+  SECOND RUN (14:43, Fix6 applied): 20 OF 20 PASS again; handles now
+  unsigned (648385029 / 3910509187). Not shipped yet: this note (next zip).
+- SteamDemoVCL RUN (owner, 14:44, Win64 Debug, Auto Start on): COMPILED
+  FIRST TIME (shared SteamComponentTest unit, new form, menu, settings);
+  same SteamDemo.ini read as the FMX demo. TEST COMPONENTS 20 OF 20 PASS
+  with the components created at run time by SteamComponentTest (all
+  attached). Auto Start fired 125 ms after FormCreate (timer 100 ms) -
+  CONFIRMS the ~4 s in the FMX demo is FMX's first paint, not our code.
+  Plug-in init order differs (Friends / UserStats last: unit
+  initialisation order) - harmless. Same run, later (log file): Copy Log
+  OK; File > Take Screenshot: VCL SteamFormToRGB captured 944x601 (client
+  area, no menu bar - the menu is non-client), WriteScreenshot handle 10
+  -> 2301 OK -> SetLocation True. Owner's picture of it in the Steam
+  library (14:46, 176 KB) is the Components tab exactly as on screen,
+  correct colours: VCL SteamFormToRGB WORKS (Win64). File > Exit: clean
+  (FormClose, worker stopped, SteamAPI shut down, OnShutdown). Cosmetic:
+  the longest Components row (RemoteStorage) is cut at the window edge.
+  Next: SteamDemoLCL (FPC).
+- OWNER'S FPC BUILD of SteamworksLCL.lpk (14:49, Batch2b, Lazarus 4.8 /
+  FPC 3.2.2 Win64): SDKTypes (the variant records), Matchmaking, Parties
+  compiled; then "Fatal: Internal error 2009112505" at Music.pas 295 =
+  FOnVolumeHasChanged(Self, Ev) - an FPC CODE-GENERATOR BUG calling a
+  method pointer with a const record that is ONE Single (VolumeHasChanged_t,
+  4 bytes, all-float). Zip Fix7 (follows Fix6): gen_steam_api.py
+  FPC_CONSTREF_EVENTS - those event types take the record by
+  {$ifdef FPC}constref{$else}const{$endif} (Delphi unchanged);
+  RemoteStoragePublishFileProgress_t (Double + Boolean, 16 bytes) added
+  as a precaution. Regenerated Music.pas and RemoteStorage.pas (only
+  those lines). Lazarus handlers for these two events get constref (the
+  IDE writes it). UNCONFIRMED that constref avoids the bug - the next
+  build shows; the units after Music are still unbuilt by FPC.
+- FIX7 WORKED: SteamworksLCL.lpk and SteamDemoLCL built; Test components
+  ran. Then (14:56) TSteamNetworkingSockets' PayloadOK stopped callback
+  1221: "Steam delivered 712 bytes, the Pascal record has 720" (FPC only;
+  Delphi 712 = right). ALIGNMENT: the only arithmetic that gives 720 is
+  SteamNetworkingIPAddr (packed, 18 bytes) aligned to 8 inside
+  SteamNetConnectionInfo_t (offset 148 -> 152, everything after +4, record
+  704, callback 8 + 704 + 4 -> 720). So FPC 3.2.2 gives a PACKED record
+  WITH A VARIANT PART an alignment above 1 (evidently the variant part is
+  laid out with the current $packrecords, 8 on Windows). The verifier
+  models Delphi's rules, so it could not see this. Zip Fix8 (follows
+  Fix7): the generator declares the all-packed hand-written records
+  (SteamNetworkingIPAddr + IPv4MappedAddress, SteamNetworkingIdentity,
+  SteamInputActionEvent_t + helpers) under {$ifdef FPC}{$packrecords
+  1}{$endif}, then restores the region's packing with the usual include.
+  Delphi unchanged (verify_generated: all identical). Also affected
+  before the fix: SteamNetworkingFakeIPResult_t (identity at offset 4).
+  UNCONFIRMED until the next FPC run - PayloadOK will tell again.
+  Lesson: the layout check does not cover FPC's own record rules; the
+  runtime payload-size check is what catches them.
+- FIX8 DID NOT HELP (owner, 15:08): the same 712 / 720 under FPC
+  (whether the package was recompiled with Fix8 is unconfirmed). Stop
+  guessing - MEASURE: zip Probe2 (follows Fix8): verify_generated.py
+  --probe writes tools/LayoutProbe/LayoutProbe.dpr (GENERATED console
+  program, Delphi + FPC, no SysUtils: prints SizeOf + every field offset
+  of 210 SDKTypes records - generated ones matched positionally with the
+  JSON field names, the union records by name) and --compare <output>
+  <triple> checks that output against clang for the same target (sanity:
+  a Delphi-model output gives 0 differences; one changed offset is
+  reported with the field name). .gitignore keeps only the .dpr in
+  tools/LayoutProbe. README "checks" section + layout line. Asked the
+  owner to build it with FPC 3.2.2 Win64 (command in README) and send the
+  output; then the FPC rule is known instead of inferred.
+- PROBE RESULT (owner, FPC 3.2.2 Win64, Probe2 build): 25 of 210 records
+  differ from C. FIX8 WAS WRONG (removed): the variant part was not the
+  cause. MEASURED FPC RULE: FPC aligns a RECORD-TYPED FIELD by the
+  record's SIZE (rounded up to a power of two, capped by the packing),
+  not by the record's own alignment - a packed TSteamID (8 bytes, align
+  1) lands on 8, a packed SteamNetworkingIPAddr (18) on 8 too; arrays use
+  the element's rule. It holds in {$packrecords n} AND {$packrecords C}
+  (gameserveritem_t, natural region: m_steamID 368, C 364), so changing
+  Steamworks.inc cannot fix it. A Python model of that rule reproduced
+  the probe output exactly. LATENT SINCE THE FIRST LCL RUNS:
+  UserStatsReceived_t (m_steamIDUser 16, C 12), GSStats*, Friends
+  follower callbacks, P2PSessionConnectFail_t, ValidateAuthTicketResponse_t,
+  AvatarImageLoaded_t etc. were all wrong under FPC; most passed only
+  because the payload size happened to match or the field was unused.
+- Zip Fix9 (follows Probe2): EXPLICIT FPC PADDING. Under FPC every
+  generated non-pack1 record is `{$ifdef FPC}packed{$endif} record` and
+  gets `_fpcpadN: array[0..K-1] of Byte` fields where C has padding
+  (N = index of the field it precedes; tail pad = field count), inside
+  {$ifdef FPC}{$if <class>}...{$elseif...}{$endif}{$endif}. Classes
+  (gen_steam_api.py FPC_CLASSES / FPC_CLASS_LAYOUT, (pointer, default
+  packing, natural cap)): w64 (8,8,8) Win64, w32 (4,8,8) Win32, u64
+  (8,4,8) Linux64 / LinuxARM64 / macOS ARM64, u32 (4,4,4) Linux32. The
+  pad sizes come from the Delphi layout model (verify_generated
+  PascalLayout = C, checked), in a second generator pass
+  (fpc_padding). Delphi sees no change (parse_unit skips {$ifdef FPC}
+  blocks; packed-under-FPC records are flagged fpc_packed, not packed).
+  Not padded: pack1 records (already packed), records with variant parts
+  and the hand-written natural ones (CallbackMsg_t, SteamAPICallCompleted_t,
+  SteamNetworkingConfigValue_t, RemotePlayInput_t) - all matched in the
+  probe. CHECK: an FPC-view simulation (pads of one class kept, packed
+  records contiguous) compared with clang for all six targets: 0
+  differences. UNCONFIRMED until the owner rebuilds SteamworksLCL and
+  re-runs the probe (expect "0 different") and SteamDemoLCL.
+  gen_docs.py record_fields accepts the new header and drops the
+  {$ifdef FPC} pad blocks (pages unchanged).
+- FIX9 WORKS (owner, 15:30, SteamDemoLCL, FPC 3.2.2 Win64): 20 of 20
+  PASS; callback 1221 now 712 bytes and raised (state 3 -> 0 / 3 -> 4 ->
+  0, "component test done"); File > Take Screenshot (LCL
+  SteamFormToRGB, 1416x902) -> OnScreenshotReady OK; File > Exit clean.
+  FPC probe re-run not sent (the payload checks confirm it in practice).
+  Next: owner re-tests Delphi (FMX / VCL) with the Fix9 SDKTypes.
+- VCL WITH FIX9 (owner, 15:36, Win64 Debug): 20 of 20 PASS, callback
+  1221 712 bytes as before - Delphi unaffected by the FPC padding.
+  NetworkingUtils read availability 3 ("Performing ping measurement";
+  test pressed 5 s after start) - a PASS by design (reads only), 100
+  arrived 0.1 s later.
+- FMX WITH FIX9 (owner, 15:37, Win64 Debug): 20 of 20 PASS, 1221 = 712
+  bytes. BATCH 2b + FIX9 DONE ON ALL THREE (FMX, VCL, LCL/FPC Win64).
+  Side note: FMX Auto Start fired 3922 ms after FormCreate (timer 100 ms;
+  VCL 140, LCL 109) - the FMX form takes that long to show in a debug
+  run; harmless, watch it. Next: FPC probe on Win32 / Linux, batch 2c
+  (MatchmakingServers).
 - Callback updating (owner, 2026-10-30: "threaded is vital" for game
   engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
   Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror
@@ -511,6 +743,10 @@ Project AppID: 2275430.
   dynamic array, interface) in a record or record typed constant in lib/:
   on Linux64 such a string field sat at offset 4 and Format got a bad
   pointer (access violation). Use parallel arrays or a class instead.
+- FPC aligns a record-typed field by the record's SIZE, not its alignment
+  (see PROBE RESULT): generated SDK records are packed under FPC with
+  explicit _fpcpad fields (generator), so never hand-write an SDK record
+  that nests another record without checking it with the LayoutProbe.
 - C `bool` -> `Boolean`; C enums need 4 bytes (the .inc does this);
   C++ `const T&` parameters are pointers, never records by value;
   structs under `#pragma pack(1)` are `packed record`.
@@ -2246,13 +2482,15 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   NOT YET COMPILED.
 
 ## Handover (2026-11-02, end of eighth session) - READ THIS FIRST
-State: last verified push 4cf2471 (= everything up to Sync1, pasdoc.log
-removed; verified 2026-11-02 12:32, see "Ninth session"). Delivered
-since: Menu5 (follows Sync1: demos/SteamDemo/src/uMain.pas, CLAUDE.md),
-Batch2a (follows Menu5: 41 files - 9 new plug-in units, 9 doc_extras, 9
-component pages, generator / verifier / packages / SteamDemo / docs).
-Nothing to delete. Batch2a needs both runtime packages rebuilt and
-dclSteamworks reinstalled.
+State: last verified push 93a9cba "Batch2a" (= Menu5, Batch2a, Doc5;
+verified 2026-11-02 13:50). All 19 plug-in components PASSED on Win64
+(16 of 16 in SteamDemo). Delivered since: Batch2b (follows Doc5; see
+"BATCH 2B" in the notes). Nothing to delete. Batch2b needs ALL runtime
+packages rebuilt (Steamworks, SteamworksFMX, SteamworksVCL; Lazarus:
+SteamworksLCL) and dclSteamworks reinstalled (Win32 design packages).
+Owner's order: FMX test first, then SteamDemoVCL / SteamDemoLCL (FPC).
+NEXT: the Batch2b build + SteamDemo run (20 components), then batch 2c
+(MatchmakingServers), the full Win64 round, macOS ARM64, Linux / SteamOS.
 NEXT SESSION FIRST: verify the latest push as in "Syncing safely". Then,
 still open: SteamDemo Win64 run of
 Menu4 (buttons, File menu, Auto Start setting file, Take Screenshot, Test

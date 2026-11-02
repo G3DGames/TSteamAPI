@@ -209,6 +209,10 @@
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Video.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.ParentalSettings.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.RemotePlay.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.Networking.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingSockets.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingMessages.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingUtils.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

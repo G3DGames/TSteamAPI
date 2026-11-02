@@ -14,7 +14,7 @@ uses
   {$IFDEF UNIX}
   cthreads,   // Steam calls the warning hook from its own threads
   {$ENDIF}
-  Interfaces, Forms, uMain;
+  Interfaces, Forms, SteamComponentTest, uMain;
 
 {$R *.res}  // Lazarus builds it from the .lpi: XP manifest, DPI awareness
 

@@ -33,8 +33,12 @@ link to it.
 | [TSteamVideo](TSteamVideo.md) | ISteamVideo | Broadcasting state; video-app URLs |
 | [TSteamParentalSettings](TSteamParentalSettings.md) | ISteamParentalSettings | Family View: blocked features and apps |
 | [TSteamRemotePlay](TSteamRemotePlay.md) | ISteamRemotePlay | Remote Play sessions, Remote Play Together |
+| [TSteamNetworking](TSteamNetworking.md) | ISteamNetworking | Old P2P packets by SteamID (deprecated by Valve) |
+| [TSteamNetworkingSockets](TSteamNetworkingSockets.md) | ISteamNetworkingSockets | Connections: by IP or P2P over the relay network |
+| [TSteamNetworkingMessages](TSteamNetworkingMessages.md) | ISteamNetworkingMessages | P2P messages to a Steam user, no connection to manage |
+| [TSteamNetworkingUtils](TSteamNetworkingUtils.md) | ISteamNetworkingUtils | Relay network status, ping locations, clock, settings |
 
-Still to come: the Networking interfaces and the server browser
+Still to come: the server browser
 (MatchmakingServers), later the game-server API. ISteamController is not
 bound (deprecated by Valve; use TSteamInput).
 

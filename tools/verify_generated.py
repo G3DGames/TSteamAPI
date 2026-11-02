@@ -19,6 +19,19 @@
    the one the hand-written declarations assume (BYVALUE below).
 
 Exit code 0 = no differences. Run after every tools/gen_steam_api.py run.
+
+The checks above model DELPHI's record rules. FPC can lay records out
+differently (2026-11-02: a packed record with a variant part), so the
+compiled layout can be measured too:
+
+    python3 tools/verify_generated.py <sdk> --probe tools/LayoutProbe/LayoutProbe.dpr
+        writes a console program that prints SizeOf and every field offset of
+        every record in Steamworks.SDKTypes (FPC: fpc -Mdelphi
+        -Fu<repo>/lib -Fi<repo>/lib LayoutProbe.dpr; Delphi: a console
+        project with lib on its search path). Run it, save the output.
+    python3 tools/verify_generated.py <sdk> --compare <output> <clang triple>
+        compares that output with the C layout of the SAME target (triple
+        as in TARGETS, e.g. x86_64-pc-windows-msvc for Win64).
 """
 import json
 import os
@@ -37,7 +50,15 @@ TARGETS = {  # triple: (pointer size, default record alignment of Steamworks.inc
     "i686-pc-windows-msvc": (4, 8),
     "x86_64-unknown-linux-gnu": (8, 4),
     "arm64-apple-macos11": (8, 4),
+    # FPC-only targets (Delphi has neither): Linux32 and LinuxARM64
+    "i686-unknown-linux-gnu": (4, 4),
+    "aarch64-unknown-linux-gnu": (8, 4),
 }
+# Largest alignment a NATURAL-region record ({$packrecords C} in FPC,
+# {$ALIGN 8} in Delphi) gives a field: i386 System V aligns 8-byte scalars
+# (int64, double) to 4 inside structs, and FPC's C packing follows that
+# (maxCrecordalign 4 on i386-linux). Default 8.
+NATURAL_CAP = {"i686-unknown-linux-gnu": 4}
 BASIC = {"Boolean": 1, "AnsiChar": 1, "Byte": 1, "UInt8": 1, "Int8": 1, "UInt16": 2, "Int16": 2,
          "Integer": 4, "Int32": 4, "UInt32": 4, "Cardinal": 4, "Single": 4, "Int64": 8, "UInt64": 8,
          "Double": 8}
@@ -50,10 +71,27 @@ def strip_comments(t):
     return re.sub(r"//[^\n]*", "", t)
 
 
-def parse_unit(path):
-    """Aliases, Pascal enums and records (with alignment context) of a unit."""
-    txt = open(path, encoding="utf-8-sig").read().replace("\r", "").split("\nimplementation")[0]
+def parse_unit(path, text=None):
+    """Aliases, Pascal enums and records (with alignment context) of a unit,
+    as DELPHI sees it: {$ifdef FPC} ... {$endif} blocks (FPC's explicit
+    record padding) are left out."""
+    txt = (text if text is not None else open(path, encoding="utf-8-sig").read())
+    txt = txt.replace("\r", "").split("\nimplementation")[0]
     lines = strip_comments(txt).split("\n")
+    kept, depth = [], 0
+    for l in lines:
+        t = l.strip()
+        if depth:
+            if re.match(r"^\{\$(if|ifdef|ifndef)\b", t, re.I):
+                depth += 1
+            elif re.match(r"^\{\$(endif|ifend)\}", t, re.I):
+                depth -= 1
+            continue
+        if re.match(r"^\{\$ifdef FPC\}$", t, re.I):
+            depth = 1
+            continue
+        kept.append(l)
+    lines = kept
     aliases, enums, recs, natural, i = {}, set(), {}, False, 0
     while i < len(lines):
         l = lines[i].strip()
@@ -61,16 +99,32 @@ def parse_unit(path):
             natural = True
         elif "AlignDefault.inc" in l:
             natural = False
-        m = re.match(r"^(\w+)\s*=\s*(packed )?record\b", l)
+        m = re.match(r"^(\w+)\s*=\s*(packed |\{\$ifdef FPC\}packed\{\$endif\} )?record\b", l)
         if m:
-            fields = []
+            fpc_packed = bool(m.group(2)) and m.group(2).startswith("{")
+            fields, variants = [], None
             i += 1
             while not lines[i].strip().startswith("end;"):
-                fm = re.match(r"^\s*(\w+): (.+);$", lines[i])
-                if fm and "case" not in lines[i]:
-                    fields.append((fm.group(1), fm.group(2)))
+                ln = lines[i].strip()
+                if re.match(r"^case\b.*\bof$", ln):
+                    variants = []
+                elif variants is not None:
+                    # "N: (a: T; b: T);" - may continue over several lines
+                    vm = re.match(r"^\d+:\s*\((.*)$", ln)
+                    if vm:
+                        body = vm.group(1)
+                        while not body.endswith(");"):
+                            i += 1
+                            body += " " + lines[i].strip()
+                        variants.append([(a.strip(), b.strip()) for a, b in
+                                         (x.split(":", 1) for x in body[:-2].split(";") if x.strip())])
+                else:
+                    fm = re.match(r"^\s*(\w+): (.+);$", lines[i])
+                    if fm:
+                        fields.append((fm.group(1), fm.group(2)))
                 i += 1
-            recs[m.group(1)] = dict(packed=bool(m.group(2)), natural=natural, fields=fields)
+            recs[m.group(1)] = dict(packed=bool(m.group(2)) and not fpc_packed, natural=natural,
+                                    fields=fields, variants=variants or [], fpc_packed=fpc_packed)
         else:
             if re.match(r"^(\w+)\s*=\s*\($", l):
                 enums.add(l.split("=")[0].strip())
@@ -82,9 +136,11 @@ def parse_unit(path):
 
 
 class PascalLayout:
-    def __init__(self):
+    def __init__(self, sdktypes_text=None):
+        # set per target by the checks (see NATURAL_CAP)
+        self.natural_cap = 8
         a1, e1, r1 = parse_unit(os.path.join(ROOT, "lib", "Steamworks.Types.pas"))
-        a2, e2, r2 = parse_unit(os.path.join(ROOT, "lib", "Steamworks.SDKTypes.pas"))
+        a2, e2, r2 = parse_unit(os.path.join(ROOT, "lib", "Steamworks.SDKTypes.pas"), sdktypes_text)
         self.aliases, self.enums, self.recs = {**a1, **a2}, e1 | e2, {**r1, **r2}
 
     def type(self, t, ptr, dflt):
@@ -107,18 +163,37 @@ class PascalLayout:
             return ptr, ptr
         raise KeyError(t)
 
-    def record(self, n, ptr, dflt):
+    def record(self, n, ptr, dflt, named=None):
+        """(size, alignment, offsets of the fixed fields); with named = {}
+        also every field's offset by name, variant fields included. A variant
+        part is laid out as Delphi / FPC do: each variant starts where the
+        fixed part ends, each field aligned on its own; the record is as big
+        as its largest variant."""
         r = self.recs[n]
-        pack = 1 if r["packed"] else (8 if r["natural"] else dflt)
+        pack = 1 if r["packed"] else (self.natural_cap if r["natural"] else dflt)
         off, ra, offs = 0, 1, []
-        for _, ft in r["fields"]:
+        for fn, ft in r["fields"]:
             sz, al = self.type(ft, ptr, dflt)
             a = min(al, pack)
             off = (off + a - 1) // a * a
             offs.append(off)
+            if named is not None:
+                named[fn] = off
             off += sz
             ra = max(ra, a)
-        return (off + ra - 1) // ra * ra, ra, offs
+        end = off
+        for var in r.get("variants", []):
+            vo = off
+            for fn, ft in var:
+                sz, al = self.type(ft, ptr, dflt)
+                a = min(al, pack)
+                vo = (vo + a - 1) // a * a
+                if named is not None:
+                    named[fn] = vo
+                vo += sz
+                ra = max(ra, a)
+            end = max(end, vo)
+        return (end + ra - 1) // ra * ra, ra, offs
 
 
 def check_layouts(sdk_dir, sdk, names):
@@ -150,6 +225,7 @@ def check_layouts(sdk_dir, sdk, names):
     pas = PascalLayout()
     bad = checked = 0
     for triple, (ptr, dflt) in TARGETS.items():
+        pas.natural_cap = NATURAL_CAP.get(triple, 8)
         ll = os.path.join(tmp, triple + ".ll")
         r = subprocess.run([clang, "-target", triple, "-std=c++17", "-ffreestanding", "-nostdinc++", "-w",
                             "-isystem", stub, "-isystem", os.path.join(resdir, "include"), "-I", sdk_dir,
@@ -179,6 +255,89 @@ def check_layouts(sdk_dir, sdk, names):
     return bad
 
 
+def named_records():
+    """[(Pascal record, C type)] of the hand-written union records: every
+    record in tools/sdk_extras/*.pas.txt whose doc comment says
+    "C type: <C++ type>." (nested types and decltype(...) included)."""
+    out = []
+    xdir = os.path.join(ROOT, "tools", "sdk_extras")
+    for f in sorted(os.listdir(xdir)) if os.path.isdir(xdir) else []:
+        t = open(os.path.join(xdir, f), encoding="utf-8").read()
+        for m in re.finditer(r"C type:\s*([\w:() ]+?)\.\s*\}\s*\n\s*(\w+)\s*=\s*(?:packed )?record", t):
+            out.append((m.group(2), " ".join(m.group(1).split())))
+    return out
+
+
+def check_named(sdk_dir):
+    """Hand-written union records: size, alignment and the offset of EVERY
+    field - variant members included - compared by name with clang's
+    offsetof on every target."""
+    recs = named_records()
+    if not recs:
+        return 0
+    clang = shutil.which("clang++")
+    if not clang:
+        print("named layouts: SKIPPED - clang++ not installed")
+        return 0
+    pas = PascalLayout()
+    order = []
+    for pn, ct in recs:
+        named = {}
+        pas.record(pn, 8, 8, named)
+        order.append((pn, ct, list(named)))
+    tmp = tempfile.mkdtemp(prefix="steamnamed")
+    stub = os.path.join(tmp, "stub")
+    os.makedirs(stub)
+    open(os.path.join(stub, "string.h"), "w").write(
+        "#include <stddef.h>\nvoid *memset(void*,int,size_t); void *memcpy(void*,const void*,size_t);\n"
+        "int memcmp(const void*,const void*,size_t); size_t strlen(const char*);\n"
+        "char *strncpy(char*,const char*,size_t); int strcmp(const char*,const char*);\n")
+    open(os.path.join(stub, "stdio.h"), "w").write(
+        "#include <stddef.h>\nint snprintf(char*,size_t,const char*,...); int sprintf(char*,const char*,...);\n")
+    src = ["#define private public", "#define protected public", '#include "steam_api.h"',
+           '#include "steamnetworkingfakeip.h"', "#include <stddef.h>",
+           'extern "C" const long long LAYOUT[] = {']
+    for pn, ct, fields in order:
+        src.append(f"  (long long)sizeof({ct}), (long long)alignof({ct}),")
+        for f in fields:
+            src.append(f"  (long long)__builtin_offsetof({ct}, {f}),")
+    src.append("  -1 };")
+    cpp = os.path.join(tmp, "named.cpp")
+    open(cpp, "w").write("\n".join(src) + "\n")
+    resdir = subprocess.run([clang, "-print-resource-dir"], capture_output=True, text=True).stdout.strip()
+    bad = checked = nfields = 0
+    for triple, (ptr, dflt) in TARGETS.items():
+        pas.natural_cap = NATURAL_CAP.get(triple, 8)
+        ll = os.path.join(tmp, triple + ".ll")
+        r = subprocess.run([clang, "-target", triple, "-std=c++17", "-ffreestanding", "-nostdinc++", "-w",
+                            "-isystem", stub, "-isystem", os.path.join(resdir, "include"), "-I", sdk_dir,
+                            "-S", "-emit-llvm", "-o", ll, cpp], capture_output=True, text=True)
+        if r.returncode:
+            print(f"named layouts: clang failed for {triple}:\n{r.stderr[:2000]}")
+            return 1
+        arr = [int(x) for x in re.findall(r"i64 (-?\d+)", re.search(r"@LAYOUT = [^\n]*", open(ll).read()).group(0))]
+        k = 0
+        for pn, ct, fields in order:
+            cs, ca = arr[k], arr[k + 1]
+            co = arr[k + 2:k + 2 + len(fields)]
+            k += 2 + len(fields)
+            named = {}
+            ps, pa, _ = pas.record(pn, ptr, dflt, named)
+            po = [named[f] for f in fields]
+            checked += 1
+            nfields += len(fields)
+            if (cs, ca, co) != (ps, pa, po):
+                bad += 1
+                diff = [f"{f} C {c} / Pascal {p}" for f, c, p in zip(fields, co, po) if c != p]
+                print(f"named layout {triple} {pn} ({ct}): C size {cs} align {ca}; Pascal size {ps} "
+                      f"align {pa}" + (f"; offsets differ: {', '.join(diff)}" if diff else ""))
+        assert arr[k] == -1
+    shutil.rmtree(tmp, ignore_errors=True)
+    print(f"named layouts (hand-written union records): {checked} compared "
+          f"({len(order)} records x {len(TARGETS)} targets, {nfields // len(TARGETS)} fields each round), {bad} different")
+    return bad
+
+
 def check_flat(sdk_dir):
     flat = open(os.path.join(sdk_dir, "steam_api_flat.h"), encoding="latin-1").read()
     decl = {}
@@ -188,7 +347,7 @@ def check_flat(sdk_dir):
     csize = {"bool": 1, "char": 1, "int8": 1, "uint8": 1, "unsigned char": 1, "int16": 2, "uint16": 2,
              "short": 2, "unsigned short": 2, "int": 4, "int32": 4, "uint32": 4, "unsigned int": 4,
              "float": 4, "int64": 8, "uint64": 8, "long long": 8, "unsigned long long": 8, "double": 8,
-             "uint64_steamid": 8, "uint64_gameid": 8, "intp": "P", "uintp": "P", "int64_t": 8,
+             "uint64_steamid": 8, "uint64_gameid": 8, "intp": "P", "uintp": "P", "intptr_t": "P", "int64_t": 8,
              "int32_t": 4}
     psz = dict(BASIC, **{p: "P" for p in PTR})
     pas = PascalLayout()
@@ -336,6 +495,115 @@ def _byvalue_ir(clang, sdk_dir, tmp):
     return bad
 
 
+def probe_entries(sdk, names):
+    """[(Pascal record, C type, [(Pascal field, C field)])] for the probe:
+    generated records (C field names from steam_api.json, matched by
+    position with the Pascal fields) and the hand-written union records
+    (Pascal field names = C member names)."""
+    pas = PascalLayout()
+    out = []
+    for n in names:
+        cf = [f["fieldname"] for f in sdk.structs[n]["fields"]]
+        pf = [f for f, _ in pas.recs[n]["fields"]]
+        if len(cf) != len(pf):
+            continue
+        out.append((n, n, list(zip(pf, cf))))
+    for pn, ct in named_records():
+        named = {}
+        pas.record(pn, 8, 8, named)
+        out.append((pn, ct, [(f, f) for f in named]))
+    return out
+
+
+def write_probe(sdk, names, path):
+    ents = probe_entries(sdk, names)
+    L = ["(* GENERATED by tools/verify_generated.py --probe: prints SizeOf and the",
+         "  offset of every field of every record in Steamworks.SDKTypes, as the",
+         "  compiler that builds it lays them out. Compare the output with",
+         "  verify_generated.py --compare. Not part of any package. *)",
+         "program LayoutProbe;", "", "{$ifdef FPC}", "  {$mode delphi}{$H+}", "{$else}",
+         "  {$APPTYPE CONSOLE}", "{$endif}", "", "uses", "  Steamworks.Types, Steamworks.SDKTypes;", "",
+         "procedure R(const AName: string; ASize: Integer; const AOffsets: array of NativeInt);",
+         "var", "  I: Integer;", "  S: string;", "begin",
+         "  Str(ASize, S);", "  S := AName + ' ' + S;", "  for I := 0 to High(AOffsets) do",
+         "  begin", "    S := S + ' ';", "    S := S + IntToStrProbe(AOffsets[I]);", "  end;",
+         "  Writeln(S);", "end;", ""]
+    # IntToStr without SysUtils
+    L[L.index("procedure R(const AName: string; ASize: Integer; const AOffsets: array of NativeInt);"):
+      L.index("procedure R(const AName: string; ASize: Integer; const AOffsets: array of NativeInt);")] = [
+        "function IntToStrProbe(V: NativeInt): string;", "begin", "  Str(V, Result);", "end;", ""]
+    L.append("type")
+    for pn, _, _ in ents:
+        L.append(f"  PProbe_{pn} = ^{pn};")
+    L += ["", "begin"]
+    for pn, _, fl in ents:
+        offs = ", ".join(f"NativeInt(@PProbe_{pn}(nil)^.{p})" for p, _ in fl)
+        L.append(f"  R('{pn}', SizeOf({pn}), [{offs}]);")
+    L.append("end.")
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    open(path, "w", newline="\r\n").write("\n".join(L) + "\n")
+    print(f"probe: {path} written ({len(ents)} records)")
+
+
+def compare_probe(sdk_dir, sdk, names, out_file, triple):
+    ents = probe_entries(sdk, names)
+    clang = shutil.which("clang++")
+    if not clang:
+        print("compare: clang++ not installed")
+        return 1
+    tmp = tempfile.mkdtemp(prefix="steamprobe")
+    stub = os.path.join(tmp, "stub")
+    os.makedirs(stub)
+    open(os.path.join(stub, "string.h"), "w").write(
+        "#include <stddef.h>\nvoid *memset(void*,int,size_t); void *memcpy(void*,const void*,size_t);\n"
+        "int memcmp(const void*,const void*,size_t); size_t strlen(const char*);\n"
+        "char *strncpy(char*,const char*,size_t); int strcmp(const char*,const char*);\n")
+    open(os.path.join(stub, "stdio.h"), "w").write(
+        "#include <stddef.h>\nint snprintf(char*,size_t,const char*,...); int sprintf(char*,const char*,...);\n")
+    src = ["#define private public", "#define protected public", '#include "steam_api.h"',
+           '#include "steam_gameserver.h"', '#include "steamnetworkingfakeip.h"', "#include <stddef.h>",
+           'extern "C" const long long LAYOUT[] = {']
+    for pn, ct, fl in ents:
+        src.append(f"  (long long)sizeof({ct}),")
+        for _, c in fl:
+            src.append(f"  (long long)__builtin_offsetof({ct}, {c}),")
+    src.append("  -1 };")
+    cpp = os.path.join(tmp, "probe.cpp")
+    open(cpp, "w").write("\n".join(src) + "\n")
+    resdir = subprocess.run([clang, "-print-resource-dir"], capture_output=True, text=True).stdout.strip()
+    ll = os.path.join(tmp, "probe.ll")
+    r = subprocess.run([clang, "-target", triple, "-std=c++17", "-ffreestanding", "-nostdinc++", "-w",
+                        "-isystem", stub, "-isystem", os.path.join(resdir, "include"), "-I", sdk_dir,
+                        "-S", "-emit-llvm", "-o", ll, cpp], capture_output=True, text=True)
+    if r.returncode:
+        print(f"compare: clang failed for {triple}:\n{r.stderr[:2000]}")
+        return 1
+    arr = [int(x) for x in re.findall(r"i64 (-?\d+)", re.search(r"@LAYOUT = [^\n]*", open(ll).read()).group(0))]
+    shutil.rmtree(tmp, ignore_errors=True)
+    got = {}
+    for line in open(out_file, encoding="utf-8", errors="replace"):
+        parts = line.split()
+        if len(parts) >= 2 and re.fullmatch(r"\w+", parts[0]) and all(re.fullmatch(r"-?\d+", p) for p in parts[1:]):
+            got[parts[0]] = [int(p) for p in parts[1:]]
+    k = bad = checked = 0
+    for pn, ct, fl in ents:
+        c = arr[k:k + 1 + len(fl)]
+        k += 1 + len(fl)
+        g = got.get(pn)
+        if g is None:
+            print(f"compare: {pn} missing from the probe output")
+            bad += 1
+            continue
+        checked += 1
+        if g != c:
+            bad += 1
+            diff = [f"{p} C {cv} / compiled {gv}" for (p, _), cv, gv in zip(fl, c[1:], g[1:]) if cv != gv]
+            print(f"compare {triple} {pn}: C size {c[0]}, compiled size {g[0]}" +
+                  (f"; offsets differ: {', '.join(diff)}" if diff else ""))
+    print(f"compare: {checked} records compared with {triple}, {bad} different")
+    return bad
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -344,8 +612,15 @@ def main():
     sdk = gen.SDK(sdk_dir)
     types = gen.TypesUnit(sdk)
     types.emit()
-    names = [n for n in types.struct_order() if n not in types.skipped_structs]
-    bad = check_layouts(sdk_dir, sdk, names) + check_flat(sdk_dir) + check_byvalue(sdk_dir)
+    names = [n for n in types.struct_order()
+             if n not in types.skipped_structs and n not in types.union_extras]
+    if len(sys.argv) >= 4 and sys.argv[2] == "--probe":
+        write_probe(sdk, names, sys.argv[3])
+        sys.exit(0)
+    if len(sys.argv) >= 5 and sys.argv[2] == "--compare":
+        sys.exit(1 if compare_probe(sdk_dir, sdk, names, sys.argv[3], sys.argv[4]) else 0)
+    bad = (check_layouts(sdk_dir, sdk, names) + check_named(sdk_dir) + check_flat(sdk_dir)
+           + check_byvalue(sdk_dir))
     print("Result: " + ("OK" if not bad else f"{bad} problem(s)"))
     sys.exit(1 if bad else 0)
 

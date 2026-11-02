@@ -85,7 +85,7 @@ type
     { Get a list of possible beacon locations. }
     function GetNumAvailableBeaconLocations(var puNumLocations: UInt32): Boolean;
     { Wraps @code(SteamAPI_ISteamParties_GetAvailableBeaconLocations). }
-    function GetAvailableBeaconLocations(var pLocationList: SteamPartyBeaconLocation_t; uMaxNumLocations: UInt32): Boolean;
+    function GetAvailableBeaconLocations(pLocationList: Pointer; uMaxNumLocations: UInt32): Boolean;
     { Create a new party beacon and activate it in the selected location. unOpenSlots is the
       maximum number of users that Steam will send to you. When people begin responding to your
       beacon, Steam will send you PartyReservationCallback_t callbacks to let you know who is on
@@ -320,10 +320,10 @@ begin
   Result := FFlat.GetNumAvailableBeaconLocations(FIntf, @puNumLocations);
 end;
 
-function TSteamPartiesPlugin.GetAvailableBeaconLocations(var pLocationList: SteamPartyBeaconLocation_t; uMaxNumLocations: UInt32): Boolean;
+function TSteamPartiesPlugin.GetAvailableBeaconLocations(pLocationList: Pointer; uMaxNumLocations: UInt32): Boolean;
 begin
   Need(Assigned(FFlat.GetAvailableBeaconLocations), 'GetAvailableBeaconLocations');
-  Result := FFlat.GetAvailableBeaconLocations(FIntf, @pLocationList, uMaxNumLocations);
+  Result := FFlat.GetAvailableBeaconLocations(FIntf, pLocationList, uMaxNumLocations);
 end;
 
 function TSteamPartiesPlugin.CreateBeacon(unOpenSlots: UInt32; var pBeaconLocation: SteamPartyBeaconLocation_t; const pchConnectString: string; const pchMetadata: string): SteamAPICall_t;

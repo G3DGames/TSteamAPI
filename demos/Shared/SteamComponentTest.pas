@@ -1,0 +1,2027 @@
+{ @abstract(The base test of 20 plug-in components, for the VCL and LCL
+  demos: no UI, compiles with Delphi and FPC.)
+
+  @link(TSteamComponentTest) creates the components itself (owned by it,
+  linked to the TSteamAPI given to its constructor, events wired in code),
+  so a form only creates it, calls @link(TSteamComponentTest.Start) from a
+  button, @link(TSteamComponentTest.Tick) from a 1 s timer, and shows
+  @link(TSteamComponentTest.OnRowChanged) in a list. The FMX SteamDemo has
+  the same tests with the components dropped on its form (keep the two in
+  step; this unit is a port of demos/SteamDemo/src/uMain.pas).
+
+  Per component the test checks that it is attached, makes its synchronous
+  calls through the component's Plugin property (an exception = calls
+  FAILED), and requests callbacks / call results that must arrive through
+  the component's events within @link(TEST_TIMEOUT_MS). A component PASSES
+  when it is attached, every call returned and every requested answer
+  arrived - whatever result code Steam put in it (Steam Cloud or Workshop
+  being off for the app is a Steam setting, not a component fault).
+  Side effects: @link(TEST_CLOUD_FILE) is written and deleted again; a
+  timeline event and game phase are recorded and the timeline game mode is
+  left at Menus; a socket pair inside the program sends itself one message.
+  No screenshot is written (the demos' File > Take Screenshot does that).
+  Cleanup needs Steam: call @link(TSteamComponentTest.Finish) BEFORE
+  closing Steam.
+
+  Also here: @link(DemoSettingsFolder), the per-user settings folder the
+  demos keep their Auto Start Steam setting in. }
+unit SteamComponentTest;
+
+{$ifdef FPC}
+  {$mode delphi}{$H+}
+{$endif}
+
+interface
+
+uses
+  SysUtils, Classes, StrUtils,
+  Steamworks.Types, Steamworks.SDKTypes, Steamworks.Callbacks, Steamworks.Core, Steamworks.Components,
+  Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Apps,
+  Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline,
+  Steamworks.Plugin.UGC, Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties,
+  Steamworks.Plugin.Music, Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface,
+  Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings,
+  Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets,
+  Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils;
+
+const
+  { Component test: index of TSteamUtils. }
+  CT_UTILS = 0;
+  { Component test: index of TSteamUser. }
+  CT_USER = 1;
+  { Component test: index of TSteamApps. }
+  CT_APPS = 2;
+  { Component test: index of TSteamRemoteStorage. }
+  CT_STORAGE = 3;
+  { Component test: index of TSteamScreenshots. }
+  CT_SHOTS = 4;
+  { Component test: index of TSteamTimeline. }
+  CT_TIMELINE = 5;
+  { Component test: index of TSteamUGC. }
+  CT_UGC = 6;
+  { Component test: index of TSteamMatchmaking. }
+  CT_MATCHMAKING = 7;
+  { Component test: index of TSteamParties. }
+  CT_PARTIES = 8;
+  { Component test: index of TSteamMusic. }
+  CT_MUSIC = 9;
+  { Component test: index of TSteamHTTP. }
+  CT_HTTP = 10;
+  { Component test: index of TSteamHTMLSurface. }
+  CT_HTML = 11;
+  { Component test: index of TSteamInventory. }
+  CT_INVENTORY = 12;
+  { Component test: index of TSteamVideo. }
+  CT_VIDEO = 13;
+  { Component test: index of TSteamParentalSettings. }
+  CT_PARENTAL = 14;
+  { Component test: index of TSteamRemotePlay. }
+  CT_REMOTEPLAY = 15;
+  { Component test: index of TSteamNetworking. }
+  CT_NETWORKING = 16;
+  { Component test: index of TSteamNetworkingSockets. }
+  CT_NETSOCKETS = 17;
+  { Component test: index of TSteamNetworkingMessages. }
+  CT_NETMESSAGES = 18;
+  { Component test: index of TSteamNetworkingUtils. }
+  CT_NETUTILS = 19;
+  { Number of components the component test covers. }
+  CT_COUNT = 20;
+  { URL the HTTP test fetches: Steam's own Web API server-info call (no key
+    needed, small JSON answer). }
+  TEST_HTTP_URL = 'https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/';
+  { A requested callback / call result that has not arrived after this many
+    milliseconds is reported as NO ANSWER and the component fails. }
+  TEST_TIMEOUT_MS = 20000;
+  { Steam Cloud file the RemoteStorage test writes, reads back and deletes. }
+  TEST_CLOUD_FILE = 'steamdemo_component_test.txt';
+  { Row titles, indexed by the CT_ constants. }
+  TestNames: array[0..CT_COUNT - 1] of string = ('TSteamUtils', 'TSteamUser',
+    'TSteamApps', 'TSteamRemoteStorage', 'TSteamScreenshots', 'TSteamTimeline', 'TSteamUGC',
+    'TSteamMatchmaking', 'TSteamParties', 'TSteamMusic', 'TSteamHTTP', 'TSteamHTMLSurface',
+    'TSteamInventory', 'TSteamVideo', 'TSteamParentalSettings', 'TSteamRemotePlay',
+    'TSteamNetworking', 'TSteamNetworkingSockets', 'TSteamNetworkingMessages', 'TSteamNetworkingUtils');
+
+type
+  { State of one component in the test. }
+  TComponentTestState = record
+    { The test ran for this component. }
+    Ran: Boolean;
+    { The component was attached (its callback events subscribed). }
+    Attached: Boolean;
+    { Every synchronous call (reads and actions) returned without an exception. }
+    ReadsOK: Boolean;
+    { Callbacks / call results requested. }
+    Sent: Integer;
+    { Requested callbacks / call results that arrived through the component's events. }
+    Arrived: Integer;
+    { Requests that never answered (timeout or no call handle), comma separated. }
+    Missing: string;
+    { Extra information shown in the row (result codes, ...). }
+    Note: string;
+  end;
+
+  { A line for the log. }
+  TComponentTestLogEvent = procedure(const AText: string) of object;
+  { Row AIndex (a CT_ constant) has new text. }
+  TComponentTestRowEvent = procedure(AIndex: Integer; const AText: string) of object;
+
+  { One awaited answer: key '<CT index>:<name>' and when it was requested. }
+  TComponentTestPending = record
+    { '<CT index>:<name>'. }
+    Key: string;
+    { @link(TestTicks) when it was requested. }
+    Sent: UInt64;
+  end;
+
+  { The component test (see the unit description). }
+  TSteamComponentTest = class(TComponent)
+  private
+    { The root the components are linked to. }
+    SteamAPI1: TCustomSteamAPI;
+    { The tested components, created and owned by the test. }
+    SteamUtils1: TSteamUtils;
+    { See SteamUtils1. }
+    SteamUser1: TSteamUser;
+    { See SteamUtils1. }
+    SteamApps1: TSteamApps;
+    { See SteamUtils1. }
+    SteamRemoteStorage1: TSteamRemoteStorage;
+    { See SteamUtils1. }
+    SteamScreenshots1: TSteamScreenshots;
+    { See SteamUtils1. }
+    SteamTimeline1: TSteamTimeline;
+    { See SteamUtils1. }
+    SteamUGC1: TSteamUGC;
+    { See SteamUtils1. }
+    SteamMatchmaking1: TSteamMatchmaking;
+    { See SteamUtils1. }
+    SteamParties1: TSteamParties;
+    { See SteamUtils1. }
+    SteamMusic1: TSteamMusic;
+    { See SteamUtils1. }
+    SteamHTTP1: TSteamHTTP;
+    { See SteamUtils1. }
+    SteamHTMLSurface1: TSteamHTMLSurface;
+    { See SteamUtils1. }
+    SteamInventory1: TSteamInventory;
+    { See SteamUtils1. }
+    SteamVideo1: TSteamVideo;
+    { See SteamUtils1. }
+    SteamParentalSettings1: TSteamParentalSettings;
+    { See SteamUtils1. }
+    SteamRemotePlay1: TSteamRemotePlay;
+    { See SteamUtils1. }
+    SteamNetworking1: TSteamNetworking;
+    { See SteamUtils1. }
+    SteamNetworkingSockets1: TSteamNetworkingSockets;
+    { See SteamUtils1. }
+    SteamNetworkingMessages1: TSteamNetworkingMessages;
+    { See SteamUtils1. }
+    SteamNetworkingUtils1: TSteamNetworkingUtils;
+    { Backing field of @link(OnLog). }
+    FOnLog: TComponentTestLogEvent;
+    { Backing field of @link(OnRowChanged). }
+    FOnRowChanged: TComponentTestRowEvent;
+    { Backing field of @link(OnScreenshotRequested). }
+    FOnScreenshotRequested: TNotifyEvent;
+    { Backing field of @link(OnFinished). }
+    FOnFinished: TNotifyEvent;
+    { The app id (SteamAPI1.AppID when the test starts). }
+    FAppID: Cardinal;
+    { State per component, indexed by the CT_ constants. }
+    FTests: array[0..CT_COUNT - 1] of TComponentTestState;
+    { Row texts, indexed by the CT_ constants. }
+    FRows: array[0..CT_COUNT - 1] of string;
+    { Requests awaiting an answer. }
+    FPending: array of TComponentTestPending;
+    { @true from Start until every answer arrived or timed out. }
+    FTestsRunning: Boolean;
+    { Auth ticket the User test asked for (0 = none). }
+    FAuthTicket: HAuthTicket;
+    { Workshop query the UGC test sent (k_UGCQueryHandleInvalid = none). }
+    FUGCQuery: UGCQueryHandle_t;
+    { Bytes the RemoteStorage test wrote, compared with what is read back. }
+    FCloudData: TBytes;
+    { Game phase id the Timeline test used (unique per run). }
+    FPhaseID: string;
+    { HTTP request the HTTP test sent (0 = none). }
+    FHTTPRequest: HTTPRequestHandle;
+    { @true while ISteamHTMLSurface is initialised by the HTMLSurface test. }
+    FHTMLInit: Boolean;
+    { Inventory result of the Inventory test (k_SteamInventoryResultInvalid = none). }
+    FInvResult: SteamInventoryResult_t;
+    { The NetworkingSockets test's socket pair (k_HSteamNetConnection_Invalid = none). }
+    FSockConn1, FSockConn2: HSteamNetConnection;
+    { Read accessor of @link(RowText). }
+    function GetRowText(AIndex: Integer): string;
+    { Read accessor of @link(Screenshots). }
+    function GetScreenshots: TSteamScreenshotsPlugin;
+    { Sends a line to @link(OnLog). }
+    procedure AddLog(const S: string);
+    { Index of AKey in FPending, -1 when not there. }
+    function PendingIndex(const AKey: string): Integer;
+    { Removes FPending[AIndex]. }
+    procedure PendingDelete(AIndex: Integer);
+    { Adds the request in FPending[AIndex] to its component's Missing list. }
+    procedure PendingToMissing(AIndex: Integer);
+    { Shows FTests[AIndex] in its row (OnRowChanged). }
+    procedure UpdateTestRow(AIndex: Integer);
+    { Starts the test of one component. @returns(@false when its plug-in is not active.) }
+    function BeginTest(AIndex: Integer; AComponent: TSteamPluginComponent; APlugin: TObject): Boolean;
+    { Records a failed synchronous call of component AIndex. }
+    procedure ReadFailed(AIndex: Integer; const AWhat: string; E: Exception);
+    { Registers an awaited callback (not a call result). }
+    procedure Expect(AIndex: Integer; const AName: string);
+    { Registers an awaited call result; an invalid handle is recorded as missing at once. }
+    procedure ExpectCall(AIndex: Integer; const AName: string; ACall: SteamAPICall_t);
+    { Marks an awaited answer as arrived. @returns(@false when the test was not waiting for it.) }
+    function Answered(AIndex: Integer; const AName: string): Boolean;
+    { Ends the test once nothing is pending. }
+    procedure CheckTestsDone;
+    { Closes whatever is left of the socket pair (both sides). }
+    procedure CloseSocketPair(const AWhy: string);
+    { TSteamUtils: reads + CheckFileSignature. }
+    procedure TestUtils;
+    { TSteamUser: reads + GetAuthSessionTicket + GetDurationControl. }
+    procedure TestUser;
+    { TSteamApps: reads + GetFileDetails. }
+    procedure TestApps;
+    { TSteamRemoteStorage: reads + FileWriteAsync (then FileReadAsync). }
+    procedure TestRemoteStorage;
+    { TSteamScreenshots: HookScreenshots on / off (no picture). }
+    procedure TestScreenshots;
+    { TSteamTimeline: game mode, tooltip, game phase, event + two recording queries. }
+    procedure TestTimeline;
+    { TSteamUGC: reads + a Workshop query + GetWorkshopEULAStatus. }
+    procedure TestUGC;
+    { TSteamMatchmaking: favourites count + RequestLobbyList. }
+    procedure TestMatchmaking;
+    { TSteamParties: beacon counts (reads only). }
+    procedure TestParties;
+    { TSteamMusic: player state (reads only). }
+    procedure TestMusic;
+    { TSteamHTTP: one GET of @link(TEST_HTTP_URL). }
+    procedure TestHTTP;
+    { TSteamHTMLSurface: Init + CreateBrowser (browser removed when ready). }
+    procedure TestHTMLSurface;
+    { TSteamInventory: LoadItemDefinitions + GetAllItems. }
+    procedure TestInventory;
+    { TSteamVideo: IsBroadcasting + GetOPFSettings. }
+    procedure TestVideo;
+    { TSteamParentalSettings: lock and block state (reads only). }
+    procedure TestParentalSettings;
+    { TSteamRemotePlay: session count (reads only). }
+    procedure TestRemotePlay;
+    { TSteamNetworking: IsP2PPacketAvailable (reads only). }
+    procedure TestNetworking;
+    { TSteamNetworkingSockets: GetIdentity, a socket pair, one message, closed. }
+    procedure TestNetworkingSockets;
+    { TSteamNetworkingMessages: channel 0 polled (reads only). }
+    procedure TestNetworkingMessages;
+    { TSteamNetworkingUtils: local timestamp, relay network status. }
+    procedure TestNetworkingUtils;
+    { Event handlers of the components (wired in the constructor). }
+    procedure UtilsCheckFileSignature(Sender: TObject; const AData: CheckFileSignature_t);
+    { See UtilsCheckFileSignature. }
+    procedure UtilsIPCountry(Sender: TObject; const AData: IPCountry_t);
+    { See UtilsCheckFileSignature. }
+    procedure UtilsLowBattery(Sender: TObject; const AData: LowBatteryPower_t);
+    { See UtilsCheckFileSignature. }
+    procedure UserAuthTicketResponse(Sender: TObject; const AData: GetAuthSessionTicketResponse_t);
+    { See UtilsCheckFileSignature. }
+    procedure UserDurationControl(Sender: TObject; const AData: DurationControl_t);
+    { See UtilsCheckFileSignature. }
+    procedure UserServersConnected(Sender: TObject; const AData: SteamServersConnected_t);
+    { See UtilsCheckFileSignature. }
+    procedure UserServersDisconnected(Sender: TObject; const AData: SteamServersDisconnected_t);
+    { See UtilsCheckFileSignature. }
+    procedure UserServerConnectFailure(Sender: TObject; const AData: SteamServerConnectFailure_t);
+    { See UtilsCheckFileSignature. }
+    procedure AppsFileDetails(Sender: TObject; const AData: FileDetailsResult_t);
+    { See UtilsCheckFileSignature. }
+    procedure AppsDlcInstalled(Sender: TObject; const AData: DlcInstalled_t);
+    { See UtilsCheckFileSignature. }
+    procedure AppsNewUrlLaunchParameters(Sender: TObject; const AData: NewUrlLaunchParameters_t);
+    { See UtilsCheckFileSignature. }
+    procedure AppsTimedTrialStatus(Sender: TObject; const AData: TimedTrialStatus_t);
+    { See UtilsCheckFileSignature. }
+    procedure StorageWriteComplete(Sender: TObject; const AData: RemoteStorageFileWriteAsyncComplete_t);
+    { See UtilsCheckFileSignature. }
+    procedure StorageReadComplete(Sender: TObject; const AData: RemoteStorageFileReadAsyncComplete_t);
+    { See UtilsCheckFileSignature. }
+    procedure StorageLocalFileChange(Sender: TObject; const AData: RemoteStorageLocalFileChange_t);
+    { Passes the request on to @link(OnScreenshotRequested). }
+    procedure ScreenshotRequested(Sender: TObject; const AData: ScreenshotRequested_t);
+    { Tags a written screenshot with a location. }
+    procedure ScreenshotReady(Sender: TObject; const AData: ScreenshotReady_t);
+    { See UtilsCheckFileSignature. }
+    procedure TimelineEventRecordingExists(Sender: TObject; const AData: SteamTimelineEventRecordingExists_t);
+    { See UtilsCheckFileSignature. }
+    procedure TimelinePhaseRecordingExists(Sender: TObject; const AData: SteamTimelineGamePhaseRecordingExists_t);
+    { See UtilsCheckFileSignature. }
+    procedure UGCQueryCompleted(Sender: TObject; const AData: SteamUGCQueryCompleted_t);
+    { See UtilsCheckFileSignature. }
+    procedure UGCWorkshopEULAStatus(Sender: TObject; const AData: WorkshopEULAStatus_t);
+    { See UtilsCheckFileSignature. }
+    procedure UGCSubscribedListChanged(Sender: TObject; const AData: UserSubscribedItemsListChanged_t);
+    { See UtilsCheckFileSignature. }
+    procedure UGCItemInstalled(Sender: TObject; const AData: ItemInstalled_t);
+    { See UtilsCheckFileSignature. }
+    procedure MatchmakingLobbyMatchList(Sender: TObject; const AData: LobbyMatchList_t);
+    { See UtilsCheckFileSignature. }
+    procedure HTTPRequestCompleted(Sender: TObject; const AData: HTTPRequestCompleted_t);
+    { See UtilsCheckFileSignature. }
+    procedure HTMLBrowserReady(Sender: TObject; const AData: HTML_BrowserReady_t);
+    { See UtilsCheckFileSignature. }
+    procedure InventoryResultReady(Sender: TObject; const AData: SteamInventoryResultReady_t);
+    { See UtilsCheckFileSignature. }
+    procedure VideoOPFSettingsResult(Sender: TObject; const AData: GetOPFSettingsResult_t);
+    { See UtilsCheckFileSignature. }
+    procedure NetConnectionStatusChanged(Sender: TObject; const AData: SteamNetConnectionStatusChangedCallback_t);
+    { See UtilsCheckFileSignature. }
+    procedure RelayNetworkStatus(Sender: TObject; const AData: SteamRelayNetworkStatus_t);
+  public
+    { Creates the 20 components, owned by the test and linked to ASteamAPI. }
+    constructor Create(AOwner: TComponent; ASteamAPI: TCustomSteamAPI); reintroduce;
+    { Runs the test (Steam must be running); a running test is finished first. }
+    procedure Start;
+    { Call about once a second: reports overdue answers, ends the test. }
+    procedure Tick;
+    { Ends the test now: cleans up (only while Steam runs), logs a verdict
+      per component. AReason is logged when not ''. Call it before Steam is
+      closed. }
+    procedure Finish(const AReason: string);
+    { @true while the test waits for answers. }
+    property Running: Boolean read FTestsRunning;
+    { Text of row AIndex (a CT_ constant): 'not run ...', or the verdict. }
+    property RowText[AIndex: Integer]: string read GetRowText;
+    { The Screenshots plug-in (@nil while Steam is not running), for a
+      form's own screenshot. }
+    property Screenshots: TSteamScreenshotsPlugin read GetScreenshots;
+    { Every log line of the test. }
+    property OnLog: TComponentTestLogEvent read FOnLog write FOnLog;
+    { A row changed. }
+    property OnRowChanged: TComponentTestRowEvent read FOnRowChanged write FOnRowChanged;
+    { Steam asks for a screenshot (only while screenshots are hooked): the
+      form writes one (it knows how to capture itself). }
+    property OnScreenshotRequested: TNotifyEvent read FOnScreenshotRequested write FOnScreenshotRequested;
+    { The test ended (every answer arrived, timed out, or Finish). }
+    property OnFinished: TNotifyEvent read FOnFinished write FOnFinished;
+  end;
+
+{ The OS's usual per-user folder for a demo's settings: Windows
+  %APPDATA%\G3DGames\<AApp>, macOS ~/Library/Application Support/G3DGames/<AApp>,
+  Linux $XDG_CONFIG_HOME/G3DGames/<AApp> (default ~/.config/...). Never next
+  to the executable: that folder is read-only for a game installed by Steam.
+  The folder may not exist yet. '' when the base folder is unknown. }
+function DemoSettingsFolder(const AApp: string): string;
+
+{ The time-stamp source of the test, in milliseconds. }
+function TestTicks: UInt64;
+
+{ The name of a TSteamUpdateMode value. }
+function UpdateModeText(AMode: TSteamUpdateMode): string;
+
+implementation
+
+{ --- helpers --- }
+
+function TestTicks: UInt64;
+begin
+{$ifdef FPC}
+  Result := GetTickCount64;
+{$else}
+  Result := TThread.GetTickCount64;
+{$endif}
+end;
+
+function DemoSettingsFolder(const AApp: string): string;
+var
+  Base: string;
+begin
+{$if defined(MSWINDOWS)}
+  Base := GetEnvironmentVariable('APPDATA');
+{$elseif defined(DARWIN) or defined(MACOS)}
+  Base := GetEnvironmentVariable('HOME');
+  if Base <> '' then
+    Base := IncludeTrailingPathDelimiter(Base) + 'Library/Application Support';
+{$else}
+  Base := GetEnvironmentVariable('XDG_CONFIG_HOME');
+  if Base = '' then
+  begin
+    Base := GetEnvironmentVariable('HOME');
+    if Base <> '' then
+      Base := IncludeTrailingPathDelimiter(Base) + '.config';
+  end;
+{$endif}
+  if Base = '' then
+    Exit('');
+  Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(Base) + 'G3DGames') + AApp;
+end;
+
+function UpdateModeText(AMode: TSteamUpdateMode): string;
+begin
+  case AMode of
+    sumTimer:  Result := 'sumTimer';
+    sumThread: Result := 'sumThread';
+  else
+    Result := 'sumManual';
+  end;
+end;
+
+{ A NUL-terminated UTF-8 buffer from Steam as a string. }
+function SteamText(P: PAnsiChar): string;
+begin
+  Result := string(UTF8String(P));
+end;
+
+{ An unsigned 64-bit number as text (both compilers). }
+function U64Str(AValue: UInt64): string;
+begin
+{$ifdef FPC}
+  Result := IntToStr(AValue);
+{$else}
+  Result := UIntToStr(AValue);
+{$endif}
+end;
+
+{ Unix seconds (UTC) as a TDateTime, still UTC. }
+function UnixUTC(ASeconds: Int64): TDateTime;
+begin
+  Result := UnixDateDelta + ASeconds / SecsPerDay;
+end;
+
+{ The UTF-8 bytes of a string (no terminating NUL). }
+function Utf8Bytes(const S: string): TBytes;
+var
+  U: UTF8String;
+begin
+  U := UTF8String(S);
+  SetLength(Result, Length(U));
+  if Length(U) > 0 then
+    Move(U[1], Result[0], Length(U));
+end;
+
+{ The first ACount bytes of B as UTF-8 text. }
+function Utf8Text(const B: TBytes; ACount: Integer): string;
+var
+  U: UTF8String;
+begin
+  if ACount > Length(B) then
+    ACount := Length(B);
+  if ACount <= 0 then
+    Exit('');
+  SetLength(U, ACount);
+  Move(B[0], U[1], ACount);
+  Result := string(U);
+end;
+
+{ The EResult number with the names the test meets most often. }
+function ResultText(AResult: EResult): string;
+begin
+  case Ord(AResult) of
+    1: Result := 'OK';
+    2: Result := 'Fail';
+    8: Result := 'InvalidParam';
+    9: Result := 'FileNotFound';
+    15: Result := 'AccessDenied';
+    16: Result := 'Timeout';
+  else
+    Result := 'result';
+  end;
+  Result := Format('%d (%s)', [Ord(AResult), Result]);
+end;
+
+{ --- TSteamComponentTest: lifecycle and bookkeeping --- }
+
+constructor TSteamComponentTest.Create(AOwner: TComponent; ASteamAPI: TCustomSteamAPI);
+var
+  I: Integer;
+begin
+  inherited Create(AOwner);
+  SteamAPI1 := ASteamAPI;
+  FUGCQuery := k_UGCQueryHandleInvalid;
+  FInvResult := k_SteamInventoryResultInvalid;
+  FSockConn1 := k_HSteamNetConnection_Invalid;
+  FSockConn2 := k_HSteamNetConnection_Invalid;
+  for I := 0 to CT_COUNT - 1 do
+    FRows[I] := 'not run - press Test components (Steam must be started)';
+  // Each: create, wire the events, link (SteamAPI last: it attaches the
+  // component when Steam already runs)
+  SteamUtils1 := TSteamUtils.Create(Self);
+  SteamUtils1.Name := 'SteamUtils1';
+  SteamUtils1.OnCheckFileSignature := UtilsCheckFileSignature;
+  SteamUtils1.OnIPCountry := UtilsIPCountry;
+  SteamUtils1.OnLowBatteryPower := UtilsLowBattery;
+  SteamUtils1.SteamAPI := ASteamAPI;
+  SteamUser1 := TSteamUser.Create(Self);
+  SteamUser1.Name := 'SteamUser1';
+  SteamUser1.OnGetAuthSessionTicketResponse := UserAuthTicketResponse;
+  SteamUser1.OnDurationControl := UserDurationControl;
+  SteamUser1.OnSteamServersConnected := UserServersConnected;
+  SteamUser1.OnSteamServersDisconnected := UserServersDisconnected;
+  SteamUser1.OnSteamServerConnectFailure := UserServerConnectFailure;
+  SteamUser1.SteamAPI := ASteamAPI;
+  SteamApps1 := TSteamApps.Create(Self);
+  SteamApps1.Name := 'SteamApps1';
+  SteamApps1.OnFileDetailsResult := AppsFileDetails;
+  SteamApps1.OnDlcInstalled := AppsDlcInstalled;
+  SteamApps1.OnNewUrlLaunchParameters := AppsNewUrlLaunchParameters;
+  SteamApps1.OnTimedTrialStatus := AppsTimedTrialStatus;
+  SteamApps1.SteamAPI := ASteamAPI;
+  SteamRemoteStorage1 := TSteamRemoteStorage.Create(Self);
+  SteamRemoteStorage1.Name := 'SteamRemoteStorage1';
+  SteamRemoteStorage1.OnRemoteStorageFileWriteAsyncComplete := StorageWriteComplete;
+  SteamRemoteStorage1.OnRemoteStorageFileReadAsyncComplete := StorageReadComplete;
+  SteamRemoteStorage1.OnRemoteStorageLocalFileChange := StorageLocalFileChange;
+  SteamRemoteStorage1.SteamAPI := ASteamAPI;
+  SteamScreenshots1 := TSteamScreenshots.Create(Self);
+  SteamScreenshots1.Name := 'SteamScreenshots1';
+  SteamScreenshots1.OnScreenshotRequested := ScreenshotRequested;
+  SteamScreenshots1.OnScreenshotReady := ScreenshotReady;
+  SteamScreenshots1.SteamAPI := ASteamAPI;
+  SteamTimeline1 := TSteamTimeline.Create(Self);
+  SteamTimeline1.Name := 'SteamTimeline1';
+  SteamTimeline1.OnSteamTimelineEventRecordingExists := TimelineEventRecordingExists;
+  SteamTimeline1.OnSteamTimelineGamePhaseRecordingExists := TimelinePhaseRecordingExists;
+  SteamTimeline1.SteamAPI := ASteamAPI;
+  SteamUGC1 := TSteamUGC.Create(Self);
+  SteamUGC1.Name := 'SteamUGC1';
+  SteamUGC1.OnSteamUGCQueryCompleted := UGCQueryCompleted;
+  SteamUGC1.OnWorkshopEULAStatus := UGCWorkshopEULAStatus;
+  SteamUGC1.OnUserSubscribedItemsListChanged := UGCSubscribedListChanged;
+  SteamUGC1.OnItemInstalled := UGCItemInstalled;
+  SteamUGC1.SteamAPI := ASteamAPI;
+  SteamMatchmaking1 := TSteamMatchmaking.Create(Self);
+  SteamMatchmaking1.Name := 'SteamMatchmaking1';
+  SteamMatchmaking1.OnLobbyMatchList := MatchmakingLobbyMatchList;
+  SteamMatchmaking1.SteamAPI := ASteamAPI;
+  SteamParties1 := TSteamParties.Create(Self);
+  SteamParties1.Name := 'SteamParties1';
+  SteamParties1.SteamAPI := ASteamAPI;
+  SteamMusic1 := TSteamMusic.Create(Self);
+  SteamMusic1.Name := 'SteamMusic1';
+  SteamMusic1.SteamAPI := ASteamAPI;
+  SteamHTTP1 := TSteamHTTP.Create(Self);
+  SteamHTTP1.Name := 'SteamHTTP1';
+  SteamHTTP1.OnHTTPRequestCompleted := HTTPRequestCompleted;
+  SteamHTTP1.SteamAPI := ASteamAPI;
+  SteamHTMLSurface1 := TSteamHTMLSurface.Create(Self);
+  SteamHTMLSurface1.Name := 'SteamHTMLSurface1';
+  SteamHTMLSurface1.OnHTML_BrowserReady := HTMLBrowserReady;
+  SteamHTMLSurface1.SteamAPI := ASteamAPI;
+  SteamInventory1 := TSteamInventory.Create(Self);
+  SteamInventory1.Name := 'SteamInventory1';
+  SteamInventory1.OnSteamInventoryResultReady := InventoryResultReady;
+  SteamInventory1.SteamAPI := ASteamAPI;
+  SteamVideo1 := TSteamVideo.Create(Self);
+  SteamVideo1.Name := 'SteamVideo1';
+  SteamVideo1.OnGetOPFSettingsResult := VideoOPFSettingsResult;
+  SteamVideo1.SteamAPI := ASteamAPI;
+  SteamParentalSettings1 := TSteamParentalSettings.Create(Self);
+  SteamParentalSettings1.Name := 'SteamParentalSettings1';
+  SteamParentalSettings1.SteamAPI := ASteamAPI;
+  SteamRemotePlay1 := TSteamRemotePlay.Create(Self);
+  SteamRemotePlay1.Name := 'SteamRemotePlay1';
+  SteamRemotePlay1.SteamAPI := ASteamAPI;
+  SteamNetworking1 := TSteamNetworking.Create(Self);
+  SteamNetworking1.Name := 'SteamNetworking1';
+  SteamNetworking1.SteamAPI := ASteamAPI;
+  SteamNetworkingSockets1 := TSteamNetworkingSockets.Create(Self);
+  SteamNetworkingSockets1.Name := 'SteamNetworkingSockets1';
+  SteamNetworkingSockets1.OnSteamNetConnectionStatusChangedCallback := NetConnectionStatusChanged;
+  SteamNetworkingSockets1.SteamAPI := ASteamAPI;
+  SteamNetworkingMessages1 := TSteamNetworkingMessages.Create(Self);
+  SteamNetworkingMessages1.Name := 'SteamNetworkingMessages1';
+  SteamNetworkingMessages1.SteamAPI := ASteamAPI;
+  SteamNetworkingUtils1 := TSteamNetworkingUtils.Create(Self);
+  SteamNetworkingUtils1.Name := 'SteamNetworkingUtils1';
+  SteamNetworkingUtils1.OnSteamRelayNetworkStatus := RelayNetworkStatus;
+  SteamNetworkingUtils1.SteamAPI := ASteamAPI;
+end;
+
+function TSteamComponentTest.GetRowText(AIndex: Integer): string;
+begin
+  if (AIndex >= 0) and (AIndex < CT_COUNT) then
+    Result := FRows[AIndex]
+  else
+    Result := '';
+end;
+
+function TSteamComponentTest.GetScreenshots: TSteamScreenshotsPlugin;
+begin
+  Result := SteamScreenshots1.Plugin;
+end;
+
+procedure TSteamComponentTest.AddLog(const S: string);
+begin
+  if Assigned(FOnLog) then
+    FOnLog(S);
+end;
+
+function TSteamComponentTest.PendingIndex(const AKey: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FPending) do
+    if FPending[I].Key = AKey then
+      Exit(I);
+  Result := -1;
+end;
+
+procedure TSteamComponentTest.PendingDelete(AIndex: Integer);
+var
+  I: Integer;
+begin
+  for I := AIndex to High(FPending) - 1 do
+    FPending[I] := FPending[I + 1];
+  SetLength(FPending, Length(FPending) - 1);
+end;
+
+procedure TSteamComponentTest.PendingToMissing(AIndex: Integer);
+var
+  Key: string;
+  I: Integer;
+begin
+  Key := FPending[AIndex].Key;
+  I := StrToIntDef(Copy(Key, 1, Pos(':', Key) - 1), -1);
+  if (I < 0) or (I >= CT_COUNT) then
+    Exit;
+  if FTests[I].Missing <> '' then
+    FTests[I].Missing := FTests[I].Missing + ', ';
+  FTests[I].Missing := FTests[I].Missing + Copy(Key, Pos(':', Key) + 1, MaxInt);
+end;
+
+procedure TSteamComponentTest.UpdateTestRow(AIndex: Integer);
+var
+  T: TComponentTestState;
+  Verdict, S: string;
+begin
+  T := FTests[AIndex];
+  if not T.Ran then
+    Exit;
+  if (not T.Attached) or (not T.ReadsOK) or (T.Missing <> '') then
+    Verdict := 'FAIL'
+  else if T.Arrived < T.Sent then
+    Verdict := 'waiting'
+  else
+    Verdict := 'PASS';
+  S := Format('%s - attached %s, calls %s, answers %d of %d',
+    [Verdict, BoolToStr(T.Attached, True), IfThen(T.ReadsOK, 'OK', 'FAILED'), T.Arrived, T.Sent]);
+  if T.Missing <> '' then
+    S := S + '; NO ANSWER: ' + T.Missing;
+  if T.Note <> '' then
+    S := S + '; ' + T.Note;
+  if S = FRows[AIndex] then
+    Exit;
+  FRows[AIndex] := S;
+  if Assigned(FOnRowChanged) then
+    FOnRowChanged(AIndex, S);
+end;
+
+procedure TSteamComponentTest.Expect(AIndex: Integer; const AName: string);
+var
+  Key: string;
+  I: Integer;
+begin
+  Inc(FTests[AIndex].Sent);
+  Key := IntToStr(AIndex) + ':' + AName;
+  I := PendingIndex(Key);
+  if I < 0 then
+  begin
+    I := Length(FPending);
+    SetLength(FPending, I + 1);
+    FPending[I].Key := Key;
+  end;
+  FPending[I].Sent := TestTicks;
+end;
+
+function TSteamComponentTest.Answered(AIndex: Integer; const AName: string): Boolean;
+var
+  I: Integer;
+  Sent: UInt64;
+begin
+  Result := False;
+  if not FTestsRunning then
+    Exit;
+  I := PendingIndex(IntToStr(AIndex) + ':' + AName);
+  if I < 0 then
+    Exit;
+  Sent := FPending[I].Sent;
+  PendingDelete(I);
+  Inc(FTests[AIndex].Arrived);
+  AddLog(Format('Test %s: %s answered after %d ms', [TestNames[AIndex], AName,
+    Int64(TestTicks - Sent)]));
+  Result := True;
+end;
+
+procedure TSteamComponentTest.CheckTestsDone;
+var
+  I: Integer;
+begin
+  for I := 0 to CT_COUNT - 1 do
+    UpdateTestRow(I);
+  if FTestsRunning and (Length(FPending) = 0) then
+    Finish('');
+end;
+
+procedure TSteamComponentTest.Finish(const AReason: string);
+var
+  I, Passed: Integer;
+begin
+  if not FTestsRunning then
+    Exit;
+  FTestsRunning := False;
+  if AReason <> '' then
+    AddLog('Component test stopped: ' + AReason);
+  // Whatever is still pending counts as not answered
+  for I := 0 to High(FPending) do
+    PendingToMissing(I);
+  SetLength(FPending, 0);
+  // Clean up (only possible while Steam runs)
+  if SteamAPI1.IsRunning then
+  begin
+    try
+      if (FAuthTicket <> k_HAuthTicketInvalid) and (SteamUser1.Plugin <> nil) then
+      begin
+        SteamUser1.Plugin.CancelAuthTicket(FAuthTicket);
+        AddLog('Test cleanup: auth ticket ' + U64Str(FAuthTicket) + ' cancelled (it never answered)');
+      end;
+      if (FUGCQuery <> k_UGCQueryHandleInvalid) and (SteamUGC1.Plugin <> nil) then
+        AddLog('Test cleanup: ReleaseQueryUGCRequest (query never completed): ' +
+          BoolToStr(SteamUGC1.Plugin.ReleaseQueryUGCRequest(FUGCQuery), True));
+      // Normally deleted after the read-back; not if that never happened
+      if (SteamRemoteStorage1.Plugin <> nil) and SteamRemoteStorage1.Plugin.FileExists(TEST_CLOUD_FILE) then
+        AddLog('Test cleanup: ' + TEST_CLOUD_FILE + ' still there, FileDelete ' +
+          BoolToStr(SteamRemoteStorage1.Plugin.FileDelete(TEST_CLOUD_FILE), True));
+      if (FHTTPRequest <> 0) and (SteamHTTP1.Plugin <> nil) then
+        AddLog('Test cleanup: ReleaseHTTPRequest (request never completed): ' +
+          BoolToStr(SteamHTTP1.Plugin.ReleaseHTTPRequest(FHTTPRequest), True));
+      if (FInvResult <> k_SteamInventoryResultInvalid) and (SteamInventory1.Plugin <> nil) then
+      begin
+        SteamInventory1.Plugin.DestroyResult(FInvResult);
+        AddLog('Test cleanup: inventory result ' + IntToStr(FInvResult) + ' destroyed (never ready)');
+      end;
+      if FHTMLInit and (SteamHTMLSurface1.Plugin <> nil) then
+        AddLog('Test cleanup: ISteamHTMLSurface.Shutdown ' +
+          BoolToStr(SteamHTMLSurface1.Plugin.Shutdown, True));
+      CloseSocketPair('Test cleanup');
+    except
+      on E: Exception do AddLog('Test cleanup failed: ' + E.Message);
+    end;
+  end;
+  FAuthTicket := k_HAuthTicketInvalid;
+  FUGCQuery := k_UGCQueryHandleInvalid;
+  FHTTPRequest := 0;
+  FHTMLInit := False;
+  FInvResult := k_SteamInventoryResultInvalid;
+  FSockConn1 := k_HSteamNetConnection_Invalid;
+  FSockConn2 := k_HSteamNetConnection_Invalid;
+  Passed := 0;
+  for I := 0 to CT_COUNT - 1 do
+  begin
+    UpdateTestRow(I);
+    if FTests[I].Ran and FTests[I].Attached and FTests[I].ReadsOK and (FTests[I].Missing = '') and
+      (FTests[I].Arrived = FTests[I].Sent) then
+      Inc(Passed);
+    if FTests[I].Ran then
+      AddLog(Format('Test result %s: %s', [TestNames[I], FRows[I]]));
+  end;
+  AddLog(Format('Component test finished: %d of %d components PASS', [Passed, CT_COUNT]));
+  if Assigned(FOnFinished) then
+    FOnFinished(Self);
+end;
+
+procedure TSteamComponentTest.Start;
+var
+  I: Integer;
+begin
+  if not SteamAPI1.IsRunning then
+  begin
+    AddLog('Test components: Steam is not running - press Start first');
+    Exit;
+  end;
+  if FTestsRunning then
+    Finish('restarted by Test components');
+  FAppID := SteamAPI1.AppID;
+  for I := 0 to CT_COUNT - 1 do
+  begin
+    FTests[I].Ran := False;
+    FTests[I].Attached := False;
+    FTests[I].ReadsOK := False;
+    FTests[I].Sent := 0;
+    FTests[I].Arrived := 0;
+    FTests[I].Missing := '';
+    FTests[I].Note := '';
+    FRows[I] := 'running ...';
+    if Assigned(FOnRowChanged) then
+      FOnRowChanged(I, FRows[I]);
+  end;
+  SetLength(FPending, 0);
+  FTestsRunning := True;
+  AddLog(Format('Component test started: %d components, answers expected within %d ms',
+    [CT_COUNT, TEST_TIMEOUT_MS]));
+  TestUtils;
+  TestUser;
+  TestApps;
+  TestRemoteStorage;
+  TestScreenshots;
+  TestTimeline;
+  TestUGC;
+  TestMatchmaking;
+  TestParties;
+  TestMusic;
+  TestHTTP;
+  TestHTMLSurface;
+  TestInventory;
+  TestVideo;
+  TestParentalSettings;
+  TestRemotePlay;
+  TestNetworking;
+  TestNetworkingSockets;
+  TestNetworkingMessages;
+  TestNetworkingUtils;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.Tick;
+var
+  I: Integer;
+  NowTicks: UInt64;
+  Key: string;
+begin
+  if not FTestsRunning then
+    Exit;
+  NowTicks := TestTicks;
+  for I := High(FPending) downto 0 do
+    if NowTicks - FPending[I].Sent >= TEST_TIMEOUT_MS then
+    begin
+      Key := FPending[I].Key;
+      PendingToMissing(I);
+      PendingDelete(I);
+      AddLog(Format('Test %s: NO ANSWER to %s within %d ms',
+        [TestNames[StrToIntDef(Copy(Key, 1, Pos(':', Key) - 1), 0)], Copy(Key, Pos(':', Key) + 1, MaxInt),
+         TEST_TIMEOUT_MS]));
+    end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.ScreenshotRequested(Sender: TObject; const AData: ScreenshotRequested_t);
+begin
+  // Only while screenshots are hooked (the test unhooks them at once): then
+  // Steam takes none itself and every request must be answered
+  AddLog('TSteamScreenshots.OnScreenshotRequested');
+  if Assigned(FOnScreenshotRequested) then
+    FOnScreenshotRequested(Self);
+end;
+
+{ --- the tests (a port of demos/SteamDemo/src/uMain.pas) --- }
+
+function TSteamComponentTest.BeginTest(AIndex: Integer; AComponent: TSteamPluginComponent; APlugin: TObject): Boolean;
+begin
+  FTests[AIndex].Ran := True;
+  FTests[AIndex].Attached := AComponent.Attached;
+  FTests[AIndex].ReadsOK := True;
+  Result := APlugin <> nil;
+  // Attached is only True when the component is linked to a running
+  // TSteamAPI (SteamAPI in the form file) and its events are subscribed
+  AddLog(Format('Test %s: component %s, attached %s, plug-in active %s',
+    [TestNames[AIndex], AComponent.Name, BoolToStr(AComponent.Attached, True), BoolToStr(Result, True)]));
+  if not Result then
+  begin
+    FTests[AIndex].ReadsOK := False;
+    FTests[AIndex].Note := 'plug-in not active';
+  end;
+end;
+
+procedure TSteamComponentTest.ReadFailed(AIndex: Integer; const AWhat: string; E: Exception);
+begin
+  FTests[AIndex].ReadsOK := False;
+  AddLog(Format('Test %s: %s FAILED: %s: %s', [TestNames[AIndex], AWhat, E.ClassName, E.Message]));
+end;
+
+procedure TSteamComponentTest.ExpectCall(AIndex: Integer; const AName: string; ACall: SteamAPICall_t);
+begin
+  if ACall = k_uAPICallInvalid then
+  begin
+    Inc(FTests[AIndex].Sent);
+    if FTests[AIndex].Missing <> '' then
+      FTests[AIndex].Missing := FTests[AIndex].Missing + ', ';
+    FTests[AIndex].Missing := FTests[AIndex].Missing + AName + ' (no call handle)';
+    AddLog(Format('Test %s: %s returned k_uAPICallInvalid - Steam refused the call',
+      [TestNames[AIndex], AName]));
+  end
+  else
+  begin
+    AddLog(Format('Test %s: %s sent, call %s - waiting for its result',
+      [TestNames[AIndex], AName, U64Str(ACall)]));
+    Expect(AIndex, AName);
+  end;
+end;
+
+{ --- TSteamUtils --- }
+
+procedure TSteamComponentTest.TestUtils;
+var
+  U: TSteamUtilsPlugin;
+  Exe: string;
+begin
+  U := SteamUtils1.Plugin;
+  if not BeginTest(CT_UTILS, SteamUtils1, U) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamUtils: universe %d, seconds since app active %d, since computer active %d, ' +
+      'server real time %s UTC, IPC calls %d, China launcher %s, VR streaming %s',
+      [Ord(U.GetConnectedUniverse), U.GetSecondsSinceAppActive, U.GetSecondsSinceComputerActive,
+       FormatDateTime('yyyy-mm-dd hh:nn:ss', UnixUTC(Int64(U.GetServerRealTime))),
+       U.GetIPCCallCount, BoolToStr(U.IsSteamChinaLauncher, True),
+       BoolToStr(U.IsVRHeadsetStreamingEnabled, True)]));
+  except
+    on E: Exception do ReadFailed(CT_UTILS, 'reads', E);
+  end;
+  try
+    // Our own executable: not part of a signed depot, so a "no signatures"
+    // or "not found" answer is expected - what counts is that it arrives
+    Exe := ExpandFileName(ParamStr(0));
+    ExpectCall(CT_UTILS, 'CheckFileSignature', U.CheckFileSignature(Exe));
+  except
+    on E: Exception do ReadFailed(CT_UTILS, 'CheckFileSignature', E);
+  end;
+end;
+
+procedure TSteamComponentTest.UtilsCheckFileSignature(Sender: TObject; const AData: CheckFileSignature_t);
+const
+  Names: array[0..4] of string = ('invalid signature', 'valid signature', 'file not found',
+    'no signatures for this app', 'no signatures for this file');
+var
+  S: string;
+begin
+  if (Ord(AData.m_eCheckFileSignature) >= 0) and (Ord(AData.m_eCheckFileSignature) <= 4) then
+    S := Names[Ord(AData.m_eCheckFileSignature)]
+  else
+    S := 'unknown';
+  AddLog(Format('TSteamUtils.OnCheckFileSignature: %d (%s)', [Ord(AData.m_eCheckFileSignature), S]));
+  if Answered(CT_UTILS, 'CheckFileSignature') then
+  begin
+    FTests[CT_UTILS].Note := 'signature check: ' + S;
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.UtilsIPCountry(Sender: TObject; const AData: IPCountry_t);
+begin
+  AddLog('TSteamUtils.OnIPCountry: the IP country changed (not requested by the test)');
+end;
+
+procedure TSteamComponentTest.UtilsLowBattery(Sender: TObject; const AData: LowBatteryPower_t);
+begin
+  AddLog(Format('TSteamUtils.OnLowBatteryPower: %d minutes left (not requested by the test)',
+    [AData.m_nMinutesBatteryLeft]));
+end;
+
+{ --- TSteamUser --- }
+
+procedure TSteamComponentTest.TestUser;
+var
+  U: TSteamUserPlugin;
+  Folder: array[0..1023] of AnsiChar;
+  Ticket: array[0..2047] of Byte;
+  TicketSize: UInt32;
+  FolderText: string;
+  Me: TSteamID;
+begin
+  U := SteamUser1.Plugin;
+  if not BeginTest(CT_USER, SteamUser1, U) then
+    Exit;
+  try
+    FillChar(Folder, SizeOf(Folder), 0);
+    if U.GetUserDataFolder(@Folder[0], SizeOf(Folder)) then
+      FolderText := 'returned'   // a local path: kept out of the log
+    else
+      FolderText := 'FALSE';
+    Me := U.GetSteamID;
+    AddLog(Format('Test TSteamUser: logged on %s, SteamID %s, behind NAT %s, phone verified %s, ' +
+      'two-factor %s, GetUserDataFolder %s',
+      [BoolToStr(U.BLoggedOn, True), Me.ToString, BoolToStr(U.BIsBehindNAT, True),
+       BoolToStr(U.BIsPhoneVerified, True), BoolToStr(U.BIsTwoFactorEnabled, True), FolderText]));
+  except
+    on E: Exception do ReadFailed(CT_USER, 'reads', E);
+  end;
+  try
+    TicketSize := 0;
+    FAuthTicket := U.GetAuthSessionTicket(@Ticket[0], SizeOf(Ticket), TicketSize, nil);
+    if FAuthTicket = k_HAuthTicketInvalid then
+    begin
+      Inc(FTests[CT_USER].Sent);
+      if FTests[CT_USER].Missing <> '' then
+        FTests[CT_USER].Missing := FTests[CT_USER].Missing + ', ';
+      FTests[CT_USER].Missing := FTests[CT_USER].Missing + 'GetAuthSessionTicket (invalid ticket)';
+      AddLog('Test TSteamUser: GetAuthSessionTicket returned k_HAuthTicketInvalid');
+    end
+    else
+    begin
+      AddLog(Format('Test TSteamUser: GetAuthSessionTicket handle %s, %d bytes - waiting for callback 163',
+        [U64Str(FAuthTicket), TicketSize]));
+      Expect(CT_USER, 'GetAuthSessionTicket');
+    end;
+  except
+    on E: Exception do ReadFailed(CT_USER, 'GetAuthSessionTicket', E);
+  end;
+  try
+    ExpectCall(CT_USER, 'GetDurationControl', U.GetDurationControl);
+  except
+    on E: Exception do ReadFailed(CT_USER, 'GetDurationControl', E);
+  end;
+end;
+
+procedure TSteamComponentTest.UserAuthTicketResponse(Sender: TObject; const AData: GetAuthSessionTicketResponse_t);
+begin
+  AddLog(Format('TSteamUser.OnGetAuthSessionTicketResponse: ticket %s, result %s',
+    [U64Str(AData.m_hAuthTicket), ResultText(AData.m_eResult)]));
+  if (AData.m_hAuthTicket = FAuthTicket) and (FAuthTicket <> k_HAuthTicketInvalid) and
+    Answered(CT_USER, 'GetAuthSessionTicket') then
+  begin
+    // A real game would send the ticket to its server; the test only needs
+    // the answer, so the ticket is given back at once
+    if SteamUser1.Plugin <> nil then
+    begin
+      SteamUser1.Plugin.CancelAuthTicket(FAuthTicket);
+      AddLog('Test TSteamUser: auth ticket ' + U64Str(FAuthTicket) + ' cancelled');
+    end;
+    FAuthTicket := k_HAuthTicketInvalid;
+    FTests[CT_USER].Note := 'ticket ' + ResultText(AData.m_eResult);
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.UserDurationControl(Sender: TObject; const AData: DurationControl_t);
+begin
+  AddLog(Format('TSteamUser.OnDurationControl: result %s, app %d, applicable %s, ' +
+    'last 5 h %d s, today %d s, remaining %d s, progress %d, notification %d',
+    [ResultText(AData.m_eResult), AData.m_appid, BoolToStr(AData.m_bApplicable, True),
+     AData.m_csecsLast5h, AData.m_csecsToday, AData.m_csecsRemaining,
+     Ord(AData.m_progress), Ord(AData.m_notification)]));
+  if Answered(CT_USER, 'GetDurationControl') then
+    CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.UserServersConnected(Sender: TObject; const AData: SteamServersConnected_t);
+begin
+  AddLog('TSteamUser.OnSteamServersConnected (not requested by the test)');
+end;
+
+procedure TSteamComponentTest.UserServersDisconnected(Sender: TObject; const AData: SteamServersDisconnected_t);
+begin
+  AddLog('TSteamUser.OnSteamServersDisconnected: result ' + ResultText(AData.m_eResult) +
+    ' (not requested by the test)');
+end;
+
+procedure TSteamComponentTest.UserServerConnectFailure(Sender: TObject; const AData: SteamServerConnectFailure_t);
+begin
+  AddLog(Format('TSteamUser.OnSteamServerConnectFailure: result %s, still retrying %s (not requested by the test)',
+    [ResultText(AData.m_eResult), BoolToStr(AData.m_bStillRetrying, True)]));
+end;
+
+{ --- TSteamApps --- }
+
+procedure TSteamComponentTest.TestApps;
+var
+  A: TSteamAppsPlugin;
+  Beta: array[0..255] of AnsiChar;
+  CmdLine: array[0..1023] of AnsiChar;
+  Allowed, Played: UInt32;
+  BetasAvailable, BetasPrivate, BetaCount, CmdLen: Integer;
+  Purchased: UInt32;
+  PurchasedText: string;
+  HasBeta, Trial: Boolean;
+begin
+  A := SteamApps1.Plugin;
+  if not BeginTest(CT_APPS, SteamApps1, A) then
+    Exit;
+  try
+    FillChar(Beta, SizeOf(Beta), 0);
+    FillChar(CmdLine, SizeOf(CmdLine), 0);
+    HasBeta := A.GetCurrentBetaName(@Beta[0], SizeOf(Beta));
+    CmdLen := A.GetLaunchCommandLine(@CmdLine[0], SizeOf(CmdLine));
+    Allowed := 0;
+    Played := 0;
+    Trial := A.BIsTimedTrial(Allowed, Played);
+    BetasAvailable := 0;
+    BetasPrivate := 0;
+    BetaCount := A.GetNumBetas(BetasAvailable, BetasPrivate);
+    Purchased := A.GetEarliestPurchaseUnixTime(FAppID);
+    if Purchased = 0 then
+      PurchasedText := 'none'
+    else
+      PurchasedText := FormatDateTime('yyyy-mm-dd hh:nn', UnixUTC(Int64(Purchased))) + ' UTC';
+    AddLog(Format('Test TSteamApps: low violence %s, cybercafe %s, VAC banned %s, free weekend %s, ' +
+      'DLC %d, app installed %s, earliest purchase %s, beta %s, betas %d (%d available, %d private), ' +
+      'timed trial %s (%d of %d s), launch command line %d characters (GetLaunchCommandLine returned %d)',
+      [BoolToStr(A.BIsLowViolence, True), BoolToStr(A.BIsCybercafe, True),
+       BoolToStr(A.BIsVACBanned, True), BoolToStr(A.BIsSubscribedFromFreeWeekend, True),
+       A.GetDLCCount, BoolToStr(A.BIsAppInstalled(FAppID), True), PurchasedText,
+       IfThen(HasBeta, '"' + SteamText(@Beta[0]) + '"', 'none'), BetaCount, BetasAvailable, BetasPrivate,
+       BoolToStr(Trial, True), Played, Allowed, Length(SteamText(@CmdLine[0])), CmdLen]));
+  except
+    on E: Exception do ReadFailed(CT_APPS, 'reads', E);
+  end;
+  try
+    // A name relative to the app's install folder; a development build is
+    // not in a depot, so FileNotFound is the expected answer
+    ExpectCall(CT_APPS, 'GetFileDetails', A.GetFileDetails(ExtractFileName(ParamStr(0))));
+  except
+    on E: Exception do ReadFailed(CT_APPS, 'GetFileDetails', E);
+  end;
+end;
+
+procedure TSteamComponentTest.AppsFileDetails(Sender: TObject; const AData: FileDetailsResult_t);
+begin
+  AddLog(Format('TSteamApps.OnFileDetailsResult: result %s, size %s, flags $%x',
+    [ResultText(AData.m_eResult), U64Str(AData.m_ulFileSize), AData.m_unFlags]));
+  if Answered(CT_APPS, 'GetFileDetails') then
+  begin
+    FTests[CT_APPS].Note := 'file details ' + ResultText(AData.m_eResult);
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.AppsDlcInstalled(Sender: TObject; const AData: DlcInstalled_t);
+begin
+  AddLog(Format('TSteamApps.OnDlcInstalled: app %d (not requested by the test)', [AData.m_nAppID]));
+end;
+
+procedure TSteamComponentTest.AppsNewUrlLaunchParameters(Sender: TObject; const AData: NewUrlLaunchParameters_t);
+begin
+  AddLog('TSteamApps.OnNewUrlLaunchParameters (not requested by the test)');
+end;
+
+procedure TSteamComponentTest.AppsTimedTrialStatus(Sender: TObject; const AData: TimedTrialStatus_t);
+begin
+  AddLog(Format('TSteamApps.OnTimedTrialStatus: app %d, offline %s, %d of %d s (not requested by the test)',
+    [AData.m_unAppID, BoolToStr(AData.m_bIsOffline, True), AData.m_unSecondsPlayed, AData.m_unSecondsAllowed]));
+end;
+
+{ --- TSteamRemoteStorage --- }
+
+procedure TSteamComponentTest.TestRemoteStorage;
+var
+  R: TSteamRemoteStoragePlugin;
+  CloudForApp: Boolean;
+  Call: SteamAPICall_t;
+begin
+  R := SteamRemoteStorage1.Plugin;
+  if not BeginTest(CT_STORAGE, SteamRemoteStorage1, R) then
+    Exit;
+  CloudForApp := True;
+  try
+    CloudForApp := R.IsCloudEnabledForApp;
+    AddLog(Format('Test TSteamRemoteStorage: cloud for account %s, for app %s, %d files, %s exists %s',
+      [BoolToStr(R.IsCloudEnabledForAccount, True), BoolToStr(CloudForApp, True),
+       R.GetFileCount, TEST_CLOUD_FILE, BoolToStr(R.FileExists(TEST_CLOUD_FILE), True)]));
+    if not CloudForApp then
+    begin
+      // Owner's request (2026-11-02): the client shows no per-game Cloud
+      // switch for this app, so the demo turns it on itself. Valve means
+      // SetCloudEnabledForApp for a player's choice in the game's options;
+      // a game must not do this silently. If it stays False, Steam treats
+      // Cloud as off for the APP (configuration), not for this user.
+      R.SetCloudEnabledForApp(True);
+      CloudForApp := R.IsCloudEnabledForApp;
+      AddLog('Test TSteamRemoteStorage: SetCloudEnabledForApp(True) called, cloud for app now ' +
+        BoolToStr(CloudForApp, True) + IfThen(CloudForApp, '',
+        ' - Steam keeps Cloud off for the app itself (its published configuration), not for this user'));
+      FTests[CT_STORAGE].Note := 'cloud for app was off, SetCloudEnabledForApp(True) -> ' +
+        BoolToStr(CloudForApp, True);
+    end;
+  except
+    on E: Exception do ReadFailed(CT_STORAGE, 'reads / SetCloudEnabledForApp', E);
+  end;
+  try
+    FCloudData := Utf8Bytes('SteamDemo component test ' +
+      FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now));
+    Call := R.FileWriteAsync(TEST_CLOUD_FILE, @FCloudData[0], Length(FCloudData));
+    if (Call = k_uAPICallInvalid) and not CloudForApp then
+    begin
+      // A Steam setting, not a component fault: not counted
+      if FTests[CT_STORAGE].Note <> '' then
+        FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note + ', ';
+      FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note +
+        'write refused: Steam Cloud is off for the app, async write / read not tested';
+      AddLog('Test TSteamRemoteStorage: FileWriteAsync returned k_uAPICallInvalid - Steam Cloud is off ' +
+        'for the app, so the async write / read cannot be tested');
+    end
+    else
+      ExpectCall(CT_STORAGE, 'FileWriteAsync', Call);
+  except
+    on E: Exception do ReadFailed(CT_STORAGE, 'FileWriteAsync', E);
+  end;
+end;
+
+procedure TSteamComponentTest.StorageWriteComplete(Sender: TObject; const AData: RemoteStorageFileWriteAsyncComplete_t);
+var
+  R: TSteamRemoteStoragePlugin;
+begin
+  AddLog('TSteamRemoteStorage.OnRemoteStorageFileWriteAsyncComplete: result ' + ResultText(AData.m_eResult));
+  if not Answered(CT_STORAGE, 'FileWriteAsync') then
+    Exit;
+  if FTests[CT_STORAGE].Note <> '' then
+    FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note + ', ';
+  FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note + 'write ' + ResultText(AData.m_eResult);
+  R := SteamRemoteStorage1.Plugin;
+  if (AData.m_eResult = k_EResultOK) and (R <> nil) then
+  try
+    ExpectCall(CT_STORAGE, 'FileReadAsync', R.FileReadAsync(TEST_CLOUD_FILE, 0, Length(FCloudData)));
+  except
+    on E: Exception do ReadFailed(CT_STORAGE, 'FileReadAsync', E);
+  end
+  else
+    FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note +
+      ', read-back skipped (is Steam Cloud enabled for the app on the partner site?)';
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.StorageReadComplete(Sender: TObject; const AData: RemoteStorageFileReadAsyncComplete_t);
+var
+  R: TSteamRemoteStoragePlugin;
+  Buf: TBytes;
+  Fetched, Same: Boolean;
+  SyncRead: Int32;
+begin
+  AddLog(Format('TSteamRemoteStorage.OnRemoteStorageFileReadAsyncComplete: call %s, result %s, offset %d, %d bytes',
+    [U64Str(AData.m_hFileReadAsync), ResultText(AData.m_eResult), AData.m_nOffset, AData.m_cubRead]));
+  if not Answered(CT_STORAGE, 'FileReadAsync') then
+    Exit;
+  R := SteamRemoteStorage1.Plugin;
+  if R <> nil then
+  try
+    Same := False;
+    Fetched := False;
+    if (AData.m_eResult = k_EResultOK) and (AData.m_cubRead > 0) then
+    begin
+      // Valve: fetch the data while handling this result. In thread mode
+      // the pump thread has already released the call result before this
+      // handler runs on the main thread - if Steam frees the buffer with it,
+      // Fetched is False although the component works (UNVERIFIED)
+      SetLength(Buf, AData.m_cubRead);
+      Fetched := R.FileReadAsyncComplete(AData.m_hFileReadAsync, @Buf[0], AData.m_cubRead);
+      if Fetched then
+        Same := (Length(Buf) = Length(FCloudData)) and CompareMem(@Buf[0], @FCloudData[0], Length(Buf))
+      else
+      begin
+        // Tell "fetch refused" from "file wrong": read it synchronously
+        SetLength(Buf, Length(FCloudData));
+        SyncRead := R.FileRead(TEST_CLOUD_FILE, @Buf[0], Length(Buf));
+        AddLog(Format('Test TSteamRemoteStorage: FileReadAsyncComplete returned False ' +
+          '(update mode %s); synchronous FileRead got %d of %d bytes, identical %s',
+          [UpdateModeText(SteamAPI1.UpdateMode), SyncRead, Length(FCloudData),
+           BoolToStr((SyncRead = Length(FCloudData)) and CompareMem(@Buf[0], @FCloudData[0], Length(Buf)), True)]));
+      end;
+    end;
+    AddLog(Format('Test TSteamRemoteStorage: FileReadAsyncComplete %s, data identical to what was written %s',
+      [BoolToStr(Fetched, True), BoolToStr(Same, True)]));
+    AddLog('Test TSteamRemoteStorage: FileDelete(' + TEST_CLOUD_FILE + ') ' +
+      BoolToStr(R.FileDelete(TEST_CLOUD_FILE), True));
+    FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note + ', read ' + ResultText(AData.m_eResult);
+    if not Fetched then
+      FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note +
+        ', FileReadAsyncComplete FALSE (data not fetched - see log)'
+    else
+      FTests[CT_STORAGE].Note := FTests[CT_STORAGE].Note + ', data ' + IfThen(Same, 'identical', 'DIFFERENT');
+    if not Same then
+      FTests[CT_STORAGE].ReadsOK := False;
+  except
+    on E: Exception do ReadFailed(CT_STORAGE, 'FileReadAsyncComplete / FileDelete', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.StorageLocalFileChange(Sender: TObject; const AData: RemoteStorageLocalFileChange_t);
+begin
+  AddLog('TSteamRemoteStorage.OnRemoteStorageLocalFileChange (not requested by the test)');
+end;
+
+{ --- TSteamScreenshots --- }
+
+procedure TSteamComponentTest.TestScreenshots;
+var
+  S: TSteamScreenshotsPlugin;
+  Before, Hooked, Unhooked: Boolean;
+begin
+  S := SteamScreenshots1.Plugin;
+  if not BeginTest(CT_SHOTS, SteamScreenshots1, S) then
+    Exit;
+  // No picture here: every run would add one to the user's screenshots
+  // (owner, 2026-11-02) - File > Take Screenshot writes one on demand and
+  // exercises WriteScreenshot / OnScreenshotReady / SetLocation. The test
+  // switches the hook on and off and checks that Steam reports each state.
+  try
+    Before := S.IsScreenshotsHooked;
+    S.HookScreenshots(True);
+    Hooked := S.IsScreenshotsHooked;
+    S.HookScreenshots(False);
+    Unhooked := S.IsScreenshotsHooked;
+    AddLog(Format('Test TSteamScreenshots: hooked before %s, after HookScreenshots(True) %s, ' +
+      'after HookScreenshots(False) %s', [BoolToStr(Before, True), BoolToStr(Hooked, True),
+      BoolToStr(Unhooked, True)]));
+    if not Hooked or Unhooked then
+    begin
+      FTests[CT_SHOTS].ReadsOK := False;
+      FTests[CT_SHOTS].Note := 'hook state did NOT follow HookScreenshots';
+    end
+    else
+      FTests[CT_SHOTS].Note := 'hook on / off OK; File > Take Screenshot tests writing one';
+  except
+    on E: Exception do ReadFailed(CT_SHOTS, 'HookScreenshots / IsScreenshotsHooked', E);
+  end;
+end;
+
+procedure TSteamComponentTest.ScreenshotReady(Sender: TObject; const AData: ScreenshotReady_t);
+var
+  S: TSteamScreenshotsPlugin;
+begin
+  AddLog(Format('TSteamScreenshots.OnScreenshotReady: handle %d, result %s',
+    [AData.m_hLocal, ResultText(AData.m_eResult)]));
+  S := SteamScreenshots1.Plugin;
+  if (S <> nil) and (AData.m_eResult = k_EResultOK) then
+  try
+    AddLog('Screenshot: SetLocation ' + BoolToStr(S.SetLocation(AData.m_hLocal, 'SteamDemo'), True));
+  except
+    on E: Exception do AddLog('Screenshot: SetLocation FAILED: ' + E.Message);
+  end;
+end;
+
+{ --- TSteamTimeline --- }
+
+procedure TSteamComponentTest.TestTimeline;
+var
+  T: TSteamTimelinePlugin;
+  Ev: TimelineEventHandle_t;
+begin
+  T := SteamTimeline1.Plugin;
+  if not BeginTest(CT_TIMELINE, SteamTimeline1, T) then
+    Exit;
+  FPhaseID := 'steamdemo-test-' + FormatDateTime('yyyymmdd-hhnnss', Now);
+  Ev := 0;
+  try
+    T.SetTimelineGameMode(k_ETimelineGameMode_Playing);
+    T.SetTimelineTooltip('SteamDemo component test', 0);
+    T.StartGamePhase;
+    T.SetGamePhaseID(FPhaseID);
+    Ev := T.AddInstantaneousTimelineEvent('Component test', 'TSteamTimeline base test', 'steam_flag',
+      0, 0, k_ETimelineEventClipPriority_None);
+    T.ClearTimelineTooltip(0);
+    T.EndGamePhase;
+    T.SetTimelineGameMode(k_ETimelineGameMode_Menus);
+    AddLog(Format('Test TSteamTimeline: game mode Playing, tooltip, game phase "%s" started / ended, ' +
+      'event handle %s, tooltip cleared, game mode Menus', [FPhaseID, U64Str(Ev)]));
+  except
+    on E: Exception do ReadFailed(CT_TIMELINE, 'timeline calls', E);
+  end;
+  try
+    // Without background recording both answers say "no recording" - they
+    // must still arrive
+    ExpectCall(CT_TIMELINE, 'DoesEventRecordingExist', T.DoesEventRecordingExist(Ev));
+    ExpectCall(CT_TIMELINE, 'DoesGamePhaseRecordingExist', T.DoesGamePhaseRecordingExist(FPhaseID));
+  except
+    on E: Exception do ReadFailed(CT_TIMELINE, 'recording queries', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TimelineEventRecordingExists(Sender: TObject; const AData: SteamTimelineEventRecordingExists_t);
+begin
+  AddLog(Format('TSteamTimeline.OnSteamTimelineEventRecordingExists: event %s, recording exists %s',
+    [U64Str(AData.m_ulEventID), BoolToStr(AData.m_bRecordingExists, True)]));
+  if Answered(CT_TIMELINE, 'DoesEventRecordingExist') then
+    CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.TimelinePhaseRecordingExists(Sender: TObject; const AData: SteamTimelineGamePhaseRecordingExists_t);
+begin
+  AddLog(Format('TSteamTimeline.OnSteamTimelineGamePhaseRecordingExists: phase "%s", recorded %s ms, ' +
+    'longest clip %s ms, %d clips, %d screenshots',
+    [SteamText(@AData.m_rgchPhaseID[0]), U64Str(AData.m_ulRecordingMS), U64Str(AData.m_ulLongestClipMS),
+     AData.m_unClipCount, AData.m_unScreenshotCount]));
+  if Answered(CT_TIMELINE, 'DoesGamePhaseRecordingExist') then
+    CheckTestsDone;
+end;
+
+{ --- TSteamUGC --- }
+
+procedure TSteamComponentTest.TestUGC;
+var
+  G: TSteamUGCPlugin;
+begin
+  G := SteamUGC1.Plugin;
+  if not BeginTest(CT_UGC, SteamUGC1, G) then
+    Exit;
+  try
+    // GetNumSubscribedItems takes a Boolean: the narrow-argument case
+    AddLog(Format('Test TSteamUGC: %d subscribed items (%d incl. locally disabled), %d downloaded',
+      [G.GetNumSubscribedItems(False), G.GetNumSubscribedItems(True), G.GetNumDownloadedItems]));
+  except
+    on E: Exception do ReadFailed(CT_UGC, 'reads', E);
+  end;
+  try
+    FUGCQuery := G.CreateQueryAllUGCRequestPage(k_EUGCQuery_RankedByPublicationDate,
+      k_EUGCMatchingUGCType_Items, FAppID, FAppID, 1);
+    if FUGCQuery = k_UGCQueryHandleInvalid then
+    begin
+      Inc(FTests[CT_UGC].Sent);
+      if FTests[CT_UGC].Missing <> '' then
+        FTests[CT_UGC].Missing := FTests[CT_UGC].Missing + ', ';
+      FTests[CT_UGC].Missing := FTests[CT_UGC].Missing + 'CreateQueryAllUGCRequestPage (invalid handle)';
+      AddLog('Test TSteamUGC: CreateQueryAllUGCRequestPage returned k_UGCQueryHandleInvalid');
+    end
+    else
+    begin
+      AddLog('Test TSteamUGC: query handle ' + U64Str(FUGCQuery) + ' created');
+      ExpectCall(CT_UGC, 'SendQueryUGCRequest', G.SendQueryUGCRequest(FUGCQuery));
+    end;
+  except
+    on E: Exception do ReadFailed(CT_UGC, 'Workshop query', E);
+  end;
+  try
+    ExpectCall(CT_UGC, 'GetWorkshopEULAStatus', G.GetWorkshopEULAStatus);
+  except
+    on E: Exception do ReadFailed(CT_UGC, 'GetWorkshopEULAStatus', E);
+  end;
+end;
+
+procedure TSteamComponentTest.UGCQueryCompleted(Sender: TObject; const AData: SteamUGCQueryCompleted_t);
+var
+  G: TSteamUGCPlugin;
+  Details: SteamUGCDetails_t;
+  I: Integer;
+begin
+  AddLog(Format('TSteamUGC.OnSteamUGCQueryCompleted: query %s, result %s, %d returned, %d matching, cached %s',
+    [U64Str(AData.m_handle), ResultText(AData.m_eResult), AData.m_unNumResultsReturned,
+     AData.m_unTotalMatchingResults, BoolToStr(AData.m_bCachedData, True)]));
+  if not Answered(CT_UGC, 'SendQueryUGCRequest') then
+    Exit;
+  FTests[CT_UGC].Note := Format('query %s, %d items', [ResultText(AData.m_eResult), AData.m_unTotalMatchingResults]);
+  G := SteamUGC1.Plugin;
+  if G <> nil then
+  try
+    if AData.m_eResult = k_EResultOK then
+      for I := 0 to Integer(AData.m_unNumResultsReturned) - 1 do
+      begin
+        if I >= 3 then
+          Break;
+        FillChar(Details, SizeOf(Details), 0);
+        if G.GetQueryUGCResult(AData.m_handle, UInt32(I), Details) then
+          AddLog(Format('Test TSteamUGC: item %d: id %s, "%s"',
+            [I, U64Str(Details.m_nPublishedFileId), SteamText(@Details.m_rgchTitle[0])]));
+      end;
+    AddLog('Test TSteamUGC: ReleaseQueryUGCRequest ' +
+      BoolToStr(G.ReleaseQueryUGCRequest(AData.m_handle), True));
+    FUGCQuery := k_UGCQueryHandleInvalid;
+  except
+    on E: Exception do ReadFailed(CT_UGC, 'GetQueryUGCResult / ReleaseQueryUGCRequest', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.UGCWorkshopEULAStatus(Sender: TObject; const AData: WorkshopEULAStatus_t);
+begin
+  // The other fields are only filled in when the result is OK (first run:
+  // InvalidParam - Workshop not set up for the app - with a garbage version)
+  if AData.m_eResult = k_EResultOK then
+    AddLog(Format('TSteamUGC.OnWorkshopEULAStatus: result %s, app %d, version %s, accepted %s, needs action %s',
+      [ResultText(AData.m_eResult), AData.m_nAppID, U64Str(AData.m_unVersion), BoolToStr(AData.m_bAccepted, True),
+       BoolToStr(AData.m_bNeedsAction, True)]))
+  else
+    AddLog(Format('TSteamUGC.OnWorkshopEULAStatus: result %s, app %d (no EULA data: is the Workshop ' +
+      'set up for the app?)', [ResultText(AData.m_eResult), AData.m_nAppID]));
+  if FTests[CT_UGC].Note <> '' then
+    FTests[CT_UGC].Note := FTests[CT_UGC].Note + ', ';
+  FTests[CT_UGC].Note := FTests[CT_UGC].Note + 'EULA status ' + ResultText(AData.m_eResult);
+  if Answered(CT_UGC, 'GetWorkshopEULAStatus') then
+    CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.UGCSubscribedListChanged(Sender: TObject; const AData: UserSubscribedItemsListChanged_t);
+begin
+  AddLog(Format('TSteamUGC.OnUserSubscribedItemsListChanged: app %d (not requested by the test)', [AData.m_nAppID]));
+end;
+
+procedure TSteamComponentTest.UGCItemInstalled(Sender: TObject; const AData: ItemInstalled_t);
+begin
+  AddLog(Format('TSteamUGC.OnItemInstalled: app %d, item %s (not requested by the test)',
+    [AData.m_unAppID, U64Str(AData.m_nPublishedFileId)]));
+end;
+
+
+{ --- Batch 2a: TSteamMatchmaking ... TSteamRemotePlay --- }
+
+procedure TSteamComponentTest.TestMatchmaking;
+var
+  M: TSteamMatchmakingPlugin;
+begin
+  M := SteamMatchmaking1.Plugin;
+  if not BeginTest(CT_MATCHMAKING, SteamMatchmaking1, M) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamMatchmaking: %d favourite / history game servers', [M.GetFavoriteGameCount]));
+    // Any lobbies of this app, at most one: the answer is what counts
+    M.AddRequestLobbyListResultCountFilter(1);
+    ExpectCall(CT_MATCHMAKING, 'RequestLobbyList', M.RequestLobbyList);
+  except
+    on E: Exception do ReadFailed(CT_MATCHMAKING, 'Matchmaking calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.MatchmakingLobbyMatchList(Sender: TObject; const AData: LobbyMatchList_t);
+begin
+  AddLog(Format('TSteamMatchmaking.OnLobbyMatchList: %d lobbies matching', [AData.m_nLobbiesMatching]));
+  if Answered(CT_MATCHMAKING, 'RequestLobbyList') then
+  begin
+    FTests[CT_MATCHMAKING].Note := Format('%d lobbies', [AData.m_nLobbiesMatching]);
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.TestParties;
+var
+  P: TSteamPartiesPlugin;
+  Locations: UInt32;
+  HasLocations: Boolean;
+begin
+  P := SteamParties1.Plugin;
+  if not BeginTest(CT_PARTIES, SteamParties1, P) then
+    Exit;
+  try
+    Locations := 0;
+    HasLocations := P.GetNumAvailableBeaconLocations(Locations);
+    AddLog(Format('Test TSteamParties: %d active beacons, beacon locations %s (%d)',
+      [P.GetNumActiveBeacons, BoolToStr(HasLocations, True), Locations]));
+    FTests[CT_PARTIES].Note := 'reads only (a beacon would be a real party)';
+  except
+    on E: Exception do ReadFailed(CT_PARTIES, 'Parties reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestMusic;
+var
+  M: TSteamMusicPlugin;
+begin
+  M := SteamMusic1.Plugin;
+  if not BeginTest(CT_MUSIC, SteamMusic1, M) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamMusic: enabled %s, playing %s, playback status %d, volume %.2f',
+      [BoolToStr(M.BIsEnabled, True), BoolToStr(M.BIsPlaying, True), Ord(M.GetPlaybackStatus),
+       M.GetVolume]));
+    FTests[CT_MUSIC].Note := 'reads only (the music player is the user''s)';
+  except
+    on E: Exception do ReadFailed(CT_MUSIC, 'Music reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestHTTP;
+var
+  H: TSteamHTTPPlugin;
+  Call: SteamAPICall_t;
+begin
+  H := SteamHTTP1.Plugin;
+  if not BeginTest(CT_HTTP, SteamHTTP1, H) then
+    Exit;
+  try
+    FHTTPRequest := H.CreateHTTPRequest(k_EHTTPMethodGET, TEST_HTTP_URL);
+    if FHTTPRequest = 0 then
+    begin
+      FTests[CT_HTTP].ReadsOK := False;
+      FTests[CT_HTTP].Note := 'CreateHTTPRequest returned 0';
+      AddLog('Test TSteamHTTP: CreateHTTPRequest returned 0 (invalid handle)');
+      Exit;
+    end;
+    Call := k_uAPICallInvalid;
+    if not H.SendHTTPRequest(FHTTPRequest, Call) then
+      AddLog('Test TSteamHTTP: SendHTTPRequest returned False');
+    AddLog('Test TSteamHTTP: GET ' + TEST_HTTP_URL + ', request ' + U64Str(FHTTPRequest));
+    ExpectCall(CT_HTTP, 'SendHTTPRequest', Call);
+  except
+    on E: Exception do ReadFailed(CT_HTTP, 'HTTP calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.HTTPRequestCompleted(Sender: TObject; const AData: HTTPRequestCompleted_t);
+var
+  H: TSteamHTTPPlugin;
+  Body: TBytes;
+  Size: UInt32;
+  ShowBytes: Integer;
+  Start: string;
+begin
+  AddLog(Format('TSteamHTTP.OnHTTPRequestCompleted: request %s, successful %s, HTTP status %d, %d bytes',
+    [U64Str(AData.m_hRequest), BoolToStr(AData.m_bRequestSuccessful, True), Ord(AData.m_eStatusCode),
+     AData.m_unBodySize]));
+  if (AData.m_hRequest <> FHTTPRequest) or not Answered(CT_HTTP, 'SendHTTPRequest') then
+    Exit;
+  FTests[CT_HTTP].Note := Format('HTTP %d, %d bytes', [Ord(AData.m_eStatusCode), AData.m_unBodySize]);
+  H := SteamHTTP1.Plugin;
+  if H <> nil then
+  try
+    Size := 0;
+    if AData.m_bRequestSuccessful and H.GetHTTPResponseBodySize(FHTTPRequest, Size) and (Size > 0) then
+    begin
+      SetLength(Body, Size);
+      if H.GetHTTPResponseBodyData(FHTTPRequest, @Body[0], Size) then
+      begin
+        // The start of Steam's JSON answer, on one line
+        // (no System.Math here: its IfThen would hide System.StrUtils')
+        ShowBytes := Integer(Size);
+        if ShowBytes > 80 then
+          ShowBytes := 80;
+        Start := Utf8Text(Body, ShowBytes);
+        Start := StringReplace(StringReplace(Start, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+        AddLog('Test TSteamHTTP: body starts: ' + Start);
+      end;
+    end;
+    AddLog('Test TSteamHTTP: ReleaseHTTPRequest ' + BoolToStr(H.ReleaseHTTPRequest(FHTTPRequest), True));
+    FHTTPRequest := 0;
+  except
+    on E: Exception do ReadFailed(CT_HTTP, 'HTTP response', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.TestHTMLSurface;
+var
+  H: TSteamHTMLSurfacePlugin;
+begin
+  H := SteamHTMLSurface1.Plugin;
+  if not BeginTest(CT_HTML, SteamHTMLSurface1, H) then
+    Exit;
+  try
+    FHTMLInit := H.Init;
+    AddLog('Test TSteamHTMLSurface: Init ' + BoolToStr(FHTMLInit, True));
+    if not FHTMLInit then
+    begin
+      FTests[CT_HTML].ReadsOK := False;
+      FTests[CT_HTML].Note := 'Init returned False';
+      Exit;
+    end;
+    // No URL is loaded: the browser is removed as soon as it is ready, so
+    // none of the page callbacks Valve requires handlers for can come
+    ExpectCall(CT_HTML, 'CreateBrowser', H.CreateBrowser('', ''));
+  except
+    on E: Exception do ReadFailed(CT_HTML, 'HTMLSurface calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.HTMLBrowserReady(Sender: TObject; const AData: HTML_BrowserReady_t);
+begin
+  AddLog(Format('TSteamHTMLSurface.OnHTML_BrowserReady: browser %d', [AData.unBrowserHandle]));
+  if not Answered(CT_HTML, 'CreateBrowser') then
+    Exit;
+  FTests[CT_HTML].Note := Format('browser %d created and removed', [AData.unBrowserHandle]);
+  if (SteamHTMLSurface1.Plugin <> nil) and (AData.unBrowserHandle <> INVALID_HTMLBROWSER) then
+  try
+    SteamHTMLSurface1.Plugin.RemoveBrowser(AData.unBrowserHandle);
+    AddLog(Format('Test TSteamHTMLSurface: browser %d removed', [AData.unBrowserHandle]));
+  except
+    on E: Exception do ReadFailed(CT_HTML, 'RemoveBrowser', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.TestInventory;
+var
+  I: TSteamInventoryPlugin;
+begin
+  I := SteamInventory1.Plugin;
+  if not BeginTest(CT_INVENTORY, SteamInventory1, I) then
+    Exit;
+  try
+    AddLog('Test TSteamInventory: LoadItemDefinitions ' + BoolToStr(I.LoadItemDefinitions, True));
+    FInvResult := k_SteamInventoryResultInvalid;
+    if I.GetAllItems(FInvResult) then
+    begin
+      AddLog('Test TSteamInventory: GetAllItems, result handle ' + IntToStr(FInvResult) +
+        ' - waiting for callback 4700');
+      Expect(CT_INVENTORY, 'GetAllItems');
+    end
+    else
+    begin
+      Inc(FTests[CT_INVENTORY].Sent);
+      FTests[CT_INVENTORY].Missing := 'GetAllItems (returned False)';
+      AddLog('Test TSteamInventory: GetAllItems returned False');
+    end;
+  except
+    on E: Exception do ReadFailed(CT_INVENTORY, 'Inventory calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.InventoryResultReady(Sender: TObject; const AData: SteamInventoryResultReady_t);
+var
+  I: TSteamInventoryPlugin;
+  Count: UInt32;
+begin
+  AddLog(Format('TSteamInventory.OnSteamInventoryResultReady: result %d, %s',
+    [AData.m_handle, ResultText(AData.m_result)]));
+  if (AData.m_handle <> FInvResult) or not Answered(CT_INVENTORY, 'GetAllItems') then
+    Exit;
+  FTests[CT_INVENTORY].Note := 'result ' + ResultText(AData.m_result);
+  I := SteamInventory1.Plugin;
+  if I <> nil then
+  try
+    // nil array: only the item count
+    Count := 0;
+    if I.GetResultItems(FInvResult, nil, Count) then
+      AddLog(Format('Test TSteamInventory: %d items', [Count]));
+    I.DestroyResult(FInvResult);
+    AddLog('Test TSteamInventory: result destroyed');
+    FInvResult := k_SteamInventoryResultInvalid;
+  except
+    on E: Exception do ReadFailed(CT_INVENTORY, 'GetResultItems / DestroyResult', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.TestVideo;
+var
+  V: TSteamVideoPlugin;
+  Viewers: Integer;
+  Broadcasting: Boolean;
+begin
+  V := SteamVideo1.Plugin;
+  if not BeginTest(CT_VIDEO, SteamVideo1, V) then
+    Exit;
+  try
+    Viewers := 0;
+    Broadcasting := V.IsBroadcasting(Viewers);
+    AddLog(Format('Test TSteamVideo: broadcasting %s, %d viewers', [BoolToStr(Broadcasting, True), Viewers]));
+    // OPF (360 video) settings of this app: it has none, the answer counts
+    V.GetOPFSettings(FAppID);
+    AddLog('Test TSteamVideo: GetOPFSettings - waiting for callback 4624 (UNVERIFIED that Steam ' +
+      'answers for an app without 360 video; NO ANSWER here would be that, not a component fault)');
+    Expect(CT_VIDEO, 'GetOPFSettings');
+  except
+    on E: Exception do ReadFailed(CT_VIDEO, 'Video calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.VideoOPFSettingsResult(Sender: TObject; const AData: GetOPFSettingsResult_t);
+begin
+  AddLog(Format('TSteamVideo.OnGetOPFSettingsResult: result %s, video app %d',
+    [ResultText(AData.m_eResult), AData.m_unVideoAppID]));
+  if Answered(CT_VIDEO, 'GetOPFSettings') then
+  begin
+    FTests[CT_VIDEO].Note := 'OPF settings ' + ResultText(AData.m_eResult);
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.TestParentalSettings;
+var
+  P: TSteamParentalSettingsPlugin;
+begin
+  P := SteamParentalSettings1.Plugin;
+  if not BeginTest(CT_PARENTAL, SteamParentalSettings1, P) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamParentalSettings: lock enabled %s, locked %s, this app blocked %s / in block list %s, ' +
+      'store blocked %s', [BoolToStr(P.BIsParentalLockEnabled, True), BoolToStr(P.BIsParentalLockLocked, True),
+      BoolToStr(P.BIsAppBlocked(FAppID), True), BoolToStr(P.BIsAppInBlockList(FAppID), True),
+      BoolToStr(P.BIsFeatureBlocked(k_EFeatureStore), True)]));
+    FTests[CT_PARENTAL].Note := 'reads only';
+  except
+    on E: Exception do ReadFailed(CT_PARENTAL, 'ParentalSettings reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestRemotePlay;
+var
+  R: TSteamRemotePlayPlugin;
+begin
+  R := SteamRemotePlay1.Plugin;
+  if not BeginTest(CT_REMOTEPLAY, SteamRemotePlay1, R) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamRemotePlay: %d Remote Play sessions', [R.GetSessionCount]));
+    FTests[CT_REMOTEPLAY].Note := 'reads only (a session needs a second device)';
+  except
+    on E: Exception do ReadFailed(CT_REMOTEPLAY, 'RemotePlay reads', E);
+  end;
+end;
+
+{ --- Batch 2b: TSteamNetworking ... TSteamNetworkingUtils --- }
+
+procedure TSteamComponentTest.TestNetworking;
+var
+  N: TSteamNetworkingPlugin;
+  Size: UInt32;
+  State: P2PSessionState_t;
+  Me: TSteamID;
+begin
+  N := SteamNetworking1.Plugin;
+  if not BeginTest(CT_NETWORKING, SteamNetworking1, N) then
+    Exit;
+  try
+    // Nobody sends this app P2P packets: both answer False
+    Size := 0;
+    FillChar(State, SizeOf(State), 0);
+    Me := TSteamID.Create(0);
+    if SteamUser1.Plugin <> nil then
+      Me := SteamUser1.Plugin.GetSteamID;
+    AddLog(Format('Test TSteamNetworking: P2P packet waiting on channel 0 %s, ' +
+      'session with ourselves %s (deprecated interface, reads only)',
+      [BoolToStr(N.IsP2PPacketAvailable(Size, 0), True),
+       BoolToStr(N.GetP2PSessionState(Me, State), True)]));
+    FTests[CT_NETWORKING].Note := 'reads only (P2P needs a second user)';
+  except
+    on E: Exception do ReadFailed(CT_NETWORKING, 'Networking reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestNetworkingSockets;
+const
+  TEST_TEXT = 'TSteamAPI socket pair test';
+var
+  S: TSteamNetworkingSocketsPlugin;
+  Ident: SteamNetworkingIdentity;
+  Info: SteamNetConnectionInfo_t;
+  Data: TBytes;
+  MsgNo: Int64;
+  Res: EResult;
+  Msgs: array[0..3] of PSteamNetworkingMessage_t;
+  Count, I: Integer;
+  Got: TBytes;
+  Same: Boolean;
+  Me: UInt64;
+begin
+  S := SteamNetworkingSockets1.Plugin;
+  if not BeginTest(CT_NETSOCKETS, SteamNetworkingSockets1, S) then
+    Exit;
+  // Our identity: a SteamNetworkingIdentity (C union) read back - the type
+  // and the 64-bit id prove the variant record lines up
+  try
+    FillChar(Ident, SizeOf(Ident), 0);
+    Me := 0;
+    if SteamUser1.Plugin <> nil then
+      Me := SteamUser1.Plugin.GetSteamID;
+    if S.GetIdentity(Ident) then
+    begin
+      Same := (Ident.m_eType = k_ESteamNetworkingIdentityType_SteamID) and
+        (Ident.m_steamID64 = Me);
+      AddLog(Format('Test TSteamNetworkingSockets: identity type %d, SteamID %s - %s the logged-on user',
+        [Ord(Ident.m_eType), U64Str(Ident.m_steamID64), IfThen(Same, 'same as', 'DIFFERENT FROM')]));
+      if not Same then
+        FTests[CT_NETSOCKETS].ReadsOK := False;
+    end
+    else
+      AddLog('Test TSteamNetworkingSockets: GetIdentity False (identity not known yet)');
+  except
+    on E: Exception do ReadFailed(CT_NETSOCKETS, 'GetIdentity', E);
+  end;
+  // A socket pair in this process (internal buffers, no network), one
+  // reliable message from 1 to 2
+  try
+    FSockConn1 := k_HSteamNetConnection_Invalid;
+    FSockConn2 := k_HSteamNetConnection_Invalid;
+    if not S.CreateSocketPair(FSockConn1, FSockConn2, False, nil, nil) then
+    begin
+      AddLog('Test TSteamNetworkingSockets: CreateSocketPair FAILED');
+      FTests[CT_NETSOCKETS].ReadsOK := False;
+      FTests[CT_NETSOCKETS].Note := 'CreateSocketPair failed';
+      Exit;
+    end;
+    FillChar(Info, SizeOf(Info), 0);
+    if S.GetConnectionInfo(FSockConn1, Info) then
+      AddLog(Format('Test TSteamNetworkingSockets: socket pair %u / %u, connection 1 state %d ' +
+        '(3 = connected), remote identity type %d', [FSockConn1, FSockConn2, Ord(Info.m_eState),
+        Ord(Info.m_identityRemote.m_eType)]));
+    Data := Utf8Bytes(TEST_TEXT);
+    MsgNo := 0;
+    Res := S.SendMessageToConnection(FSockConn1, @Data[0], Length(Data), k_nSteamNetworkingSend_Reliable, MsgNo);
+    AddLog(Format('Test TSteamNetworkingSockets: sent %d bytes on connection 1: %s, message number %d',
+      [Length(Data), ResultText(Res), MsgNo]));
+    FillChar(Msgs, SizeOf(Msgs), 0);
+    Count := S.ReceiveMessages(FSockConn2, Msgs);
+    Same := False;
+    for I := 0 to Count - 1 do
+    begin
+      SetLength(Got, Msgs[I]^.m_cbSize);
+      if Length(Got) > 0 then
+        Move(Msgs[I]^.m_pData^, Got[0], Length(Got));
+      Same := Same or ((Msgs[I]^.m_conn = FSockConn2) and (Length(Got) = Length(Data)) and
+        CompareMem(@Got[0], @Data[0], Length(Data)));
+      AddLog(Format('Test TSteamNetworkingSockets: received on connection %u: %d bytes, message number %d, "%s"',
+        [Msgs[I]^.m_conn, Msgs[I]^.m_cbSize, Msgs[I]^.m_nMessageNumber, Utf8Text(Got, Length(Got))]));
+      S.ReleaseMessage(Msgs[I]);
+    end;
+    if (Res <> k_EResultOK) or not Same then
+    begin
+      FTests[CT_NETSOCKETS].ReadsOK := False;
+      FTests[CT_NETSOCKETS].Note := Format('send %s, %d received, data %s',
+        [ResultText(Res), Count, IfThen(Same, 'identical', 'NOT RECEIVED / DIFFERENT')]);
+    end
+    else
+      FTests[CT_NETSOCKETS].Note := 'message sent and received';
+    // Closing side 1 tells side 2 (callback 1221, ClosedByPeer); side 2 is
+    // closed in NetConnectionStatusChanged
+    AddLog('Test TSteamNetworkingSockets: CloseConnection(1) ' + BoolToStr(S.CloseConnection(FSockConn1,
+      k_ESteamNetConnectionEnd_App_Generic, 'component test done', False), True));
+    FSockConn1 := k_HSteamNetConnection_Invalid;
+    Expect(CT_NETSOCKETS, 'ConnectionStatusChanged (closed by peer)');
+  except
+    on E: Exception do ReadFailed(CT_NETSOCKETS, 'socket pair', E);
+  end;
+end;
+
+procedure TSteamComponentTest.NetConnectionStatusChanged(Sender: TObject; const AData: SteamNetConnectionStatusChangedCallback_t);
+begin
+  AddLog(Format('TSteamNetworkingSockets.OnSteamNetConnectionStatusChangedCallback: connection %u, ' +
+    'state %d -> %d, end reason %d, "%s"', [AData.m_hConn, Ord(AData.m_eOldState), Ord(AData.m_info.m_eState),
+    AData.m_info.m_eEndReason, SteamText(@AData.m_info.m_szEndDebug[0])]));
+  if (AData.m_hConn <> FSockConn2) or (FSockConn2 = k_HSteamNetConnection_Invalid) or
+    (AData.m_info.m_eState <> k_ESteamNetworkingConnectionState_ClosedByPeer) then
+    Exit;
+  CloseSocketPair('Test TSteamNetworkingSockets');
+  if Answered(CT_NETSOCKETS, 'ConnectionStatusChanged (closed by peer)') then
+  begin
+    FTests[CT_NETSOCKETS].Note := FTests[CT_NETSOCKETS].Note + ', close seen by the peer';
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.CloseSocketPair(const AWhy: string);
+var
+  S: TSteamNetworkingSocketsPlugin;
+begin
+  S := SteamNetworkingSockets1.Plugin;
+  if S <> nil then
+  begin
+    if FSockConn1 <> k_HSteamNetConnection_Invalid then
+      AddLog(AWhy + ': CloseConnection(1) ' + BoolToStr(S.CloseConnection(FSockConn1, 0, '', False), True));
+    if FSockConn2 <> k_HSteamNetConnection_Invalid then
+      AddLog(AWhy + ': CloseConnection(2) ' + BoolToStr(S.CloseConnection(FSockConn2, 0, '', False), True));
+  end;
+  FSockConn1 := k_HSteamNetConnection_Invalid;
+  FSockConn2 := k_HSteamNetConnection_Invalid;
+end;
+
+procedure TSteamComponentTest.TestNetworkingMessages;
+var
+  M: TSteamNetworkingMessagesPlugin;
+  Msgs: array[0..3] of PSteamNetworkingMessage_t;
+  Count, I: Integer;
+begin
+  M := SteamNetworkingMessages1.Plugin;
+  if not BeginTest(CT_NETMESSAGES, SteamNetworkingMessages1, M) then
+    Exit;
+  try
+    // Nobody sends this app messages: 0 expected (any that arrive are released)
+    FillChar(Msgs, SizeOf(Msgs), 0);
+    Count := M.ReceiveMessages(0, Msgs);
+    for I := 0 to Count - 1 do
+      M.ReleaseMessage(Msgs[I]);
+    AddLog(Format('Test TSteamNetworkingMessages: %d messages waiting on channel 0', [Count]));
+    FTests[CT_NETMESSAGES].Note := 'reads only (messages need a second user)';
+  except
+    on E: Exception do ReadFailed(CT_NETMESSAGES, 'NetworkingMessages reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestNetworkingUtils;
+var
+  U: TSteamNetworkingUtilsPlugin;
+  T1, T2: SteamNetworkingMicroseconds;
+  Status: SteamRelayNetworkStatus_t;
+  Avail: ESteamNetworkingAvailability;
+begin
+  U := SteamNetworkingUtils1.Plugin;
+  if not BeginTest(CT_NETUTILS, SteamNetworkingUtils1, U) then
+    Exit;
+  try
+    T1 := U.GetLocalTimestamp;
+    T2 := U.GetLocalTimestamp;
+    AddLog(Format('Test TSteamNetworkingUtils: local timestamp %d us, then %d us', [T1, T2]));
+    if (T1 <= 0) or (T2 < T1) then
+    begin
+      FTests[CT_NETUTILS].ReadsOK := False;
+      FTests[CT_NETUTILS].Note := 'timestamp not increasing';
+      Exit;
+    end;
+    // Starts the relay network (SDR) in the background; progress comes as
+    // callback 1281 (logged by RelayNetworkStatus, not waited for)
+    U.InitRelayNetworkAccess;
+    FillChar(Status, SizeOf(Status), 0);
+    Avail := U.GetRelayNetworkStatus(Status);
+    AddLog(Format('Test TSteamNetworkingUtils: relay network availability %d (100 = current), ' +
+      'network config %d, any relay %d, "%s"', [Ord(Avail), Ord(Status.m_eAvailNetworkConfig),
+      Ord(Status.m_eAvailAnyRelay), SteamText(@Status.m_debugMsg[0])]));
+    FTests[CT_NETUTILS].Note := Format('relay availability %d', [Ord(Avail)]);
+  except
+    on E: Exception do ReadFailed(CT_NETUTILS, 'NetworkingUtils calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.RelayNetworkStatus(Sender: TObject; const AData: SteamRelayNetworkStatus_t);
+begin
+  AddLog(Format('TSteamNetworkingUtils.OnSteamRelayNetworkStatus: availability %d, network config %d, ' +
+    'any relay %d, "%s"', [Ord(AData.m_eAvail), Ord(AData.m_eAvailNetworkConfig), Ord(AData.m_eAvailAnyRelay),
+    SteamText(@AData.m_debugMsg[0])]));
+end;
+end.

@@ -9,6 +9,7 @@ object frmSteamDemo: TfrmSteamDemo
   DesignTimePPI = 144
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
+  Menu = MainMenu1
   OnClose = FormClose
   OnCreate = FormCreate
   object pnlButtons: TPanel
@@ -48,14 +49,14 @@ object frmSteamDemo: TfrmSteamDemo
       TabOrder = 2
       OnClick = btnStopClick
     end
-    object btnCopy: TButton
+    object btnTest: TButton
       Left = 543
       Height = 42
       Top = 15
-      Width = 165
-      Caption = 'Copy log'
+      Width = 195
+      Caption = 'Test components'
       TabOrder = 3
-      OnClick = btnCopyClick
+      OnClick = btnTestClick
     end
   end
   object pgcMain: TPageControl
@@ -194,6 +195,31 @@ object frmSteamDemo: TfrmSteamDemo
         ViewStyle = vsReport
       end
     end
+    object tsComponents: TTabSheet
+      Caption = 'Components'
+      ClientHeight = 0
+      ClientWidth = 0
+      object lvComponents: TListView
+        Left = 0
+        Height = 523
+        Top = 0
+        Width = 936
+        Align = alClient
+        Columns = <        
+          item
+            Caption = 'Component'
+            Width = 300
+          end        
+          item
+            Caption = 'Result'
+            Width = 1800
+          end>
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 0
+        ViewStyle = vsReport
+      end
+    end
   end
   object ilFriends: TImageList
     Height = 64
@@ -233,5 +259,43 @@ object frmSteamDemo: TfrmSteamDemo
     OnUserAchievementIconFetched = AchievementIconFetched
     Left = 1020
     Top = 12
+  end
+  object MainMenu1: TMainMenu
+    Left = 660
+    Top = 12
+    object mnuFile: TMenuItem
+      Caption = '&File'
+      object mnuAutoStart: TMenuItem
+        Caption = '&Auto Start Steam'
+        OnClick = mnuAutoStartClick
+      end
+      object mnuTakeScreenshot: TMenuItem
+        Caption = 'Take &Screenshot'
+        OnClick = mnuTakeScreenshotClick
+      end
+      object mnuCopyLog: TMenuItem
+        Caption = '&Copy Log'
+        OnClick = mnuCopyLogClick
+      end
+      object mnuSep1: TMenuItem
+        Caption = '-'
+      end
+      object mnuExit: TMenuItem
+        Caption = 'E&xit'
+        OnClick = mnuExitClick
+      end
+    end
+  end
+  object tmAutoStart: TTimer
+    Enabled = False
+    Interval = 100
+    OnTimer = tmAutoStartTimer
+    Left = 660
+    Top = 96
+  end
+  object tmTests: TTimer
+    OnTimer = tmTestsTimer
+    Left = 780
+    Top = 96
   end
 end

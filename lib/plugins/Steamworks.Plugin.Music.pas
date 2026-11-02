@@ -94,7 +94,7 @@ type
   TPlaybackStatusHasChangedEvent = procedure(Sender: TObject; const AData: PlaybackStatusHasChanged_t) of object;
   { Event of @link(TSteamMusic.OnVolumeHasChanged): callback 4002, payload
     @link(VolumeHasChanged_t). }
-  TVolumeHasChangedEvent = procedure(Sender: TObject; const AData: VolumeHasChanged_t) of object;
+  TVolumeHasChangedEvent = procedure(Sender: TObject; {$ifdef FPC}constref{$else}const{$endif} AData: VolumeHasChanged_t) of object;
 
 {$ifndef FPC}
   [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]

@@ -1,13 +1,15 @@
 program SteamDemoVCL;
 
 { VCL demo for the Steamworks library (AppID 2275430). The form, with the
-  Steam components dropped on it, is src\uMain.pas / .dfm. Like every demo it
+  Steam components dropped on it, is src\uMain.pas / .dfm; the component test
+  (demos\Shared\SteamComponentTest.pas) is shared with SteamDemoLCL. Like every demo it
   links the library from the runtime packages' DCUs (build Steamworks and
   SteamworksVCL first); the post-build event copies the Steam library from
   ..\..\redistributable_bin next to the executable. }
 
 uses
   Vcl.Forms,
+  SteamComponentTest in '..\Shared\SteamComponentTest.pas',
   uMain in 'src\uMain.pas' {frmSteamDemo};
 
 {$R *.res}

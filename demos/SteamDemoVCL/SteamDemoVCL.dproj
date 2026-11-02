@@ -94,6 +94,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\Shared\SteamComponentTest.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmSteamDemo</Form>
             <FormType>dfm</FormType>

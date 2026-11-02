@@ -141,6 +141,22 @@
         <UnitName Value="Steamworks.Plugin.RemotePlay"/>
       </Item>
       <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.Networking.pas"/>
+        <UnitName Value="Steamworks.Plugin.Networking"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.NetworkingSockets.pas"/>
+        <UnitName Value="Steamworks.Plugin.NetworkingSockets"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.NetworkingMessages.pas"/>
+        <UnitName Value="Steamworks.Plugin.NetworkingMessages"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.NetworkingUtils.pas"/>
+        <UnitName Value="Steamworks.Plugin.NetworkingUtils"/>
+      </Item>
+      <Item>
         <Filename Value="../lib/Steamworks.inc"/>
         <Type Value="Include"/>
       </Item>

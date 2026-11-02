@@ -6,10 +6,16 @@
   packages installed (dclSteamworks, dclSteamworksVCL). Only the Debug-only
   settings are made in FormCreate.
 
-  Start / Show info / Stop / Copy log, and three tabs - Output (the log, also
-  appended to SteamDemo.log next to the executable), Personal (the user's
-  avatar, persona, Steam ids, level, the friends list with avatars) and
-  Achievements (icons, unlock state). }
+  Buttons Start Steam / Show info / Stop Steam / Test components (each
+  enabled only when it makes sense), a File menu - Auto Start Steam (on /
+  off, saved per user: DemoSettingsFolder in SteamComponentTest), Take
+  Screenshot (this window to the user's Steam screenshots, SteamFormToRGB),
+  Copy Log, Exit - and four tabs: Output (the log, also appended to
+  SteamDemo.log next to the executable), Personal (the user's avatar,
+  persona, Steam ids, level, the friends list with avatars), Achievements
+  (icons, unlock state) and Components (the base test of 20 more plug-in
+  components, demos/Shared/SteamComponentTest.pas - the same test as the
+  FMX SteamDemo's; that unit creates the components itself). }
 unit uMain;
 
 // No Steamworks.inc here: the demo has no path to the library sources
@@ -21,13 +27,13 @@ uses
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
   Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
   Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage,
-  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, System.ImageList,
+  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Menus, SteamComponentTest, System.ImageList,
   Vcl.ImgList;
 
 type
   { The demo's main form (uMain.dfm). }
   TfrmSteamDemo = class(TForm)
-    { Holds the Start / Show info / Stop / Copy log buttons. }
+    { Holds the Start / Show info / Stop / Test components buttons. }
     pnlButtons: TPanel;
     { Starts Steam. }
     btnStart: TButton;
@@ -35,9 +41,27 @@ type
     btnInfo: TButton;
     { Shuts Steam down. }
     btnStop: TButton;
+    { Runs the component test (Components tab). }
+    btnTest: TButton;
+    { The main menu (File). }
+    MainMenu1: TMainMenu;
+    { File menu. }
+    mnuFile: TMenuItem;
+    { Auto Start Steam (checked = on). }
+    mnuAutoStart: TMenuItem;
+    { Writes a screenshot of this window to Steam (enabled while Steam runs). }
+    mnuTakeScreenshot: TMenuItem;
     { Copies the log to the clipboard. }
-    btnCopy: TButton;
-    { Output / Personal / Achievements. }
+    mnuCopyLog: TMenuItem;
+    { Separator above Exit. }
+    mnuSep1: TMenuItem;
+    { Closes the program. }
+    mnuExit: TMenuItem;
+    { Starts Steam once the window is up when Auto Start Steam is on. }
+    tmAutoStart: TTimer;
+    { Drives the component test once a second (overdue answers). }
+    tmTests: TTimer;
+    { Output / Personal / Achievements / Components. }
     pgcMain: TPageControl;
     { Output tab. }
     tsOutput: TTabSheet;
@@ -60,6 +84,10 @@ type
     tsAchievements: TTabSheet;
     { Achievements with icons; SubItems: description, state, API name. }
     lvAchievements: TListView;
+    { Components tab. }
+    tsComponents: TTabSheet;
+    { One row per tested component: name and verdict (row I = CT_ constant I). }
+    lvComponents: TListView;
     { 64 x 64 friend avatars for @link(lvFriends). }
     ilFriends: TImageList;
     { 64 x 64 achievement icons for @link(lvAchievements). }
@@ -81,8 +109,20 @@ type
     procedure btnInfoClick(Sender: TObject);
     { Stop button. }
     procedure btnStopClick(Sender: TObject);
-    { Copy log button. }
-    procedure btnCopyClick(Sender: TObject);
+    { Test components button. }
+    procedure btnTestClick(Sender: TObject);
+    { File > Auto Start Steam: toggles and saves the setting. }
+    procedure mnuAutoStartClick(Sender: TObject);
+    { File > Take Screenshot. }
+    procedure mnuTakeScreenshotClick(Sender: TObject);
+    { File > Copy Log. }
+    procedure mnuCopyLogClick(Sender: TObject);
+    { File > Exit. }
+    procedure mnuExitClick(Sender: TObject);
+    { Starts Steam once (Auto Start Steam). }
+    procedure tmAutoStartTimer(Sender: TObject);
+    { Ticks the component test. }
+    procedure tmTestsTimer(Sender: TObject);
     { SteamAPI1.OnLog: core log messages. }
     procedure SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
     { SteamAPI1.OnInitialized: Steam started. }
@@ -108,6 +148,33 @@ type
   private
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
+    { The component test (creates its own 20 components). }
+    FTest: TSteamComponentTest;
+    { Auto Start Steam setting, saved in @link(FSettingsFile). }
+    FAutoStart: Boolean;
+    { SteamDemo.ini in DemoSettingsFolder('SteamDemo') ('' = unknown). }
+    FSettingsFile: string;
+    { TestTicks when FormCreate ran (logged by the auto start). }
+    FCreateTicks: UInt64;
+    { Starts Steam (Start button or Auto Start Steam) and logs AWhy. }
+    procedure StartSteam(const AWhy: string);
+    { Enables the buttons / menu items that make sense now. }
+    procedure UpdateControls;
+    { Reads @link(FAutoStart) from the settings file. }
+    procedure LoadSettings;
+    { Writes @link(FAutoStart) to the settings file, creating its folder. }
+    procedure SaveSettings;
+    { Fills @link(lvComponents) with one row per tested component. }
+    procedure FillTestList;
+    { FTest.OnLog. }
+    procedure TestLog(const AText: string);
+    { FTest.OnRowChanged. }
+    procedure TestRow(AIndex: Integer; const AText: string);
+    { FTest.OnScreenshotRequested: writes this window. }
+    procedure TestScreenshotRequested(Sender: TObject);
+    { Captures this window (SteamFormToRGB) and writes it with
+      WriteScreenshot. @returns(The handle, 0 on failure.) }
+    function WriteFormScreenshot(AShots: TSteamScreenshotsPlugin): ScreenshotHandle;
     { Appends a time-stamped line to the log and the log file. }
     procedure AddLog(const S: string);
     { Adds a Name / Value row to @link(lvInfo). }
@@ -136,7 +203,11 @@ implementation
 {$R *.dfm}
 
 uses
-  Clipbrd;
+  Clipbrd, IniFiles, StrUtils;
+
+const
+  { Settings file name (in DemoSettingsFolder) - shared with the FMX SteamDemo. }
+  SETTINGS_APP = 'SteamDemo';
 
 const
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
@@ -200,7 +271,13 @@ begin
   {$else}
   SteamAPI1.RestartIfNecessary := True;
   {$endif}
+  FCreateTicks := TestTicks;
   pgcMain.ActivePage := tsOutput;
+  FTest := TSteamComponentTest.Create(Self, SteamAPI1);
+  FTest.OnLog := TestLog;
+  FTest.OnRowChanged := TestRow;
+  FTest.OnScreenshotRequested := TestScreenshotRequested;
+  FillTestList;
   AddLog(Format('Steamworks VCL demo, AppID %d, %d plug-in class(es) linked',
     [SteamAPI1.AppID, Length(TSteamworks.RegisteredPlugins)]));
   if FLogFile <> '' then
@@ -210,6 +287,220 @@ begin
   AddLog(Format('Update mode (from the form): %s, delivery %s, interval %d ms',
     [UpdateModeText(SteamAPI1.UpdateMode), DeliveryText(SteamAPI1.Delivery),
      SteamAPI1.CallbackInterval]));
+  LoadSettings;
+  mnuAutoStart.Checked := FAutoStart;
+  UpdateControls;
+  if FAutoStart then
+  begin
+    // Once the window is up, not from inside FormCreate
+    AddLog('Auto Start Steam is on: Steam starts when the window is up');
+    tmAutoStart.Enabled := True;
+  end;
+end;
+
+procedure TfrmSteamDemo.StartSteam(const AWhy: string);
+begin
+  AddLog(AWhy);
+  if SteamAPI1.IsRunning then
+  begin
+    AddLog('Steam is already running');
+    UpdateControls;
+    Exit;
+  end;
+  // No second press while Open runs
+  btnStart.Enabled := False;
+  try
+    if SteamAPI1.Open then
+      AddLog('Open returned True: Steam is running')
+    else
+      AddLog('Open returned False: Steam did not start');
+  finally
+    UpdateControls;
+  end;
+end;
+
+procedure TfrmSteamDemo.tmAutoStartTimer(Sender: TObject);
+begin
+  tmAutoStart.Enabled := False;
+  StartSteam(Format('Auto Start Steam: starting Steam (%d ms after FormCreate; the timer is %d ms)',
+    [Int64(TestTicks - FCreateTicks), tmAutoStart.Interval]));
+end;
+
+procedure TfrmSteamDemo.UpdateControls;
+var
+  Running: Boolean;
+begin
+  Running := SteamAPI1.IsRunning;
+  btnStart.Enabled := not Running;
+  btnInfo.Enabled := Running;
+  btnStop.Enabled := Running;
+  btnTest.Enabled := Running;
+  mnuTakeScreenshot.Enabled := Running;
+end;
+
+procedure TfrmSteamDemo.LoadSettings;
+var
+  Ini: TMemIniFile;
+  Folder: string;
+begin
+  FAutoStart := False;
+  FSettingsFile := '';
+  try
+    Folder := DemoSettingsFolder(SETTINGS_APP);
+    if Folder = '' then
+    begin
+      AddLog('Settings: no per-user settings folder known - defaults used (Auto Start Steam off)');
+      Exit;
+    end;
+    FSettingsFile := IncludeTrailingPathDelimiter(Folder) + SETTINGS_APP + '.ini';
+    if not FileExists(FSettingsFile) then
+    begin
+      AddLog('Settings: ' + FSettingsFile + ' does not exist yet - defaults used (Auto Start Steam off)');
+      Exit;
+    end;
+    Ini := TMemIniFile.Create(FSettingsFile);
+    try
+      FAutoStart := Ini.ReadBool('Steam', 'AutoStart', False);
+    finally
+      Ini.Free;
+    end;
+    AddLog('Settings read from ' + FSettingsFile + ': Auto Start Steam ' + IfThen(FAutoStart, 'on', 'off'));
+  except
+    on E: Exception do
+      AddLog('Settings could not be read (' + FSettingsFile + '): ' + E.Message + ' - defaults used');
+  end;
+end;
+
+procedure TfrmSteamDemo.SaveSettings;
+var
+  Ini: TMemIniFile;
+begin
+  if FSettingsFile = '' then
+  begin
+    AddLog('Settings NOT saved: no settings folder could be determined');
+    Exit;
+  end;
+  try
+    ForceDirectories(ExtractFilePath(FSettingsFile));
+    Ini := TMemIniFile.Create(FSettingsFile);
+    try
+      Ini.WriteBool('Steam', 'AutoStart', FAutoStart);
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+    AddLog('Settings saved to ' + FSettingsFile);
+  except
+    on E: Exception do
+      AddLog('Settings NOT saved (' + FSettingsFile + '): ' + E.Message);
+  end;
+end;
+
+procedure TfrmSteamDemo.mnuAutoStartClick(Sender: TObject);
+begin
+  FAutoStart := not FAutoStart;
+  mnuAutoStart.Checked := FAutoStart;
+  if FAutoStart then
+    AddLog('File > Auto Start Steam: on - Steam starts by itself the next time the program starts')
+  else
+    AddLog('File > Auto Start Steam: off');
+  SaveSettings;
+end;
+
+procedure TfrmSteamDemo.mnuExitClick(Sender: TObject);
+begin
+  AddLog('File > Exit');
+  Close;
+end;
+
+procedure TfrmSteamDemo.FillTestList;
+var
+  I: Integer;
+  Item: TListItem;
+begin
+  lvComponents.Items.BeginUpdate;
+  try
+    lvComponents.Items.Clear;
+    for I := 0 to CT_COUNT - 1 do
+    begin
+      Item := lvComponents.Items.Add;
+      Item.Caption := TestNames[I];
+      Item.SubItems.Add(FTest.RowText[I]);
+    end;
+  finally
+    lvComponents.Items.EndUpdate;
+  end;
+end;
+
+procedure TfrmSteamDemo.TestLog(const AText: string);
+begin
+  AddLog(AText);
+end;
+
+procedure TfrmSteamDemo.TestRow(AIndex: Integer; const AText: string);
+begin
+  if (AIndex >= 0) and (AIndex < lvComponents.Items.Count) then
+    lvComponents.Items[AIndex].SubItems[0] := AText;
+end;
+
+procedure TfrmSteamDemo.btnTestClick(Sender: TObject);
+begin
+  AddLog('Test components pressed');
+  pgcMain.ActivePage := tsComponents;
+  FTest.Start;
+end;
+
+procedure TfrmSteamDemo.tmTestsTimer(Sender: TObject);
+begin
+  FTest.Tick;
+end;
+
+function TfrmSteamDemo.WriteFormScreenshot(AShots: TSteamScreenshotsPlugin): ScreenshotHandle;
+var
+  RGB: TBytes;
+  W, H: Integer;
+begin
+  Result := 0;
+  RGB := SteamFormToRGB(Self, W, H);
+  if RGB = nil then
+  begin
+    AddLog('Screenshot: SteamFormToRGB returned nothing - window not captured');
+    Exit;
+  end;
+  Result := AShots.WriteScreenshot(@RGB[0], Length(RGB), W, H);
+  AddLog(Format('Screenshot: window captured %dx%d (%d bytes RGB), WriteScreenshot -> handle %d (0 = failed)',
+    [W, H, Length(RGB), Result]));
+end;
+
+procedure TfrmSteamDemo.mnuTakeScreenshotClick(Sender: TObject);
+var
+  S: TSteamScreenshotsPlugin;
+begin
+  AddLog('File > Take Screenshot');
+  S := FTest.Screenshots;
+  if (S = nil) or not SteamAPI1.IsRunning then
+  begin
+    AddLog('Screenshot: Steam is not running - press Start first');
+    Exit;
+  end;
+  try
+    // WriteScreenshot needs no overlay; Steam answers with OnScreenshotReady
+    // (handled by the component test's TSteamScreenshots: SetLocation)
+    if WriteFormScreenshot(S) <> 0 then
+      AddLog('Screenshot: waiting for OnScreenshotReady (callback 2301)');
+  except
+    on E: Exception do AddLog('Screenshot FAILED: ' + E.Message);
+  end;
+end;
+
+procedure TfrmSteamDemo.TestScreenshotRequested(Sender: TObject);
+begin
+  if FTest.Screenshots <> nil then
+  try
+    WriteFormScreenshot(FTest.Screenshots);
+  except
+    on E: Exception do AddLog('Screenshot FAILED: ' + E.Message);
+  end;
 end;
 
 procedure TfrmSteamDemo.AddLog(const S: string);
@@ -440,11 +731,7 @@ end;
 
 procedure TfrmSteamDemo.btnStartClick(Sender: TObject);
 begin
-  AddLog('Start pressed');
-  if SteamAPI1.Open then
-    AddLog('Open returned True: Steam is running')
-  else
-    AddLog('Open returned False: Steam did not start');
+  StartSteam('Start pressed');
 end;
 
 procedure TfrmSteamDemo.btnInfoClick(Sender: TObject);
@@ -531,10 +818,14 @@ end;
 procedure TfrmSteamDemo.btnStopClick(Sender: TObject);
 begin
   AddLog('Stop pressed');
+  // Before Close: the test's cleanup needs Steam (OnShutdown is too late)
+  if FTest.Running then
+    FTest.Finish('Stop pressed');
   SteamAPI1.Close;
+  UpdateControls;
 end;
 
-procedure TfrmSteamDemo.btnCopyClick(Sender: TObject);
+procedure TfrmSteamDemo.mnuCopyLogClick(Sender: TObject);
 begin
   Clipboard.AsText := memLog.Lines.Text;
   AddLog('Log copied to clipboard');
@@ -543,6 +834,11 @@ end;
 procedure TfrmSteamDemo.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(SteamAPI1.IsRunning, True)]));
+  // Closed within the first 100 ms: Auto Start must not open Steam again
+  tmAutoStart.Enabled := False;
+  tmTests.Enabled := False;
+  if FTest.Running then
+    FTest.Finish('window closing');
   SteamAPI1.Close;
 end;
 
@@ -555,6 +851,7 @@ procedure TfrmSteamDemo.SteamInitialized(Sender: TObject);
 begin
   AddLog(Format('OnInitialized: pipe %d, user %d, %d plug-in(s) active',
     [SteamAPI1.Steam.Pipe, SteamAPI1.Steam.User, SteamAPI1.Steam.PluginCount]));
+  UpdateControls;
   LoadPersonal;
   LoadAchievements;
 end;
@@ -562,11 +859,18 @@ end;
 procedure TfrmSteamDemo.SteamInitFailed(Sender: TObject; AResult: Integer; const AMessage: string);
 begin
   AddLog(Format('OnInitFailed: result %d: %s', [AResult, AMessage]));
+  UpdateControls;
 end;
 
 procedure TfrmSteamDemo.SteamShutdown(Sender: TObject);
 begin
   AddLog('OnShutdown: SteamAPI shut down');
+  // Only reached with the test running when Steam went away by itself
+  // (client exit): SteamAPI is already shut down, no cleanup possible
+  if FTest.Running then
+    FTest.Finish('Steam shut down while the component test was running (no cleanup possible)');
+  // Also after a Steam client exit: Start becomes possible again
+  UpdateControls;
 end;
 
 procedure TfrmSteamDemo.SteamClientExit(Sender: TObject);

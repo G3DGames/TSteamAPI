@@ -1,0 +1,51 @@
+// Hand-written additions to the generated ISteamNetworkingSockets plug-in.
+// Merged verbatim by tools/gen_steam_api.py (sections start with //@name).
+// Received messages must be released: the flat API does that with a struct
+// function (SteamAPI_SteamNetworkingMessage_t_Release), which the generator
+// does not bind (it binds interface methods only).
+//@private
+    { SteamAPI_SteamNetworkingMessage_t_Release: gives a received message
+      back to Steam (a struct function of the flat API, bound by hand). }
+    F_MessageRelease: procedure(AMessage: PSteamNetworkingMessage_t); cdecl;
+//@public
+    { Gives a message from @link(ReceiveMessages) / @link(ReceiveMessagesOnGroup)
+      (or the raw ReceiveMessages... methods) back to Steam. Call it once for
+      every message, after reading m_pData; @nil is ignored. }
+    procedure ReleaseMessage(AMessage: PSteamNetworkingMessage_t);
+    { Up to Length(AMessages) waiting messages of a connection, into AMessages
+      from index 0. @returns(How many were stored, 0 when none, -1 for an
+      invalid connection handle.) Release each with @link(ReleaseMessage). }
+    function ReceiveMessages(hConn: HSteamNetConnection; var AMessages: array of PSteamNetworkingMessage_t): Integer;
+    { @link(ReceiveMessages) for every connection of a poll group. }
+    function ReceiveMessagesOnGroup(hPollGroup: HSteamNetPollGroup; var AMessages: array of PSteamNetworkingMessage_t): Integer;
+//@initialize
+  F_MessageRelease := nil;
+  // optional like every other export; ReleaseMessage raises when it is missing
+  Bind(F_MessageRelease, 'SteamAPI_SteamNetworkingMessage_t_Release', False);
+//@implementation
+procedure TSteamNetworkingSocketsPlugin.ReleaseMessage(AMessage: PSteamNetworkingMessage_t);
+begin
+  if AMessage = nil then
+    Exit;
+  // a silent no-op here would leak every message
+  if not Assigned(F_MessageRelease) then
+    raise ESteamworksError.Create('ReleaseMessage: the loaded Steam library does not export ' +
+      'SteamAPI_SteamNetworkingMessage_t_Release');
+  F_MessageRelease(AMessage);
+end;
+
+function TSteamNetworkingSocketsPlugin.ReceiveMessages(hConn: HSteamNetConnection;
+  var AMessages: array of PSteamNetworkingMessage_t): Integer;
+begin
+  if Length(AMessages) = 0 then
+    Exit(0);
+  Result := ReceiveMessagesOnConnection(hConn, @AMessages[0], Length(AMessages));
+end;
+
+function TSteamNetworkingSocketsPlugin.ReceiveMessagesOnGroup(hPollGroup: HSteamNetPollGroup;
+  var AMessages: array of PSteamNetworkingMessage_t): Integer;
+begin
+  if Length(AMessages) = 0 then
+    Exit(0);
+  Result := ReceiveMessagesOnPollGroup(hPollGroup, @AMessages[0], Length(AMessages));
+end;

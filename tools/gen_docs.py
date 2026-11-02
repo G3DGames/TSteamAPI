@@ -174,11 +174,14 @@ def member_name(decl):
 
 def record_fields(sdk, struct):
     """[(doc, 'name: type')] of an SDK record, or None."""
-    m = re.search(r"^  " + re.escape(struct) + r" = (?:packed )?record\b(.*?)^  end;", sdk, re.M | re.S)
+    m = re.search(r"^  " + re.escape(struct) + r" = (?:packed |\{\$ifdef FPC\}packed\{\$endif\} )?record\b(.*?)^  end;",
+                  sdk, re.M | re.S)
     if not m:
         return None
+    # FPC's explicit padding (_fpcpadN, see gen_steam_api.py FPC_CLASSES) is not a C field
+    body = re.sub(r"^\{\$ifdef FPC\}\r?\n.*?^\{\$endif\}\r?\n\{\$endif\}\r?$", "", m.group(1), flags=re.M | re.S)
     fields = []
-    for vis, doc, decl in members(m.group(1)):
+    for vis, doc, decl in members(body):
         if decl.startswith(("case ", "function", "procedure")):
             continue
         fields.append((clean_comment(doc) if doc else "", decl.rstrip(";")))

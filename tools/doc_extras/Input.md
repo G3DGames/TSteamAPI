@@ -100,6 +100,10 @@ checks that lowering for every target on every SDK update. They are not in
 `Flat`. Linux32 (FPC only) uses the compiler's own record return and is
 unverified.
 
-`EnableActionEventCallbacks` (action changes pushed to a C callback) needs
-`SteamInputActionEvent_t`, a struct with a C union that is not generated
-yet; poll the actions instead.
+`EnableActionEventCallbacks` pushes action changes to a C callback
+(`procedure(AEvent: PSteamInputActionEvent_t); cdecl`, passed as a plain
+pointer). `SteamInputActionEvent_t` is a hand-written variant record (the C
+struct has a union; `eEventType` says whether `analogAction` or
+`digitalAction` is valid), its layout checked by `tools/verify_generated.py`.
+The callback runs inside `SteamAPI_RunCallbacks`; UNTESTED so far - polling
+the actions works without it.

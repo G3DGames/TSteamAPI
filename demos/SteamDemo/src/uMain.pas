@@ -7,10 +7,11 @@
   only the Debug-only settings are made in FormCreate. Four tabs: Output (the
   log), Personal (the user's avatar, persona, Steam ids, level, country and the
   friends list with avatars), Achievements (icons, unlock state) and
-  Components (the base test of the other 16 plug-in components - Utils,
+  Components (the base test of the other 20 plug-in components - Utils,
   User, Apps, RemoteStorage, Screenshots, Timeline, UGC, Matchmaking,
   Parties, Music, HTTP, HTMLSurface, Inventory, Video, ParentalSettings,
-  RemotePlay - dropped on the form with their events wired; Test components
+  RemotePlay, Networking, NetworkingSockets, NetworkingMessages,
+  NetworkingUtils - dropped on the form with their events wired; Test components
   runs it, see btnTestClick). It
   starts and stops Steam on demand and logs everything the core reports, so
   the Debug log can be pasted back as test evidence. The buttons are enabled
@@ -37,7 +38,9 @@ uses
   Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC,
   Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties, Steamworks.Plugin.Music,
   Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface, Steamworks.Plugin.Inventory,
-  Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay;
+  Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay,
+  Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets,
+  Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils;
 
 const
   { AppID of this project on Steam. }
@@ -74,8 +77,16 @@ const
   CT_PARENTAL = 14;
   { Component test: index of TSteamRemotePlay. }
   CT_REMOTEPLAY = 15;
+  { Component test: index of TSteamNetworking. }
+  CT_NETWORKING = 16;
+  { Component test: index of TSteamNetworkingSockets. }
+  CT_NETSOCKETS = 17;
+  { Component test: index of TSteamNetworkingMessages. }
+  CT_NETMESSAGES = 18;
+  { Component test: index of TSteamNetworkingUtils. }
+  CT_NETUTILS = 19;
   { Number of components the component test covers. }
-  CT_COUNT = 16;
+  CT_COUNT = 20;
   { URL the HTTP test fetches: Steam's own Web API server-info call (no key
     needed, small JSON answer). }
   TEST_HTTP_URL = 'https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/';
@@ -215,6 +226,15 @@ type
     SteamParentalSettings1: TSteamParentalSettings;
     { ISteamRemotePlay component (component test): session count (reads only). }
     SteamRemotePlay1: TSteamRemotePlay;
+    { ISteamNetworking component (component test): P2P packet check (reads only). }
+    SteamNetworking1: TSteamNetworking;
+    { ISteamNetworkingSockets component (component test): a socket pair, one
+      message, closed. }
+    SteamNetworkingSockets1: TSteamNetworkingSockets;
+    { ISteamNetworkingMessages component (component test): channel 0 polled (reads only). }
+    SteamNetworkingMessages1: TSteamNetworkingMessages;
+    { ISteamNetworkingUtils component (component test): timestamp, relay status. }
+    SteamNetworkingUtils1: TSteamNetworkingUtils;
     { Debug-only settings and the log file. }
     procedure FormCreate(Sender: TObject);
     { Frees the component test's pending list. }
@@ -330,6 +350,11 @@ type
     procedure InventoryResultReady(Sender: TObject; const AData: SteamInventoryResultReady_t);
     { SteamVideo1.OnGetOPFSettingsResult (callback 4624). }
     procedure VideoOPFSettingsResult(Sender: TObject; const AData: GetOPFSettingsResult_t);
+    { SteamNetworkingSockets1.OnSteamNetConnectionStatusChangedCallback
+      (callback 1221): the far side of the test socket pair closing. }
+    procedure NetConnectionStatusChanged(Sender: TObject; const AData: SteamNetConnectionStatusChangedCallback_t);
+    { SteamNetworkingUtils1.OnSteamRelayNetworkStatus (callback 1281): logged only. }
+    procedure RelayNetworkStatus(Sender: TObject; const AData: SteamRelayNetworkStatus_t);
   private
     { Log file every line is appended to; '' if it cannot be written. }
     FLogFile: string;
@@ -366,6 +391,9 @@ type
     { Inventory result of the Inventory test; destroyed when it is ready or
       the test ends (k_SteamInventoryResultInvalid = none). }
     FInvResult: SteamInventoryResult_t;
+    { The NetworkingSockets test's socket pair; closed when the test is done
+      or ends (k_HSteamNetConnection_Invalid = none). }
+    FSockConn1, FSockConn2: HSteamNetConnection;
     { Starts Steam (Start button or Auto Start Steam) and logs AWhy. }
     procedure StartSteam(const AWhy: string);
     { Enables the buttons that make sense now: Start while Steam is not
@@ -436,6 +464,17 @@ type
     procedure TestParentalSettings;
     { TSteamRemotePlay: session count (reads only). }
     procedure TestRemotePlay;
+    { TSteamNetworking: IsP2PPacketAvailable (reads only). }
+    procedure TestNetworking;
+    { TSteamNetworkingSockets: GetIdentity, CreateSocketPair, one message
+      sent and received, connection 1 closed (connection 2 answers). }
+    procedure TestNetworkingSockets;
+    { TSteamNetworkingMessages: channel 0 polled (reads only). }
+    procedure TestNetworkingMessages;
+    { TSteamNetworkingUtils: local timestamp, relay network status. }
+    procedure TestNetworkingUtils;
+    { Closes whatever is left of the socket pair (both sides). }
+    procedure CloseSocketPair(const AWhy: string);
     { Captures this window with SteamFormToRGB (Steamworks.FMX), writes it
       with WriteScreenshot and logs it (File > Take Screenshot, and a
       request while screenshots are hooked).
@@ -569,6 +608,8 @@ begin
   FPending := TDictionary<string, Cardinal>.Create;
   FUGCQuery := k_UGCQueryHandleInvalid;
   FInvResult := k_SteamInventoryResultInvalid;
+  FSockConn1 := k_HSteamNetConnection_Invalid;
+  FSockConn2 := k_HSteamNetConnection_Invalid;
   FillTestList;
   AddLog(Format('Steamworks demo, AppID %d, %d plug-in class(es) linked',
     [SteamAPI1.AppID, Length(TSteamworks.RegisteredPlugins)]));
@@ -1228,7 +1269,8 @@ const
   TestNames: array[0..CT_COUNT - 1] of string = ('TSteamUtils', 'TSteamUser',
     'TSteamApps', 'TSteamRemoteStorage', 'TSteamScreenshots', 'TSteamTimeline', 'TSteamUGC',
     'TSteamMatchmaking', 'TSteamParties', 'TSteamMusic', 'TSteamHTTP', 'TSteamHTMLSurface',
-    'TSteamInventory', 'TSteamVideo', 'TSteamParentalSettings', 'TSteamRemotePlay');
+    'TSteamInventory', 'TSteamVideo', 'TSteamParentalSettings', 'TSteamRemotePlay',
+    'TSteamNetworking', 'TSteamNetworkingSockets', 'TSteamNetworkingMessages', 'TSteamNetworkingUtils');
 
 { A NUL-terminated UTF-8 buffer from Steam as a string. }
 function SteamText(P: PAnsiChar): string;
@@ -1421,6 +1463,7 @@ begin
       if FHTMLInit and (SteamHTMLSurface1.Plugin <> nil) then
         AddLog('Test cleanup: ISteamHTMLSurface.Shutdown ' +
           BoolToStr(SteamHTMLSurface1.Plugin.Shutdown, True));
+      CloseSocketPair('Test cleanup');
     except
       on E: Exception do AddLog('Test cleanup failed: ' + E.Message);
     end;
@@ -1430,6 +1473,8 @@ begin
   FHTTPRequest := 0;
   FHTMLInit := False;
   FInvResult := k_SteamInventoryResultInvalid;
+  FSockConn1 := k_HSteamNetConnection_Invalid;
+  FSockConn2 := k_HSteamNetConnection_Invalid;
   Passed := 0;
   for I := 0 to CT_COUNT - 1 do
   begin
@@ -1479,6 +1524,10 @@ begin
   TestVideo;
   TestParentalSettings;
   TestRemotePlay;
+  TestNetworking;
+  TestNetworkingSockets;
+  TestNetworkingMessages;
+  TestNetworkingUtils;
   tmTests.Enabled := True;
   CheckTestsDone;
 end;
@@ -2448,6 +2497,225 @@ begin
   except
     on E: Exception do ReadFailed(CT_REMOTEPLAY, 'RemotePlay reads', E);
   end;
+end;
+
+{ --- Batch 2b: TSteamNetworking ... TSteamNetworkingUtils --- }
+
+procedure TfrmMain.TestNetworking;
+var
+  N: TSteamNetworkingPlugin;
+  Size: UInt32;
+  State: P2PSessionState_t;
+  Me: TSteamID;
+begin
+  N := SteamNetworking1.Plugin;
+  if not BeginTest(CT_NETWORKING, SteamNetworking1, N) then
+    Exit;
+  try
+    // Nobody sends this app P2P packets: both answer False
+    Size := 0;
+    FillChar(State, SizeOf(State), 0);
+    Me := TSteamID.Create(0);
+    if SteamUser1.Plugin <> nil then
+      Me := SteamUser1.Plugin.GetSteamID;
+    AddLog(Format('Test TSteamNetworking: P2P packet waiting on channel 0 %s, ' +
+      'session with ourselves %s (deprecated interface, reads only)',
+      [BoolToStr(N.IsP2PPacketAvailable(Size, 0), True),
+       BoolToStr(N.GetP2PSessionState(Me, State), True)]));
+    FTests[CT_NETWORKING].Note := 'reads only (P2P needs a second user)';
+  except
+    on E: Exception do ReadFailed(CT_NETWORKING, 'Networking reads', E);
+  end;
+end;
+
+procedure TfrmMain.TestNetworkingSockets;
+const
+  TEST_TEXT = 'TSteamAPI socket pair test';
+var
+  S: TSteamNetworkingSocketsPlugin;
+  Ident: SteamNetworkingIdentity;
+  Info: SteamNetConnectionInfo_t;
+  Data: TBytes;
+  MsgNo: Int64;
+  Res: EResult;
+  Msgs: array[0..3] of PSteamNetworkingMessage_t;
+  Count, I: Integer;
+  Got: TBytes;
+  Same: Boolean;
+  Me: UInt64;
+begin
+  S := SteamNetworkingSockets1.Plugin;
+  if not BeginTest(CT_NETSOCKETS, SteamNetworkingSockets1, S) then
+    Exit;
+  // Our identity: a SteamNetworkingIdentity (C union) read back - the type
+  // and the 64-bit id prove the variant record lines up
+  try
+    FillChar(Ident, SizeOf(Ident), 0);
+    Me := 0;
+    if SteamUser1.Plugin <> nil then
+      Me := SteamUser1.Plugin.GetSteamID;
+    if S.GetIdentity(Ident) then
+    begin
+      Same := (Ident.m_eType = k_ESteamNetworkingIdentityType_SteamID) and
+        (Ident.m_steamID64 = Me);
+      AddLog(Format('Test TSteamNetworkingSockets: identity type %d, SteamID %s - %s the logged-on user',
+        [Ord(Ident.m_eType), UIntToStr(Ident.m_steamID64), IfThen(Same, 'same as', 'DIFFERENT FROM')]));
+      if not Same then
+        FTests[CT_NETSOCKETS].ReadsOK := False;
+    end
+    else
+      AddLog('Test TSteamNetworkingSockets: GetIdentity False (identity not known yet)');
+  except
+    on E: Exception do ReadFailed(CT_NETSOCKETS, 'GetIdentity', E);
+  end;
+  // A socket pair in this process (internal buffers, no network), one
+  // reliable message from 1 to 2
+  try
+    FSockConn1 := k_HSteamNetConnection_Invalid;
+    FSockConn2 := k_HSteamNetConnection_Invalid;
+    if not S.CreateSocketPair(FSockConn1, FSockConn2, False, nil, nil) then
+    begin
+      AddLog('Test TSteamNetworkingSockets: CreateSocketPair FAILED');
+      FTests[CT_NETSOCKETS].ReadsOK := False;
+      FTests[CT_NETSOCKETS].Note := 'CreateSocketPair failed';
+      Exit;
+    end;
+    FillChar(Info, SizeOf(Info), 0);
+    if S.GetConnectionInfo(FSockConn1, Info) then
+      AddLog(Format('Test TSteamNetworkingSockets: socket pair %u / %u, connection 1 state %d ' +
+        '(3 = connected), remote identity type %d', [FSockConn1, FSockConn2, Ord(Info.m_eState),
+        Ord(Info.m_identityRemote.m_eType)]));
+    Data := TEncoding.UTF8.GetBytes(TEST_TEXT);
+    MsgNo := 0;
+    Res := S.SendMessageToConnection(FSockConn1, @Data[0], Length(Data), k_nSteamNetworkingSend_Reliable, MsgNo);
+    AddLog(Format('Test TSteamNetworkingSockets: sent %d bytes on connection 1: %s, message number %d',
+      [Length(Data), ResultText(Res), MsgNo]));
+    FillChar(Msgs, SizeOf(Msgs), 0);
+    Count := S.ReceiveMessages(FSockConn2, Msgs);
+    Same := False;
+    for I := 0 to Count - 1 do
+    begin
+      SetLength(Got, Msgs[I]^.m_cbSize);
+      if Length(Got) > 0 then
+        Move(Msgs[I]^.m_pData^, Got[0], Length(Got));
+      Same := Same or ((Msgs[I]^.m_conn = FSockConn2) and (Length(Got) = Length(Data)) and
+        CompareMem(@Got[0], @Data[0], Length(Data)));
+      AddLog(Format('Test TSteamNetworkingSockets: received on connection %u: %d bytes, message number %d, "%s"',
+        [Msgs[I]^.m_conn, Msgs[I]^.m_cbSize, Msgs[I]^.m_nMessageNumber, TEncoding.UTF8.GetString(Got)]));
+      S.ReleaseMessage(Msgs[I]);
+    end;
+    if (Res <> k_EResultOK) or not Same then
+    begin
+      FTests[CT_NETSOCKETS].ReadsOK := False;
+      FTests[CT_NETSOCKETS].Note := Format('send %s, %d received, data %s',
+        [ResultText(Res), Count, IfThen(Same, 'identical', 'NOT RECEIVED / DIFFERENT')]);
+    end
+    else
+      FTests[CT_NETSOCKETS].Note := 'message sent and received';
+    // Closing side 1 tells side 2 (callback 1221, ClosedByPeer); side 2 is
+    // closed in NetConnectionStatusChanged
+    AddLog('Test TSteamNetworkingSockets: CloseConnection(1) ' + BoolToStr(S.CloseConnection(FSockConn1,
+      k_ESteamNetConnectionEnd_App_Generic, 'component test done', False), True));
+    FSockConn1 := k_HSteamNetConnection_Invalid;
+    Expect(CT_NETSOCKETS, 'ConnectionStatusChanged (closed by peer)');
+  except
+    on E: Exception do ReadFailed(CT_NETSOCKETS, 'socket pair', E);
+  end;
+end;
+
+procedure TfrmMain.NetConnectionStatusChanged(Sender: TObject; const AData: SteamNetConnectionStatusChangedCallback_t);
+begin
+  AddLog(Format('TSteamNetworkingSockets.OnSteamNetConnectionStatusChangedCallback: connection %u, ' +
+    'state %d -> %d, end reason %d, "%s"', [AData.m_hConn, Ord(AData.m_eOldState), Ord(AData.m_info.m_eState),
+    AData.m_info.m_eEndReason, SteamText(@AData.m_info.m_szEndDebug[0])]));
+  if (AData.m_hConn <> FSockConn2) or (FSockConn2 = k_HSteamNetConnection_Invalid) or
+    (AData.m_info.m_eState <> k_ESteamNetworkingConnectionState_ClosedByPeer) then
+    Exit;
+  CloseSocketPair('Test TSteamNetworkingSockets');
+  if Answered(CT_NETSOCKETS, 'ConnectionStatusChanged (closed by peer)') then
+  begin
+    FTests[CT_NETSOCKETS].Note := FTests[CT_NETSOCKETS].Note + ', close seen by the peer';
+    CheckTestsDone;
+  end;
+end;
+
+procedure TfrmMain.CloseSocketPair(const AWhy: string);
+var
+  S: TSteamNetworkingSocketsPlugin;
+begin
+  S := SteamNetworkingSockets1.Plugin;
+  if S <> nil then
+  begin
+    if FSockConn1 <> k_HSteamNetConnection_Invalid then
+      AddLog(AWhy + ': CloseConnection(1) ' + BoolToStr(S.CloseConnection(FSockConn1, 0, '', False), True));
+    if FSockConn2 <> k_HSteamNetConnection_Invalid then
+      AddLog(AWhy + ': CloseConnection(2) ' + BoolToStr(S.CloseConnection(FSockConn2, 0, '', False), True));
+  end;
+  FSockConn1 := k_HSteamNetConnection_Invalid;
+  FSockConn2 := k_HSteamNetConnection_Invalid;
+end;
+
+procedure TfrmMain.TestNetworkingMessages;
+var
+  M: TSteamNetworkingMessagesPlugin;
+  Msgs: array[0..3] of PSteamNetworkingMessage_t;
+  Count, I: Integer;
+begin
+  M := SteamNetworkingMessages1.Plugin;
+  if not BeginTest(CT_NETMESSAGES, SteamNetworkingMessages1, M) then
+    Exit;
+  try
+    // Nobody sends this app messages: 0 expected (any that arrive are released)
+    FillChar(Msgs, SizeOf(Msgs), 0);
+    Count := M.ReceiveMessages(0, Msgs);
+    for I := 0 to Count - 1 do
+      M.ReleaseMessage(Msgs[I]);
+    AddLog(Format('Test TSteamNetworkingMessages: %d messages waiting on channel 0', [Count]));
+    FTests[CT_NETMESSAGES].Note := 'reads only (messages need a second user)';
+  except
+    on E: Exception do ReadFailed(CT_NETMESSAGES, 'NetworkingMessages reads', E);
+  end;
+end;
+
+procedure TfrmMain.TestNetworkingUtils;
+var
+  U: TSteamNetworkingUtilsPlugin;
+  T1, T2: SteamNetworkingMicroseconds;
+  Status: SteamRelayNetworkStatus_t;
+  Avail: ESteamNetworkingAvailability;
+begin
+  U := SteamNetworkingUtils1.Plugin;
+  if not BeginTest(CT_NETUTILS, SteamNetworkingUtils1, U) then
+    Exit;
+  try
+    T1 := U.GetLocalTimestamp;
+    T2 := U.GetLocalTimestamp;
+    AddLog(Format('Test TSteamNetworkingUtils: local timestamp %d us, then %d us', [T1, T2]));
+    if (T1 <= 0) or (T2 < T1) then
+    begin
+      FTests[CT_NETUTILS].ReadsOK := False;
+      FTests[CT_NETUTILS].Note := 'timestamp not increasing';
+      Exit;
+    end;
+    // Starts the relay network (SDR) in the background; progress comes as
+    // callback 1281 (logged by RelayNetworkStatus, not waited for)
+    U.InitRelayNetworkAccess;
+    FillChar(Status, SizeOf(Status), 0);
+    Avail := U.GetRelayNetworkStatus(Status);
+    AddLog(Format('Test TSteamNetworkingUtils: relay network availability %d (100 = current), ' +
+      'network config %d, any relay %d, "%s"', [Ord(Avail), Ord(Status.m_eAvailNetworkConfig),
+      Ord(Status.m_eAvailAnyRelay), SteamText(@Status.m_debugMsg[0])]));
+    FTests[CT_NETUTILS].Note := Format('relay availability %d', [Ord(Avail)]);
+  except
+    on E: Exception do ReadFailed(CT_NETUTILS, 'NetworkingUtils calls', E);
+  end;
+end;
+
+procedure TfrmMain.RelayNetworkStatus(Sender: TObject; const AData: SteamRelayNetworkStatus_t);
+begin
+  AddLog(Format('TSteamNetworkingUtils.OnSteamRelayNetworkStatus: availability %d, network config %d, ' +
+    'any relay %d, "%s"', [Ord(AData.m_eAvail), Ord(AData.m_eAvailNetworkConfig), Ord(AData.m_eAvailAnyRelay),
+    SteamText(@AData.m_debugMsg[0])]));
 end;
 
 end.

@@ -1,0 +1,32 @@
+  { Analog part of a @link(SteamInputActionEvent_t). C type:
+    SteamInputActionEvent_t::AnalogAction_t. }
+  SteamInputActionEvent_t_AnalogAction_t = packed record
+    { The analog action that changed. }
+    actionHandle: InputAnalogActionHandle_t;
+    { Its new data. }
+    analogActionData: InputAnalogActionData_t;
+  end;
+  { Digital part of a @link(SteamInputActionEvent_t). C type:
+    SteamInputActionEvent_t::DigitalAction_t. }
+  SteamInputActionEvent_t_DigitalAction_t = packed record
+    { The digital action that changed. }
+    actionHandle: InputDigitalActionHandle_t;
+    { Its new data. }
+    digitalActionData: InputDigitalActionData_t;
+  end;
+  { Steam struct SteamInputActionEvent_t: one action change, passed to the
+    callback set with ISteamInput EnableActionEventCallbacks; eEventType
+    says which union member is valid (isteaminput.h, pack(1)).
+    Hand-written (tools/sdk_extras/SteamInputActionEvent_t.pas.txt).
+    C type: SteamInputActionEvent_t. }
+  SteamInputActionEvent_t = packed record
+    { The controller. }
+    controllerHandle: InputHandle_t;
+    { Analog or digital (k_ESteamInputActionEventType_...). }
+    eEventType: ESteamInputActionEventType;
+    case Integer of
+      { k_ESteamInputActionEventType_AnalogAction. }
+      0: (analogAction: SteamInputActionEvent_t_AnalogAction_t);
+      { k_ESteamInputActionEventType_DigitalAction. }
+      1: (digitalAction: SteamInputActionEvent_t_DigitalAction_t);
+  end;

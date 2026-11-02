@@ -30,7 +30,7 @@ time is fine.)
 * [Life cycle](#life-cycle)
 * [Plug-in components](#plug-in-components)
 * [Images: SteamImageToBitmap](#images-steamimagetobitmap)
-* [Screenshots: SteamFormToRGB (FMX)](#screenshots-steamformtorgb-fmx)
+* [Screenshots: SteamFormToRGB](#screenshots-steamformtorgb)
 * [Errors](#errors)
 * [Threads](#threads)
 
@@ -147,9 +147,9 @@ achievement icon). It returns `False` for 0 (none) and -1 (still loading -
 wait for `TSteamFriends.OnAvatarImageLoaded` /
 `TSteamUserStats.OnUserAchievementIconFetched`).
 
-## Screenshots: SteamFormToRGB (FMX)
+## Screenshots: SteamFormToRGB
 
-`Steamworks.FMX` has
+`Steamworks.FMX`, `Steamworks.VCL` and `Steamworks.LCL` each have
 
 ```pascal
 function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
@@ -171,7 +171,9 @@ if RGB <> nil then
 
 What the form paints is captured; natively drawn platform controls and 3D
 viewports may be missing (capture those from their render target and use
-`SteamBitmapToRGB`). Steamworks.VCL / Steamworks.LCL have no counterpart yet.
+`SteamBitmapToRGB`). The VCL and LCL versions take the form's
+`GetFormImage` (client area, screen pixels) - written 2026-11-02, not yet
+tested; SteamDemoVCL / SteamDemoLCL use them for File > Take Screenshot.
 
 ## Errors
 

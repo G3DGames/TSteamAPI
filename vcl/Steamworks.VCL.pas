@@ -16,7 +16,7 @@ unit Steamworks.VCL;
 interface
 
 uses
-  System.SysUtils, System.Classes, Vcl.ExtCtrls, Vcl.Graphics,
+  System.SysUtils, System.Classes, Vcl.ExtCtrls, Vcl.Graphics, Vcl.Forms,
   Steamworks.Types, Steamworks.Core, Steamworks.Components;
 
 type
@@ -98,10 +98,35 @@ type
     read; ABitmap is then unchanged.) }
 function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
 
+{ Converts a bitmap to the packed RGB bytes ISteamScreenshots.WriteScreenshot
+  takes: 3 bytes per pixel in R, G, B order, rows top-down, no padding;
+  alpha is dropped.
+  @returns(@nil when ABitmap is @nil or empty.) }
+function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
+
+(* Takes a screenshot of a form for Steam: the form's client area as
+  @link(SteamBitmapToRGB) returns it (from TCustomForm.GetFormImage). Call it
+  on the main thread, with the form showing. Hand the result to
+  WriteScreenshot - from @code(TSteamScreenshots.OnScreenshotRequested)
+  (while hooked) or whenever the game wants a screenshot. Unlike
+  TriggerScreenshot this needs no Steam overlay in the process.
+  @longCode(#
+  RGB := SteamFormToRGB(Self, W, H);
+  if RGB <> nil then
+    SteamScreenshots1.Plugin.WriteScreenshot(@RGB[0], Length(RGB), W, H);
+  #)
+  What the form paints is what is captured; a covered or minimised window
+  may come out incomplete. UNTESTED so far (written 2026-11-02).
+  @param(AForm The form to capture.)
+  @param(AWidth Width of the image in pixels (0 on failure).)
+  @param(AHeight Height of the image in pixels (0 on failure).)
+  @returns(The RGB bytes, @nil when AForm is @nil or cannot be captured.) *)
+function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
+
 implementation
 
 uses
-  Vcl.Forms, Steamworks.Plugin.Utils;
+  Steamworks.Plugin.Utils;
 
 function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
 var
@@ -140,6 +165,63 @@ begin
   end;
   ABitmap.Modified := True;
   Result := True;
+end;
+
+function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
+var
+  Bmp: TBitmap;
+  X, Y: Integer;
+  Src, Dst: PByte;
+begin
+  Result := nil;
+  if (ABitmap = nil) or (ABitmap.Width <= 0) or (ABitmap.Height <= 0) then
+    Exit;
+  // A 24-bit copy: its rows are B, G, R (bottom-up in memory, but ScanLine[Y]
+  // is row Y counted from the top)
+  Bmp := TBitmap.Create;
+  try
+    Bmp.PixelFormat := pf24bit;
+    Bmp.SetSize(ABitmap.Width, ABitmap.Height);
+    Bmp.Canvas.Draw(0, 0, ABitmap);
+    SetLength(Result, Bmp.Width * Bmp.Height * 3);
+    Dst := @Result[0];
+    for Y := 0 to Bmp.Height - 1 do
+    begin
+      Src := Bmp.ScanLine[Y];
+      for X := 0 to Bmp.Width - 1 do
+      begin
+        Dst[0] := Src[2];
+        Dst[1] := Src[1];
+        Dst[2] := Src[0];
+        Inc(Src, 3);
+        Inc(Dst, 3);
+      end;
+    end;
+  finally
+    Bmp.Free;
+  end;
+end;
+
+function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
+var
+  Bmp: TBitmap;
+begin
+  Result := nil;
+  AWidth := 0;
+  AHeight := 0;
+  if AForm = nil then
+    Exit;
+  Bmp := AForm.GetFormImage;
+  try
+    Result := SteamBitmapToRGB(Bmp);
+    if Result <> nil then
+    begin
+      AWidth := Bmp.Width;
+      AHeight := Bmp.Height;
+    end;
+  finally
+    Bmp.Free;
+  end;
 end;
 
 { TSteamAPI }

@@ -10,6 +10,7 @@ object frmSteamDemo: TfrmSteamDemo
   Font.Height = -12
   Font.Name = 'Segoe UI'
   Font.Style = []
+  Menu = MainMenu1
   Position = poScreenCenter
   OnClose = FormClose
   OnCreate = FormCreate
@@ -50,14 +51,14 @@ object frmSteamDemo: TfrmSteamDemo
       TabOrder = 2
       OnClick = btnStopClick
     end
-    object btnCopy: TButton
+    object btnTest: TButton
       Left = 362
       Top = 10
-      Width = 110
+      Width = 130
       Height = 28
-      Caption = 'Copy log'
+      Caption = 'Test components'
       TabOrder = 3
-      OnClick = btnCopyClick
+      OnClick = btnTestClick
     end
   end
   object pgcMain: TPageControl
@@ -192,6 +193,29 @@ object frmSteamDemo: TfrmSteamDemo
         ViewStyle = vsReport
       end
     end
+    object tsComponents: TTabSheet
+      Caption = 'Components'
+      object lvComponents: TListView
+        Left = 0
+        Top = 0
+        Width = 936
+        Height = 523
+        Align = alClient
+        Columns = <
+          item
+            Caption = 'Component'
+            Width = 200
+          end
+          item
+            Caption = 'Result'
+            Width = 1200
+          end>
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 0
+        ViewStyle = vsReport
+      end
+    end
   end
   object ilFriends: TImageList
     ColorDepth = cd32Bit
@@ -233,5 +257,43 @@ object frmSteamDemo: TfrmSteamDemo
     OnUserAchievementIconFetched = AchievementIconFetched
     Left = 680
     Top = 8
+  end
+  object MainMenu1: TMainMenu
+    Left = 440
+    Top = 8
+    object mnuFile: TMenuItem
+      Caption = '&File'
+      object mnuAutoStart: TMenuItem
+        Caption = '&Auto Start Steam'
+        OnClick = mnuAutoStartClick
+      end
+      object mnuTakeScreenshot: TMenuItem
+        Caption = 'Take &Screenshot'
+        OnClick = mnuTakeScreenshotClick
+      end
+      object mnuCopyLog: TMenuItem
+        Caption = '&Copy Log'
+        OnClick = mnuCopyLogClick
+      end
+      object mnuSep1: TMenuItem
+        Caption = '-'
+      end
+      object mnuExit: TMenuItem
+        Caption = 'E&xit'
+        OnClick = mnuExitClick
+      end
+    end
+  end
+  object tmAutoStart: TTimer
+    Enabled = False
+    Interval = 100
+    OnTimer = tmAutoStartTimer
+    Left = 440
+    Top = 64
+  end
+  object tmTests: TTimer
+    OnTimer = tmTestsTimer
+    Left = 520
+    Top = 64
   end
 end

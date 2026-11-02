@@ -410,4 +410,26 @@ object frmMain: TfrmMain
     Left = 600
     Top = 512
   end
+  object SteamNetworking1: TSteamNetworking
+    SteamAPI = SteamAPI1
+    Left = 656
+    Top = 512
+  end
+  object SteamNetworkingSockets1: TSteamNetworkingSockets
+    SteamAPI = SteamAPI1
+    OnSteamNetConnectionStatusChangedCallback = NetConnectionStatusChanged
+    Left = 600
+    Top = 568
+  end
+  object SteamNetworkingMessages1: TSteamNetworkingMessages
+    SteamAPI = SteamAPI1
+    Left = 656
+    Top = 568
+  end
+  object SteamNetworkingUtils1: TSteamNetworkingUtils
+    SteamAPI = SteamAPI1
+    OnSteamRelayNetworkStatus = RelayNetworkStatus
+    Left = 600
+    Top = 624
+  end
 end

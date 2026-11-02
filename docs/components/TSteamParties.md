@@ -153,7 +153,7 @@ Get a list of possible beacon locations.
 #### GetAvailableBeaconLocations
 
 ```pascal
-function GetAvailableBeaconLocations(var pLocationList: SteamPartyBeaconLocation_t; uMaxNumLocations: UInt32): Boolean;
+function GetAvailableBeaconLocations(pLocationList: Pointer; uMaxNumLocations: UInt32): Boolean;
 ```
 
 Wraps `SteamAPI_ISteamParties_GetAvailableBeaconLocations`.

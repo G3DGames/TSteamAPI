@@ -23,7 +23,8 @@ end;
 * `BSendRemotePlayTogetherInvite` invites a friend;
   `ShowRemotePlayTogetherUI` opens Steam's invite UI.
 * `GetInput` (mouse / keyboard events of Remote Play Together guests, after
-  `BEnableRemotePlayTogetherDirectInput`) fills a raw array of
-  `RemotePlayInput_t` - a C union not yet declared in Pascal, so the
-  parameter is a plain `Pointer` for now; `CreateMouseCursor` takes a raw
-  pixel buffer.
+  `BEnableRemotePlayTogetherDirectInput`) fills an array of
+  `RemotePlayInput_t` (a variant record: `m_eType` says which member is
+  valid). The parameter is a plain `Pointer`: pass `@Events[0]` and
+  `Length(Events)`; the result is the number filled. `CreateMouseCursor`
+  takes a raw pixel buffer.

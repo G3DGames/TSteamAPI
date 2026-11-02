@@ -74,6 +74,12 @@ PLUGINS = {
     "ISteamVideo": "Video",
     "ISteamParentalSettings": "ParentalSettings",
     "ISteamRemotePlay": "RemotePlay",
+    # Batch 2b (2026-11-02): networking - needs the hand-written union
+    # records of tools/sdk_extras (SteamNetworkingIdentity, ...IPAddr, ...)
+    "ISteamNetworking": "Networking",
+    "ISteamNetworkingSockets": "NetworkingSockets",
+    "ISteamNetworkingMessages": "NetworkingMessages",
+    "ISteamNetworkingUtils": "NetworkingUtils",
 }
 
 # Bit-flag enums the heuristic below cannot recognise (few, small powers of
@@ -83,10 +89,66 @@ PLUGINS = {
 # Check every new SDK for more: an enum of 0 / 1 / 2 / 4 values may be
 # either a list (EHTMLMouseButton) or flags.
 FLAG_ENUMS = {"EHTMLKeyModifiers", "ESteamInputConfigurationEnableType"}
+# Event payloads FPC 3.2.2 cannot pass by const to a method pointer: small
+# records made only of floats (or a float plus little else) - FPC's
+# parameter code for them hits "Internal error 2009112505" (Win64, seen on
+# VolumeHasChanged_t = one Single). Their event types use constref under
+# FPC (const for Delphi). RemoteStoragePublishFileProgress_t (Double +
+# Boolean, 16 bytes - by value in registers on x86-64 System V) as a
+# precaution. Check new SDKs for more callback structs like these.
+FPC_CONSTREF_EVENTS = {"VolumeHasChanged_t", "RemoteStoragePublishFileProgress_t"}
+
+# FPC 3.2.2 aligns a RECORD-typed field by the record's SIZE (8 for a
+# packed TSteamID, 8 for the 18-byte SteamNetworkingIPAddr), never by the
+# record's own alignment - in {$packrecords n} AND in {$packrecords C}
+# (measured with tools/LayoutProbe on Win64, 2026-11-02: 25 SDK records
+# wrong, e.g. UserStatsReceived_t.m_steamIDUser at 16 instead of 12). No
+# FPC 3.2 directive changes that. So under FPC every non-pack(1) SDK record
+# is a PACKED record with explicit padding where C has some; the padding is
+# computed from the Delphi layout model, which tools/verify_generated.py
+# proves equal to C on every target. Classes of targets with the same
+# layout: (name, condition, pointer size, callback packing, natural cap).
+FPC_CLASSES = [
+    ("w64", "defined(MSWINDOWS) and defined(CPU64)"),
+    ("w32", "defined(MSWINDOWS) and not defined(CPU64)"),
+    ("u64", "not defined(MSWINDOWS) and defined(CPU64)"),
+    ("u32", "not defined(MSWINDOWS) and not defined(CPU64)"),
+]
+FPC_CLASS_LAYOUT = {"w64": (8, 8, 8), "w32": (4, 8, 8), "u64": (8, 4, 8), "u32": (4, 4, 4)}
+
+
+def fpc_padding(types_text):
+    """struct -> {field index: {class: padding bytes}} from a first emission
+    of Steamworks.SDKTypes (FPC_CLASSES)."""
+    import verify_generated as vg  # noqa: E402 (needs this module first)
+    pas = vg.PascalLayout(types_text)
+    out = {}
+    for name, r in pas.recs.items():
+        if r["packed"] or r.get("variants") or not r.get("fpc_packed"):
+            continue
+        pads = {}
+        for cls, (ptr, dflt, cap) in FPC_CLASS_LAYOUT.items():
+            pas.natural_cap = cap
+            size, _, offs = pas.record(name, ptr, dflt)
+            end = 0
+            for i, (fn, ft) in enumerate(r["fields"]):
+                fsize = pas.type(ft, ptr, dflt)[0]
+                if offs[i] > end:
+                    pads.setdefault(i, {})[cls] = offs[i] - end
+                end = offs[i] + fsize
+            if size > end:
+                pads.setdefault(len(r["fields"]), {})[cls] = size - end
+        pas.natural_cap = 8
+        if pads:
+            out[name] = pads
+    return out
 
 # Interfaces whose callbacks use another interface's id base
 # (k_iSteam<Base>Callbacks): ISteamInput kept ISteamController's 2800 range.
 CALLBACK_BASE_ALIAS = {"Input": "Controller"}
+# Callbacks of an interface declared in ANOTHER header (the header rule
+# would miss them); their id still has to lie in the interface's range.
+CALLBACK_EXTRA = {"NetworkingSockets": {"SteamNetworkingFakeIPResult_t"}}
 
 # Declared by hand in lib/Steamworks.Types.pas (read at run time as well).
 PASCAL_KEYWORDS = set("""and array as asm begin case class const constructor destructor dispinterface
@@ -444,6 +506,22 @@ class TypesUnit:
         self.map = Mapper(sdk)
         self.out = []
         self.skipped_structs = {}
+        # FPC padding (filled by fpc_padding() from a first emission, then
+        # used by a second one): struct -> {field index: {class: bytes}},
+        # index len(fields) = tail. See FPC_CLASSES.
+        self.fpc_pads = {}
+        # Structs with a C union, declared by hand as Pascal variant records
+        # (steam_api.json keeps only ONE member of each union, so they cannot
+        # be generated from it): tools/sdk_extras/<Struct>.pas.txt holds the
+        # whole declaration (helper records first). verify_generated.py
+        # checks every field of them by name against clang ("C type:" in the
+        # doc comment of each record).
+        self.union_extras = {}
+        xdir = os.path.join(ROOT, "tools", "sdk_extras")
+        if os.path.isdir(xdir):
+            for f in sorted(os.listdir(xdir)):
+                if f.endswith(".pas.txt"):
+                    self.union_extras[f[:-8]] = open(os.path.join(xdir, f), encoding="utf-8").read()
 
     def w(self, s=""):
         self.out.append(s)
@@ -458,6 +536,11 @@ class TypesUnit:
                 base, _, depth, _ = split_type(f["fieldtype"])
                 if not depth and base in sdk.structs and base != n and base not in sdk.hand_types:
                     d.add(base)
+            # a hand-written union record names the structs it embeds only in
+            # its text (the JSON lists one union member)
+            for word in set(re.findall(r"\b\w+\b", self.union_extras.get(n, ""))):
+                if word in sdk.structs and word != n and word not in sdk.hand_types:
+                    d.add(word)
             deps[n] = d
         order, done = [], set()
 
@@ -481,8 +564,10 @@ class TypesUnit:
         if sdk.region[name][1] == "unknown":
             return "layout unknown: only forward-declared in the public headers"
         if re.search(r"\bunion\b", sdk.struct_body(name)):
-            return ("contains a C union, which steam_api.json lists as separate fields - "
-                    "needs variant-record support (networking batch)")
+            if name in self.union_extras:
+                return None
+            return ("contains a C union (steam_api.json keeps only one member) - "
+                    f"declare it by hand in tools/sdk_extras/{name}.pas.txt")
         for f in sdk.structs[name]["fields"]:
             if self.map.field(f["fieldtype"]) is None:
                 return f"field {f['fieldname']}: C type '{f['fieldtype']}' not mapped"
@@ -593,13 +678,28 @@ class TypesUnit:
             text += f" ({header}, {'pack(1)' if region == 'pack1' else region + ' alignment'}.)"
             if region == "natural":
                 w("{$I Steamworks.AlignNatural.inc}")
+            if name in self.union_extras:
+                for line in self.union_extras[name].rstrip("\n").split("\n"):
+                    w(line)
+                w(doc(f"Pointer to @link({name}).", "  "))
+                w(f"  P{name} = ^{name};")
+                if region == "natural":
+                    w("{$I Steamworks.AlignDefault.inc}")
+                w("")
+                continue
             w(doc(text, "  "))
-            w(f"  {name} = {'packed record' if region == 'pack1' else 'record'}")
+            if region == "pack1":
+                w(f"  {name} = packed record")
+            else:
+                # FPC: packed with explicit padding (FPC_CLASSES)
+                w(f"  {name} = {{$ifdef FPC}}packed{{$endif}} record")
             if not s["fields"]:
                 w(doc("Placeholder: the C++ struct is empty (sizeof = 1).", "    "))
                 w("    _dummy: Byte;")
             used = set()
-            for f in s["fields"]:
+            pads = self.fpc_pads.get(name, {})
+            for i, f in enumerate(s["fields"]):
+                self.emit_fpc_pad(name, i, pads.get(i))
                 fname = f["fieldname"]
                 if fname.lower() in used or fname.lower() in PASCAL_KEYWORDS:
                     fname = fname + "_"
@@ -607,12 +707,32 @@ class TypesUnit:
                 w(doc(f"C field @code({f['fieldtype']} {f['fieldname']})."
                       + (" Private in the SDK." if f.get("private") else ""), "    "))
                 w(f"    {fname}: {self.map.field(f['fieldtype'])};")
+            self.emit_fpc_pad(name, len(s["fields"]), pads.get(len(s["fields"])))
             w("  end;")
             w(doc(f"Pointer to @link({name}).", "  "))
             w(f"  P{name} = ^{name};")
             if region == "natural":
                 w("{$I Steamworks.AlignDefault.inc}")
             w("")
+
+    def emit_fpc_pad(self, name, index, bytes_by_class):
+        """Explicit padding before field index (index = field count: at the
+        end) for FPC, one {$if} branch per class that needs some."""
+        if not bytes_by_class:
+            return
+        w = self.w
+        w("{$ifdef FPC}")
+        first = True
+        for cls, cond in FPC_CLASSES:
+            n = bytes_by_class.get(cls, 0)
+            if not n:
+                continue
+            w(("{$if " if first else "{$elseif ") + cond + "}")
+            first = False
+            w(doc("Padding for FPC (C layout; see FPC_CLASSES in tools/gen_steam_api.py).", "    "))
+            w(f"    _fpcpad{index}: array[0..{n - 1}] of Byte;")
+        w("{$endif}")
+        w("{$endif}")
 
     def emit_consts(self):
         sdk, w = self.sdk, self.w
@@ -678,7 +798,14 @@ ARRAY_ANNOT = ("array_count", "out_array_count", "out_array_call", "buffer_count
                "out_buffer_count", "out_string_count", "out_string")
 
 
-COUNT_NAME = re.compile(r"^(c[A-Z]|cb|cub|cch|n\w*(Size|Max|Count)$|\w*BufferSize$)")
+# Count / capacity parameters: a pointer right before one is an array or a
+# buffer, never a single var value (unMaxEvents, uMaxNumLocations, nListSz:
+# 2026-11-02)
+COUNT_NAME = re.compile(r"^(c[A-Z]|cb|cub|cch|n\w*(Size|Sz|Max|Count)$|(u|un|n)Max[A-Z]\w*$|\w*BufferSize$)")
+# Array pointers whose count comes BEFORE them (the rule above only sees the
+# next parameter): ISteamNetworkingSockets.GetConnectionRealTimeStatus(...,
+# nLanes, pLanes) - pLanes is an array of nLanes and may be NULL
+ARRAY_AFTER_COUNT = {"pLanes"}
 BUFFER_NAME = re.compile(r"^(pub|pvec|prg|rg)")
 
 
@@ -697,7 +824,8 @@ class Param:
         elif base == "char" and const and depth == 1 and not self.annot:
             self.kind, self.ftype = "str", "string"
         elif (depth == 1 and not const and not self.annot and not arr and base not in ("void", "char")
-              and not COUNT_NAME.match(next_name) and not BUFFER_NAME.match(self.cname)):
+              and not COUNT_NAME.match(next_name) and not BUFFER_NAME.match(self.cname)
+              and self.cname not in ARRAY_AFTER_COUNT):
             # a single out-value; buffers (followed by a count) and const struct
             # pointers (often optional NULL) stay raw pointers
             pas = "TSteamID" if base == "CSteamID" else m.base(base)
@@ -749,7 +877,7 @@ class PluginUnit:
                 owner = max((v, k) for k, v in bases.items() if v <= c["callback_id"])[1]
                 if owner != key:
                     continue
-            if sdk.region[n][0] == header:
+            if sdk.region[n][0] == header or n in CALLBACK_EXTRA.get(self.name, ()):
                 base = n[:-2] if n.endswith("_t") else n
                 out.append(dict(struct=n, id=c["callback_id"], base=base,
                                 event=f"T{base}Event", prop=f"On{base}", handler=f"Handle{base}",
@@ -1049,7 +1177,13 @@ class PluginUnit:
         for cb in self.callbacks:
             w(doc(f"Event of @link({self.comp}.{cb['prop']}): callback {cb['id']}, payload "
                   f"@link({cb['struct']}).", "  "))
-            w(f"  {cb['event']} = procedure(Sender: TObject; const AData: {cb['struct']}) of object;")
+            # FPC 3.2.2 (Win64) stops with "Internal error 2009112505" when a
+            # method pointer is called with a small all-float record passed
+            # by const (VolumeHasChanged_t, owner's build 2026-11-02 14:49):
+            # under FPC those events take the record by reference (constref)
+            mode = ("{$ifdef FPC}constref{$else}const{$endif}" if cb['struct'] in FPC_CONSTREF_EVENTS
+                    else "const")
+            w(f"  {cb['event']} = procedure(Sender: TObject; {mode} AData: {cb['struct']}) of object;")
         if self.callbacks:
             w("")
         w("{$ifndef FPC}")
@@ -1205,6 +1339,10 @@ def main():
         die(__doc__.split("\n\n")[1])
     sdk = SDK(sys.argv[1])
     types = TypesUnit(sdk)
+    # two passes: the second adds FPC's explicit padding (FPC_CLASSES)
+    pads = fpc_padding(types.emit())
+    types = TypesUnit(sdk)
+    types.fpc_pads = pads
     write("lib/Steamworks.SDKTypes.pas", types.emit())
     by_name = {i["classname"]: i for i in sdk.json["interfaces"]}
     for ci, name in PLUGINS.items():

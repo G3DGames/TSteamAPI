@@ -1,0 +1,31 @@
+  { The value of a @link(SteamNetworkingConfigValue_t): the C union m_val;
+    m_eDataType says which member is valid. C type:
+    decltype(SteamNetworkingConfigValue_t::m_val). }
+  SteamNetworkingConfigValue_t_Value = record
+    case Integer of
+      { k_ESteamNetworkingConfig_Int32. }
+      0: (m_int32: Int32);
+      { k_ESteamNetworkingConfig_Int64. }
+      1: (m_int64: Int64);
+      { k_ESteamNetworkingConfig_Float. }
+      2: (m_float: Single);
+      { k_ESteamNetworkingConfig_String (the caller keeps the text alive). }
+      3: (m_string: PAnsiChar);
+      { k_ESteamNetworkingConfig_Ptr (a callback function pointer). }
+      4: (m_ptr: Pointer);
+  end;
+  { Steam struct SteamNetworkingConfigValue_t: one configuration option, as
+    passed in arrays to ConnectByIPAddress, CreateListenSocketIP, ... -
+    m_eValue names the option, m_eDataType the member of m_val that holds it
+    (steamnetworkingtypes.h, natural alignment). The C union is named, so
+    the value is read as in Valve's documentation: Opt.m_val.m_int32.
+    Hand-written (tools/sdk_extras/SteamNetworkingConfigValue_t.pas.txt).
+    C type: SteamNetworkingConfigValue_t. }
+  SteamNetworkingConfigValue_t = record
+    { The option (k_ESteamNetworkingConfig_...). }
+    m_eValue: ESteamNetworkingConfigValue;
+    { Which member of m_val is valid. }
+    m_eDataType: ESteamNetworkingConfigDataType;
+    { The value. }
+    m_val: SteamNetworkingConfigValue_t_Value;
+  end;

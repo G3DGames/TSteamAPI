@@ -512,7 +512,7 @@ type
   TRemoteStorageEnumeratePublishedFilesByUserActionResultEvent = procedure(Sender: TObject; const AData: RemoteStorageEnumeratePublishedFilesByUserActionResult_t) of object;
   { Event of @link(TSteamRemoteStorage.OnRemoteStoragePublishFileProgress): callback 1329, payload
     @link(RemoteStoragePublishFileProgress_t). }
-  TRemoteStoragePublishFileProgressEvent = procedure(Sender: TObject; const AData: RemoteStoragePublishFileProgress_t) of object;
+  TRemoteStoragePublishFileProgressEvent = procedure(Sender: TObject; {$ifdef FPC}constref{$else}const{$endif} AData: RemoteStoragePublishFileProgress_t) of object;
   { Event of @link(TSteamRemoteStorage.OnRemoteStoragePublishedFileUpdated): callback 1330,
     payload @link(RemoteStoragePublishedFileUpdated_t). }
   TRemoteStoragePublishedFileUpdatedEvent = procedure(Sender: TObject; const AData: RemoteStoragePublishedFileUpdated_t) of object;
