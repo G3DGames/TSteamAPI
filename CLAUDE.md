@@ -1141,13 +1141,13 @@ Project AppID: 2275430.
   CRLF. RULE: in a class, new methods go AFTER every field. NO PACKAGE
   REBUILD.
 - TWO-PC RUN 2 (owner, 19:24, FMX Win64, roles swapped: the NEW account
-  "simon" on the Miix tablet HOSTED, the main account was the guest):
-  main 30/30 + pair 7/8; Miix 30/30 on its third run, pair 8/8. Friends
+  on the second PC (a tablet) HOSTED, the main account was the guest):
+  main 30/30 + pair 7/8; tablet 30/30 on its third run, pair 8/8. Friends
   failed again on the side READING THE NEW ACCOUNT'S rich presence (main,
   level 15, as guest this time); the new account's SetRichPresence ->
   True and read back. So: Steam does not publish a limited account's
   rich presence to a non-friend - not our bug; to retest as friends. The
-  Miix got THREE "Test components" presses ~4 s apart: each restarted the
+  tablet got THREE "Test components" presses ~4 s apart: each restarted the
   test and the cut runs reported FAILs (Rules, ValidateAuthTicketResponse)
   that were only the restart. Zip Fix16 (follows Fix15): a press while the
   component test / pair test runs is IGNORED with a log line (both end by
@@ -1176,7 +1176,7 @@ Project AppID: 2275430.
   new limited account. NO PACKAGE REBUILD. NOT YET COMPILED (FPC side
   especially: {$I %FPCVERSION%}).
 - FIRST FPC vs DELPHI PAIR RUN (owner, 19:57, Fix18): main = SteamDemoLCL
-  (FPC 3.2.2, host, Peardox), Miix = SteamDemoVCL (Delphi 37.0, guest,
+  (FPC 3.2.2, host, main account), tablet = SteamDemoVCL (Delphi 37.0, guest,
   new account), NOT friends. Both component tests 30/30; MyBuild lines
   right on both sides (FPC side compiled). Guest 8/8; host 6/8. BUG
   (mine, since the DONE handshake): the guest stopped 9 ms after sending
@@ -1191,9 +1191,9 @@ Project AppID: 2275430.
   test's time-out check guarded the same way. NO PACKAGE REBUILD. NOT
   YET COMPILED.
 - FIX19 CONFIRMED + PAIR TEST COMPLETE (owner, 20:10 and 20:23, Win64):
-  20:10 Miix VCL host / main LCL guest, not friends: Miix 30/30 + 8/8,
+  20:10 tablet VCL host / main LCL guest, not friends: tablet 30/30 + 8/8,
   main 30/30 + 7/8 (only Friends) - the host waited for the guest's DONE
-  (55 s) and both closed together. 20:23 AS FRIENDS, main LCL host / Miix
+  (55 s) and both closed together. 20:23 AS FRIENDS, main LCL host / tablet
   VCL guest: BOTH 30/30 AND 8/8; rich presence read both ways within a
   second; pair test ~10 s. So the Friends failures were Steam's limit for
   a limited account and a non-friend, not ours (docs/TestSetup.md says
@@ -1201,6 +1201,10 @@ Project AppID: 2275430.
   for the SteamDemo* round: nothing; next batch SteamConsole --server
   (dedicated server) + FPC console. Zip Fix20 (follows Fix19): these
   notes + TestSetup.md. NO PACKAGE REBUILD.
+- PUSH caa00b9 "All done bar server" (20:28) VERIFIED against a separate
+  clone: Fix14d-Fix20 (13 files) identical ignoring CRLF / BOM, nothing
+  else pushed; pasdoc / project checks 0 problems on the clone. Working
+  copy reset to origin/main (this note went out with zip Handover7).
 - OWNER (18:15): the FMX SteamDemo SWITCHES TO THE SHARED
   demos/Shared/SteamComponentTest.pas (no more FMX copy of the test; the
   test's plug-in components leave its form); the DEDICATED server is
@@ -2834,7 +2838,7 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   3.2.2 Win64). (09:28) the details are confirmed too - see the
   handover's "Next / open".
 
-## Ninth session (2026-11-02, in progress)
+## Ninth session (2026-11-02, ended)
 - Push b29fab4 "Handover" (09:30) checked against the clone (zips not
   here): pasdoc / project checks 0 problems; gen_input_mapping.py,
   gen_docs.py reproduce every committed file (CRLF only); .gitignore
@@ -3005,7 +3009,105 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   REBUILD RUNTIME PACKAGE STEAMWORKSFMX (every platform) - fmx/ changed.
   NOT YET COMPILED.
 
-## Handover (2026-11-02, end of eighth session) - READ THIS FIRST
+## Handover (2026-11-02, end of ninth session) - READ THIS FIRST
+State: last verified push caa00b9 "All done bar server" (verified 20:28 -
+Fix14d to Fix20, 13 files, identical ignoring CRLF / BOM). Delivered since:
+NOTHING except this CLAUDE.md (zip Handover7, follows Fix20). Nothing to
+delete. NO PACKAGE REBUILD (the packages were last rebuilt by the owner for
+Fix13 / Fix14; every later zip touched demos, docs and tools only).
+NEXT SESSION FIRST: verify the Handover7 push as in "Syncing safely"
+(only CLAUDE.md should differ from caa00b9), run pasdoc_check.py and
+project_check.py on the clone.
+
+WHERE THE NINTH-SESSION NOTES ARE: two places. The morning (Review1 ...
+Shot1) is the "Ninth session" section above. Everything from Batch2c
+onwards (Setup1, Pair1, Pair2, GS1, RLog1, Fix13 ... Fix20) was written
+into the notes block near the top, after "Project AppID: 2275430." -
+search for "Zip GS1", "TWO-PC RUN", "FIX19 CONFIRMED". Read those before
+touching the core, the game server or the shared tests.
+
+### Done this session
+1. GAME SERVER (zip GS1, details under "Zip GS1"): core roles srClient /
+   srGameServer (FClientUp / FServerUp, a second callback dispatcher for
+   the server pipe, StartGameServer / StopGameServer, listen server and
+   dedicated paths); plug-ins GameServer + GameServerStats; the seven
+   server copies TSteamGameServer<X> of Utils, Networking,
+   NetworkingSockets, NetworkingMessages, HTTP, UGC, Inventory (generator
+   SERVER_COPIES); TCustomSteamAPI Roles + GameServer* properties and
+   events; GetPublicIP by-value shim. Fix13: the warning hook is released
+   before the LAST Steam shutdown (access violation on close).
+2. SHARED TESTS used by all three SteamDemo programs (FMX switched to
+   them): demos/Shared/SteamComponentTest.pas (30 rows: 21 client + the
+   game server and its copies; listen server on 27115 / 27116) and
+   demos/Shared/SteamPairTest.pas (two users through a lobby, 8 rows:
+   lobby, chat, rich presence, auth tickets, NetworkingMessages, sockets
+   P2P, old P2P packets, the host's listen server validating the guest's
+   ticket). DONE handshake so neither side leaves early.
+3. Remote logging in SteamDemo* (File > Send log to receiver,
+   demos/Shared/DemoRemoteLog.pas, 3 automatic searches); LogReceiver File
+   > Clear Log.
+4. Fixes from the runs: MatchmakingServers query ids are the plug-in's own
+   (Steam reuses HServerQuery numbers) - Fix14; repeat presses of the test
+   buttons ignored - Fix16; E2169 field-after-method errors (Fix15, Fix17)
+   and project_check.py now detects them; pair test UInt64 tick wrap
+   (TicksSince) - Fix19; each copy's build (program, compiler, platform)
+   in the lobby and both logs - Fix18.
+5. Docs: GameServer / GameServerStats pages, components index with a
+   game-server table, "Game-server copy" lines on the client pages,
+   docs/ComponentIcons.md (34 components), docs/TestSetup.md (second
+   user, mixed pairs, friends).
+
+### Test results (owner, Win64, Delphi 13 + FPC 3.2.2 / Lazarus)
+- Component test 30 / 30 on both PCs with FMX, VCL and LCL.
+- Pair test 8 / 8 on BOTH sides as Steam friends (20:23, LCL host / VCL
+  guest). FMX vs VCL and FPC vs Delphi run both ways round. Without
+  friendship the rich-presence row fails on the side reading the new,
+  limited account (Steam's limit, documented in TestSetup.md).
+- Expected, informational: rules query of the host's PUBLIC address from
+  the same LAN (NAT); CS2 servers often do not answer rules / players;
+  GameServerStats Fail for the new account; Workshop / Inventory item
+  tests skipped (not set up on the partner site); "stat Play_Count cannot
+  be set by a game server" (partner-site permission).
+- Accounts: the main account (level 15, main PC) and a second, new,
+  limited account (partner group, on a tablet); they are now friends.
+
+### NEXT (owner's plan, in order)
+1. SteamConsole batch: bring demos/SteamConsole up to date (today it is a
+   310-line smoke test of 10 plug-ins: src/uConsoleMain.pas) - run the
+   shared SteamComponentTest / SteamPairTest from command-line switches
+   (both are framework-free; Tick once a second from the console loop),
+   and `--server` = the DEDICATED server: Roles = [srGameServer], no Steam
+   client needed (steam_appid.txt / SetAppIdEnvironment), log on
+   anonymously, advertise, answer queries, stay up until a key / Ctrl+C.
+   The dedicated path has NEVER RUN. Plus SteamConsoleFPC (.lpi / .lpr,
+   plain FPC, no LCL) next to the Delphi project; add both to
+   gen_projects.py / project_check.py as the other projects are.
+2. Then the full Win64 round (and Win32 - the owner's IDE is 32-bit).
+3. End of project: FPC Win32 / macOS ARM64 / Linux64 / SteamOS (FPC
+   LayoutProbe, localtime_r, LCL SteamFormToRGB, FPC sender Unix paths),
+   the launcher (docs/Launcher.md), component icons
+   (docs/ComponentIcons.md).
+Still open from earlier handovers (below): TriggerScreenshot with the
+overlay (a run started from Steam), VirtualGamepad non-Windows builds,
+licence / name placeholders, devices on order.
+
+### Lessons this session (follow them)
+- In a class section, new methods go AFTER every field (E2169; FPC accepts
+  it, Delphi does not) - project_check.py now catches it.
+- UInt64 tick differences: never subtract a value that may be later than
+  "now" (TicksSince in SteamPairTest).
+- Regenerate in order: gen_steam_api.py <sdk> FIRST, gen_docs.py after it.
+- The generator writes CRLF; git stores LF: leave line-ending-only files
+  out of a zip. Pascal / .fmx files in a zip may be CRLF (the IDE wants
+  it; git normalises).
+- Steam reuses HServerQuery numbers while earlier answers still arrive.
+- StartGameServer is refused inside a callback handler: defer it to the
+  next Tick.
+- No Steam persona names or machine names in these notes either (the
+  ninth-session notes had some; Handover7 replaced them with "main
+  account" / "second account" / "tablet").
+
+## Handover (2026-11-02, end of eighth session)
 State: last verified push 93a9cba "Batch2a" (= Menu5, Batch2a, Doc5;
 verified 2026-11-02 13:50). All 19 plug-in components PASSED on Win64
 (16 of 16 in SteamDemo). Delivered since: Batch2b (follows Doc5; see
