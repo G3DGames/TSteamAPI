@@ -676,13 +676,14 @@ Windows', normal behaviour. Each says why and what to do.
 > `WriteScreenshot` is not affected.
 
 > **macOS: "Send log to receiver" finds no LogReceiver from a Lazarus
-> build.** macOS asks each app for Local Network access; a program started
-> from Lazarus (not an .app of its own) runs under Lazarus' permission, and
-> when that is missing the discovery broadcast is dropped without an error
-> (seen 2026-11-02: the Delphi .app found the receiver at once, the
-> Lazarus build never did). Allow it in System Settings -> Privacy &
-> Security -> Local Network (Lazarus, or Terminal when started from
-> there). UNCONFIRMED until the permission has been checked.
+> build.** The Delphi .app on the same Mac finds it at once, and the
+> receiver's announcements do reach the Mac (`nc -u -l 47811` shows
+> them), so it is the FPC listener (RemoteLog.SenderFPC), cause unknown -
+> PARKED (2026-11-02, owner: remote logging is for the Steam Deck and the
+> Windows tablet, where it works). The FPC build logs what its socket saw
+> after each empty search. Started from Terminal as a bare executable, an
+> LCL program gets no menu bar on macOS: run it from Lazarus or as an
+> .app (`open SteamDemoLCL.app`).
 
 > **FMX menus on Linux show only first letters ("F" for "File").**
 > That is FMX's native GTK menu bar on Linux, not this library. SteamDemo,

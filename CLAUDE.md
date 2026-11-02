@@ -3092,6 +3092,11 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   sender, always ''); DemoRemoteLog logs it after each empty search. The
   README "Local Network" entry is probably WRONG - fix it once the
   diagnostics say why. NO PACKAGE REBUILD. NOT YET COMPILED.
+  OWNER (22:55): the Mac FPC remote-log failure is PARKED - remote
+  logging is for the Steam Deck and the Windows tablet. Zip RLog3 (follows
+  RLog2): README Known issues entry corrected (not the Local Network
+  permission; FPC listener, cause unknown, parked; bare executable from
+  Terminal has no menu bar - run from Lazarus or as an .app).
 - MAC LCL RUN 2 (owner, 22:39, SteamDemoLCL FPC 3.2.2 macOS ARM64 host,
   VCL Windows guest, after Steam > Exit on the Windows PC): component
   test 30 / 30 (Screenshots informational), PAIR 8 / 8 - rich presence
