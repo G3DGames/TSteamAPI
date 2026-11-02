@@ -29,6 +29,7 @@ time is fine.)
 * [Methods](#methods)
 * [Life cycle](#life-cycle)
 * [Plug-in components](#plug-in-components)
+* [Game servers](#game-servers)
 * [Images: SteamImageToBitmap](#images-steamimagetobitmap)
 * [Screenshots: SteamFormToRGB](#screenshots-steamformtorgb)
 * [Errors](#errors)
@@ -79,7 +80,14 @@ All published (Object Inspector) unless noted.
 | `ShutdownOnSteamExit` | `Boolean`, `True` | Shuts SteamAPI down (not the app) as soon as the Steam client exits, right after `OnSteamShutdown`. Avoids crashes inside Steam on Linux / macOS. |
 | `QuitOnSteamShutdown` | `Boolean`, `False` | Also ends the application when the Steam client exits. |
 | `Steam` | `TSteamworks` (public, read-only) | The core singleton: plug-ins (`Steam.FindPlugin`), versions, dispatcher. |
-| `IsRunning` | `Boolean` (public, read-only) | `True` while SteamAPI is initialised. |
+| `Roles` | `TSteamRoles`, `[srClient]` | What `Active` starts: `[srClient]` (a game), `[srClient, srGameServer]` (a listen server from the start) or `[srGameServer]` (a dedicated server, no Steam client). See [Game servers](#game-servers). |
+| `GameServerIP` | `Cardinal`, 0 | IP the game server binds to, host order (0 = any). |
+| `GameServerGamePort` | `Word`, 27015 | UDP port of the game server's own traffic. |
+| `GameServerQueryPort` | `Word`, 27016 | UDP port Steam answers server-browser queries on; 65535 = shared with the game port (the game forwards them). |
+| `GameServerMode` | `TSteamServerMode`, `ssmAuthenticationAndSecure` | `ssmNoAuthentication`, `ssmAuthentication`, `ssmAuthenticationAndSecure` (VAC). |
+| `GameServerVersion` | `string`, '1.0.0.0' | Server version; Steam compares it with the partner site's. |
+| `IsRunning` | `Boolean` (public, read-only) | `True` while SteamAPI (the CLIENT) is initialised. |
+| `IsGameServerRunning` | `Boolean` (public, read-only) | `True` while a game server runs. |
 
 ## Events
 
@@ -92,7 +100,10 @@ All published (Object Inspector) unless noted.
 | `OnRestartRequired` | `procedure(Sender: TObject; var ATerminate: Boolean)` | `RestartIfNecessary`: Steam is relaunching the game. Leave `ATerminate` `True` to end this copy. |
 | `OnLog` | `procedure(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string)` | Diagnostic messages from the core and plug-ins (`sllDebug` .. `sllError`). Log them - they say exactly what happened. |
 | `OnWarning` | `procedure(Sender: TObject; ASeverity: Integer; const AText: string)` | Steam's debug output (0 = message, 1 = warning). |
-| `OnCallback` | `procedure(Sender: TObject; const AData: TSteamCallbackData)` | Every callback and call result, before the plug-in components get it - for diagnostics. |
+| `OnCallback` | `procedure(Sender: TObject; const AData: TSteamCallbackData)` | Every callback and call result (client and game server), before the plug-in components get it - for diagnostics. |
+| `OnGameServerStarted` | `TNotifyEvent` | The game server started; its components are attached already. |
+| `OnGameServerStopped` | `TNotifyEvent` | The game server was shut down (its components are detached). |
+| `OnGameServerFailed` | same as `OnInitFailed` | The game server could not start (e.g. the port is taken). |
 
 ## Methods
 
@@ -101,6 +112,8 @@ All published (Object Inspector) unless noted.
 | `Open: Boolean` | `Active := True` without any message box; returns whether Steam runs. |
 | `Close` | `Active := False`. Safe to call more than once and from an event handler. |
 | `Update` / `RunCallbacks` | Reads and / or delivers callbacks now (what exactly depends on `UpdateMode`). Call per frame in `sumManual`, or in `sumThread` + `sdOnUpdate`. |
+| `StartGameServer: Boolean` | Starts a game server with the `GameServer*` settings: next to the running client (a listen server) or on its own (a dedicated server; `Active` becomes `True`). |
+| `StopGameServer` | Shuts the game server down; the client keeps running (a dedicated server: same as `Close`). |
 | `SetUpdateMode(Mode, Delivery, IntervalMs = -1)` | Sets `UpdateMode`, `Delivery` and (when >= 0) `CallbackInterval` in one call; applies at once while running. Main thread only, never from an event handler. |
 
 ## Life cycle
@@ -133,6 +146,25 @@ events - call `Close` there and free it later.
 Link them through their `SteamAPI` property; at run time a component whose
 owner holds exactly one `TSteamAPI` links itself. Only the plug-ins you
 drop or `use` are linked into the program. See [README.md](README.md).
+
+## Game servers
+
+One `TSteamAPI` runs the client, a game server, or both. The game server
+has its own Steam pipe and callbacks (the core keeps them apart: ids such
+as 101-103 or 143 arrive on both), and its own components -
+`TSteamGameServer`, `TSteamGameServerStats` and the server copies
+`TSteamGameServerUtils`, `...Networking`, `...NetworkingSockets`,
+`...NetworkingMessages`, `...HTTP`, `...UGC`, `...Inventory` - which attach
+when it starts. See [TSteamGameServer.md](TSteamGameServer.md).
+
+* Listen server: keep `Roles = [srClient]`, call `StartGameServer` when the
+  player hosts and `StopGameServer` when hosting ends.
+* Dedicated server: `Roles = [srGameServer]`, `Active := True`. No Steam
+  client is needed; give it the AppID through `steam_appid.txt` (or
+  `SetAppIdEnvironment` while developing).
+
+`Close` / `Active := False` shuts down whatever runs (the game server
+first).
 
 ## Images: SteamImageToBitmap
 

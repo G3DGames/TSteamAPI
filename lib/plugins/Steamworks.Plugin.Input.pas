@@ -446,6 +446,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamInputPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamInput plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamInputPlugin read GetPlugin;
   published
@@ -1039,7 +1042,12 @@ function TSteamInput.GetPlugin: TSteamInputPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamInputPlugin(TSteamworks.Instance.FindPlugin(TSteamInputPlugin));
+    Result := TSteamInputPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamInput.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamInputPlugin;
 end;
 
 procedure TSteamInput.DoAttach;

@@ -870,7 +870,7 @@ component's event.
 function DownloadClanActivityCountsAsync(psteamIDClans: Pointer; cClansToRequest: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DownloadClanActivityCounts` and registers AHandler for its result (`DownloadClanActivityCountsResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DownloadClanActivityCounts` and registers AHandler for its result (`DownloadClanActivityCountsResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestClanOfficerListAsync
 
@@ -878,7 +878,7 @@ Calls `DownloadClanActivityCounts` and registers AHandler for its result (`Downl
 function RequestClanOfficerListAsync(const steamIDClan: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestClanOfficerList` and registers AHandler for its result (`ClanOfficerListResponse_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestClanOfficerList` and registers AHandler for its result (`ClanOfficerListResponse_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### JoinClanChatRoomAsync
 
@@ -886,7 +886,7 @@ Calls `RequestClanOfficerList` and registers AHandler for its result (`ClanOffic
 function JoinClanChatRoomAsync(const steamIDClan: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `JoinClanChatRoom` and registers AHandler for its result (`JoinClanChatRoomCompletionResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `JoinClanChatRoom` and registers AHandler for its result (`JoinClanChatRoomCompletionResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetFollowerCountAsync
 
@@ -894,7 +894,7 @@ Calls `JoinClanChatRoom` and registers AHandler for its result (`JoinClanChatRoo
 function GetFollowerCountAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetFollowerCount` and registers AHandler for its result (`FriendsGetFollowerCount_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetFollowerCount` and registers AHandler for its result (`FriendsGetFollowerCount_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### IsFollowingAsync
 
@@ -902,7 +902,7 @@ Calls `GetFollowerCount` and registers AHandler for its result (`FriendsGetFollo
 function IsFollowingAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `IsFollowing` and registers AHandler for its result (`FriendsIsFollowing_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `IsFollowing` and registers AHandler for its result (`FriendsIsFollowing_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### EnumerateFollowingListAsync
 
@@ -910,7 +910,7 @@ Calls `IsFollowing` and registers AHandler for its result (`FriendsIsFollowing_t
 function EnumerateFollowingListAsync(unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `EnumerateFollowingList` and registers AHandler for its result (`FriendsEnumerateFollowingList_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `EnumerateFollowingList` and registers AHandler for its result (`FriendsEnumerateFollowingList_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestEquippedProfileItemsAsync
 
@@ -918,7 +918,7 @@ Calls `EnumerateFollowingList` and registers AHandler for its result (`FriendsEn
 function RequestEquippedProfileItemsAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestEquippedProfileItems` and registers AHandler for its result (`EquippedProfileItems_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestEquippedProfileItems` and registers AHandler for its result (`EquippedProfileItems_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

@@ -730,6 +730,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamNetworkingSocketsPlugin) (a
+      game-server copy of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamNetworkingSockets plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamNetworkingSocketsPlugin read GetPlugin;
   published
@@ -776,6 +779,34 @@ type
       ISteamNetworkingSoockets::BeginAsyncRequestFakeIP completes. See also
       ISteamNetworkingSockets::GetFakeIP. }
     property OnSteamNetworkingFakeIPResult: TSteamNetworkingFakeIPResultEvent read FOnSteamNetworkingFakeIPResult write FOnSteamNetworkingFakeIPResult;
+  end;
+
+  { ISteamNetworkingSockets of the GAME SERVER
+    (@code(SteamAPI_SteamGameServerNetworkingSockets_SteamAPI_v...)): the same methods as
+    @link(TSteamNetworkingSocketsPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerNetworkingSocketsPlugin)) - the client's
+    @code(FindPlugin(TSteamNetworkingSocketsPlugin)) never returns it. }
+  TSteamGameServerNetworkingSocketsPlugin = class(TSteamNetworkingSocketsPlugin)
+  public
+    { Returns @code('ISteamNetworkingSockets (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamNetworkingSockets of the GAME SERVER as a component: the events and
+    @link(TSteamNetworkingSockets.Plugin) of @link(TSteamNetworkingSockets), attached while the
+    game server runs (TSteamAPI.StartGameServer); its events come from the server's pipe. }
+  TSteamGameServerNetworkingSockets = class(TSteamNetworkingSockets)
+  public
+    { Returns @link(TSteamGameServerNetworkingSocketsPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -1251,7 +1282,12 @@ function TSteamNetworkingSockets.GetPlugin: TSteamNetworkingSocketsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamNetworkingSocketsPlugin(TSteamworks.Instance.FindPlugin(TSteamNetworkingSocketsPlugin));
+    Result := TSteamNetworkingSocketsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamNetworkingSockets.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamNetworkingSocketsPlugin;
 end;
 
 procedure TSteamNetworkingSockets.DoAttach;
@@ -1297,10 +1333,36 @@ begin
   FOnSteamNetworkingFakeIPResult(Self, Ev);
 end;
 
+{ TSteamGameServerNetworkingSocketsPlugin }
+
+class function TSteamGameServerNetworkingSocketsPlugin.PluginName: string;
+begin
+  Result := 'ISteamNetworkingSockets (game server)';
+end;
+
+class function TSteamGameServerNetworkingSocketsPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerNetworkingSockets }
+
+class function TSteamGameServerNetworkingSockets.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerNetworkingSocketsPlugin;
+end;
+
+class function TSteamGameServerNetworkingSockets.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamNetworkingSocketsPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerNetworkingSocketsPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerNetworkingSocketsPlugin);
   TSteamworks.UnregisterPlugin(TSteamNetworkingSocketsPlugin);
 
 end.

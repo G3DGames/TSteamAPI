@@ -273,7 +273,7 @@ type
     function DownloadClanActivityCounts(psteamIDClans: Pointer; cClansToRequest: Integer): SteamAPICall_t;
     { Calls @link(DownloadClanActivityCounts) and registers AHandler for its result
       (@link(DownloadClanActivityCountsResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function DownloadClanActivityCountsAsync(psteamIDClans: Pointer; cClansToRequest: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { iterators for getting users in a chat room, lobby, game server or clan note that large clans
@@ -341,7 +341,7 @@ type
     function RequestClanOfficerList(const steamIDClan: TSteamID): SteamAPICall_t;
     { Calls @link(RequestClanOfficerList) and registers AHandler for its result
       (@link(ClanOfficerListResponse_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function RequestClanOfficerListAsync(const steamIDClan: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { returns the steamID of the clan owner. }
@@ -401,7 +401,7 @@ type
     function JoinClanChatRoom(const steamIDClan: TSteamID): SteamAPICall_t;
     { Calls @link(JoinClanChatRoom) and registers AHandler for its result
       (@link(JoinClanChatRoomCompletionResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function JoinClanChatRoomAsync(const steamIDClan: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamFriends_LeaveClanChatRoom). }
@@ -433,7 +433,7 @@ type
     function GetFollowerCount(const steamID: TSteamID): SteamAPICall_t;
     { Calls @link(GetFollowerCount) and registers AHandler for its result
       (@link(FriendsGetFollowerCount_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function GetFollowerCountAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamFriends_IsFollowing). Call result: @link(FriendsIsFollowing_t)
@@ -441,7 +441,7 @@ type
     function IsFollowing(const steamID: TSteamID): SteamAPICall_t;
     { Calls @link(IsFollowing) and registers AHandler for its result
       (@link(FriendsIsFollowing_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function IsFollowingAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamFriends_EnumerateFollowingList). Call result:
@@ -449,7 +449,7 @@ type
     function EnumerateFollowingList(unStartIndex: UInt32): SteamAPICall_t;
     { Calls @link(EnumerateFollowingList) and registers AHandler for its result
       (@link(FriendsEnumerateFollowingList_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function EnumerateFollowingListAsync(unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamFriends_IsClanPublic). }
@@ -479,7 +479,7 @@ type
     function RequestEquippedProfileItems(const steamID: TSteamID): SteamAPICall_t;
     { Calls @link(RequestEquippedProfileItems) and registers AHandler for its result
       (@link(EquippedProfileItems_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function RequestEquippedProfileItemsAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamFriends_BHasEquippedProfileItem). }
@@ -657,6 +657,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamFriendsPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamFriends plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamFriendsPlugin read GetPlugin;
   published
@@ -1072,7 +1075,7 @@ function TSteamFriendsPlugin.DownloadClanActivityCountsAsync(psteamIDClans: Poin
 begin
   Result := DownloadClanActivityCounts(psteamIDClans, cClansToRequest);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, DownloadClanActivityCountsResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, DownloadClanActivityCountsResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.GetFriendCountFromSource(const steamIDSource: TSteamID): Integer;
@@ -1178,7 +1181,7 @@ function TSteamFriendsPlugin.RequestClanOfficerListAsync(const steamIDClan: TSte
 begin
   Result := RequestClanOfficerList(steamIDClan);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, ClanOfficerListResponse_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, ClanOfficerListResponse_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.GetClanOwner(const steamIDClan: TSteamID): TSteamID;
@@ -1286,7 +1289,7 @@ function TSteamFriendsPlugin.JoinClanChatRoomAsync(const steamIDClan: TSteamID; 
 begin
   Result := JoinClanChatRoom(steamIDClan);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, JoinClanChatRoomCompletionResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, JoinClanChatRoomCompletionResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.LeaveClanChatRoom(const steamIDClan: TSteamID): Boolean;
@@ -1377,7 +1380,7 @@ function TSteamFriendsPlugin.GetFollowerCountAsync(const steamID: TSteamID; AHan
 begin
   Result := GetFollowerCount(steamID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, FriendsGetFollowerCount_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, FriendsGetFollowerCount_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.IsFollowing(const steamID: TSteamID): SteamAPICall_t;
@@ -1390,7 +1393,7 @@ function TSteamFriendsPlugin.IsFollowingAsync(const steamID: TSteamID; AHandler:
 begin
   Result := IsFollowing(steamID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, FriendsIsFollowing_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, FriendsIsFollowing_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.EnumerateFollowingList(unStartIndex: UInt32): SteamAPICall_t;
@@ -1403,7 +1406,7 @@ function TSteamFriendsPlugin.EnumerateFollowingListAsync(unStartIndex: UInt32; A
 begin
   Result := EnumerateFollowingList(unStartIndex);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, FriendsEnumerateFollowingList_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, FriendsEnumerateFollowingList_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.IsClanPublic(const steamIDClan: TSteamID): Boolean;
@@ -1458,7 +1461,7 @@ function TSteamFriendsPlugin.RequestEquippedProfileItemsAsync(const steamID: TSt
 begin
   Result := RequestEquippedProfileItems(steamID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, EquippedProfileItems_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, EquippedProfileItems_t_k_iCallback, AHandler);
 end;
 
 function TSteamFriendsPlugin.BHasEquippedProfileItem(const steamID: TSteamID; itemType: ECommunityProfileItemType): Boolean;
@@ -1485,7 +1488,12 @@ function TSteamFriends.GetPlugin: TSteamFriendsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamFriendsPlugin(TSteamworks.Instance.FindPlugin(TSteamFriendsPlugin));
+    Result := TSteamFriendsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamFriends.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamFriendsPlugin;
 end;
 
 procedure TSteamFriends.DoAttach;

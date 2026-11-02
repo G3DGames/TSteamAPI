@@ -257,7 +257,7 @@ type
     function RequestEligiblePromoItemDefinitionsIDs(const steamID: TSteamID): SteamAPICall_t;
     { Calls @link(RequestEligiblePromoItemDefinitionsIDs) and registers AHandler for its result
       (@link(SteamInventoryEligiblePromoItemDefIDs_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function RequestEligiblePromoItemDefinitionsIDsAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { After handling a SteamInventoryEligiblePromoItemDefIDs_t call result, use this function to
@@ -273,7 +273,7 @@ type
     function StartPurchase(pArrayItemDefs: Pointer; punArrayQuantity: Pointer; unArrayLength: UInt32): SteamAPICall_t;
     { Calls @link(StartPurchase) and registers AHandler for its result
       (@link(SteamInventoryStartPurchaseResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function StartPurchaseAsync(pArrayItemDefs: Pointer; punArrayQuantity: Pointer; unArrayLength: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Request current prices for all applicable item definitions. Call result:
@@ -282,7 +282,7 @@ type
     function RequestPrices: SteamAPICall_t;
     { Calls @link(RequestPrices) and registers AHandler for its result
       (@link(SteamInventoryRequestPricesResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function RequestPricesAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Returns the number of items with prices. Need to call RequestPrices() first. }
@@ -374,6 +374,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamInventoryPlugin) (a game-server copy
+      of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamInventory plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamInventoryPlugin read GetPlugin;
   published
@@ -401,6 +404,33 @@ type
     property OnSteamInventoryStartPurchaseResult: TSteamInventoryStartPurchaseResultEvent read FOnSteamInventoryStartPurchaseResult write FOnSteamInventoryStartPurchaseResult;
     { Callback 4705 (SteamInventoryRequestPricesResult_t): Triggered from RequestPrices. }
     property OnSteamInventoryRequestPricesResult: TSteamInventoryRequestPricesResultEvent read FOnSteamInventoryRequestPricesResult write FOnSteamInventoryRequestPricesResult;
+  end;
+
+  { ISteamInventory of the GAME SERVER (@code(SteamAPI_SteamGameServerInventory_v...)): the same
+    methods as @link(TSteamInventoryPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerInventoryPlugin)) - the client's
+    @code(FindPlugin(TSteamInventoryPlugin)) never returns it. }
+  TSteamGameServerInventoryPlugin = class(TSteamInventoryPlugin)
+  public
+    { Returns @code('ISteamInventory (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamInventory of the GAME SERVER as a component: the events and
+    @link(TSteamInventory.Plugin) of @link(TSteamInventory), attached while the game server runs
+    (TSteamAPI.StartGameServer); its events come from the server's pipe. }
+  TSteamGameServerInventory = class(TSteamInventory)
+  public
+    { Returns @link(TSteamGameServerInventoryPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -688,7 +718,7 @@ function TSteamInventoryPlugin.RequestEligiblePromoItemDefinitionsIDsAsync(const
 begin
   Result := RequestEligiblePromoItemDefinitionsIDs(steamID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamInventoryEligiblePromoItemDefIDs_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamInventoryEligiblePromoItemDefIDs_t_k_iCallback, AHandler);
 end;
 
 function TSteamInventoryPlugin.GetEligiblePromoItemDefinitionIDs(const steamID: TSteamID; pItemDefIDs: Pointer; var punItemDefIDsArraySize: UInt32): Boolean;
@@ -707,7 +737,7 @@ function TSteamInventoryPlugin.StartPurchaseAsync(pArrayItemDefs: Pointer; punAr
 begin
   Result := StartPurchase(pArrayItemDefs, punArrayQuantity, unArrayLength);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamInventoryStartPurchaseResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamInventoryStartPurchaseResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamInventoryPlugin.RequestPrices: SteamAPICall_t;
@@ -720,7 +750,7 @@ function TSteamInventoryPlugin.RequestPricesAsync(AHandler: TSteamCallResultEven
 begin
   Result := RequestPrices;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamInventoryRequestPricesResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamInventoryRequestPricesResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamInventoryPlugin.GetNumItemsWithPrices: UInt32;
@@ -815,7 +845,12 @@ function TSteamInventory.GetPlugin: TSteamInventoryPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamInventoryPlugin(TSteamworks.Instance.FindPlugin(TSteamInventoryPlugin));
+    Result := TSteamInventoryPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamInventory.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamInventoryPlugin;
 end;
 
 procedure TSteamInventory.DoAttach;
@@ -900,10 +935,36 @@ begin
   FOnSteamInventoryRequestPricesResult(Self, Ev);
 end;
 
+{ TSteamGameServerInventoryPlugin }
+
+class function TSteamGameServerInventoryPlugin.PluginName: string;
+begin
+  Result := 'ISteamInventory (game server)';
+end;
+
+class function TSteamGameServerInventoryPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerInventory }
+
+class function TSteamGameServerInventory.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerInventoryPlugin;
+end;
+
+class function TSteamGameServerInventory.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamInventoryPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerInventoryPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerInventoryPlugin);
   TSteamworks.UnregisterPlugin(TSteamInventoryPlugin);
 
 end.

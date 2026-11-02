@@ -58,7 +58,7 @@ interface
 
 uses
   SysUtils, Classes, SyncObjs, Generics.Collections,
-  Steamworks.Types, Steamworks.API, Steamworks.Callbacks, Steamworks.SteamClient,
+  Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.SteamClient,
   Steamworks.Versions;
 
 type
@@ -75,9 +75,23 @@ type
     swsIdle,
     { Library loaded, SteamAPI not initialised. }
     swsLibraryLoaded,
-    { SteamAPI initialised; callbacks flow. }
+    { SteamAPI and / or a game server initialised; callbacks flow. }
     swsRunning
   );
+
+  { What a session runs: the Steam client API (@code(SteamAPI_Init)) and /
+    or a game server (@code(SteamGameServer_Init)). Both together = a
+    listen server (Valve allows it); @link(srGameServer) alone = a
+    dedicated server, which needs no Steam client. }
+  TSteamRole = (
+    { The Steam client API: the logged-on user's interfaces. }
+    srClient,
+    { A game server: the ISteamGameServer* interfaces, its own pipe and
+      user, its own callbacks (@link(TSteamworks.ServerDispatcher)). }
+    srGameServer
+  );
+  { Set of @link(TSteamRole). }
+  TSteamRoles = set of TSteamRole;
 
   { How SteamAPI is initialised. }
   TSteamInitMode = (
@@ -194,7 +208,8 @@ type
       Logs an error when it cannot be obtained. }
     function AcquireUserInterface(const AFallbackVersion: string; const AAccessorBase: string = ''): Pointer;
 
-    { Subscribes a method of this plug-in to a callback id. }
+    { Subscribes a method of this plug-in to a callback id (on
+      @link(Dispatcher): the game server's for a @link(IsGameServer) plug-in). }
     function Subscribe(ACallbackID: Integer; AHandler: TSteamCallbackEvent;
       AIncludeCallResults: Boolean = False): TSteamSubscription;
     { Registers a method of this plug-in for one async call result. }
@@ -219,6 +234,17 @@ type
     class function Dependencies: TSteamPluginClassArray; virtual;
     { When @true a failed initialisation makes @link(TSteamworks.Initialize) fail. }
     class function IsRequired: Boolean; virtual;
+    { @true for a GAME-SERVER plug-in: it is created by
+      @link(TSteamworks.StartGameServer) and freed by
+      @link(TSteamworks.StopGameServer), takes its interface from the game
+      server (@code(SteamAPI_SteamGameServer...) accessors) and its callbacks
+      from the server's pipe. Default @false (a client plug-in). }
+    class function IsGameServer: Boolean; virtual;
+    { The dispatcher of this plug-in's side: @link(TSteamworks.Dispatcher)
+      (client) or @link(TSteamworks.ServerDispatcher) (@link(IsGameServer)).
+      Pass handlers of this plug-in's async calls here (AwaitCallResult,
+      RemoveOwner). }
+    function Dispatcher: TSteamCallbackDispatcher;
     { Interface versions this plug-in uses, resolved through AVersions.
       Only consulted for @link(simVersioned) initialisation, where Steam
       refuses to start if the client is too old for any of them.
@@ -267,6 +293,38 @@ type
     FLastError: string;
     { Backing field of @link(Dispatcher). }
     FDispatcher: TSteamCallbackDispatcher;
+    { Backing field of @link(ServerDispatcher). }
+    FServerDispatcher: TSteamCallbackDispatcher;
+    { @true while SteamAPI (the client) is initialised. }
+    FClientUp: Boolean;
+    { @true while the game server is initialised. }
+    FServerUp: Boolean;
+    { SteamAPI_ManualDispatch_Init was called in this session (once, for the
+      first of client / server; reset when both are down). }
+    FManualDispatch: Boolean;
+    { Backing field of @link(ServerPipe). }
+    FServerPipe: HSteamPipe;
+    { Backing field of @link(ServerUser). }
+    FServerUser: HSteamUser;
+    { Backing field of @link(GameServerIP). }
+    FServerIP: UInt32;
+    { Backing field of @link(GameServerGamePort). }
+    FServerGamePort: Word;
+    { Backing field of @link(GameServerQueryPort). }
+    FServerQueryPort: Word;
+    { Backing field of @link(GameServerMode). }
+    FServerMode: EServerMode;
+    { Backing field of @link(GameServerVersion). }
+    FServerVersion: string;
+    { @true when @link(StopGameServer) was called from a handler. }
+    FServerStopPending: Boolean;
+    { @true while a failed @link(StartGameServer) is rolled back: no
+      OnGameServerStopped / OnShutdown for what never started. }
+    FRollingBack: Boolean;
+    { Backing field of @link(OnGameServerStarted). }
+    FOnGameServerStarted: TNotifyEvent;
+    { Backing field of @link(OnGameServerStopped). }
+    FOnGameServerStopped: TNotifyEvent;
     { Backing field of @link(Versions). }
     FVersions: TSteamInterfaceVersions;
     { Backing field of @link(Client). }
@@ -342,10 +400,31 @@ type
     function BuildPluginOrder: TSteamPluginClassArray;
     { Runs the SteamAPI initialisation selected by @link(InitMode). }
     function InitializeSteamAPI: Boolean;
-    { Creates and initialises plug-ins. @returns(@false if a required one failed.) }
-    function InitializePlugins: Boolean;
-    { Finalises and frees all plug-ins in reverse order. }
-    procedure FinalizePlugins;
+    { Creates and initialises the client plug-ins (AGameServer @false) or the
+      game-server ones. @returns(@false if a required one failed.) }
+    function InitializePlugins(AGameServer: Boolean): Boolean;
+    { Finalises and frees the client (AGameServer @false) or game-server
+      plug-ins, in reverse order. }
+    procedure FinalizePlugins(AGameServer: Boolean);
+    { The NUL-separated, double-NUL terminated interface list Steam checks
+      at initialisation (client or game-server plug-ins). }
+    function CheckVersionList(AGameServer: Boolean): AnsiString;
+    { Runs SteamInternal_GameServer_Init(_V2) with the GameServer*
+      settings. @returns(@false on failure; see @link(LastError).) }
+    function InitializeGameServerAPI: Boolean;
+    { Creates the ISteamClient wrapper (and the warning hook) if there is none. }
+    procedure CreateClientIntf;
+    { The client part of @link(DoShutdownLocked): plug-ins, SteamAPI_Shutdown. }
+    procedure ShutdownClientLocked;
+    { The game-server part of the shutdown: plug-ins, SteamGameServer_Shutdown,
+      @link(OnGameServerStopped). Caller holds @link(FShutdownLock). }
+    procedure StopGameServerLocked;
+    { @true while a handler of either dispatcher runs on this thread. }
+    function InAnyHandler: Boolean;
+    { Pumps (reads and delivers) both pipes that are up. }
+    procedure PumpAll;
+    { Delivers what the worker queued for both dispatchers. }
+    procedure DeliverAllQueued;
     { Finalises and frees the live plug-ins of exactly AClass. }
     procedure FinalizePluginsOfClass(AClass: TSteamPluginClass);
     { Exports SteamAppId / SteamGameId when @link(SetAppIdEnvironment) is set. }
@@ -441,9 +520,33 @@ type
         @link(LastError).) }
     function Initialize: Boolean;
 
-    { Finalises plug-ins and shuts SteamAPI down. Safe at any time, including
-      from a callback handler (it then completes after the current callback). }
+    { Finalises plug-ins and shuts SteamAPI down - and the game server if one
+      runs. Safe at any time, including from a callback handler (it then
+      completes after the current callback). }
     procedure Shutdown;
+
+    { Starts a game server with @link(GameServerIP), @link(GameServerGamePort),
+      @link(GameServerQueryPort), @link(GameServerMode) and
+      @link(GameServerVersion): SteamGameServer_Init, then every
+      @link(TSteamPlugin.IsGameServer) plug-in. Works with the client
+      running (a listen server) or without it (a dedicated server - no Steam
+      client needed; set @link(AppID) / @link(SetAppIdEnvironment) or ship
+      steam_appid.txt). Then log on with the GameServer plug-in
+      (LogOnAnonymous or LogOn) - Steam answers with SteamServersConnected_t
+      on the SERVER's dispatcher. Call it from the main / game thread.
+      @returns(@true on success (or when already running); otherwise see
+        @link(LastInitResult) and @link(LastError).) }
+    function StartGameServer: Boolean;
+
+    { Finalises the game-server plug-ins and shuts the game server down
+      (SteamGameServer_Shutdown); the client keeps running. Without a client
+      this is the same as @link(Shutdown). Safe from a handler (completes
+      after the current callback). }
+    procedure StopGameServer;
+
+    { The dispatcher of one side: @link(ServerDispatcher) when AGameServer,
+      else @link(Dispatcher). }
+    function DispatcherFor(AGameServer: Boolean): TSteamCallbackDispatcher;
 
     { Delivers pending callbacks and queued warnings on the calling thread.
       @unorderedList(
@@ -498,7 +601,11 @@ type
       @returns(@nil if the interface is unavailable.) }
     function AcquireUserInterface(const AFallbackVersion: string; const AAccessorBase: string = ''): Pointer;
 
-    { Game-server counterpart of @link(AcquireUserInterface). }
+    { Game-server counterpart of @link(AcquireUserInterface) (requires
+      @link(IsGameServerRunning)): the flat accessor
+      @code(SteamAPI_<AAccessorBase>_v<NNN>) (e.g. @code('SteamGameServerUtils')),
+      then SteamInternal_FindOrCreateGameServerInterface with the SERVER's
+      user, then ISteamClient::GetISteamGenericInterface. }
     function AcquireGameServerInterface(const AFallbackVersion: string; const AAccessorBase: string = ''): Pointer;
 
     { Address of any export of the loaded library, or @nil. }
@@ -559,10 +666,16 @@ type
       means it could not start (see the log) and RunCallbacks pumps instead. }
     property Threaded: Boolean read GetThreaded;
 
-    { Current lifecycle state. }
+    { Current lifecycle state (@link(swsRunning) while the client and / or a
+      game server runs). }
     property State: TSteamworksState read FState;
-    { @true while SteamAPI is initialised. }
+    { @true while SteamAPI (the CLIENT) is initialised. A dedicated game
+      server alone leaves it @false - see @link(IsGameServerRunning). }
     property IsRunning: Boolean read GetIsRunning;
+    { @true while a game server runs (@link(StartGameServer)). }
+    property IsGameServerRunning: Boolean read FServerUp;
+    { The roles running now. }
+    function Roles: TSteamRoles;
     { Global pipe handle (0 when not running). }
     property Pipe: HSteamPipe read FPipe;
     { Global user handle (0 when not running). }
@@ -571,8 +684,28 @@ type
     property LastInitResult: ESteamAPIInitResult read FLastInitResult;
     { Text of the last failure (Steam's own diagnostic when available). }
     property LastError: string read FLastError;
-    { Callback dispatcher. }
+    { Callback dispatcher of the client (SteamAPI's pipe). }
     property Dispatcher: TSteamCallbackDispatcher read FDispatcher;
+    { Callback dispatcher of the game server (its own pipe: callback ids such
+      as 101-103 or 143 arrive on both pipes, so the two are kept apart). }
+    property ServerDispatcher: TSteamCallbackDispatcher read FServerDispatcher;
+    { Game-server pipe handle (0 when no server runs). }
+    property ServerPipe: HSteamPipe read FServerPipe;
+    { Game-server user handle (0 when no server runs). }
+    property ServerUser: HSteamUser read FServerUser;
+    { IP address the game server binds to, host order (0 = any, default). }
+    property GameServerIP: UInt32 read FServerIP write FServerIP;
+    { UDP port of the game's own traffic (default 27015). }
+    property GameServerGamePort: Word read FServerGamePort write FServerGamePort;
+    { UDP port Steam answers server-browser queries on (default 27016;
+      $FFFF = STEAMGAMESERVER_QUERY_PORT_SHARED: the game forwards them). }
+    property GameServerQueryPort: Word read FServerQueryPort write FServerQueryPort;
+    { Authentication / VAC / listing mode (default
+      eServerModeAuthenticationAndSecure). }
+    property GameServerMode: EServerMode read FServerMode write FServerMode;
+    { Version string of the server ('1.0.0.0' by default): Steam compares it
+      to the one on the partner site and reports outdated servers. }
+    property GameServerVersion: string read FServerVersion write FServerVersion;
     { Interface versions detected in the loaded library. }
     property Versions: TSteamInterfaceVersions read FVersions;
     { ISteamClient wrapper; @nil until running or if it could not be created. }
@@ -591,6 +724,10 @@ type
     property OnInitialized: TNotifyEvent read FOnInitialized write FOnInitialized;
     { After SteamAPI has been shut down. }
     property OnShutdown: TNotifyEvent read FOnShutdown write FOnShutdown;
+    { After a successful @link(StartGameServer) (its plug-ins are up). }
+    property OnGameServerStarted: TNotifyEvent read FOnGameServerStarted write FOnGameServerStarted;
+    { After the game server has been shut down. }
+    property OnGameServerStopped: TNotifyEvent read FOnGameServerStopped write FOnGameServerStopped;
   end;
 
 { Shorthand for @link(TSteamworks.Instance). }
@@ -600,10 +737,10 @@ implementation
 
 {$if defined(MSWINDOWS)}
 uses
-  Windows;
+  Windows{$ifndef FPC}, TypInfo{$endif};
 {$elseif not defined(FPC)}
 uses
-  Posix.Stdlib;
+  Posix.Stdlib, TypInfo;
 {$else}
 function setenv(name, value: PAnsiChar; overwrite: Integer): Integer; cdecl; external 'c';
 {$endif}
@@ -760,6 +897,19 @@ begin
   Result := nil;
 end;
 
+class function TSteamPlugin.IsGameServer: Boolean;
+begin
+  Result := False;
+end;
+
+function TSteamPlugin.Dispatcher: TSteamCallbackDispatcher;
+begin
+  if FSteam = nil then
+    Result := nil
+  else
+    Result := FSteam.DispatcherFor(IsGameServer);
+end;
+
 function TSteamPlugin.Initialize(ASteam: TSteamworks): Boolean;
 begin
   FSteam := ASteam;
@@ -778,6 +928,8 @@ begin
 end;
 
 procedure TSteamPlugin.Finalize;
+var
+  D: TSteamCallbackDispatcher;
 begin
   try
     if FActive then
@@ -786,8 +938,9 @@ begin
     on E: Exception do
       LogFmt(sllError, 'Exception during finalisation: %s', [E.Message]);
   end;
-  if Assigned(FSteam) and Assigned(FSteam.Dispatcher) then
-    FSteam.Dispatcher.RemoveOwner(Self);
+  D := Dispatcher;
+  if D <> nil then
+    D.RemoveOwner(Self);
   FActive := False;
 end;
 
@@ -809,8 +962,21 @@ begin
 end;
 
 function TSteamPlugin.AcquireUserInterface(const AFallbackVersion, AAccessorBase: string): Pointer;
+var
+  Base: string;
 begin
-  Result := FSteam.AcquireUserInterface(AFallbackVersion, AAccessorBase);
+  if IsGameServer then
+  begin
+    // The server's copy of an interface: SteamAPI_SteamUtils_v011 ->
+    // SteamAPI_SteamGameServerUtils_v011 (ISteamGameServer itself is
+    // already called SteamGameServer...)
+    Base := AAccessorBase;
+    if (Base <> '') and (Copy(Base, 1, 15) <> 'SteamGameServer') and (Copy(Base, 1, 5) = 'Steam') then
+      Base := 'SteamGameServer' + Copy(Base, 6, MaxInt);
+    Result := FSteam.AcquireGameServerInterface(AFallbackVersion, Base);
+  end
+  else
+    Result := FSteam.AcquireUserInterface(AFallbackVersion, AAccessorBase);
   if Result = nil then
     LogFmt(sllError, 'Could not acquire interface %s', [FSteam.ResolveVersion(AFallbackVersion)]);
 end;
@@ -818,18 +984,18 @@ end;
 function TSteamPlugin.Subscribe(ACallbackID: Integer; AHandler: TSteamCallbackEvent;
   AIncludeCallResults: Boolean): TSteamSubscription;
 begin
-  Result := FSteam.Dispatcher.Subscribe(ACallbackID, AHandler, AIncludeCallResults);
+  Result := Dispatcher.Subscribe(ACallbackID, AHandler, AIncludeCallResults);
 end;
 
 function TSteamPlugin.AwaitCallResult(ACall: SteamAPICall_t; AExpectedCallbackID: Integer;
   AHandler: TSteamCallResultEvent): Boolean;
 begin
-  Result := FSteam.Dispatcher.AwaitCallResult(ACall, AExpectedCallbackID, AHandler);
+  Result := Dispatcher.AwaitCallResult(ACall, AExpectedCallbackID, AHandler);
 end;
 
 procedure TSteamPlugin.Unsubscribe(var AToken: TSteamSubscription);
 begin
-  FSteam.Dispatcher.Unsubscribe(AToken);
+  Dispatcher.Unsubscribe(AToken);
 end;
 
 procedure TSteamPlugin.Log(ALevel: TSteamLogLevel; const AMessage: string);
@@ -897,6 +1063,7 @@ begin
     raise ESteamworksError.Create('TSteamworks is a singleton - use TSteamworks.Instance');
   inherited Create;
   FDispatcher := TSteamCallbackDispatcher.Create;
+  FServerDispatcher := TSteamCallbackDispatcher.Create;
   FVersions := TSteamInterfaceVersions.Create;
   FPlugins := TObjectList<TSteamPlugin>.Create(True);
   FIncluded := TList<TSteamPluginClass>.Create;
@@ -915,6 +1082,10 @@ begin
   FInstallWarningHook := True;
   FShutdownOnSteamExit := True;
   FInitMode := simAuto;
+  FServerGamePort := 27015;
+  FServerQueryPort := 27016;
+  FServerMode := eServerModeAuthenticationAndSecure;
+  FServerVersion := '1.0.0.0';
   FState := swsIdle;
   FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
   FConstructed := True;
@@ -934,6 +1105,8 @@ begin
   FOnSteamShutdown := nil;
   FOnInitialized := nil;
   FOnShutdown := nil;
+  FOnGameServerStarted := nil;
+  FOnGameServerStopped := nil;
   if FState = swsRunning then
     DoShutdown;
   StopPumpThread;   // normally done by DoShutdown already
@@ -951,6 +1124,7 @@ begin
   FPlugins.Free;
   FVersions.Free;
   FDispatcher.Free;
+  FServerDispatcher.Free;
   if GInstance = Self then
     GInstance := nil;
   inherited;
@@ -975,7 +1149,45 @@ end;
 
 function TSteamworks.GetIsRunning: Boolean;
 begin
-  Result := FState = swsRunning;
+  Result := FClientUp;
+end;
+
+function TSteamworks.Roles: TSteamRoles;
+begin
+  Result := [];
+  if FClientUp then
+    Include(Result, srClient);
+  if FServerUp then
+    Include(Result, srGameServer);
+end;
+
+function TSteamworks.DispatcherFor(AGameServer: Boolean): TSteamCallbackDispatcher;
+begin
+  if AGameServer then
+    Result := FServerDispatcher
+  else
+    Result := FDispatcher;
+end;
+
+function TSteamworks.InAnyHandler: Boolean;
+begin
+  Result := FDispatcher.InHandlerOnCurrentThread or FServerDispatcher.InHandlerOnCurrentThread;
+end;
+
+procedure TSteamworks.PumpAll;
+begin
+  if FClientUp then
+    FDispatcher.Pump(FPipe);
+  // Not after a client handler asked for a shutdown (it runs next)
+  if FServerUp and not FShutdownPending and not FServerStopPending then
+    FServerDispatcher.Pump(FServerPipe);
+end;
+
+procedure TSteamworks.DeliverAllQueued;
+begin
+  FDispatcher.DeliverQueued;
+  if not FShutdownPending and not FServerStopPending then
+    FServerDispatcher.DeliverQueued;
 end;
 
 function TSteamworks.GetPluginCount: Integer;
@@ -1120,7 +1332,7 @@ var
   A: AnsiString;
 begin
   Result := nil;
-  if FState <> swsRunning then
+  if not FClientUp then
     Exit;
   Ver := ResolveVersion(AFallbackVersion);
   // 1) the flat accessor compiled into the redistributable for this version
@@ -1148,7 +1360,7 @@ var
   A: AnsiString;
 begin
   Result := nil;
-  if FState <> swsRunning then
+  if not FServerUp then
     Exit;
   Ver := ResolveVersion(AFallbackVersion);
   if AAccessorBase <> '' then
@@ -1159,9 +1371,13 @@ begin
     if Result <> nil then
       Exit;
   end;
+  // The SERVER's user (this passed the client's before 2026-11-02; unused
+  // until the game-server batch, so it never mattered)
   A := AnsiString(Ver);
   if Assigned(TSteamLib.SteamInternal_FindOrCreateGameServerInterface) then
-    Result := TSteamLib.SteamInternal_FindOrCreateGameServerInterface(FUser, PAnsiChar(A));
+    Result := TSteamLib.SteamInternal_FindOrCreateGameServerInterface(FServerUser, PAnsiChar(A));
+  if (Result = nil) and (FClient <> nil) then
+    Result := FClient.GetGenericInterface(FServerUser, FServerPipe, Ver);
 end;
 
 function TSteamworks.BuildPluginOrder: TSteamPluginClassArray;
@@ -1217,15 +1433,82 @@ begin
   end;
 end;
 
+function TSteamworks.CheckVersionList(AGameServer: Boolean): AnsiString;
+var
+  Order: TSteamPluginClassArray;
+  Vers: TSteamStringArray;
+  List: TStringList;
+  I, J: Integer;
+begin
+  // NUL-separated, double-NUL terminated (as SteamAPI_InitEx /
+  // SteamGameServer_InitEx build it)
+  List := TStringList.Create;
+  try
+    List.Sorted := True;
+    List.Duplicates := dupIgnore;
+    List.Add(ResolveVersion(STEAMUTILS_INTERFACE_VERSION));
+    List.Add(ResolveVersion(STEAMNETWORKINGUTILS_INTERFACE_VERSION));
+    Order := BuildPluginOrder;
+    for I := 0 to High(Order) do
+    begin
+      if Order[I].IsGameServer <> AGameServer then
+        Continue;
+      Vers := Order[I].InterfaceVersions(FVersions);
+      for J := 0 to High(Vers) do
+        if Vers[J] <> '' then
+          List.Add(Vers[J]);
+    end;
+    Result := '';
+    for I := 0 to List.Count - 1 do
+      Result := Result + AnsiString(List[I]) + AnsiChar(#0);
+    Result := Result + AnsiChar(#0);
+  finally
+    List.Free;
+  end;
+end;
+
+function TSteamworks.InitializeGameServerAPI: Boolean;
+var
+  Err: TSteamErrMsg;
+  Check, Ver: AnsiString;
+  Msg: string;
+begin
+  FillChar(Err, SizeOf(Err), 0);
+  FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
+  Ver := AnsiString(UTF8String(FServerVersion));
+  if Assigned(TSteamLib.SteamInternal_GameServer_Init_V2) then
+  begin
+    Check := CheckVersionList(True);
+    FLastInitResult := TSteamLib.SteamInternal_GameServer_Init_V2(FServerIP, FServerGamePort, FServerQueryPort,
+      Ord(FServerMode), PAnsiChar(Ver), PAnsiChar(Check), @Err);
+  end
+  else if Assigned(TSteamLib.SteamInternal_GameServer_Init) then
+  begin
+    if TSteamLib.SteamInternal_GameServer_Init(FServerIP, 0, FServerGamePort, FServerQueryPort,
+      Ord(FServerMode), PAnsiChar(Ver)) then
+      FLastInitResult := k_ESteamAPIInitResult_OK;
+  end
+  else
+  begin
+    SetFailure('This redistributable exports no SteamInternal_GameServer_Init(_V2): no game-server API');
+    Exit(False);
+  end;
+  Result := FLastInitResult = k_ESteamAPIInitResult_OK;
+  if not Result then
+  begin
+    Msg := Trim(string(UTF8String(PAnsiChar(@Err[0]))));
+    if Msg = '' then
+      Msg := SteamInitResultToString(FLastInitResult);
+    SetFailure(Format('Game server initialisation failed (game port %d, query port %d): %s',
+      [FServerGamePort, FServerQueryPort, Msg]));
+  end;
+end;
+
 function TSteamworks.InitializeSteamAPI: Boolean;
 var
   Err: TSteamErrMsg;
   Mode: TSteamInitMode;
   Check: AnsiString;
-  Order: TSteamPluginClassArray;
-  Vers: TSteamStringArray;
-  List: TStringList;
-  I, J: Integer;
   Msg: string;
 begin
   FillChar(Err, SizeOf(Err), 0);
@@ -1260,28 +1543,7 @@ begin
           SetFailure('SteamInternal_SteamAPI_Init is not exported by this redistributable');
           Exit(False);
         end;
-        // NUL-separated, double-NUL terminated (as SteamAPI_InitEx builds it)
-        List := TStringList.Create;
-        try
-          List.Sorted := True;
-          List.Duplicates := dupIgnore;
-          List.Add(ResolveVersion(STEAMUTILS_INTERFACE_VERSION));
-          List.Add(ResolveVersion(STEAMNETWORKINGUTILS_INTERFACE_VERSION));
-          Order := BuildPluginOrder;
-          for I := 0 to High(Order) do
-          begin
-            Vers := Order[I].InterfaceVersions(FVersions);
-            for J := 0 to High(Vers) do
-              if Vers[J] <> '' then
-                List.Add(Vers[J]);
-          end;
-          Check := '';
-          for I := 0 to List.Count - 1 do
-            Check := Check + AnsiString(List[I]) + AnsiChar(#0);
-          Check := Check + AnsiChar(#0);
-        finally
-          List.Free;
-        end;
+        Check := CheckVersionList(False);
         FLastInitResult := TSteamLib.SteamInternal_SteamAPI_Init(PAnsiChar(Check), @Err);
       end;
 
@@ -1315,7 +1577,7 @@ begin
   end;
 end;
 
-function TSteamworks.InitializePlugins: Boolean;
+function TSteamworks.InitializePlugins(AGameServer: Boolean): Boolean;
 var
   Order, Deps: TSteamPluginClassArray;
   I, J: Integer;
@@ -1328,6 +1590,8 @@ begin
   for I := 0 to High(Order) do
   begin
     C := Order[I];
+    if C.IsGameServer <> AGameServer then
+      Continue;   // the other side's: created with it
     // Skip plug-ins whose dependencies did not come up
     DepsOk := True;
     Deps := C.Dependencies;
@@ -1358,13 +1622,16 @@ begin
   end;
 end;
 
-procedure TSteamworks.FinalizePlugins;
+procedure TSteamworks.FinalizePlugins(AGameServer: Boolean);
 var
   I: Integer;
 begin
   for I := FPlugins.Count - 1 downto 0 do
-    FPlugins[I].Finalize;
-  FPlugins.Clear;
+    if FPlugins[I].IsGameServer = AGameServer then
+      FPlugins[I].Finalize;
+  for I := FPlugins.Count - 1 downto 0 do
+    if FPlugins[I].IsGameServer = AGameServer then
+      FPlugins.Delete(I);   // frees it
 end;
 
 procedure TSteamworks.FinalizePluginsOfClass(AClass: TSteamPluginClass);
@@ -1421,57 +1688,96 @@ begin
   end;
 end;
 
-function TSteamworks.Initialize: Boolean;
+procedure TSteamworks.CreateClientIntf;
 var
   ClientPtr: Pointer;
   ClientVer: AnsiString;
 begin
-  if FState = swsRunning then
+  if FClient <> nil then
+    Exit;
+  ClientVer := AnsiString(ResolveVersion(STEAMCLIENT_INTERFACE_VERSION));
+  ClientPtr := TSteamLib.SteamInternal_CreateInterface(PAnsiChar(ClientVer));
+  if ClientPtr <> nil then
+  begin
+    FClient := TSteamClientIntf.Create(ClientPtr, string(ClientVer));
+    if FInstallWarningHook then
+    begin
+      // Steam may call the hook from its own threads: make the memory
+      // manager / RTL thread-safe before it can happen.
+      IsMultiThread := True;
+      FClient.SetWarningMessageHook(SteamWarningHook);
+    end;
+  end
+  else
+    Log(sllWarning, 'Could not create ' + string(ClientVer) + '; ISteamClient features unavailable');
+end;
+
+function TSteamworks.Initialize: Boolean;
+var
+  WasActive: Boolean;
+begin
+  if FClientUp then
   begin
     FShutdownPending := False; // a pending shutdown was superseded
     Exit(True);
   end;
+  if InAnyHandler then
+  begin
+    SetFailure('Initialize cannot be called from a callback handler while a game server runs');
+    Exit(False);
+  end;
   FLastError := '';
   if not LoadLibrary then
     Exit(False);
+  // A game server already runs (dedicated first, client added): the worker
+  // must not read the server pipe while the client comes up
+  WasActive := FState = swsRunning;
+  if WasActive then
+    StopPumpThread;
 
   Result := False;
   try
     if not InitializeSteamAPI then
+    begin
+      if WasActive then
+        ApplyUpdateMode;
       Exit;
+    end;
 
     // Steam is up from here; any failure must shut it down again.
-    TSteamLib.SteamAPI_ManualDispatch_Init();
+    if not FManualDispatch then
+    begin
+      TSteamLib.SteamAPI_ManualDispatch_Init();
+      FManualDispatch := True;
+    end;
     FPipe := TSteamLib.SteamAPI_GetHSteamPipe();
     FUser := TSteamLib.SteamAPI_GetHSteamUser();
+    FClientUp := True;
     FState := swsRunning;
     FShutdownPending := False;
     FSteamExitSeen := False;
     Log(sllInfo, Format('SteamAPI initialised (pipe %d, user %d)', [FPipe, FUser]));
 
-    ClientVer := AnsiString(ResolveVersion(STEAMCLIENT_INTERFACE_VERSION));
-    ClientPtr := TSteamLib.SteamInternal_CreateInterface(PAnsiChar(ClientVer));
-    FreeAndNil(FClient);
-    if ClientPtr <> nil then
-    begin
-      FClient := TSteamClientIntf.Create(ClientPtr, string(ClientVer));
-      if FInstallWarningHook then
-      begin
-        // Steam may call the hook from its own threads: make the memory
-        // manager / RTL thread-safe before it can happen.
-        IsMultiThread := True;
-        FClient.SetWarningMessageHook(SteamWarningHook);
-      end;
-    end
-    else
-      Log(sllWarning, 'Could not create ' + string(ClientVer) + '; ISteamClient features unavailable');
+    CreateClientIntf;
 
     FShutdownSub := FDispatcher.Subscribe(SteamShutdown_t_k_iCallback, HandleSteamShutdown);
 
-    if not InitializePlugins then
+    if not InitializePlugins(False) then
     begin
       FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
-      DoShutdown;
+      if FServerUp then
+      begin
+        // keep the game server that ran before: only the client goes
+        FShutdownLock.Enter;
+        try
+          ShutdownClientLocked;
+        finally
+          FShutdownLock.Leave;
+        end;
+        ApplyUpdateMode;
+      end
+      else
+        DoShutdown;
       Exit;
     end;
 
@@ -1487,10 +1793,186 @@ begin
     begin
       FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
       SetFailure('Initialisation error: ' + E.Message);
-      if FState = swsRunning then
-        DoShutdown;
+      if FClientUp and FServerUp then
+      begin
+        // keep the game server that ran before: only the client goes
+        StopPumpThread;
+        FShutdownLock.Enter;
+        try
+          ShutdownClientLocked;
+        finally
+          FShutdownLock.Leave;
+        end;
+        ApplyUpdateMode;
+      end
+      else if FClientUp then
+        DoShutdown
+      else if WasActive then
+        ApplyUpdateMode;
       Result := False;
     end;
+  end;
+end;
+
+function TSteamworks.StartGameServer: Boolean;
+var
+  WasActive: Boolean;
+  Kind: string;
+begin
+  if FServerUp then
+  begin
+    FServerStopPending := False;   // a pending stop was superseded
+    Exit(True);
+  end;
+  if InAnyHandler then
+  begin
+    SetFailure('StartGameServer cannot be called from a callback handler');
+    Exit(False);
+  end;
+  FLastError := '';
+  if not LoadLibrary then
+    Exit(False);
+  if not (Assigned(TSteamLib.SteamGameServer_GetHSteamPipe) and Assigned(TSteamLib.SteamGameServer_GetHSteamUser) and
+    Assigned(TSteamLib.SteamGameServer_Shutdown)) then
+  begin
+    SetFailure('This redistributable has no SteamGameServer_GetHSteamPipe / _GetHSteamUser / _Shutdown');
+    Exit(False);
+  end;
+  WasActive := FState = swsRunning;
+  // The worker must not read a pipe while the server comes up
+  if WasActive then
+    StopPumpThread;
+  Result := False;
+  try
+    if not InitializeGameServerAPI then
+    begin
+      if WasActive then
+        ApplyUpdateMode;
+      Exit;
+    end;
+    if not FManualDispatch then
+    begin
+      TSteamLib.SteamAPI_ManualDispatch_Init();
+      FManualDispatch := True;
+    end;
+    FServerPipe := TSteamLib.SteamGameServer_GetHSteamPipe();
+    FServerUser := TSteamLib.SteamGameServer_GetHSteamUser();
+    FServerUp := True;
+    FServerStopPending := False;
+    if not WasActive then
+    begin
+      FShutdownPending := False;
+      FState := swsRunning;
+    end;
+    if FClientUp then
+      Kind := 'listen server: the client runs too'
+    else
+      Kind := 'dedicated: no client';
+    Log(sllInfo, Format('Game server initialised (pipe %d, user %d; game port %d, query port %d, mode %d, ' +
+      'version "%s"; %s)', [FServerPipe, FServerUser, FServerGamePort, FServerQueryPort, Ord(FServerMode),
+      FServerVersion, Kind]));
+    CreateClientIntf;
+    if not InitializePlugins(True) then
+    begin
+      FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
+      FRollingBack := True;
+      try
+        FShutdownLock.Enter;
+        try
+          StopGameServerLocked;
+        finally
+          FShutdownLock.Leave;
+        end;
+        if not FClientUp then
+          DoShutdown
+        else
+          ApplyUpdateMode;
+      finally
+        FRollingBack := False;
+      end;
+      Exit;
+    end;
+    // Last: every plug-in has subscribed before the first callback is read
+    ApplyUpdateMode;
+    Result := True;
+    if Assigned(FOnGameServerStarted) then
+      FOnGameServerStarted(Self);
+  except
+    on E: Exception do
+    begin
+      FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
+      SetFailure('Game server initialisation error: ' + E.Message);
+      FRollingBack := True;
+      try
+        if FServerUp then
+        begin
+          FShutdownLock.Enter;
+          try
+            StopGameServerLocked;
+          finally
+            FShutdownLock.Leave;
+          end;
+        end;
+        if not FClientUp and (FState = swsRunning) then
+          DoShutdown
+        else if FClientUp then
+          ApplyUpdateMode;
+      finally
+        FRollingBack := False;
+      end;
+      Result := False;
+    end;
+  end;
+end;
+
+procedure TSteamworks.StopGameServer;
+begin
+  if not FServerUp then
+    Exit;
+  if not FClientUp then
+  begin
+    Shutdown;   // a dedicated server: everything
+    Exit;
+  end;
+  if InAnyHandler then
+  begin
+    // Inside a callback handler: finish the current callback first
+    FServerStopPending := True;
+    FServerDispatcher.RequestStop;
+    Exit;
+  end;
+  FServerStopPending := False;
+  StopPumpThread;
+  FShutdownLock.Enter;
+  try
+    if FServerUp then
+      StopGameServerLocked;
+  finally
+    FShutdownLock.Leave;
+  end;
+  ApplyUpdateMode;   // the client's worker again
+end;
+
+procedure TSteamworks.StopGameServerLocked;
+begin
+  if not FServerUp then
+    Exit;
+  FServerDispatcher.ClearQueue;
+  FinalizePlugins(True);
+  FServerDispatcher.Clear;
+  if Assigned(TSteamLib.SteamGameServer_Shutdown) then
+    TSteamLib.SteamGameServer_Shutdown();
+  FServerUp := False;
+  FServerStopPending := False;
+  FServerPipe := 0;
+  FServerUser := 0;
+  if FRollingBack then
+    Log(sllInfo, 'Game server shut down again (its start failed)')
+  else
+  begin
+    Log(sllInfo, 'Game server shut down');
+    if Assigned(FOnGameServerStopped) then
+      FOnGameServerStopped(Self);
   end;
 end;
 
@@ -1515,18 +1997,38 @@ begin
   end;
 end;
 
-procedure TSteamworks.DoShutdownLocked;
+procedure TSteamworks.ShutdownClientLocked;
 begin
+  if not FClientUp then
+    Exit;
   FDispatcher.ClearQueue;
-  FinalizePlugins;
+  FinalizePlugins(False);
   FDispatcher.Unsubscribe(FShutdownSub);
   FDispatcher.Clear;
+  TSteamLib.SteamAPI_Shutdown();
+  FClientUp := False;
+  FPipe := 0;
+  FUser := 0;
+end;
+
+procedure TSteamworks.DoShutdownLocked;
+var
+  What: string;
+begin
+  if FClientUp and FServerUp then
+    What := 'SteamAPI and the game server shut down'
+  else if FServerUp then
+    What := 'Game server (dedicated) shut down - Steam stopped'
+  else
+    What := 'SteamAPI shut down';
+  // The game server first (a listen server's server lives inside the
+  // client's process; Valve's samples shut it down first too)
+  StopGameServerLocked;
+  ShutdownClientLocked;
   if FClient <> nil then
     FClient.SetWarningMessageHook(nil);
   FreeAndNil(FClient);
-  TSteamLib.SteamAPI_Shutdown();
-  FPipe := 0;
-  FUser := 0;
+  FManualDispatch := False;
   FState := swsLibraryLoaded;
   FWarningLock.Enter;
   try
@@ -1534,8 +2036,10 @@ begin
   finally
     FWarningLock.Leave;
   end;
-  Log(sllInfo, 'SteamAPI shut down');
-  if Assigned(FOnShutdown) then
+  if FRollingBack then
+    What := 'Steam stopped again (the dedicated game server did not start)';
+  Log(sllInfo, What);
+  if Assigned(FOnShutdown) and not FRollingBack then
     FOnShutdown(Self);
 end;
 
@@ -1543,11 +2047,12 @@ procedure TSteamworks.Shutdown;
 begin
   if FState <> swsRunning then
     Exit;
-  if FDispatcher.InHandlerOnCurrentThread then
+  if InAnyHandler then
   begin
     // Inside a callback handler: finish the current callback first
     FShutdownPending := True;
     FDispatcher.RequestStop;
+    FServerDispatcher.RequestStop;
     Exit;
   end;
   DoShutdown;
@@ -1588,13 +2093,13 @@ begin
     if FPumpThread = nil then
     begin
       // Timer / manual pumping (or a worker that could not start)
-      FDispatcher.Pump(FPipe);
+      PumpAll;
       DrainWarnings;
     end
     else if (FDelivery = sdOnUpdate) or
             ((FDelivery = sdMainThread) and (TThread.CurrentThread.ThreadID = MainThreadID)) then
     begin
-      FDispatcher.DeliverQueued;
+      DeliverAllQueued;
       DrainWarnings;
       DrainThreadErrors;
     end;
@@ -1602,9 +2107,13 @@ begin
   finally
     // Never from inside a handler (a re-entrant call): the outer call does
     // it; and with sdPumpThread the worker that was asked finishes it itself
-    if FShutdownPending and not FDispatcher.InHandlerOnCurrentThread and
-       not ((FPumpThread <> nil) and (FDelivery = sdPumpThread)) then
-      DoShutdown;
+    if not InAnyHandler and not ((FPumpThread <> nil) and (FDelivery = sdPumpThread)) then
+    begin
+      if FShutdownPending then
+        DoShutdown
+      else if FServerStopPending then
+        StopGameServer;
+    end;
   end;
 end;
 
@@ -1615,7 +2124,7 @@ end;
 
 function TSteamworks.QueuedCallbackCount: Integer;
 begin
-  Result := FDispatcher.QueuedCount;
+  Result := FDispatcher.QueuedCount + FServerDispatcher.QueuedCount;
 end;
 
 function TSteamworks.GetThreaded: Boolean;
@@ -1644,8 +2153,8 @@ begin
   if FPumpThread <> nil then
   begin
     StopPumpThread;
-    if (FDelivery <> sdPumpThread) and not FDispatcher.InHandlerOnCurrentThread then
-      FDispatcher.DeliverQueued;
+    if (FDelivery <> sdPumpThread) and not InAnyHandler then
+      DeliverAllQueued;
   end;
   FUpdateMode := AMode;
   FDelivery := ADelivery;
@@ -1677,14 +2186,14 @@ begin
     Exit;   // Initialize starts the worker when needed
   if FUpdateMode = sumThread then
     StartPumpThread
-  else if FDispatcher.QueuedCount > 0 then
-    FDispatcher.DeliverQueued;   // nothing else would deliver them now
+  else if QueuedCallbackCount > 0 then
+    DeliverAllQueued;   // nothing else would deliver them now
 end;
 
 procedure TSteamworks.StartPumpThread;
 begin
   ReapDeadThread;
-  if (FPumpThread <> nil) or (FState <> swsRunning) then
+  if (FPumpThread <> nil) or (FState <> swsRunning) or FWorkerStopping then
     Exit;
   FThreadSteamExit := False;
   FMainQueued := False;
@@ -1692,6 +2201,10 @@ begin
     FPumpThread := TSteamPumpThread.Create(Self);
     Log(sllInfo, Format('Callback worker thread started (every %d ms, delivery %s)',
       [FPumpInterval, DeliveryName(FDelivery)]));
+    // What the previous worker read but nobody delivered yet (a restart
+    // around StartGameServer / StopGameServer removed its queued delivery)
+    if (FDelivery = sdMainThread) and (QueuedCallbackCount > 0) then
+      ScheduleMainDelivery;
   except
     on E: Exception do
     begin
@@ -1705,7 +2218,7 @@ end;
 
 procedure TSteamworks.StopPumpThread;
 var
-  T: TThread;
+  T, OldDead: TThread;
   OnWorker: Boolean;
 begin
   if FPumpThread = nil then   // unsynchronised peek; taken under the lock
@@ -1718,11 +2231,17 @@ begin
     T := FPumpThread;
     FPumpThread := nil;
     OnWorker := (T <> nil) and (T.ThreadID = TThread.CurrentThread.ThreadID);
+    OldDead := nil;
     if OnWorker then
+    begin
+      OldDead := FDeadThread;   // an earlier self-stopped worker: freed below
       FDeadThread := T;
+    end;
   finally
     FThreadLock.Leave;
   end;
+  if (OldDead <> nil) and (OldDead.ThreadID <> TThread.CurrentThread.ThreadID) then
+    OldDead.Free;
   if (T = nil) or OnWorker then
   begin
     // On the worker (Shutdown from an sdPumpThread handler): it cannot wait
@@ -1820,7 +2339,7 @@ end;
 procedure TSteamworks.ThreadTick;
 var
   Count: Integer;
-  SawExit: Boolean;
+  SawExit, ServerExit: Boolean;
 begin
   if (FState <> swsRunning) or FThreadSteamExit then
     Exit;
@@ -1829,17 +2348,35 @@ begin
     begin
       // Everything happens here, on the worker
       try
-        FDispatcher.Pump(FPipe);
+        PumpAll;
         DrainWarnings;
         DrainThreadErrors;
       finally
         if FShutdownPending then
-          DoShutdown;   // stops this thread too (it ends after this tick)
+          DoShutdown   // stops this thread too (it ends after this tick)
+        else if FServerStopPending then
+        begin
+          // This worker is the only reader in sdPumpThread mode: stop the
+          // server here, without stopping / restarting the thread (a
+          // restart from the worker could race with a Shutdown waiting for it)
+          FShutdownLock.Enter;
+          try
+            if FServerUp then
+              StopGameServerLocked;
+          finally
+            FShutdownLock.Leave;
+          end;
+        end;
       end;
     end
     else
     begin
-      Count := FDispatcher.PumpToQueue(FPipe, SawExit);
+      Count := 0;
+      SawExit := False;
+      if FClientUp then
+        Count := FDispatcher.PumpToQueue(FPipe, SawExit);
+      if FServerUp then
+        Count := Count + FServerDispatcher.PumpToQueue(FServerPipe, ServerExit);
       // After 704 Steam's pipe goes away (Linux: ~1.5 s later); the delivery
       // thread shuts down on 704, so stop calling into Steam now.
       if SawExit and FShutdownOnSteamExit then
@@ -1886,21 +2423,24 @@ function TSteamworks.FindPlugin(AClass: TSteamPluginClass): TSteamPlugin;
 var
   I: Integer;
 begin
+  // The class itself first, then a descendant OF THE SAME SIDE: the game
+  // server's copies descend from the client classes
+  // (TSteamGameServerUtilsPlugin = class(TSteamUtilsPlugin)) and must never
+  // answer for them
   for I := 0 to FPlugins.Count - 1 do
-    if FPlugins[I].InheritsFrom(AClass) then
+    if FPlugins[I].ClassType = AClass then
+      Exit(FPlugins[I]);
+  for I := 0 to FPlugins.Count - 1 do
+    if FPlugins[I].InheritsFrom(AClass) and (FPlugins[I].IsGameServer = AClass.IsGameServer) then
       Exit(FPlugins[I]);
   Result := nil;
 end;
 
 {$ifndef FPC}
 function TSteamworks.Plugin<T>: T;
-var
-  I: Integer;
 begin
-  for I := 0 to FPlugins.Count - 1 do
-    if FPlugins[I] is T then
-      Exit(T(FPlugins[I]));
-  Result := Default(T);
+  // The same rules as FindPlugin (server copies descend from client classes)
+  Result := T(FindPlugin(TSteamPluginClass(GetTypeData(TypeInfo(T))^.ClassType)));
 end;
 {$endif}
 

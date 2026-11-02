@@ -478,7 +478,7 @@ component's event.
 function CreateBrowserAsync(const pchUserAgent: string; const pchUserCSS: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `CreateBrowser` and registers AHandler for its result (`HTML_BrowserReady_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `CreateBrowser` and registers AHandler for its result (`HTML_BrowserReady_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

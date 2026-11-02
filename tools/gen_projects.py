@@ -37,7 +37,9 @@ PLUGINS = ["Steamworks.Plugin.Utils", "Steamworks.Plugin.User", "Steamworks.Plug
            "Steamworks.Plugin.Networking", "Steamworks.Plugin.NetworkingSockets",
            "Steamworks.Plugin.NetworkingMessages", "Steamworks.Plugin.NetworkingUtils",
            # batch 2c (2026-11-02)
-           "Steamworks.Plugin.MatchmakingServers"]
+           "Steamworks.Plugin.MatchmakingServers",
+           # game-server batch (2026-11-02)
+           "Steamworks.Plugin.GameServer", "Steamworks.Plugin.GameServerStats"]
 # Delphi platforms with a Steam redistributable. Linux32 and LinuxARM64 are
 # FPC-only (Delphi has no such targets); see README.
 ALL_PLATFORMS = ["Win32", "Win64", "OSX64", "OSXARM64", "Linux64", "Android64"]
@@ -67,9 +69,14 @@ PROJECTS = [
          # runtime, TListBox crash); FmxLinuxMenu: same file as
          # SteamInputDemo's (File menu since 2026-11-02, Linux menu bar fix)
          units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
-                ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas")],
+                ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"),
+                ("SteamComponentTest", "..\\Shared\\SteamComponentTest.pas"),
+                ("SteamPairTest", "..\\Shared\\SteamPairTest.pas"),
+                ("DemoRemoteLog", "..\\Shared\\DemoRemoteLog.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmMain")],
-         search="src", redist=True, depends=["SteamworksFMX"],
+         # ..\\..\\RemoteLogging\\src: the optional log sender (File menu,
+         # DemoRemoteLog), as in SteamInputDemo
+         search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
          # ICU launcher (docs/fmx-steamos-icu-bug.md); Linux64 only
          linux_files=["src\\SteamDemo.sh"]),
     # VCL twin of SteamDemo, components and UI in src/uMain.dfm (the Lazarus
@@ -77,9 +84,13 @@ PROJECTS = [
     # the group)
     dict(name="SteamDemoVCL", dir="demos\\SteamDemoVCL", kind="app", framework="VCL",
          platforms=["Win32", "Win64"], default="Win64",
-         units=[],
+         units=[("SteamComponentTest", "..\\Shared\\SteamComponentTest.pas"),
+                ("SteamPairTest", "..\\Shared\\SteamPairTest.pas"),
+                ("DemoRemoteLog", "..\\Shared\\DemoRemoteLog.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmSteamDemo")],
-         search="src", redist=True, depends=["SteamworksVCL"]),
+         # ..\\..\\RemoteLogging\\src: the optional log sender (File menu,
+         # DemoRemoteLog), as in SteamInputDemo
+         search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksVCL"]),
     dict(name="SteamConsole", dir="demos\\SteamConsole", kind="console", framework="None",
          # Android64: placeholder added by the owner 2026-10-30 (not run yet)
          platforms=ALL_PLATFORMS, default="Win64",
@@ -131,7 +142,8 @@ PROJECTS = [
          files=INPUT_FILES + MODEL_FILES, mac_data="Contents\\Resources\\",
          linux_files=["src\\VirtualGamepad.sh"]),
     # OPTIONAL remote logging (RemoteLogging/, nothing to do with Steam): the
-    # receiver app. Senders (SteamInputDemo, VirtualGamepad) use RemoteLogging\src directly.
+    # receiver app. Senders (SteamInputDemo, VirtualGamepad, SteamDemo,
+    # SteamDemoVCL) use RemoteLogging\src directly.
     dict(name="LogReceiver", dir="RemoteLogging\\LogReceiver", kind="app", framework="FMX",
          platforms=DESKTOP_PLATFORMS, default="Win64",
          # FmxLinuxMenu, FmxLinuxGtkGlobal: same files as SteamInputDemo's

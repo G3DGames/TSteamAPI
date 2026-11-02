@@ -451,7 +451,7 @@ component's event.
 function GetFileDetailsAsync(const pszFileName: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetFileDetails` and registers AHandler for its result (`FileDetailsResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetFileDetails` and registers AHandler for its result (`FileDetailsResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

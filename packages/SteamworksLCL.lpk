@@ -161,6 +161,14 @@
         <UnitName Value="Steamworks.Plugin.MatchmakingServers"/>
       </Item>
       <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.GameServer.pas"/>
+        <UnitName Value="Steamworks.Plugin.GameServer"/>
+      </Item>
+      <Item>
+        <Filename Value="../lib/plugins/Steamworks.Plugin.GameServerStats.pas"/>
+        <UnitName Value="Steamworks.Plugin.GameServerStats"/>
+      </Item>
+      <Item>
         <Filename Value="../lib/Steamworks.inc"/>
         <Type Value="Include"/>
       </Item>

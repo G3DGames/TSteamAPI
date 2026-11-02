@@ -214,6 +214,8 @@
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingMessages.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.NetworkingUtils.pas"/>
         <DCCReference Include="..\lib\plugins\Steamworks.Plugin.MatchmakingServers.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.GameServer.pas"/>
+        <DCCReference Include="..\lib\plugins\Steamworks.Plugin.GameServerStats.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

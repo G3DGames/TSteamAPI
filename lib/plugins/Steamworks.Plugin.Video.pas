@@ -112,6 +112,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamVideoPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamVideo plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamVideoPlugin read GetPlugin;
   published
@@ -220,7 +223,12 @@ function TSteamVideo.GetPlugin: TSteamVideoPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamVideoPlugin(TSteamworks.Instance.FindPlugin(TSteamVideoPlugin));
+    Result := TSteamVideoPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamVideo.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamVideoPlugin;
 end;
 
 procedure TSteamVideo.DoAttach;

@@ -1093,7 +1093,7 @@ component's event.
 function SendQueryUGCRequestAsync(AHandle: UGCQueryHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `SendQueryUGCRequest` and registers AHandler for its result (`SteamUGCQueryCompleted_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `SendQueryUGCRequest` and registers AHandler for its result (`SteamUGCQueryCompleted_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestUGCDetailsAsync
 
@@ -1101,7 +1101,7 @@ Calls `SendQueryUGCRequest` and registers AHandler for its result (`SteamUGCQuer
 function RequestUGCDetailsAsync(nPublishedFileID: PublishedFileId_t; unMaxAgeSeconds: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestUGCDetails` and registers AHandler for its result (`SteamUGCRequestUGCDetailsResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestUGCDetails` and registers AHandler for its result (`SteamUGCRequestUGCDetailsResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### CreateItemAsync
 
@@ -1109,7 +1109,7 @@ Calls `RequestUGCDetails` and registers AHandler for its result (`SteamUGCReques
 function CreateItemAsync(nConsumerAppId: AppId_t; eFileType: EWorkshopFileType; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `CreateItem` and registers AHandler for its result (`CreateItemResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `CreateItem` and registers AHandler for its result (`CreateItemResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### SubmitItemUpdateAsync
 
@@ -1117,7 +1117,7 @@ Calls `CreateItem` and registers AHandler for its result (`CreateItemResult_t`).
 function SubmitItemUpdateAsync(AHandle: UGCUpdateHandle_t; const pchChangeNote: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `SubmitItemUpdate` and registers AHandler for its result (`SubmitItemUpdateResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `SubmitItemUpdate` and registers AHandler for its result (`SubmitItemUpdateResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### SetUserItemVoteAsync
 
@@ -1125,7 +1125,7 @@ Calls `SubmitItemUpdate` and registers AHandler for its result (`SubmitItemUpdat
 function SetUserItemVoteAsync(nPublishedFileID: PublishedFileId_t; bVoteUp: Boolean; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `SetUserItemVote` and registers AHandler for its result (`SetUserItemVoteResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `SetUserItemVote` and registers AHandler for its result (`SetUserItemVoteResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetUserItemVoteAsync
 
@@ -1133,7 +1133,7 @@ Calls `SetUserItemVote` and registers AHandler for its result (`SetUserItemVoteR
 function GetUserItemVoteAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetUserItemVote` and registers AHandler for its result (`GetUserItemVoteResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetUserItemVote` and registers AHandler for its result (`GetUserItemVoteResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### AddItemToFavoritesAsync
 
@@ -1141,7 +1141,7 @@ Calls `GetUserItemVote` and registers AHandler for its result (`GetUserItemVoteR
 function AddItemToFavoritesAsync(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `AddItemToFavorites` and registers AHandler for its result (`UserFavoriteItemsListChanged_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `AddItemToFavorites` and registers AHandler for its result (`UserFavoriteItemsListChanged_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RemoveItemFromFavoritesAsync
 
@@ -1149,7 +1149,7 @@ Calls `AddItemToFavorites` and registers AHandler for its result (`UserFavoriteI
 function RemoveItemFromFavoritesAsync(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RemoveItemFromFavorites` and registers AHandler for its result (`UserFavoriteItemsListChanged_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RemoveItemFromFavorites` and registers AHandler for its result (`UserFavoriteItemsListChanged_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### SubscribeItemAsync
 
@@ -1157,7 +1157,7 @@ Calls `RemoveItemFromFavorites` and registers AHandler for its result (`UserFavo
 function SubscribeItemAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `SubscribeItem` and registers AHandler for its result (`RemoteStorageSubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `SubscribeItem` and registers AHandler for its result (`RemoteStorageSubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### UnsubscribeItemAsync
 
@@ -1165,7 +1165,7 @@ Calls `SubscribeItem` and registers AHandler for its result (`RemoteStorageSubsc
 function UnsubscribeItemAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `UnsubscribeItem` and registers AHandler for its result (`RemoteStorageUnsubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `UnsubscribeItem` and registers AHandler for its result (`RemoteStorageUnsubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### StartPlaytimeTrackingAsync
 
@@ -1173,7 +1173,7 @@ Calls `UnsubscribeItem` and registers AHandler for its result (`RemoteStorageUns
 function StartPlaytimeTrackingAsync(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `StartPlaytimeTracking` and registers AHandler for its result (`StartPlaytimeTrackingResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `StartPlaytimeTracking` and registers AHandler for its result (`StartPlaytimeTrackingResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### StopPlaytimeTrackingAsync
 
@@ -1181,7 +1181,7 @@ Calls `StartPlaytimeTracking` and registers AHandler for its result (`StartPlayt
 function StopPlaytimeTrackingAsync(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `StopPlaytimeTracking` and registers AHandler for its result (`StopPlaytimeTrackingResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `StopPlaytimeTracking` and registers AHandler for its result (`StopPlaytimeTrackingResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### StopPlaytimeTrackingForAllItemsAsync
 
@@ -1189,7 +1189,7 @@ Calls `StopPlaytimeTracking` and registers AHandler for its result (`StopPlaytim
 function StopPlaytimeTrackingForAllItemsAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `StopPlaytimeTrackingForAllItems` and registers AHandler for its result (`StopPlaytimeTrackingResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `StopPlaytimeTrackingForAllItems` and registers AHandler for its result (`StopPlaytimeTrackingResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### AddDependencyAsync
 
@@ -1197,7 +1197,7 @@ Calls `StopPlaytimeTrackingForAllItems` and registers AHandler for its result (`
 function AddDependencyAsync(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `AddDependency` and registers AHandler for its result (`AddUGCDependencyResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `AddDependency` and registers AHandler for its result (`AddUGCDependencyResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RemoveDependencyAsync
 
@@ -1205,7 +1205,7 @@ Calls `AddDependency` and registers AHandler for its result (`AddUGCDependencyRe
 function RemoveDependencyAsync(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RemoveDependency` and registers AHandler for its result (`RemoveUGCDependencyResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RemoveDependency` and registers AHandler for its result (`RemoveUGCDependencyResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### AddAppDependencyAsync
 
@@ -1213,7 +1213,7 @@ Calls `RemoveDependency` and registers AHandler for its result (`RemoveUGCDepend
 function AddAppDependencyAsync(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `AddAppDependency` and registers AHandler for its result (`AddAppDependencyResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `AddAppDependency` and registers AHandler for its result (`AddAppDependencyResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RemoveAppDependencyAsync
 
@@ -1221,7 +1221,7 @@ Calls `AddAppDependency` and registers AHandler for its result (`AddAppDependenc
 function RemoveAppDependencyAsync(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RemoveAppDependency` and registers AHandler for its result (`RemoveAppDependencyResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RemoveAppDependency` and registers AHandler for its result (`RemoveAppDependencyResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetAppDependenciesAsync
 
@@ -1229,7 +1229,7 @@ Calls `RemoveAppDependency` and registers AHandler for its result (`RemoveAppDep
 function GetAppDependenciesAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetAppDependencies` and registers AHandler for its result (`GetAppDependenciesResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetAppDependencies` and registers AHandler for its result (`GetAppDependenciesResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### DeleteItemAsync
 
@@ -1237,7 +1237,7 @@ Calls `GetAppDependencies` and registers AHandler for its result (`GetAppDepende
 function DeleteItemAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DeleteItem` and registers AHandler for its result (`DeleteItemResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DeleteItem` and registers AHandler for its result (`DeleteItemResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetWorkshopEULAStatusAsync
 
@@ -1245,7 +1245,7 @@ Calls `DeleteItem` and registers AHandler for its result (`DeleteItemResult_t`).
 function GetWorkshopEULAStatusAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetWorkshopEULAStatus` and registers AHandler for its result (`WorkshopEULAStatus_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetWorkshopEULAStatus` and registers AHandler for its result (`WorkshopEULAStatus_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

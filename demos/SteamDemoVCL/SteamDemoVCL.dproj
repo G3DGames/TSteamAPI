@@ -49,7 +49,7 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <SanitizedProjectName>SteamDemoVCL</SanitizedProjectName>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>src;..\..\RemoteLogging\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>.\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
@@ -95,6 +95,8 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="..\Shared\SteamComponentTest.pas"/>
+        <DCCReference Include="..\Shared\SteamPairTest.pas"/>
+        <DCCReference Include="..\Shared\DemoRemoteLog.pas"/>
         <DCCReference Include="src\uMain.pas">
             <Form>frmSteamDemo</Form>
             <FormType>dfm</FormType>

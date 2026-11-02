@@ -216,6 +216,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamNetworkingPlugin) (a game-server copy
+      of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamNetworking plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamNetworkingPlugin read GetPlugin;
   published
@@ -233,6 +236,33 @@ type
       point will be dropped further attempts to send will retry making the connection (but will be
       dropped if we fail again). }
     property OnP2PSessionConnectFail: TP2PSessionConnectFailEvent read FOnP2PSessionConnectFail write FOnP2PSessionConnectFail;
+  end;
+
+  { ISteamNetworking of the GAME SERVER (@code(SteamAPI_SteamGameServerNetworking_v...)): the same
+    methods as @link(TSteamNetworkingPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerNetworkingPlugin)) - the client's
+    @code(FindPlugin(TSteamNetworkingPlugin)) never returns it. }
+  TSteamGameServerNetworkingPlugin = class(TSteamNetworkingPlugin)
+  public
+    { Returns @code('ISteamNetworking (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamNetworking of the GAME SERVER as a component: the events and
+    @link(TSteamNetworking.Plugin) of @link(TSteamNetworking), attached while the game server runs
+    (TSteamAPI.StartGameServer); its events come from the server's pipe. }
+  TSteamGameServerNetworking = class(TSteamNetworking)
+  public
+    { Returns @link(TSteamGameServerNetworkingPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -456,7 +486,12 @@ function TSteamNetworking.GetPlugin: TSteamNetworkingPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamNetworkingPlugin(TSteamworks.Instance.FindPlugin(TSteamNetworkingPlugin));
+    Result := TSteamNetworkingPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamNetworking.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamNetworkingPlugin;
 end;
 
 procedure TSteamNetworking.DoAttach;
@@ -502,10 +537,36 @@ begin
   FOnP2PSessionConnectFail(Self, Ev);
 end;
 
+{ TSteamGameServerNetworkingPlugin }
+
+class function TSteamGameServerNetworkingPlugin.PluginName: string;
+begin
+  Result := 'ISteamNetworking (game server)';
+end;
+
+class function TSteamGameServerNetworkingPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerNetworking }
+
+class function TSteamGameServerNetworking.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerNetworkingPlugin;
+end;
+
+class function TSteamGameServerNetworking.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamNetworkingPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerNetworkingPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerNetworkingPlugin);
   TSteamworks.UnregisterPlugin(TSteamNetworkingPlugin);
 
 end.

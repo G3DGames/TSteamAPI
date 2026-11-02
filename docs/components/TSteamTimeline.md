@@ -299,7 +299,7 @@ component's event.
 function DoesEventRecordingExistAsync(ulEvent: TimelineEventHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DoesEventRecordingExist` and registers AHandler for its result (`SteamTimelineEventRecordingExists_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DoesEventRecordingExist` and registers AHandler for its result (`SteamTimelineEventRecordingExists_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### DoesGamePhaseRecordingExistAsync
 
@@ -307,7 +307,7 @@ Calls `DoesEventRecordingExist` and registers AHandler for its result (`SteamTim
 function DoesGamePhaseRecordingExistAsync(const pchPhaseID: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DoesGamePhaseRecordingExist` and registers AHandler for its result (`SteamTimelineGamePhaseRecordingExists_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DoesGamePhaseRecordingExist` and registers AHandler for its result (`SteamTimelineGamePhaseRecordingExists_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

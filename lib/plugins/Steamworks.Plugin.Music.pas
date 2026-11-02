@@ -118,6 +118,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamMusicPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamMusic plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamMusicPlugin read GetPlugin;
   published
@@ -262,7 +265,12 @@ function TSteamMusic.GetPlugin: TSteamMusicPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamMusicPlugin(TSteamworks.Instance.FindPlugin(TSteamMusicPlugin));
+    Result := TSteamMusicPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamMusic.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamMusicPlugin;
 end;
 
 procedure TSteamMusic.DoAttach;

@@ -520,7 +520,7 @@ component's event.
 function CheckFileSignatureAsync(const szFileName: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `CheckFileSignature` and registers AHandler for its result (`CheckFileSignature_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `CheckFileSignature` and registers AHandler for its result (`CheckFileSignature_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

@@ -16,6 +16,13 @@ uses
   // Linux: FMX's own menu bar instead of GTK's, which shows only the first
   // letter of each menu (docs/fmx-menu-bug-fix.md); a no-op elsewhere
   FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
+  // the component test, shared with SteamDemoVCL / SteamDemoLCL
+  SteamComponentTest in '..\Shared\SteamComponentTest.pas',
+  // the two-user test, shared with SteamDemoVCL / SteamDemoLCL
+  SteamPairTest in '..\Shared\SteamPairTest.pas',
+  // optional: File > Send log to receiver (RemoteLogging/README.md);
+  // RemoteLog.Sender comes from ..\..\RemoteLogging\src on the search path
+  DemoRemoteLog in '..\Shared\DemoRemoteLog.pas',
   uMain in 'src\uMain.pas' {frmMain};
 
 begin

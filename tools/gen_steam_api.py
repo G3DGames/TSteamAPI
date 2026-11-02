@@ -86,7 +86,21 @@ PLUGINS = {
     # response objects (ISteamMatchmaking*Response), built by hand in
     # tools/plugin_extras/MatchmakingServers.pas.txt
     "ISteamMatchmakingServers": "MatchmakingServers",
+    # Game-server batch (2026-11-02): the game server's own interfaces. Their
+    # plug-ins say IsGameServer: created / freed with TSteamworks.
+    # StartGameServer / StopGameServer, callbacks from the server's pipe
+    "ISteamGameServer": "GameServer",
+    "ISteamGameServerStats": "GameServerStats",
 }
+# Plug-ins of the GAME SERVER (TSteamPlugin.IsGameServer = True).
+SERVER_PLUGINS = {"GameServer", "GameServerStats"}
+# Client interfaces the game server has a copy of (SteamAPI_SteamGameServer
+# <Name>_vNNN in steam_api.json, the same versions as the client's in 1.65):
+# each gets a subclass TSteamGameServer<Name>Plugin = class(TSteam<Name>Plugin)
+# (IsGameServer True; TSteamPlugin.AcquireUserInterface maps the accessor)
+# and a component TSteamGameServer<Name> = class(TSteam<Name>), in the same
+# unit. Check new SDKs for more SteamGameServer* accessors.
+SERVER_COPIES = ["Utils", "Networking", "NetworkingSockets", "NetworkingMessages", "HTTP", "UGC", "Inventory"]
 
 # Bit-flag enums the heuristic below cannot recognise (few, small powers of
 # two, no "Flag" in the name): Valve documents them as bitmasks, so they
@@ -154,7 +168,15 @@ def fpc_padding(types_text):
 CALLBACK_BASE_ALIAS = {"Input": "Controller"}
 # Callbacks of an interface declared in ANOTHER header (the header rule
 # would miss them); their id still has to lie in the interface's range.
-CALLBACK_EXTRA = {"NetworkingSockets": {"SteamNetworkingFakeIPResult_t"}}
+CALLBACK_EXTRA = {"NetworkingSockets": {"SteamNetworkingFakeIPResult_t"},
+                  # isteamuser.h / isteamuserstats.h callbacks a game server
+                  # gets on ITS pipe (log-on, policy, its auth sessions,
+                  # stats of a player who left); they stay in User /
+                  # UserStats too, for the client's pipe
+                  "GameServer": {"SteamServersConnected_t", "SteamServerConnectFailure_t",
+                                 "SteamServersDisconnected_t", "GSPolicyResponse_t",
+                                 "ValidateAuthTicketResponse_t"},
+                  "GameServerStats": {"GSStatsUnloaded_t"}}
 # Interfaces that own no callback structs although their header declares
 # some (isteammatchmaking.h: the lobby / party callbacks belong to
 # Matchmaking and Parties; there is no k_iSteamMatchmakingServersCallbacks
@@ -887,11 +909,12 @@ class PluginUnit:
             n = c["struct"]
             if n in sdk.hand_types or n in self.types.skipped_structs:
                 continue
-            if mine is not None:
+            extra = n in CALLBACK_EXTRA.get(self.name, ())
+            if mine is not None and not extra:
                 owner = max((v, k) for k, v in bases.items() if v <= c["callback_id"])[1]
                 if owner != key:
                     continue
-            if sdk.region[n][0] == header or n in CALLBACK_EXTRA.get(self.name, ()):
+            if sdk.region[n][0] == header or extra:
                 base = n[:-2] if n.endswith("_t") else n
                 out.append(dict(struct=n, id=c["callback_id"], base=base,
                                 event=f"T{base}Event", prop=f"On{base}", handler=f"Handle{base}",
@@ -1016,8 +1039,12 @@ class PluginUnit:
         die(f"{self.iface['classname']}: version {v} not in Steamworks.Versions.pas")
 
     def accessor_base(self):
+        # a game-server plug-in's own accessor (SteamAPI_SteamGameServer_v015);
+        # a client plug-in's client accessor - its server copy maps it
+        # (TSteamPlugin.AcquireUserInterface)
+        server = self.name in SERVER_PLUGINS
         for a in self.iface.get("accessors", []):
-            if "GameServer" not in a["name_flat"]:
+            if ("GameServer" in a["name_flat"]) == server:
                 return re.sub(r"_v\d+$", "", a["name_flat"][len("SteamAPI_"):])
         return ""
 
@@ -1091,6 +1118,9 @@ class PluginUnit:
         w("    class function PluginName: string; override;")
         w(doc("The interface version, for versioned initialisation.", "    "))
         w("    class function InterfaceVersions(AVersions: TSteamInterfaceVersions): TSteamStringArray; override;")
+        if self.name in SERVER_PLUGINS:
+            w(doc("@true: a game-server plug-in (created by TSteamworks.StartGameServer).", "    "))
+            w("    class function IsGameServer: Boolean; override;")
         w("")
         for m in self.methods:
             w(doc(self.method_text(m), "    "))
@@ -1099,7 +1129,7 @@ class PluginUnit:
             if self.has_async(m):
                 w(doc(f"Calls @link({m['name']}) and registers AHandler for its result "
                       f"(@link({m['callresult']})). The handler's object owns the registration "
-                      "(remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, "
+                      "(remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, "
                       "or k_uAPICallInvalid when Steam refused the call.)", "    "))
                 w(f"    {self.header(m, True)};{ov}")
         if self.extras.get("public"):
@@ -1113,6 +1143,8 @@ class PluginUnit:
         w("  end;")
         w("")
         self.emit_component_decl(w)
+        if self.name in SERVER_COPIES:
+            self.emit_server_copy_decl(w)
         w("implementation")
         w("")
         w("const")
@@ -1140,6 +1172,12 @@ class PluginUnit:
         w(f"  Result[0] := AVersions.Resolve({self.version_const()});")
         w("end;")
         w("")
+        if self.name in SERVER_PLUGINS:
+            w(f"class function {self.cls}.IsGameServer: Boolean;")
+            w("begin")
+            w("  Result := True;")
+            w("end;")
+            w("")
         w(f"function {self.cls}.DoInitialize: Boolean;")
         w("var")
         w("  Missing: string;")
@@ -1182,10 +1220,16 @@ class PluginUnit:
             out.extend(self.extras["implementation"])
             w("")
         self.emit_component_impl(w)
+        if self.name in SERVER_COPIES:
+            self.emit_server_copy_impl(w)
         w("initialization")
         w(f"  TSteamworks.RegisterPlugin({self.cls});")
+        if self.name in SERVER_COPIES:
+            w(f"  TSteamworks.RegisterPlugin({self.server_cls});")
         w("")
         w("finalization")
+        if self.name in SERVER_COPIES:
+            w(f"  TSteamworks.UnregisterPlugin({self.server_cls});")
         w(f"  TSteamworks.UnregisterPlugin({self.cls});")
         w("")
         w("end.")
@@ -1230,7 +1274,14 @@ class PluginUnit:
         w(doc("Subscribes every callback of this interface.", "    "))
         w("    procedure DoAttach; override;")
         w("  public")
-        w(doc(f"The {ci} plug-in, for calls; @nil while Steam is not running.", "    "))
+        w(doc(f"The plug-in class @link(Plugin) looks up: @link({self.cls}) (a game-server "
+              "copy of this component returns its own subclass).", "    "))
+        w("    class function PluginClass: TSteamPluginClass; virtual;")
+        if self.name in SERVER_PLUGINS:
+            w(doc("@true: attaches while the game server runs (TSteamAPI.StartGameServer).", "    "))
+            w("    class function IsGameServer: Boolean; override;")
+        w(doc(f"The {ci} plug-in, for calls; @nil while " +
+              ("the game server" if self.name in SERVER_PLUGINS else "Steam") + " is not running.", "    "))
         w(f"    property Plugin: {self.cls} read GetPlugin;")
         self._out.extend(self.extras.get("comppublic", []))
         w("  published")
@@ -1251,9 +1302,20 @@ class PluginUnit:
         w("begin")
         w("  Result := nil;")
         w("  if TSteamworks.HasInstance then")
-        w(f"    Result := {self.cls}(TSteamworks.Instance.FindPlugin({self.cls}));")
+        w(f"    Result := {self.cls}(TSteamworks.Instance.FindPlugin(PluginClass));")
         w("end;")
         w("")
+        w(f"class function {c}.PluginClass: TSteamPluginClass;")
+        w("begin")
+        w(f"  Result := {self.cls};")
+        w("end;")
+        w("")
+        if self.name in SERVER_PLUGINS:
+            w(f"class function {c}.IsGameServer: Boolean;")
+            w("begin")
+            w("  Result := True;")
+            w("end;")
+            w("")
         w(f"procedure {c}.DoAttach;")
         w("begin")
         for cb in self.callbacks:
@@ -1276,6 +1338,75 @@ class PluginUnit:
         if self.extras.get("compimplementation"):
             self._out.extend(self.extras["compimplementation"])
             w("")
+
+    @property
+    def server_cls(self):
+        return f"TSteamGameServer{self.name}Plugin"
+
+    @property
+    def server_comp(self):
+        return f"TSteamGameServer{self.name}"
+
+    def server_accessor(self):
+        base = self.accessor_base()
+        return "SteamGameServer" + base[len("Steam"):] if base.startswith("Steam") else base
+
+    def emit_server_copy_decl(self, w):
+        ci = self.iface["classname"]
+        w(doc(f"{ci} of the GAME SERVER (@code(SteamAPI_{self.server_accessor()}_v...)): the same "
+              f"methods as @link({self.cls}), on the server's interface and pipe. Created by "
+              "TSteamworks.StartGameServer, freed by StopGameServer; find it with "
+              f"@code(Steam.FindPlugin({self.server_cls})) - the client's "
+              f"@code(FindPlugin({self.cls})) never returns it.", "  "))
+        w(f"  {self.server_cls} = class({self.cls})")
+        w("  public")
+        w(doc(f"Returns @code('{ci} (game server)').", "    "))
+        w("    class function PluginName: string; override;")
+        w(doc("@true: a game-server plug-in.", "    "))
+        w("    class function IsGameServer: Boolean; override;")
+        w("  end;")
+        w("")
+        w("{$ifndef FPC}")
+        w("  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]")
+        w("{$endif}")
+        w(doc(f"{ci} of the GAME SERVER as a component: the events and @link({self.comp}.Plugin) of "
+              f"@link({self.comp}), attached while the game server runs (TSteamAPI.StartGameServer); "
+              "its events come from the server's pipe.", "  "))
+        w(f"  {self.server_comp} = class({self.comp})")
+        w("  public")
+        w(doc(f"Returns @link({self.server_cls}).", "    "))
+        w("    class function PluginClass: TSteamPluginClass; override;")
+        w(doc("@true: attaches with the game server.", "    "))
+        w("    class function IsGameServer: Boolean; override;")
+        w("  end;")
+        w("")
+
+    def emit_server_copy_impl(self, w):
+        ci = self.iface["classname"]
+        w(f"{{ {self.server_cls} }}")
+        w("")
+        w(f"class function {self.server_cls}.PluginName: string;")
+        w("begin")
+        w(f"  Result := '{ci} (game server)';")
+        w("end;")
+        w("")
+        w(f"class function {self.server_cls}.IsGameServer: Boolean;")
+        w("begin")
+        w("  Result := True;")
+        w("end;")
+        w("")
+        w(f"{{ {self.server_comp} }}")
+        w("")
+        w(f"class function {self.server_comp}.PluginClass: TSteamPluginClass;")
+        w("begin")
+        w(f"  Result := {self.server_cls};")
+        w("end;")
+        w("")
+        w(f"class function {self.server_comp}.IsGameServer: Boolean;")
+        w("begin")
+        w("  Result := True;")
+        w("end;")
+        w("")
 
     def call_args(self, m):
         args = ["FIntf"]
@@ -1323,7 +1454,7 @@ class PluginUnit:
         return [hdr + ";", "begin",
                 f"  Result := {m['name']}({args});" if args else f"  Result := {m['name']};",
                 "  if Result <> k_uAPICallInvalid then",
-                f"    Steam.Dispatcher.AwaitCallResult(Result, {m['callresult']}_k_iCallback, AHandler);",
+                f"    Dispatcher.AwaitCallResult(Result, {m['callresult']}_k_iCallback, AHandler);",
                 "end;", ""]
 
 
@@ -1340,11 +1471,17 @@ def write(path, text):
         print("unchanged", path)
 
 
+def component_names(plugin_names):
+    """Every generated component: one per plug-in, plus the game-server copies."""
+    return ([f"TSteam{n}" for n in plugin_names]
+            + [f"TSteamGameServer{n}" for n in plugin_names if n in SERVER_COPIES])
+
+
 def lcl_reg_unit(plugin_names):
     """Text of lcl/Steamworks.LCL.Reg.pas: the Lazarus counterpart of
     design/Steamworks.Reg.pas, registered by packages/SteamworksLCL.lpk.
     Needs no SDK, so it can be written on its own (python3 -c ...)."""
-    comps = ["TSteamAPI"] + [f"TSteam{n}" for n in plugin_names]
+    comps = ["TSteamAPI"] + component_names(plugin_names)
     return "\n".join([
         "(* @abstract(Lazarus design-time registration: the LCL TSteamAPI and the",
         "  generated plug-in components.)", "",
@@ -1387,7 +1524,7 @@ def main():
         if u.raw_methods:
             sdk.report.append(f"{ci}: {len(u.raw_methods)} methods keep raw pointer parameters "
                               f"(candidates for hand wrappers): {', '.join(u.raw_methods)}")
-    comps = [f"TSteam{n}" for n in PLUGINS.values()]
+    comps = component_names(list(PLUGINS.values()))
     reg = ["(* @abstract(Design-time registration of the generated plug-in components.)", "",
            "  GENERATED by tools/gen_steam_api.py - do not edit. The components are",
            "  framework-independent, so they are registered once, without a framework",

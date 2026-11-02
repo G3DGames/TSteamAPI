@@ -186,7 +186,7 @@ type
     function GetFileDetails(const pszFileName: string): SteamAPICall_t;
     { Calls @link(GetFileDetails) and registers AHandler for its result
       (@link(FileDetailsResult_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function GetFileDetailsAsync(const pszFileName: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Get command line if game was launched via Steam URL, e.g. steam://run/<appid>//<command
@@ -274,6 +274,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamAppsPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamApps plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamAppsPlugin read GetPlugin;
   published
@@ -589,7 +592,7 @@ function TSteamAppsPlugin.GetFileDetailsAsync(const pszFileName: string; AHandle
 begin
   Result := GetFileDetails(pszFileName);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, FileDetailsResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, FileDetailsResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamAppsPlugin.GetLaunchCommandLine(pszCommandLine: PAnsiChar; cubCommandLine: Integer): Integer;
@@ -655,7 +658,12 @@ function TSteamApps.GetPlugin: TSteamAppsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamAppsPlugin(TSteamworks.Instance.FindPlugin(TSteamAppsPlugin));
+    Result := TSteamAppsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamApps.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamAppsPlugin;
 end;
 
 procedure TSteamApps.DoAttach;

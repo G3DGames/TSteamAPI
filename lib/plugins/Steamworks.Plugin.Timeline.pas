@@ -119,7 +119,7 @@ type
     function DoesEventRecordingExist(ulEvent: TimelineEventHandle_t): SteamAPICall_t;
     { Calls @link(DoesEventRecordingExist) and registers AHandler for its result
       (@link(SteamTimelineEventRecordingExists_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function DoesEventRecordingExistAsync(ulEvent: TimelineEventHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Game phases allow the user to navigate their background recordings and clips. Exactly what a
@@ -164,7 +164,7 @@ type
     function DoesGamePhaseRecordingExist(const pchPhaseID: string): SteamAPICall_t;
     { Calls @link(DoesGamePhaseRecordingExist) and registers AHandler for its result
       (@link(SteamTimelineGamePhaseRecordingExists_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function DoesGamePhaseRecordingExistAsync(const pchPhaseID: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Add a tag that applies to the entire phase. }
@@ -214,6 +214,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamTimelinePlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamTimeline plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamTimelinePlugin read GetPlugin;
   published
@@ -411,7 +414,7 @@ function TSteamTimelinePlugin.DoesEventRecordingExistAsync(ulEvent: TimelineEven
 begin
   Result := DoesEventRecordingExist(ulEvent);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamTimelineEventRecordingExists_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamTimelineEventRecordingExists_t_k_iCallback, AHandler);
 end;
 
 procedure TSteamTimelinePlugin.StartGamePhase;
@@ -448,7 +451,7 @@ function TSteamTimelinePlugin.DoesGamePhaseRecordingExistAsync(const pchPhaseID:
 begin
   Result := DoesGamePhaseRecordingExist(pchPhaseID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamTimelineGamePhaseRecordingExists_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamTimelineGamePhaseRecordingExists_t_k_iCallback, AHandler);
 end;
 
 procedure TSteamTimelinePlugin.AddGamePhaseTag(const pchTagName: string; const pchTagIcon: string; const pchTagGroup: string; unPriority: UInt32);
@@ -496,7 +499,12 @@ function TSteamTimeline.GetPlugin: TSteamTimelinePlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamTimelinePlugin(TSteamworks.Instance.FindPlugin(TSteamTimelinePlugin));
+    Result := TSteamTimelinePlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamTimeline.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamTimelinePlugin;
 end;
 
 procedure TSteamTimeline.DoAttach;

@@ -208,7 +208,7 @@ type
     function CheckFileSignature(const szFileName: string): SteamAPICall_t;
     { Calls @link(CheckFileSignature) and registers AHandler for its result
       (@link(CheckFileSignature_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function CheckFileSignatureAsync(const szFileName: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Activates the full-screen text input dialog which takes a initial text string and returns
@@ -398,6 +398,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamUtilsPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamUtils plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamUtilsPlugin read GetPlugin;
   published
@@ -419,6 +422,33 @@ type
     property OnFloatingGamepadTextInputDismissed: TFloatingGamepadTextInputDismissedEvent read FOnFloatingGamepadTextInputDismissed write FOnFloatingGamepadTextInputDismissed;
     { Callback 739 (FilterTextDictionaryChanged_t): The text filtering dictionary has changed. }
     property OnFilterTextDictionaryChanged: TFilterTextDictionaryChangedEvent read FOnFilterTextDictionaryChanged write FOnFilterTextDictionaryChanged;
+  end;
+
+  { ISteamUtils of the GAME SERVER (@code(SteamAPI_SteamGameServerUtils_v...)): the same methods
+    as @link(TSteamUtilsPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerUtilsPlugin)) - the client's
+    @code(FindPlugin(TSteamUtilsPlugin)) never returns it. }
+  TSteamGameServerUtilsPlugin = class(TSteamUtilsPlugin)
+  public
+    { Returns @code('ISteamUtils (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamUtils of the GAME SERVER as a component: the events and @link(TSteamUtils.Plugin) of
+    @link(TSteamUtils), attached while the game server runs (TSteamAPI.StartGameServer); its
+    events come from the server's pipe. }
+  TSteamGameServerUtils = class(TSteamUtils)
+  public
+    { Returns @link(TSteamGameServerUtilsPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -673,7 +703,7 @@ function TSteamUtilsPlugin.CheckFileSignatureAsync(const szFileName: string; AHa
 begin
   Result := CheckFileSignature(szFileName);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, CheckFileSignature_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, CheckFileSignature_t_k_iCallback, AHandler);
 end;
 
 function TSteamUtilsPlugin.ShowGamepadTextInput(eInputMode: EGamepadTextInputMode; eLineInputMode: EGamepadTextInputLineMode; const pchDescription: string; unCharMax: UInt32; const pchExistingText: string): Boolean;
@@ -852,7 +882,12 @@ function TSteamUtils.GetPlugin: TSteamUtilsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamUtilsPlugin(TSteamworks.Instance.FindPlugin(TSteamUtilsPlugin));
+    Result := TSteamUtilsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamUtils.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamUtilsPlugin;
 end;
 
 procedure TSteamUtils.DoAttach;
@@ -950,10 +985,36 @@ begin
   FOnFilterTextDictionaryChanged(Self, Ev);
 end;
 
+{ TSteamGameServerUtilsPlugin }
+
+class function TSteamGameServerUtilsPlugin.PluginName: string;
+begin
+  Result := 'ISteamUtils (game server)';
+end;
+
+class function TSteamGameServerUtilsPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerUtils }
+
+class function TSteamGameServerUtils.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerUtilsPlugin;
+end;
+
+class function TSteamGameServerUtils.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamUtilsPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerUtilsPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerUtilsPlugin);
   TSteamworks.UnregisterPlugin(TSteamUtilsPlugin);
 
 end.

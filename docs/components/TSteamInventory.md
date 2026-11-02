@@ -470,7 +470,7 @@ component's event.
 function RequestEligiblePromoItemDefinitionsIDsAsync(const steamID: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestEligiblePromoItemDefinitionsIDs` and registers AHandler for its result (`SteamInventoryEligiblePromoItemDefIDs_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestEligiblePromoItemDefinitionsIDs` and registers AHandler for its result (`SteamInventoryEligiblePromoItemDefIDs_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### StartPurchaseAsync
 
@@ -478,7 +478,7 @@ Calls `RequestEligiblePromoItemDefinitionsIDs` and registers AHandler for its re
 function StartPurchaseAsync(pArrayItemDefs: Pointer; punArrayQuantity: Pointer; unArrayLength: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `StartPurchase` and registers AHandler for its result (`SteamInventoryStartPurchaseResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `StartPurchase` and registers AHandler for its result (`SteamInventoryStartPurchaseResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestPricesAsync
 
@@ -486,7 +486,7 @@ Calls `StartPurchase` and registers AHandler for its result (`SteamInventoryStar
 function RequestPricesAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestPrices` and registers AHandler for its result (`SteamInventoryRequestPricesResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestPrices` and registers AHandler for its result (`SteamInventoryRequestPricesResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

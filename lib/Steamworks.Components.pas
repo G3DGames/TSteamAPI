@@ -48,6 +48,18 @@ type
   { Any Steam callback, for diagnostics. }
   TSteamCallbackNotifyEvent = procedure(Sender: TObject; const AData: TSteamCallbackData) of object;
 
+  { How a game server authenticates players and whether it is listed: the
+    published form of the SDK's EServerMode (an enum with explicit values
+    has no RTTI, so it cannot be a published property). }
+  TSteamServerMode = (
+    { eServerModeNoAuthentication: no login checks, not in the server list. }
+    ssmNoAuthentication,
+    { eServerModeAuthentication: Steam authenticates players, listed, no VAC. }
+    ssmAuthentication,
+    { eServerModeAuthenticationAndSecure: as above plus VAC (Valve's default). }
+    ssmAuthenticationAndSecure
+  );
+
   { Base of the generated plug-in components. Link it to a TSteamAPI through
     @link(SteamAPI); while Steam runs it is attached (its callback events are
     subscribed), otherwise detached. }
@@ -82,9 +94,14 @@ type
     { The linked root, published by each descendant. }
     property SteamAPI: TCustomSteamAPI read FSteamAPI write SetSteamAPI;
   public
+    { @true for the component of a GAME-SERVER plug-in (generated
+      TSteamGameServer... components): it attaches while the game server
+      runs and takes its callbacks from the server's dispatcher. }
+    class function IsGameServer: Boolean; virtual;
     { Detaches and unlinks. }
     destructor Destroy; override;
-    { Subscribes the callbacks if Steam runs and not already attached. }
+    { Subscribes the callbacks if its side (client, or game server for
+      @link(IsGameServer)) runs and it is not attached already. }
     procedure Attach;
     { Removes the callback subscriptions. }
     procedure Detach;
@@ -153,6 +170,24 @@ type
     FOnWarning: TSteamWarningEvent;
     { Backing field of @link(OnCallback). }
     FOnCallback: TSteamCallbackNotifyEvent;
+    { Backing field of @link(Roles). }
+    FRoles: TSteamRoles;
+    { Backing field of @link(GameServerIP). }
+    FGameServerIP: Cardinal;
+    { Backing field of @link(GameServerGamePort). }
+    FGameServerGamePort: Word;
+    { Backing field of @link(GameServerQueryPort). }
+    FGameServerQueryPort: Word;
+    { Backing field of @link(GameServerMode). }
+    FGameServerMode: TSteamServerMode;
+    { Backing field of @link(GameServerVersion). }
+    FGameServerVersion: string;
+    { Backing field of @link(OnGameServerStarted). }
+    FOnGameServerStarted: TNotifyEvent;
+    { Backing field of @link(OnGameServerStopped). }
+    FOnGameServerStopped: TNotifyEvent;
+    { Backing field of @link(OnGameServerFailed). }
+    FOnGameServerFailed: TSteamInitFailedEvent;
     { Write accessor of @link(Active). }
     procedure SetActive(const AValue: Boolean);
     { Write accessor of @link(CallbackInterval). }
@@ -178,6 +213,24 @@ type
     function GetSteam: TSteamworks;
     { Read accessor of @link(IsRunning). }
     function GetIsRunning: Boolean;
+    { Read accessor of @link(IsGameServerRunning). }
+    function GetIsGameServerRunning: Boolean;
+    { @true while the core runs anything (client and / or game server). }
+    function CoreActive: Boolean;
+    { Hands this component's settings (AppID, library, modes, game-server
+      settings) to the core and hooks its events. }
+    procedure ConfigureCore;
+    { Hands only the GameServer* settings to the core. }
+    procedure PushServerSettings;
+    { Core game server started: attach the game-server components, raise
+      @link(OnGameServerStarted). }
+    procedure CoreGameServerStarted(Sender: TObject);
+    { Core game server stopped: detach the game-server components, raise
+      @link(OnGameServerStopped). }
+    procedure CoreGameServerStopped(Sender: TObject);
+    { Starts the game server in the core (settings already pushed).
+      @returns(@true when it runs.) }
+    function StartServerInCore: Boolean;
     { @true unless the component is being destroyed (events must not fire then). }
     function Alive: Boolean;
     { Points the core events at this component. }
@@ -248,8 +301,24 @@ type
     { The core singleton; reach plug-ins with @code(Steam.FindPlugin) (or
       @code(Steam.Plugin<T>) in Delphi). }
     property Steam: TSteamworks read GetSteam;
-    { @true while Steam is running. }
+    { @true while Steam (the CLIENT, SteamAPI) is running. }
     property IsRunning: Boolean read GetIsRunning;
+    { @true while a game server runs (@link(StartGameServer), or
+      @link(Roles) with @link(srGameServer)). }
+    property IsGameServerRunning: Boolean read GetIsGameServerRunning;
+
+    { Starts a game server with the GameServer* properties while the client
+      runs (a LISTEN server, started when the player chooses to host), or
+      on its own when Steam is not active (a DEDICATED server - then Active
+      becomes @true too). Its components (TSteamGameServer,
+      TSteamGameServerStats, TSteamGameServerUtils, ...) attach; log on with
+      TSteamGameServer (LogOnAnonymous). A failure raises
+      @link(OnGameServerFailed) when assigned and is logged.
+      @returns(@true when the game server runs.) }
+    function StartGameServer: Boolean;
+    { Shuts the game server down (its components detach); the client keeps
+      running. A dedicated server: the same as @link(Close). }
+    procedure StopGameServer;
 
     { Starts / stops Steam. At design time the value is only stored. When
       Steam cannot start and no @link(OnInitFailed) handler is assigned, the
@@ -290,6 +359,25 @@ type
     { Shut Steam down (not the app) as soon as the Steam client exits; see
       TSteamworks.ShutdownOnSteamExit. }
     property ShutdownOnSteamExit: Boolean read FShutdownOnSteamExit write FShutdownOnSteamExit default True;
+    { What @link(Active) starts: [srClient] (default, a game), [srClient,
+      srGameServer] (a listen server from the start) or [srGameServer] (a
+      dedicated server, no Steam client needed). A listen server that starts
+      later keeps [srClient] and calls @link(StartGameServer). }
+    property Roles: TSteamRoles read FRoles write FRoles default [srClient];
+    { IP address the game server binds to, host order (0 = any). }
+    property GameServerIP: Cardinal read FGameServerIP write FGameServerIP default 0;
+    { UDP port of the game's own traffic. }
+    property GameServerGamePort: Word read FGameServerGamePort write FGameServerGamePort default 27015;
+    { UDP port Steam answers server-browser queries on (A2S ping / players /
+      rules); 65535 = STEAMGAMESERVER_QUERY_PORT_SHARED (the game forwards
+      them through TSteamGameServer HandleIncomingPacket). }
+    property GameServerQueryPort: Word read FGameServerQueryPort write FGameServerQueryPort default 27016;
+    { Authentication, listing and VAC mode of the game server. }
+    property GameServerMode: TSteamServerMode read FGameServerMode write FGameServerMode
+      default ssmAuthenticationAndSecure;
+    { Version of the game server ('1.0.0.0'); Steam compares it with the one
+      set on the partner site. }
+    property GameServerVersion: string read FGameServerVersion write FGameServerVersion;
 
     { Steam started successfully (plug-in components are attached already). }
     property OnInitialized: TNotifyEvent read FOnInitialized write FOnInitialized;
@@ -305,14 +393,20 @@ type
     property OnLog: TSteamLogEvent read FOnLog write FOnLog;
     { Steam client debug output (launch with -debug_steamapi). }
     property OnWarning: TSteamWarningEvent read FOnWarning write FOnWarning;
-    { Every Steam callback, for diagnostics. }
+    { Every Steam callback, for diagnostics (client and game server). }
     property OnCallback: TSteamCallbackNotifyEvent read FOnCallback write FOnCallback;
+    { The game server started (its components are attached already). }
+    property OnGameServerStarted: TNotifyEvent read FOnGameServerStarted write FOnGameServerStarted;
+    { The game server was shut down. }
+    property OnGameServerStopped: TNotifyEvent read FOnGameServerStopped write FOnGameServerStopped;
+    { The game server could not start; AResult is the ESteamAPIInitResult. }
+    property OnGameServerFailed: TSteamInitFailedEvent read FOnGameServerFailed write FOnGameServerFailed;
   end;
 
 implementation
 
 uses
-  Math;
+  Math, Steamworks.SDKTypes;
 
 var
   GComponentCount: Integer = 0;
@@ -377,9 +471,21 @@ begin
     SteamAPI := Found;
 end;
 
+class function TSteamPluginComponent.IsGameServer: Boolean;
+begin
+  Result := False;
+end;
+
 procedure TSteamPluginComponent.Attach;
 begin
-  if FAttached or (csDesigning in ComponentState) or (FSteamAPI = nil) or not FSteamAPI.IsRunning then
+  if FAttached or (csDesigning in ComponentState) or (FSteamAPI = nil) then
+    Exit;
+  if IsGameServer then
+  begin
+    if not FSteamAPI.IsGameServerRunning then
+      Exit;
+  end
+  else if not FSteamAPI.IsRunning then
     Exit;
   FAttached := True;
   DoAttach;
@@ -391,7 +497,7 @@ begin
     Exit;
   FAttached := False;
   if TSteamworks.HasInstance then
-    TSteamworks.Instance.Dispatcher.RemoveOwner(Self);
+    TSteamworks.Instance.DispatcherFor(IsGameServer).RemoveOwner(Self);
 end;
 
 procedure TSteamPluginComponent.DoAttach;
@@ -400,7 +506,7 @@ end;
 
 procedure TSteamPluginComponent.SubscribeCallback(ACallbackID: Integer; AHandler: TSteamCallbackEvent);
 begin
-  TSteamworks.Instance.Dispatcher.Subscribe(ACallbackID, AHandler, True);
+  TSteamworks.Instance.DispatcherFor(IsGameServer).Subscribe(ACallbackID, AHandler, True);
 end;
 
 function TSteamPluginComponent.PayloadOK(const AData: TSteamCallbackData; ARecordSize: Integer;
@@ -439,6 +545,11 @@ begin
   FInstallWarningHook := True;
   FShutdownOnSteamExit := True;
   FInitMode := simAuto;
+  FRoles := [srClient];
+  FGameServerGamePort := 27015;
+  FGameServerQueryPort := 27016;
+  FGameServerMode := ssmAuthenticationAndSecure;
+  FGameServerVersion := '1.0.0.0';
 end;
 
 destructor TCustomSteamAPI.Destroy;
@@ -483,6 +594,16 @@ end;
 function TCustomSteamAPI.GetIsRunning: Boolean;
 begin
   Result := TSteamworks.HasInstance and TSteamworks.Instance.IsRunning;
+end;
+
+function TCustomSteamAPI.GetIsGameServerRunning: Boolean;
+begin
+  Result := TSteamworks.HasInstance and TSteamworks.Instance.IsGameServerRunning;
+end;
+
+function TCustomSteamAPI.CoreActive: Boolean;
+begin
+  Result := TSteamworks.HasInstance and (TSteamworks.Instance.State = swsRunning);
 end;
 
 procedure TCustomSteamAPI.LinkComponent(AComponent: TSteamPluginComponent);
@@ -629,7 +750,7 @@ begin
     sumThread:
       begin
         // Fallback only: the worker could not start (FPC without cthreads, ...)
-        Want := FActive and GetIsRunning and not TSteamworks.Instance.Threaded;
+        Want := FActive and CoreActive and not TSteamworks.Instance.Threaded;
         if Interval <= 0 then
           Interval := 16;
       end;
@@ -675,8 +796,12 @@ begin
   S.OnWarning := CoreWarning;
   S.OnSteamShutdown := CoreSteamShutdown;
   S.OnShutdown := CoreShutdown;
+  S.OnGameServerStarted := CoreGameServerStarted;
+  S.OnGameServerStopped := CoreGameServerStopped;
   S.Dispatcher.OnAnyCallback := CoreAnyCallback;
   S.Dispatcher.OnHandlerError := CoreHandlerError;
+  S.ServerDispatcher.OnAnyCallback := CoreAnyCallback;
+  S.ServerDispatcher.OnHandlerError := CoreHandlerError;
 end;
 
 procedure TCustomSteamAPI.UnhookCore;
@@ -690,14 +815,32 @@ begin
   S.OnWarning := nil;
   S.OnSteamShutdown := nil;
   S.OnShutdown := nil;
+  S.OnGameServerStarted := nil;
+  S.OnGameServerStopped := nil;
   S.Dispatcher.OnAnyCallback := nil;
   S.Dispatcher.OnHandlerError := nil;
+  S.ServerDispatcher.OnAnyCallback := nil;
+  S.ServerDispatcher.OnHandlerError := nil;
 end;
 
-function TCustomSteamAPI.DoActivate: Boolean;
+procedure TCustomSteamAPI.PushServerSettings;
+const
+  Modes: array[TSteamServerMode] of EServerMode =
+    (eServerModeNoAuthentication, eServerModeAuthentication, eServerModeAuthenticationAndSecure);
 var
   S: TSteamworks;
-  Terminate: Boolean;
+begin
+  S := TSteamworks.Instance;
+  S.GameServerIP := FGameServerIP;
+  S.GameServerGamePort := FGameServerGamePort;
+  S.GameServerQueryPort := FGameServerQueryPort;
+  S.GameServerMode := Modes[FGameServerMode];
+  S.GameServerVersion := FGameServerVersion;
+end;
+
+procedure TCustomSteamAPI.ConfigureCore;
+var
+  S: TSteamworks;
 begin
   S := TSteamworks.Instance;
   HookCore;
@@ -707,10 +850,41 @@ begin
   S.InitMode := FInitMode;
   S.InstallWarningHook := FInstallWarningHook;
   S.ShutdownOnSteamExit := FShutdownOnSteamExit;
+  PushServerSettings;
   // Before Initialize: in sumThread mode the core starts its worker there
   S.SetUpdateMode(FUpdateMode, FDelivery, Max(1, FCallbackInterval));
+end;
 
-  if FRestartIfNecessary and (FAppID <> 0) and S.RestartAppIfNecessary(FAppID) then
+function TCustomSteamAPI.StartServerInCore: Boolean;
+var
+  S: TSteamworks;
+begin
+  S := TSteamworks.Instance;
+  Result := S.StartGameServer;   // attaches through CoreGameServerStarted
+  if not Result then
+  begin
+    FFailMessage := Format('The game server did not start (result %d): %s', [Ord(S.LastInitResult), S.LastError]);
+    if Assigned(FOnGameServerFailed) then
+      FOnGameServerFailed(Self, Ord(S.LastInitResult), S.LastError);
+  end;
+end;
+
+function TCustomSteamAPI.DoActivate: Boolean;
+var
+  S: TSteamworks;
+  Terminate: Boolean;
+begin
+  S := TSteamworks.Instance;
+  ConfigureCore;
+  if FRoles = [] then
+  begin
+    FFailMessage := 'Roles is empty: nothing to start (srClient and / or srGameServer)';
+    if Assigned(FOnInitFailed) then
+      FOnInitFailed(Self, Ord(k_ESteamAPIInitResult_FailedGeneric), FFailMessage);
+    Exit(False);
+  end;
+
+  if (srClient in FRoles) and FRestartIfNecessary and (FAppID <> 0) and S.RestartAppIfNecessary(FAppID) then
   begin
     Terminate := True;
     if Assigned(FOnRestartRequired) then
@@ -720,10 +894,24 @@ begin
     Exit(False);
   end;
 
-  Result := S.Initialize;
-  if not Result then
-    FFailMessage := Format('Steam did not start (result %d): %s',
-      [Ord(S.LastInitResult), S.LastError]);
+  Result := True;
+  if srClient in FRoles then
+  begin
+    Result := S.Initialize;
+    if not Result then
+      FFailMessage := Format('Steam did not start (result %d): %s',
+        [Ord(S.LastInitResult), S.LastError]);
+  end;
+  if Result and (srGameServer in FRoles) then
+  begin
+    Result := StartServerInCore;
+    if not Result then
+    begin
+      if not (srClient in FRoles) then
+        FFailMessage := Format('Steam did not start (result %d): %s', [Ord(S.LastInitResult), S.LastError]);
+      S.Shutdown;   // all or nothing: the client of a listen server goes too
+    end;
+  end;
   if Result then
   begin
     FActive := True;
@@ -734,6 +922,56 @@ begin
   end
   else if Assigned(FOnInitFailed) then
     FOnInitFailed(Self, Ord(S.LastInitResult), S.LastError);
+end;
+
+function TCustomSteamAPI.StartGameServer: Boolean;
+begin
+  Result := False;
+  if csDesigning in ComponentState then
+    Exit;
+  if IsGameServerRunning then
+    Exit(True);
+  if not CoreActive then
+  begin
+    // A dedicated server started on its own
+    ConfigureCore;
+    Result := StartServerInCore;
+    if Result then
+    begin
+      FActive := True;
+      UpdatePump;
+    end;
+    Exit;
+  end;
+  // A listen server: the client runs; only the server settings change
+  // (the rest of the running core is left alone)
+  PushServerSettings;
+  Result := StartServerInCore;
+  UpdatePump;
+end;
+
+procedure TCustomSteamAPI.StopGameServer;
+begin
+  if TSteamworks.HasInstance then
+    TSteamworks.Instance.StopGameServer;   // fires CoreGameServerStopped (+ CoreShutdown if dedicated)
+end;
+
+procedure TCustomSteamAPI.CoreGameServerStarted(Sender: TObject);
+begin
+  AttachLinked;   // only the game-server components attach now
+  if Alive and Assigned(FOnGameServerStarted) then
+    FOnGameServerStarted(Self);
+end;
+
+procedure TCustomSteamAPI.CoreGameServerStopped(Sender: TObject);
+var
+  I: Integer;
+begin
+  for I := 0 to FLinked.Count - 1 do
+    if FLinked[I].IsGameServer then
+      FLinked[I].Detach;
+  if Alive and Assigned(FOnGameServerStopped) then
+    FOnGameServerStopped(Self);
 end;
 
 procedure TCustomSteamAPI.DoDeactivate;
@@ -765,7 +1003,7 @@ end;
 
 procedure TCustomSteamAPI.RunCallbacks;
 begin
-  if GetIsRunning then
+  if CoreActive then   // client and / or game server
     TSteamworks.Instance.RunCallbacks;
 end;
 

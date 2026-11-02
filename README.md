@@ -99,6 +99,12 @@ lib/                        framework-free library (Delphi + FPC)
     Steamworks.Plugin.NetworkingMessages.pas ISteamNetworkingMessages (P2P messages)
     Steamworks.Plugin.NetworkingUtils.pas    ISteamNetworkingUtils (relay network, ping)
     Steamworks.Plugin.MatchmakingServers.pas ISteamMatchmakingServers (server browser)
+    Steamworks.Plugin.GameServer.pas         ISteamGameServer (listen / dedicated server)
+    Steamworks.Plugin.GameServerStats.pas    ISteamGameServerStats (players' stats)
+                            (the server copies TSteamGameServerUtils,
+                            ...Networking, ...NetworkingSockets,
+                            ...NetworkingMessages, ...HTTP, ...UGC,
+                            ...Inventory live in the client units)
 fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread),
                             SteamImageToBitmap, SteamFormToRGB (screenshots)
@@ -123,7 +129,8 @@ demos/
   SteamDemoVCL/             VCL demo (Delphi project), form in src/ (uMain.pas / .dfm)
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form,
-                              File menu (Auto Start Steam, Take Screenshot, Copy Log, Exit) and
+                              File menu (Auto Start Steam, Take Screenshot, Copy Log,
+                              Send log to receiver, Exit) and
                               the Components tab (base test of 21 more plug-in components)
   Shared/                   SteamComponentTest.pas: the component test of SteamDemoVCL and
                             SteamDemoLCL (Delphi + FPC, no UI; creates its own components)
@@ -242,16 +249,22 @@ Step by step, with every alarming-looking message explained:
    `~/Library/Application Support/G3DGames/SteamDemo` on macOS,
    `~/.config/G3DGames/SteamDemo` on Linux), **Take Screenshot** (a picture
    of the window to your Steam screenshots; needs no Steam overlay),
-   **Copy Log** and **Exit**.
-   After **Start Steam**, **Test components** runs SteamDemo's base test of
-   the plug-in components the other demos do not use (TSteamUtils,
+   **Copy Log**, **Send log to receiver** and **Exit**. **Send log to
+   receiver** is optional and has nothing to do with Steam: it streams the
+   log to a LogReceiver on another machine on the network
+   ([RemoteLogging/README.md](RemoteLogging/README.md) explains LogReceiver).
+   After **Start Steam**, **Test components** runs the base test of the
+   plug-in components the demos' forms do not use (TSteamUtils,
    TSteamUser, TSteamApps, TSteamRemoteStorage, TSteamScreenshots,
    TSteamTimeline, TSteamUGC, TSteamMatchmaking, TSteamParties,
    TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory,
    TSteamVideo, TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking,
    TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils,
-   TSteamMatchmakingServers - 21): each is on
-   the form with its events wired;
+   TSteamMatchmakingServers, and the game server's TSteamGameServer,
+   TSteamGameServerStats, TSteamGameServerUtils, ...Networking,
+   ...NetworkingSockets, ...NetworkingMessages, ...HTTP, ...UGC,
+   ...Inventory - 30). All three demos share it
+   (demos/Shared/SteamComponentTest.pas creates the components in code);
    the test checks it is attached, makes its synchronous calls and waits up
    to 20 s for one or more callbacks / call results through its events. The
    **Components** tab shows PASS / FAIL per component, the log has the
@@ -267,7 +280,30 @@ Step by step, with every alarming-looking message explained:
    Steam's relay network report a fake IP (169.254.x.x) that these
    queries cannot reach, so they are skipped. The test
    writes no screenshot (it only switches the screenshot hook on and off);
-   use File > Take Screenshot for that.
+   use File > Take Screenshot for that. The game-server rows start a
+   LISTEN server in the demo (ports 27115 / 27116), log it on anonymously,
+   query it through the server browser at 127.0.0.1 (its rules must come
+   back - the RulesResponded path no public server answered), let it
+   validate the user's own auth ticket, and stop it again; the server is
+   listed in Steam's server browser while the test runs.
+   Two tests grow by themselves once the partner site is set up
+   ([docs/TestSetup.md](docs/TestSetup.md)): when GetAllItems answers OK
+   (Inventory Service on) the Inventory test also runs GenerateItems (one
+   Test Gem), ConsumeItem (that Gem), AddPromoItem (the Test Token, granted
+   once per account) and TriggerItemDrop; when GetWorkshopEULAStatus
+   answers OK (Workshop set up) the UGC test creates a private Workshop
+   item, uploads a title and a one-file folder and DELETES the item again.
+   Until then their rows say "skipped".
+   **Pair test (2 users)** (Two users tab) needs a second Steam account on
+   a second PC running the same demo (any of the three): press it on both
+   machines. The copies find each other through a lobby and test the
+   lobby itself (data, member data, chat), persona and rich presence,
+   auth session tickets, NetworkingMessages, NetworkingSockets P2P and
+   the old P2P packets, and a game server (the host starts a listen
+   server, the guest's ticket is validated by it); each machine shows its
+   own verdicts, and both
+   close once each has told the other (DONE) that it is finished. Set-up:
+   [docs/TestSetup.md](docs/TestSetup.md).
 4. To use the components at design time, for the IDE's platform (Win64 for
    the 64-bit IDE, Win32 for the 32-bit IDE):
    1. **Build** (do not install) the runtime packages `Steamworks`, then
@@ -285,7 +321,8 @@ Step by step, with every alarming-looking message explained:
       TSteamHTMLSurface, TSteamInventory, TSteamVideo,
       TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking,
       TSteamNetworkingSockets, TSteamNetworkingMessages,
-      TSteamNetworkingUtils, TSteamMatchmakingServers) and
+      TSteamNetworkingUtils, TSteamMatchmakingServers, TSteamGameServer,
+      TSteamGameServerStats and the seven server copies) and
       `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
       (the VCL TSteamAPI). They appear on the "Steamworks"
       palette page.
@@ -347,7 +384,10 @@ plug-in unit also declares a component named after the interface -
 `TSteamMatchmaking`, `TSteamParties`, `TSteamMusic`, `TSteamHTTP`, `TSteamHTMLSurface`,
 `TSteamInventory`, `TSteamVideo`, `TSteamParentalSettings`, `TSteamRemotePlay`,
 `TSteamNetworking`, `TSteamNetworkingSockets`, `TSteamNetworkingMessages`,
-`TSteamNetworkingUtils`, `TSteamMatchmakingServers` - that works with any framework:
+`TSteamNetworkingUtils`, `TSteamMatchmakingServers`, `TSteamGameServer`,
+`TSteamGameServerStats` (+ the game server's copies `TSteamGameServerUtils`,
+`...Networking`, `...NetworkingSockets`, `...NetworkingMessages`, `...HTTP`,
+`...UGC`, `...Inventory`) - that works with any framework:
 
 * `SteamAPI` links it to the root; at run time a component whose owner has
   exactly one `TSteamAPI` links itself.
@@ -827,9 +867,16 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three 
   thiscall into stdcall) and turns into ordinary events delivered like
   callbacks (`TSteamCallbackDispatcher.Post`). Not wrapped:
   `ServerFriends` (undocumented; the raw method stays).
-* Later: the game-server API (`SteamGameServer_*`, ISteamGameServer /
-  GameServerStats). ISteamController is not bound: Valve deprecated it in
-  favour of ISteamInput.
+* Game-server batch (2026-11-02, not yet compiled): ISteamGameServer,
+  ISteamGameServerStats and the server copies of Utils, Networking,
+  NetworkingSockets, NetworkingMessages, HTTP, UGC and Inventory. The
+  core runs a game server next to the client (a listen server,
+  `TSteamAPI.StartGameServer`) or alone (a dedicated server, `Roles =
+  [srGameServer]`), with its own pipe and callback dispatcher. The demos
+  test the listen server (component test + pair test); the dedicated
+  server gets its test in SteamConsole (`--server`, next).
+  ISteamController is not bound: Valve deprecated it in favour of
+  ISteamInput.
 
 ### To do at the end of the project
 * **Front-end launcher** for the demos under one AppID (SteamDemo,

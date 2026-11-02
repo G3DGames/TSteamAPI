@@ -237,6 +237,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamHTTPPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamHTTP plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamHTTPPlugin read GetPlugin;
   published
@@ -248,6 +251,33 @@ type
     property OnHTTPRequestHeadersReceived: THTTPRequestHeadersReceivedEvent read FOnHTTPRequestHeadersReceived write FOnHTTPRequestHeadersReceived;
     { Callback 2103 (HTTPRequestDataReceived_t): see the SDK. }
     property OnHTTPRequestDataReceived: THTTPRequestDataReceivedEvent read FOnHTTPRequestDataReceived write FOnHTTPRequestDataReceived;
+  end;
+
+  { ISteamHTTP of the GAME SERVER (@code(SteamAPI_SteamGameServerHTTP_v...)): the same methods as
+    @link(TSteamHTTPPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerHTTPPlugin)) - the client's
+    @code(FindPlugin(TSteamHTTPPlugin)) never returns it. }
+  TSteamGameServerHTTPPlugin = class(TSteamHTTPPlugin)
+  public
+    { Returns @code('ISteamHTTP (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamHTTP of the GAME SERVER as a component: the events and @link(TSteamHTTP.Plugin) of
+    @link(TSteamHTTP), attached while the game server runs (TSteamAPI.StartGameServer); its events
+    come from the server's pipe. }
+  TSteamGameServerHTTP = class(TSteamHTTP)
+  public
+    { Returns @link(TSteamGameServerHTTPPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -543,7 +573,12 @@ function TSteamHTTP.GetPlugin: TSteamHTTPPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamHTTPPlugin(TSteamworks.Instance.FindPlugin(TSteamHTTPPlugin));
+    Result := TSteamHTTPPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamHTTP.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamHTTPPlugin;
 end;
 
 procedure TSteamHTTP.DoAttach;
@@ -589,10 +624,36 @@ begin
   FOnHTTPRequestDataReceived(Self, Ev);
 end;
 
+{ TSteamGameServerHTTPPlugin }
+
+class function TSteamGameServerHTTPPlugin.PluginName: string;
+begin
+  Result := 'ISteamHTTP (game server)';
+end;
+
+class function TSteamGameServerHTTPPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerHTTP }
+
+class function TSteamGameServerHTTP.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerHTTPPlugin;
+end;
+
+class function TSteamGameServerHTTP.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamHTTPPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerHTTPPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerHTTPPlugin);
   TSteamworks.UnregisterPlugin(TSteamHTTPPlugin);
 
 end.

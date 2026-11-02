@@ -220,7 +220,7 @@ type
     function RequestEncryptedAppTicket(pDataToInclude: Pointer; cbDataToInclude: Integer): SteamAPICall_t;
     { Calls @link(RequestEncryptedAppTicket) and registers AHandler for its result
       (@link(EncryptedAppTicketResponse_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function RequestEncryptedAppTicketAsync(pDataToInclude: Pointer; cbDataToInclude: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Retrieves a finished ticket. If no ticket is available, or your buffer is too small, returns
@@ -248,7 +248,7 @@ type
     function RequestStoreAuthURL(const pchRedirectURL: string): SteamAPICall_t;
     { Calls @link(RequestStoreAuthURL) and registers AHandler for its result
       (@link(StoreAuthURLResponse_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function RequestStoreAuthURLAsync(const pchRedirectURL: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { gets whether the users phone number is verified. }
@@ -264,7 +264,7 @@ type
     function GetMarketEligibility: SteamAPICall_t;
     { Calls @link(GetMarketEligibility) and registers AHandler for its result
       (@link(MarketEligibilityResponse_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function GetMarketEligibilityAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Retrieves anti indulgence / duration control for current user. Call result:
@@ -272,7 +272,7 @@ type
     function GetDurationControl: SteamAPICall_t;
     { Calls @link(GetDurationControl) and registers AHandler for its result
       (@link(DurationControl_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function GetDurationControlAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Advise steam china duration control system about the online state of the game. This will
@@ -401,6 +401,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamUserPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamUser plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamUserPlugin read GetPlugin;
   published
@@ -723,7 +726,7 @@ function TSteamUserPlugin.RequestEncryptedAppTicketAsync(pDataToInclude: Pointer
 begin
   Result := RequestEncryptedAppTicket(pDataToInclude, cbDataToInclude);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, EncryptedAppTicketResponse_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, EncryptedAppTicketResponse_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserPlugin.GetEncryptedAppTicket(pTicket: Pointer; cbMaxTicket: Integer; var pcbTicket: UInt32): Boolean;
@@ -757,7 +760,7 @@ function TSteamUserPlugin.RequestStoreAuthURLAsync(const pchRedirectURL: string;
 begin
   Result := RequestStoreAuthURL(pchRedirectURL);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, StoreAuthURLResponse_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, StoreAuthURLResponse_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserPlugin.BIsPhoneVerified: Boolean;
@@ -794,7 +797,7 @@ function TSteamUserPlugin.GetMarketEligibilityAsync(AHandler: TSteamCallResultEv
 begin
   Result := GetMarketEligibility;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, MarketEligibilityResponse_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, MarketEligibilityResponse_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserPlugin.GetDurationControl: SteamAPICall_t;
@@ -807,7 +810,7 @@ function TSteamUserPlugin.GetDurationControlAsync(AHandler: TSteamCallResultEven
 begin
   Result := GetDurationControl;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, DurationControl_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, DurationControl_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserPlugin.BSetDurationControlOnlineState(eNewState: EDurationControlOnlineState): Boolean;
@@ -822,7 +825,12 @@ function TSteamUser.GetPlugin: TSteamUserPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamUserPlugin(TSteamworks.Instance.FindPlugin(TSteamUserPlugin));
+    Result := TSteamUserPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamUser.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamUserPlugin;
 end;
 
 procedure TSteamUser.DoAttach;

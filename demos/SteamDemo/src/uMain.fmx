@@ -57,6 +57,16 @@ object frmMain: TfrmMain
       Text = 'Test components'
       OnClick = btnTestClick
     end
+    object btnPair: TButton
+      Position.X = 540.000000000000000000
+      Position.Y = 10.000000000000000000
+      Size.Width = 150.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 4
+      Text = 'Pair test (2 users)'
+      OnClick = btnPairClick
+    end
   end
   object tabMain: TTabControl
     Align = Client
@@ -67,6 +77,8 @@ object frmMain: TfrmMain
     TabOrder = 1
     TabPosition = Top
     Sizes = (
+      720s
+      446s
       720s
       446s
       720s
@@ -234,6 +246,34 @@ object frmMain: TfrmMain
         Viewport.Height = 442.000000000000000000
       end
     end
+    object tiPair: TTabItem
+      CustomIcon = <
+        item
+        end>
+      IsSelected = False
+      Size.Width = 80.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Two users'
+      ExplicitSize.cx = 50.000000000000000000
+      ExplicitSize.cy = 50.000000000000000000
+      object lbPair: TListBox
+        Align = Client
+        Size.Width = 720.000000000000000000
+        Size.Height = 446.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 0
+        DisableFocusEffect = True
+        ItemHeight = 56.000000000000000000
+        DefaultItemStyles.ItemStyle = 'listboxitembottomdetail'
+        DefaultItemStyles.GroupHeaderStyle = ''
+        DefaultItemStyles.GroupFooterStyle = ''
+        Viewport.Width = 716.000000000000000000
+        Viewport.Height = 442.000000000000000000
+      end
+    end
   end
   object MainMenu1: TMainMenu
     Left = 488
@@ -252,6 +292,10 @@ object frmMain: TfrmMain
       object mnuCopyLog: TMenuItem
         Text = 'Copy Log'
         OnClick = mnuCopyLogClick
+      end
+      object mnuRemoteLog: TMenuItem
+        Text = 'Send log to receiver...'
+        OnClick = mnuRemoteLogClick
       end
       object mnuSep1: TMenuItem
         Text = '-'
@@ -273,6 +317,12 @@ object frmMain: TfrmMain
     Enabled = False
     OnTimer = tmTestsTimer
     Left = 544
+    Top = 8
+  end
+  object tmPair: TTimer
+    Enabled = False
+    OnTimer = tmPairTimer
+    Left = 600
     Top = 8
   end
   object SteamAPI1: TSteamAPI
@@ -301,151 +351,5 @@ object frmMain: TfrmMain
     OnUserAchievementIconFetched = AchievementIconFetched
     Left = 600
     Top = 120
-  end
-  object SteamUtils1: TSteamUtils
-    SteamAPI = SteamAPI1
-    OnIPCountry = UtilsIPCountry
-    OnLowBatteryPower = UtilsLowBattery
-    OnCheckFileSignature = UtilsCheckFileSignature
-    Left = 656
-    Top = 8
-  end
-  object SteamUser1: TSteamUser
-    SteamAPI = SteamAPI1
-    OnSteamServersConnected = UserServersConnected
-    OnSteamServerConnectFailure = UserServerConnectFailure
-    OnSteamServersDisconnected = UserServersDisconnected
-    OnGetAuthSessionTicketResponse = UserAuthTicketResponse
-    OnDurationControl = UserDurationControl
-    Left = 656
-    Top = 64
-  end
-  object SteamApps1: TSteamApps
-    SteamAPI = SteamAPI1
-    OnDlcInstalled = AppsDlcInstalled
-    OnNewUrlLaunchParameters = AppsNewUrlLaunchParameters
-    OnFileDetailsResult = AppsFileDetails
-    OnTimedTrialStatus = AppsTimedTrialStatus
-    Left = 656
-    Top = 120
-  end
-  object SteamRemoteStorage1: TSteamRemoteStorage
-    SteamAPI = SteamAPI1
-    OnRemoteStorageFileWriteAsyncComplete = StorageWriteComplete
-    OnRemoteStorageFileReadAsyncComplete = StorageReadComplete
-    OnRemoteStorageLocalFileChange = StorageLocalFileChange
-    Left = 656
-    Top = 176
-  end
-  object SteamScreenshots1: TSteamScreenshots
-    SteamAPI = SteamAPI1
-    OnScreenshotReady = ScreenshotReady
-    OnScreenshotRequested = ScreenshotRequested
-    Left = 600
-    Top = 176
-  end
-  object SteamTimeline1: TSteamTimeline
-    SteamAPI = SteamAPI1
-    OnSteamTimelineGamePhaseRecordingExists = TimelinePhaseRecordingExists
-    OnSteamTimelineEventRecordingExists = TimelineEventRecordingExists
-    Left = 600
-    Top = 232
-  end
-  object SteamUGC1: TSteamUGC
-    SteamAPI = SteamAPI1
-    OnSteamUGCQueryCompleted = UGCQueryCompleted
-    OnUserSubscribedItemsListChanged = UGCSubscribedListChanged
-    OnItemInstalled = UGCItemInstalled
-    OnWorkshopEULAStatus = UGCWorkshopEULAStatus
-    Left = 656
-    Top = 232
-  end
-  object SteamMatchmaking1: TSteamMatchmaking
-    SteamAPI = SteamAPI1
-    OnLobbyMatchList = MatchmakingLobbyMatchList
-    Left = 600
-    Top = 288
-  end
-  object SteamParties1: TSteamParties
-    SteamAPI = SteamAPI1
-    Left = 656
-    Top = 288
-  end
-  object SteamMusic1: TSteamMusic
-    SteamAPI = SteamAPI1
-    Left = 600
-    Top = 344
-  end
-  object SteamHTTP1: TSteamHTTP
-    SteamAPI = SteamAPI1
-    OnHTTPRequestCompleted = HTTPRequestCompleted
-    Left = 656
-    Top = 344
-  end
-  object SteamHTMLSurface1: TSteamHTMLSurface
-    SteamAPI = SteamAPI1
-    OnHTML_BrowserReady = HTMLBrowserReady
-    Left = 600
-    Top = 400
-  end
-  object SteamInventory1: TSteamInventory
-    SteamAPI = SteamAPI1
-    OnSteamInventoryResultReady = InventoryResultReady
-    Left = 656
-    Top = 400
-  end
-  object SteamVideo1: TSteamVideo
-    SteamAPI = SteamAPI1
-    OnGetOPFSettingsResult = VideoOPFSettingsResult
-    Left = 600
-    Top = 456
-  end
-  object SteamParentalSettings1: TSteamParentalSettings
-    SteamAPI = SteamAPI1
-    Left = 656
-    Top = 456
-  end
-  object SteamRemotePlay1: TSteamRemotePlay
-    SteamAPI = SteamAPI1
-    Left = 600
-    Top = 512
-  end
-  object SteamNetworking1: TSteamNetworking
-    SteamAPI = SteamAPI1
-    Left = 656
-    Top = 512
-  end
-  object SteamNetworkingSockets1: TSteamNetworkingSockets
-    SteamAPI = SteamAPI1
-    OnSteamNetConnectionStatusChangedCallback = NetConnectionStatusChanged
-    Left = 600
-    Top = 568
-  end
-  object SteamNetworkingMessages1: TSteamNetworkingMessages
-    SteamAPI = SteamAPI1
-    Left = 656
-    Top = 568
-  end
-  object SteamNetworkingUtils1: TSteamNetworkingUtils
-    SteamAPI = SteamAPI1
-    OnSteamRelayNetworkStatus = RelayNetworkStatus
-    Left = 600
-    Top = 624
-  end
-  object SteamMatchmakingServers1: TSteamMatchmakingServers
-    SteamAPI = SteamAPI1
-    OnServerResponded = ServersResponded
-    OnServerFailedToRespond = ServersFailed
-    OnServerListComplete = ServerListComplete
-    OnPingResponded = PingResponded
-    OnPingFailed = PingFailed
-    OnPlayer = ServerPlayer
-    OnPlayersFailed = PlayersFailed
-    OnPlayersComplete = PlayersComplete
-    OnRule = ServerRule
-    OnRulesFailed = RulesFailed
-    OnRulesComplete = RulesComplete
-    Left = 720
-    Top = 624
   end
 end

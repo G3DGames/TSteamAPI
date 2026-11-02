@@ -171,6 +171,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamNetworkingMessagesPlugin) (a
+      game-server copy of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamNetworkingMessages plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamNetworkingMessagesPlugin read GetPlugin;
   published
@@ -189,6 +192,34 @@ type
       detect that this is happening is that querying the session state may return none,
       connecting, and findingroute again. }
     property OnSteamNetworkingMessagesSessionFailed: TSteamNetworkingMessagesSessionFailedEvent read FOnSteamNetworkingMessagesSessionFailed write FOnSteamNetworkingMessagesSessionFailed;
+  end;
+
+  { ISteamNetworkingMessages of the GAME SERVER
+    (@code(SteamAPI_SteamGameServerNetworkingMessages_SteamAPI_v...)): the same methods as
+    @link(TSteamNetworkingMessagesPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerNetworkingMessagesPlugin)) - the client's
+    @code(FindPlugin(TSteamNetworkingMessagesPlugin)) never returns it. }
+  TSteamGameServerNetworkingMessagesPlugin = class(TSteamNetworkingMessagesPlugin)
+  public
+    { Returns @code('ISteamNetworkingMessages (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamNetworkingMessages of the GAME SERVER as a component: the events and
+    @link(TSteamNetworkingMessages.Plugin) of @link(TSteamNetworkingMessages), attached while the
+    game server runs (TSteamAPI.StartGameServer); its events come from the server's pipe. }
+  TSteamGameServerNetworkingMessages = class(TSteamNetworkingMessages)
+  public
+    { Returns @link(TSteamGameServerNetworkingMessagesPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -322,7 +353,12 @@ function TSteamNetworkingMessages.GetPlugin: TSteamNetworkingMessagesPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamNetworkingMessagesPlugin(TSteamworks.Instance.FindPlugin(TSteamNetworkingMessagesPlugin));
+    Result := TSteamNetworkingMessagesPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamNetworkingMessages.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamNetworkingMessagesPlugin;
 end;
 
 procedure TSteamNetworkingMessages.DoAttach;
@@ -355,10 +391,36 @@ begin
   FOnSteamNetworkingMessagesSessionFailed(Self, Ev);
 end;
 
+{ TSteamGameServerNetworkingMessagesPlugin }
+
+class function TSteamGameServerNetworkingMessagesPlugin.PluginName: string;
+begin
+  Result := 'ISteamNetworkingMessages (game server)';
+end;
+
+class function TSteamGameServerNetworkingMessagesPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerNetworkingMessages }
+
+class function TSteamGameServerNetworkingMessages.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerNetworkingMessagesPlugin;
+end;
+
+class function TSteamGameServerNetworkingMessages.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamNetworkingMessagesPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerNetworkingMessagesPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerNetworkingMessagesPlugin);
   TSteamworks.UnregisterPlugin(TSteamNetworkingMessagesPlugin);
 
 end.

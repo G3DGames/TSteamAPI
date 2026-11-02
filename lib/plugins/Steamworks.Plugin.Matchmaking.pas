@@ -139,7 +139,7 @@ type
     function RequestLobbyList: SteamAPICall_t;
     { Calls @link(RequestLobbyList) and registers AHandler for its result
       (@link(LobbyMatchList_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function RequestLobbyListAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { filters for lobbies this needs to be called before RequestLobbyList() to take effect these
@@ -173,7 +173,7 @@ type
       lobby). Call result: @link(LobbyCreated_t) (@code(LobbyCreated_t_k_iCallback)). }
     function CreateLobby(AELobbyType: ELobbyType; cMaxMembers: Integer): SteamAPICall_t;
     { Calls @link(CreateLobby) and registers AHandler for its result (@link(LobbyCreated_t)). The
-      handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner).
+      handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner).
       @returns(The call handle, or k_uAPICallInvalid when Steam refused the call.) }
     function CreateLobbyAsync(AELobbyType: ELobbyType; cMaxMembers: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Joins an existing lobby this is an asynchronous request results will be returned by
@@ -182,7 +182,7 @@ type
       @link(LobbyEnter_t) (@code(LobbyEnter_t_k_iCallback)). }
     function JoinLobby(const steamIDLobby: TSteamID): SteamAPICall_t;
     { Calls @link(JoinLobby) and registers AHandler for its result (@link(LobbyEnter_t)). The
-      handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner).
+      handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner).
       @returns(The call handle, or k_uAPICallInvalid when Steam refused the call.) }
     function JoinLobbyAsync(const steamIDLobby: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Leave a lobby; this will take effect immediately on the client side other users in the lobby
@@ -360,6 +360,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamMatchmakingPlugin) (a game-server copy
+      of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamMatchmaking plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamMatchmakingPlugin read GetPlugin;
   published
@@ -576,7 +579,7 @@ function TSteamMatchmakingPlugin.RequestLobbyListAsync(AHandler: TSteamCallResul
 begin
   Result := RequestLobbyList;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LobbyMatchList_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LobbyMatchList_t_k_iCallback, AHandler);
 end;
 
 procedure TSteamMatchmakingPlugin.AddRequestLobbyListStringFilter(const pchKeyToMatch: string; const pchValueToMatch: string; eComparisonType: ELobbyComparison);
@@ -648,7 +651,7 @@ function TSteamMatchmakingPlugin.CreateLobbyAsync(AELobbyType: ELobbyType; cMaxM
 begin
   Result := CreateLobby(AELobbyType, cMaxMembers);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LobbyCreated_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LobbyCreated_t_k_iCallback, AHandler);
 end;
 
 function TSteamMatchmakingPlugin.JoinLobby(const steamIDLobby: TSteamID): SteamAPICall_t;
@@ -661,7 +664,7 @@ function TSteamMatchmakingPlugin.JoinLobbyAsync(const steamIDLobby: TSteamID; AH
 begin
   Result := JoinLobby(steamIDLobby);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LobbyEnter_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LobbyEnter_t_k_iCallback, AHandler);
 end;
 
 procedure TSteamMatchmakingPlugin.LeaveLobby(const steamIDLobby: TSteamID);
@@ -827,7 +830,12 @@ function TSteamMatchmaking.GetPlugin: TSteamMatchmakingPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamMatchmakingPlugin(TSteamworks.Instance.FindPlugin(TSteamMatchmakingPlugin));
+    Result := TSteamMatchmakingPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamMatchmaking.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamMatchmakingPlugin;
 end;
 
 procedure TSteamMatchmaking.DoAttach;

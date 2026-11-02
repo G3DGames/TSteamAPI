@@ -174,7 +174,7 @@ type
     function FileWriteAsync(const pchFile: string; pvData: Pointer; cubData: UInt32): SteamAPICall_t; overload;
     { Calls @link(FileWriteAsync) and registers AHandler for its result
       (@link(RemoteStorageFileWriteAsyncComplete_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function FileWriteAsync(const pchFile: string; pvData: Pointer; cubData: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t; overload;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_FileReadAsync). Call result:
@@ -183,7 +183,7 @@ type
     function FileReadAsync(const pchFile: string; nOffset: UInt32; cubToRead: UInt32): SteamAPICall_t; overload;
     { Calls @link(FileReadAsync) and registers AHandler for its result
       (@link(RemoteStorageFileReadAsyncComplete_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function FileReadAsync(const pchFile: string; nOffset: UInt32; cubToRead: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t; overload;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_FileReadAsyncComplete). }
@@ -197,7 +197,7 @@ type
     function FileShare(const pchFile: string): SteamAPICall_t;
     { Calls @link(FileShare) and registers AHandler for its result
       (@link(RemoteStorageFileShareResult_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function FileShareAsync(const pchFile: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_SetSyncPlatforms). }
@@ -240,7 +240,7 @@ type
     function UGCDownload(hContent: UGCHandle_t; unPriority: UInt32): SteamAPICall_t;
     { Calls @link(UGCDownload) and registers AHandler for its result
       (@link(RemoteStorageDownloadUGCResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function UGCDownloadAsync(hContent: UGCHandle_t; unPriority: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Gets the amount of data downloaded so far for a piece of content. pnBytesExpected can be 0
@@ -268,7 +268,7 @@ type
     function PublishWorkshopFile(const pchFile: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t; AEWorkshopFileType: EWorkshopFileType): SteamAPICall_t;
     { Calls @link(PublishWorkshopFile) and registers AHandler for its result
       (@link(RemoteStoragePublishFileProgress_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function PublishWorkshopFileAsync(const pchFile: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t; AEWorkshopFileType: EWorkshopFileType; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_CreatePublishedFileUpdateRequest). }
@@ -291,7 +291,7 @@ type
     function CommitPublishedFileUpdate(updateHandle: PublishedFileUpdateHandle_t): SteamAPICall_t;
     { Calls @link(CommitPublishedFileUpdate) and registers AHandler for its result
       (@link(RemoteStorageUpdatePublishedFileResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function CommitPublishedFileUpdateAsync(updateHandle: PublishedFileUpdateHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Gets published file details for the given publishedfileid. If unMaxSecondsOld is greater
@@ -303,7 +303,7 @@ type
     function GetPublishedFileDetails(unPublishedFileId: PublishedFileId_t; unMaxSecondsOld: UInt32): SteamAPICall_t;
     { Calls @link(GetPublishedFileDetails) and registers AHandler for its result
       (@link(RemoteStorageGetPublishedFileDetailsResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function GetPublishedFileDetailsAsync(unPublishedFileId: PublishedFileId_t; unMaxSecondsOld: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_DeletePublishedFile). Call result:
@@ -312,7 +312,7 @@ type
     function DeletePublishedFile(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(DeletePublishedFile) and registers AHandler for its result
       (@link(RemoteStorageDeletePublishedFileResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function DeletePublishedFileAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { enumerate the files that the current user published with this app. Call result:
@@ -321,7 +321,7 @@ type
     function EnumerateUserPublishedFiles(unStartIndex: UInt32): SteamAPICall_t;
     { Calls @link(EnumerateUserPublishedFiles) and registers AHandler for its result
       (@link(RemoteStorageEnumerateUserPublishedFilesResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function EnumerateUserPublishedFilesAsync(unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_SubscribePublishedFile). Call result:
@@ -330,7 +330,7 @@ type
     function SubscribePublishedFile(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(SubscribePublishedFile) and registers AHandler for its result
       (@link(RemoteStorageSubscribePublishedFileResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function SubscribePublishedFileAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_EnumerateUserSubscribedFiles). Call result:
@@ -339,7 +339,7 @@ type
     function EnumerateUserSubscribedFiles(unStartIndex: UInt32): SteamAPICall_t;
     { Calls @link(EnumerateUserSubscribedFiles) and registers AHandler for its result
       (@link(RemoteStorageEnumerateUserSubscribedFilesResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function EnumerateUserSubscribedFilesAsync(unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_UnsubscribePublishedFile). Call result:
@@ -348,7 +348,7 @@ type
     function UnsubscribePublishedFile(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(UnsubscribePublishedFile) and registers AHandler for its result
       (@link(RemoteStorageUnsubscribePublishedFileResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function UnsubscribePublishedFileAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_UpdatePublishedFileSetChangeDescription). }
@@ -359,7 +359,7 @@ type
     function GetPublishedItemVoteDetails(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(GetPublishedItemVoteDetails) and registers AHandler for its result
       (@link(RemoteStorageGetPublishedItemVoteDetailsResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function GetPublishedItemVoteDetailsAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_UpdateUserPublishedItemVote). Call result:
@@ -368,7 +368,7 @@ type
     function UpdateUserPublishedItemVote(unPublishedFileId: PublishedFileId_t; bVoteUp: Boolean): SteamAPICall_t;
     { Calls @link(UpdateUserPublishedItemVote) and registers AHandler for its result
       (@link(RemoteStorageUpdateUserPublishedItemVoteResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function UpdateUserPublishedItemVoteAsync(unPublishedFileId: PublishedFileId_t; bVoteUp: Boolean; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_GetUserPublishedItemVoteDetails). Call result:
@@ -377,7 +377,7 @@ type
     function GetUserPublishedItemVoteDetails(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(GetUserPublishedItemVoteDetails) and registers AHandler for its result
       (@link(RemoteStorageGetPublishedItemVoteDetailsResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function GetUserPublishedItemVoteDetailsAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_EnumerateUserSharedWorkshopFiles). Call result:
@@ -386,7 +386,7 @@ type
     function EnumerateUserSharedWorkshopFiles(const steamId: TSteamID; unStartIndex: UInt32; var pRequiredTags: SteamParamStringArray_t; var pExcludedTags: SteamParamStringArray_t): SteamAPICall_t;
     { Calls @link(EnumerateUserSharedWorkshopFiles) and registers AHandler for its result
       (@link(RemoteStorageEnumerateUserPublishedFilesResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function EnumerateUserSharedWorkshopFilesAsync(const steamId: TSteamID; unStartIndex: UInt32; var pRequiredTags: SteamParamStringArray_t; var pExcludedTags: SteamParamStringArray_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_PublishVideo). Call result:
@@ -395,7 +395,7 @@ type
     function PublishVideo(eVideoProvider: EWorkshopVideoProvider; const pchVideoAccount: string; const pchVideoIdentifier: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t): SteamAPICall_t;
     { Calls @link(PublishVideo) and registers AHandler for its result
       (@link(RemoteStoragePublishFileProgress_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function PublishVideoAsync(eVideoProvider: EWorkshopVideoProvider; const pchVideoAccount: string; const pchVideoIdentifier: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_SetUserPublishedFileAction). Call result:
@@ -404,7 +404,7 @@ type
     function SetUserPublishedFileAction(unPublishedFileId: PublishedFileId_t; eAction: EWorkshopFileAction): SteamAPICall_t;
     { Calls @link(SetUserPublishedFileAction) and registers AHandler for its result
       (@link(RemoteStorageSetUserPublishedFileActionResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function SetUserPublishedFileActionAsync(unPublishedFileId: PublishedFileId_t; eAction: EWorkshopFileAction; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_EnumeratePublishedFilesByUserAction). Call result:
@@ -413,8 +413,8 @@ type
     function EnumeratePublishedFilesByUserAction(eAction: EWorkshopFileAction; unStartIndex: UInt32): SteamAPICall_t;
     { Calls @link(EnumeratePublishedFilesByUserAction) and registers AHandler for its result
       (@link(RemoteStorageEnumeratePublishedFilesByUserActionResult_t)). The handler's object owns
-      the registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
-      k_uAPICallInvalid when Steam refused the call.) }
+      the registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle,
+      or k_uAPICallInvalid when Steam refused the call.) }
     function EnumeratePublishedFilesByUserActionAsync(eAction: EWorkshopFileAction; unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { this method enumerates the public view of workshop files. Call result:
       @link(RemoteStorageEnumerateWorkshopFilesResult_t)
@@ -422,7 +422,7 @@ type
     function EnumeratePublishedWorkshopFiles(eEnumerationType: EWorkshopEnumerationType; unStartIndex: UInt32; unCount: UInt32; unDays: UInt32; var pTags: SteamParamStringArray_t; var pUserTags: SteamParamStringArray_t): SteamAPICall_t;
     { Calls @link(EnumeratePublishedWorkshopFiles) and registers AHandler for its result
       (@link(RemoteStorageEnumerateWorkshopFilesResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function EnumeratePublishedWorkshopFilesAsync(eEnumerationType: EWorkshopEnumerationType; unStartIndex: UInt32; unCount: UInt32; unDays: UInt32; var pTags: SteamParamStringArray_t; var pUserTags: SteamParamStringArray_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamRemoteStorage_UGCDownloadToLocation). Call result:
@@ -431,7 +431,7 @@ type
     function UGCDownloadToLocation(hContent: UGCHandle_t; const pchLocation: string; unPriority: UInt32): SteamAPICall_t;
     { Calls @link(UGCDownloadToLocation) and registers AHandler for its result
       (@link(RemoteStorageDownloadUGCResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function UGCDownloadToLocationAsync(hContent: UGCHandle_t; const pchLocation: string; unPriority: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Cloud dynamic state change notification. }
@@ -656,6 +656,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamRemoteStoragePlugin) (a game-server
+      copy of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamRemoteStorage plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamRemoteStoragePlugin read GetPlugin;
   published
@@ -935,7 +938,7 @@ function TSteamRemoteStoragePlugin.FileWriteAsync(const pchFile: string; pvData:
 begin
   Result := FileWriteAsync(pchFile, pvData, cubData);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageFileWriteAsyncComplete_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageFileWriteAsyncComplete_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.FileReadAsync(const pchFile: string; nOffset: UInt32; cubToRead: UInt32): SteamAPICall_t;
@@ -951,7 +954,7 @@ function TSteamRemoteStoragePlugin.FileReadAsync(const pchFile: string; nOffset:
 begin
   Result := FileReadAsync(pchFile, nOffset, cubToRead);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageFileReadAsyncComplete_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageFileReadAsyncComplete_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.FileReadAsyncComplete(hReadCall: SteamAPICall_t; pvBuffer: Pointer; cubToRead: UInt32): Boolean;
@@ -991,7 +994,7 @@ function TSteamRemoteStoragePlugin.FileShareAsync(const pchFile: string; AHandle
 begin
   Result := FileShare(pchFile);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageFileShareResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageFileShareResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.SetSyncPlatforms(const pchFile: string; AERemoteStoragePlatform: ERemoteStoragePlatform): Boolean;
@@ -1121,7 +1124,7 @@ function TSteamRemoteStoragePlugin.UGCDownloadAsync(hContent: UGCHandle_t; unPri
 begin
   Result := UGCDownload(hContent, unPriority);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageDownloadUGCResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageDownloadUGCResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.GetUGCDownloadProgress(hContent: UGCHandle_t; var pnBytesDownloaded: Int32; var pnBytesExpected: Int32): Boolean;
@@ -1173,7 +1176,7 @@ function TSteamRemoteStoragePlugin.PublishWorkshopFileAsync(const pchFile: strin
 begin
   Result := PublishWorkshopFile(pchFile, pchPreviewFile, nConsumerAppId, pchTitle, pchDescription, eVisibility, pTags, AEWorkshopFileType);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStoragePublishFileProgress_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStoragePublishFileProgress_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.CreatePublishedFileUpdateRequest(unPublishedFileId: PublishedFileId_t): PublishedFileUpdateHandle_t;
@@ -1240,7 +1243,7 @@ function TSteamRemoteStoragePlugin.CommitPublishedFileUpdateAsync(updateHandle: 
 begin
   Result := CommitPublishedFileUpdate(updateHandle);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageUpdatePublishedFileResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageUpdatePublishedFileResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.GetPublishedFileDetails(unPublishedFileId: PublishedFileId_t; unMaxSecondsOld: UInt32): SteamAPICall_t;
@@ -1253,7 +1256,7 @@ function TSteamRemoteStoragePlugin.GetPublishedFileDetailsAsync(unPublishedFileI
 begin
   Result := GetPublishedFileDetails(unPublishedFileId, unMaxSecondsOld);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageGetPublishedFileDetailsResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageGetPublishedFileDetailsResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.DeletePublishedFile(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
@@ -1266,7 +1269,7 @@ function TSteamRemoteStoragePlugin.DeletePublishedFileAsync(unPublishedFileId: P
 begin
   Result := DeletePublishedFile(unPublishedFileId);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageDeletePublishedFileResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageDeletePublishedFileResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.EnumerateUserPublishedFiles(unStartIndex: UInt32): SteamAPICall_t;
@@ -1279,7 +1282,7 @@ function TSteamRemoteStoragePlugin.EnumerateUserPublishedFilesAsync(unStartIndex
 begin
   Result := EnumerateUserPublishedFiles(unStartIndex);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateUserPublishedFilesResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateUserPublishedFilesResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.SubscribePublishedFile(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
@@ -1292,7 +1295,7 @@ function TSteamRemoteStoragePlugin.SubscribePublishedFileAsync(unPublishedFileId
 begin
   Result := SubscribePublishedFile(unPublishedFileId);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageSubscribePublishedFileResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageSubscribePublishedFileResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.EnumerateUserSubscribedFiles(unStartIndex: UInt32): SteamAPICall_t;
@@ -1305,7 +1308,7 @@ function TSteamRemoteStoragePlugin.EnumerateUserSubscribedFilesAsync(unStartInde
 begin
   Result := EnumerateUserSubscribedFiles(unStartIndex);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateUserSubscribedFilesResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateUserSubscribedFilesResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.UnsubscribePublishedFile(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
@@ -1318,7 +1321,7 @@ function TSteamRemoteStoragePlugin.UnsubscribePublishedFileAsync(unPublishedFile
 begin
   Result := UnsubscribePublishedFile(unPublishedFileId);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageUnsubscribePublishedFileResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageUnsubscribePublishedFileResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.UpdatePublishedFileSetChangeDescription(updateHandle: PublishedFileUpdateHandle_t; const pchChangeDescription: string): Boolean;
@@ -1340,7 +1343,7 @@ function TSteamRemoteStoragePlugin.GetPublishedItemVoteDetailsAsync(unPublishedF
 begin
   Result := GetPublishedItemVoteDetails(unPublishedFileId);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageGetPublishedItemVoteDetailsResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageGetPublishedItemVoteDetailsResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.UpdateUserPublishedItemVote(unPublishedFileId: PublishedFileId_t; bVoteUp: Boolean): SteamAPICall_t;
@@ -1353,7 +1356,7 @@ function TSteamRemoteStoragePlugin.UpdateUserPublishedItemVoteAsync(unPublishedF
 begin
   Result := UpdateUserPublishedItemVote(unPublishedFileId, bVoteUp);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageUpdateUserPublishedItemVoteResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageUpdateUserPublishedItemVoteResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.GetUserPublishedItemVoteDetails(unPublishedFileId: PublishedFileId_t): SteamAPICall_t;
@@ -1366,7 +1369,7 @@ function TSteamRemoteStoragePlugin.GetUserPublishedItemVoteDetailsAsync(unPublis
 begin
   Result := GetUserPublishedItemVoteDetails(unPublishedFileId);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageGetPublishedItemVoteDetailsResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageGetPublishedItemVoteDetailsResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.EnumerateUserSharedWorkshopFiles(const steamId: TSteamID; unStartIndex: UInt32; var pRequiredTags: SteamParamStringArray_t; var pExcludedTags: SteamParamStringArray_t): SteamAPICall_t;
@@ -1379,7 +1382,7 @@ function TSteamRemoteStoragePlugin.EnumerateUserSharedWorkshopFilesAsync(const s
 begin
   Result := EnumerateUserSharedWorkshopFiles(steamId, unStartIndex, pRequiredTags, pExcludedTags);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateUserPublishedFilesResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateUserPublishedFilesResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.PublishVideo(eVideoProvider: EWorkshopVideoProvider; const pchVideoAccount: string; const pchVideoIdentifier: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t): SteamAPICall_t;
@@ -1403,7 +1406,7 @@ function TSteamRemoteStoragePlugin.PublishVideoAsync(eVideoProvider: EWorkshopVi
 begin
   Result := PublishVideo(eVideoProvider, pchVideoAccount, pchVideoIdentifier, pchPreviewFile, nConsumerAppId, pchTitle, pchDescription, eVisibility, pTags);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStoragePublishFileProgress_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStoragePublishFileProgress_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.SetUserPublishedFileAction(unPublishedFileId: PublishedFileId_t; eAction: EWorkshopFileAction): SteamAPICall_t;
@@ -1416,7 +1419,7 @@ function TSteamRemoteStoragePlugin.SetUserPublishedFileActionAsync(unPublishedFi
 begin
   Result := SetUserPublishedFileAction(unPublishedFileId, eAction);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageSetUserPublishedFileActionResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageSetUserPublishedFileActionResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.EnumeratePublishedFilesByUserAction(eAction: EWorkshopFileAction; unStartIndex: UInt32): SteamAPICall_t;
@@ -1429,7 +1432,7 @@ function TSteamRemoteStoragePlugin.EnumeratePublishedFilesByUserActionAsync(eAct
 begin
   Result := EnumeratePublishedFilesByUserAction(eAction, unStartIndex);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageEnumeratePublishedFilesByUserActionResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageEnumeratePublishedFilesByUserActionResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.EnumeratePublishedWorkshopFiles(eEnumerationType: EWorkshopEnumerationType; unStartIndex: UInt32; unCount: UInt32; unDays: UInt32; var pTags: SteamParamStringArray_t; var pUserTags: SteamParamStringArray_t): SteamAPICall_t;
@@ -1442,7 +1445,7 @@ function TSteamRemoteStoragePlugin.EnumeratePublishedWorkshopFilesAsync(eEnumera
 begin
   Result := EnumeratePublishedWorkshopFiles(eEnumerationType, unStartIndex, unCount, unDays, pTags, pUserTags);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateWorkshopFilesResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageEnumerateWorkshopFilesResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.UGCDownloadToLocation(hContent: UGCHandle_t; const pchLocation: string; unPriority: UInt32): SteamAPICall_t;
@@ -1458,7 +1461,7 @@ function TSteamRemoteStoragePlugin.UGCDownloadToLocationAsync(hContent: UGCHandl
 begin
   Result := UGCDownloadToLocation(hContent, pchLocation, unPriority);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageDownloadUGCResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageDownloadUGCResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamRemoteStoragePlugin.GetLocalFileChangeCount: Int32;
@@ -1491,7 +1494,12 @@ function TSteamRemoteStorage.GetPlugin: TSteamRemoteStoragePlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamRemoteStoragePlugin(TSteamworks.Instance.FindPlugin(TSteamRemoteStoragePlugin));
+    Result := TSteamRemoteStoragePlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamRemoteStorage.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamRemoteStoragePlugin;
 end;
 
 procedure TSteamRemoteStorage.DoAttach;

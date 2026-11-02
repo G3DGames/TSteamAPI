@@ -582,7 +582,7 @@ component's event.
 function RequestUserStatsAsync(const steamIDUser: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestUserStats` and registers AHandler for its result (`UserStatsReceived_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestUserStats` and registers AHandler for its result (`UserStatsReceived_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### FindOrCreateLeaderboardAsync
 
@@ -590,7 +590,7 @@ Calls `RequestUserStats` and registers AHandler for its result (`UserStatsReceiv
 function FindOrCreateLeaderboardAsync(const pchLeaderboardName: string; AELeaderboardSortMethod: ELeaderboardSortMethod; AELeaderboardDisplayType: ELeaderboardDisplayType; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `FindOrCreateLeaderboard` and registers AHandler for its result (`LeaderboardFindResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `FindOrCreateLeaderboard` and registers AHandler for its result (`LeaderboardFindResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### FindLeaderboardAsync
 
@@ -598,7 +598,7 @@ Calls `FindOrCreateLeaderboard` and registers AHandler for its result (`Leaderbo
 function FindLeaderboardAsync(const pchLeaderboardName: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `FindLeaderboard` and registers AHandler for its result (`LeaderboardFindResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `FindLeaderboard` and registers AHandler for its result (`LeaderboardFindResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### DownloadLeaderboardEntriesAsync
 
@@ -606,7 +606,7 @@ Calls `FindLeaderboard` and registers AHandler for its result (`LeaderboardFindR
 function DownloadLeaderboardEntriesAsync(hSteamLeaderboard: SteamLeaderboard_t; AELeaderboardDataRequest: ELeaderboardDataRequest; nRangeStart: Integer; nRangeEnd: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DownloadLeaderboardEntries` and registers AHandler for its result (`LeaderboardScoresDownloaded_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DownloadLeaderboardEntries` and registers AHandler for its result (`LeaderboardScoresDownloaded_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### DownloadLeaderboardEntriesForUsersAsync
 
@@ -614,7 +614,7 @@ Calls `DownloadLeaderboardEntries` and registers AHandler for its result (`Leade
 function DownloadLeaderboardEntriesForUsersAsync(hSteamLeaderboard: SteamLeaderboard_t; prgUsers: Pointer; cUsers: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DownloadLeaderboardEntriesForUsers` and registers AHandler for its result (`LeaderboardScoresDownloaded_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DownloadLeaderboardEntriesForUsers` and registers AHandler for its result (`LeaderboardScoresDownloaded_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### UploadLeaderboardScoreAsync
 
@@ -622,7 +622,7 @@ Calls `DownloadLeaderboardEntriesForUsers` and registers AHandler for its result
 function UploadLeaderboardScoreAsync(hSteamLeaderboard: SteamLeaderboard_t; AELeaderboardUploadScoreMethod: ELeaderboardUploadScoreMethod; nScore: Int32; pScoreDetails: Pointer; cScoreDetailsCount: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `UploadLeaderboardScore` and registers AHandler for its result (`LeaderboardScoreUploaded_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `UploadLeaderboardScore` and registers AHandler for its result (`LeaderboardScoreUploaded_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### AttachLeaderboardUGCAsync
 
@@ -630,7 +630,7 @@ Calls `UploadLeaderboardScore` and registers AHandler for its result (`Leaderboa
 function AttachLeaderboardUGCAsync(hSteamLeaderboard: SteamLeaderboard_t; hUGC: UGCHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `AttachLeaderboardUGC` and registers AHandler for its result (`LeaderboardUGCSet_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `AttachLeaderboardUGC` and registers AHandler for its result (`LeaderboardUGCSet_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetNumberOfCurrentPlayersAsync
 
@@ -638,7 +638,7 @@ Calls `AttachLeaderboardUGC` and registers AHandler for its result (`Leaderboard
 function GetNumberOfCurrentPlayersAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetNumberOfCurrentPlayers` and registers AHandler for its result (`NumberOfCurrentPlayers_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetNumberOfCurrentPlayers` and registers AHandler for its result (`NumberOfCurrentPlayers_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestGlobalAchievementPercentagesAsync
 
@@ -646,7 +646,7 @@ Calls `GetNumberOfCurrentPlayers` and registers AHandler for its result (`Number
 function RequestGlobalAchievementPercentagesAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestGlobalAchievementPercentages` and registers AHandler for its result (`GlobalAchievementPercentagesReady_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestGlobalAchievementPercentages` and registers AHandler for its result (`GlobalAchievementPercentagesReady_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestGlobalStatsAsync
 
@@ -654,7 +654,7 @@ Calls `RequestGlobalAchievementPercentages` and registers AHandler for its resul
 function RequestGlobalStatsAsync(nHistoryDays: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestGlobalStats` and registers AHandler for its result (`GlobalStatsReceived_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestGlobalStats` and registers AHandler for its result (`GlobalStatsReceived_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

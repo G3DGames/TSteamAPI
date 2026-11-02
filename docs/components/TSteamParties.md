@@ -214,7 +214,7 @@ component's event.
 function JoinPartyAsync(ulBeaconID: PartyBeaconID_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `JoinParty` and registers AHandler for its result (`JoinPartyCallback_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `JoinParty` and registers AHandler for its result (`JoinPartyCallback_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### CreateBeaconAsync
 
@@ -222,7 +222,7 @@ Calls `JoinParty` and registers AHandler for its result (`JoinPartyCallback_t`).
 function CreateBeaconAsync(unOpenSlots: UInt32; var pBeaconLocation: SteamPartyBeaconLocation_t; const pchConnectString: string; const pchMetadata: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `CreateBeacon` and registers AHandler for its result (`CreateBeaconCallback_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `CreateBeacon` and registers AHandler for its result (`CreateBeaconCallback_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### ChangeNumOpenSlotsAsync
 
@@ -230,7 +230,7 @@ Calls `CreateBeacon` and registers AHandler for its result (`CreateBeaconCallbac
 function ChangeNumOpenSlotsAsync(ulBeacon: PartyBeaconID_t; unOpenSlots: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `ChangeNumOpenSlots` and registers AHandler for its result (`ChangeNumOpenSlotsCallback_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `ChangeNumOpenSlots` and registers AHandler for its result (`ChangeNumOpenSlotsCallback_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

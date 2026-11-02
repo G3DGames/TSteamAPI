@@ -99,6 +99,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamParentalSettingsPlugin) (a game-server
+      copy of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamParentalSettings plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamParentalSettingsPlugin read GetPlugin;
   published
@@ -217,7 +220,12 @@ function TSteamParentalSettings.GetPlugin: TSteamParentalSettingsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamParentalSettingsPlugin(TSteamworks.Instance.FindPlugin(TSteamParentalSettingsPlugin));
+    Result := TSteamParentalSettingsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamParentalSettings.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamParentalSettingsPlugin;
 end;
 
 procedure TSteamParentalSettings.DoAttach;

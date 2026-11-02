@@ -6,6 +6,7 @@
 | [Install-Lazarus-FPC.md](Install-Lazarus-FPC.md) | Using it with Free Pascal 3.2.2 / Lazarus: paths, **copying the Steam library by hand**, `cthreads`, differences from Delphi |
 | [GameEngineIntegration.md](GameEngineIntegration.md) | How callbacks are pumped - timer, worker thread or your own loop - and recipes for FMX, VCL, LCL, Castle Game Engine, Gorilla3D, Skia4Delphi, PasVulkan and custom loops |
 | [SteamInputMapping.md](SteamInputMapping.md) | Steam Input: the action manifest, shipping default layouts per controller type, development vs shipping, origins to physical buttons, which pad picture / model for which controller, troubleshooting |
+| [TestSetup.md](TestSetup.md) | Setting up the extra tests: a second Steam account for the two-user tests, Steam Cloud, Workshop and Inventory on the partner site (with the test item definitions) |
 | [components/](components/README.md) | One page per component / plug-in: every property, method, event and payload record |
 | [fmx-steamos-icu-bug-fix.md](fmx-steamos-icu-bug-fix.md) | Starting a Delphi game on SteamOS: the launcher script that steers Delphi's runtime to a complete ICU (short, with code) |
 | [fmx-steamos-icu-bug.md](fmx-steamos-icu-bug.md) | Bug report for Embarcadero: Delphi's runtime picks a half-present ICU in Steam Linux Runtime 3.0 on SteamOS and crashes in System's initialization |

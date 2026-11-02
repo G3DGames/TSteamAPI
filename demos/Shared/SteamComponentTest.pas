@@ -1,13 +1,21 @@
-{ @abstract(The base test of 21 plug-in components, for the VCL and LCL
-  demos: no UI, compiles with Delphi and FPC.)
+{ @abstract(The base test of 30 plug-in components, for all three demos
+  (SteamDemo FMX, SteamDemoVCL, SteamDemoLCL): no UI, compiles with Delphi
+  and FPC.)
 
   @link(TSteamComponentTest) creates the components itself (owned by it,
   linked to the TSteamAPI given to its constructor, events wired in code),
   so a form only creates it, calls @link(TSteamComponentTest.Start) from a
   button, @link(TSteamComponentTest.Tick) from a 1 s timer, and shows
-  @link(TSteamComponentTest.OnRowChanged) in a list. The FMX SteamDemo has
-  the same tests with the components dropped on its form (keep the two in
-  step; this unit is a port of demos/SteamDemo/src/uMain.pas).
+  @link(TSteamComponentTest.OnRowChanged) in a list. (Until 2026-11-02 the
+  FMX demo had its own copy with the components on its form.)
+
+  The last nine rows are the GAME SERVER's components: the test starts a
+  listen server in this process (TSteamAPI.StartGameServer, ports
+  @link(TEST_GS_GAME_PORT) / @link(TEST_GS_QUERY_PORT); one that runs
+  already is used as it is), logs it on anonymously, queries it through
+  the server browser at 127.0.0.1 (rules - @link(TEST_GS_RULE) must come
+  back -, ping, players), lets it validate the logged-on user's ticket, and
+  stops it again at the end.
 
   Per component the test checks that it is attached, makes its synchronous
   calls through the component's Plugin property (an exception = calls
@@ -18,7 +26,8 @@
   being off for the app is a Steam setting, not a component fault).
   Side effects: @link(TEST_CLOUD_FILE) is written and deleted again; a
   timeline event and game phase are recorded and the timeline game mode is
-  left at Menus; a socket pair inside the program sends itself one message.
+  left at Menus; a socket pair inside the program sends itself one message;
+  the listen server is listed (advertised) while the test runs.
   No screenshot is written (the demos' File > Take Screenshot does that).
   Cleanup needs Steam: call @link(TSteamComponentTest.Finish) BEFORE
   closing Steam.
@@ -43,7 +52,7 @@ uses
   Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings,
   Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets,
   Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils,
-  Steamworks.Plugin.MatchmakingServers;
+  Steamworks.Plugin.MatchmakingServers, Steamworks.Plugin.GameServer, Steamworks.Plugin.GameServerStats;
 
 const
   { Component test: index of TSteamUtils. }
@@ -88,8 +97,38 @@ const
   CT_NETUTILS = 19;
   { Component test: index of TSteamMatchmakingServers. }
   CT_SERVERS = 20;
+  { Component test: index of TSteamGameServer (the test starts a LISTEN
+    server in this process unless one runs already). }
+  CT_GAMESERVER = 21;
+  { Component test: index of TSteamGameServerStats. }
+  CT_GSSTATS = 22;
+  { Component test: index of TSteamGameServerUtils (the server's copy). }
+  CT_GSUTILS = 23;
+  { Component test: index of TSteamGameServerNetworking. }
+  CT_GSNETWORKING = 24;
+  { Component test: index of TSteamGameServerNetworkingSockets. }
+  CT_GSSOCKETS = 25;
+  { Component test: index of TSteamGameServerNetworkingMessages. }
+  CT_GSMESSAGES = 26;
+  { Component test: index of TSteamGameServerHTTP. }
+  CT_GSHTTP = 27;
+  { Component test: index of TSteamGameServerUGC. }
+  CT_GSUGC = 28;
+  { Component test: index of TSteamGameServerInventory. }
+  CT_GSINVENTORY = 29;
   { Number of components the component test covers. }
-  CT_COUNT = 21;
+  CT_COUNT = 30;
+  { Game port of the listen server the test starts (not the default 27015,
+    so a game server of the demo's own - the pair test - is never in the way). }
+  TEST_GS_GAME_PORT = 27115;
+  { Query port of that server: Steam answers server-browser queries there
+    itself, so the test's own MatchmakingServers queries reach it. }
+  TEST_GS_QUERY_PORT = 27116;
+  { Rule (SetKeyValue) the test's server sets and its rules query must see:
+    the RulesResponded path that no Counter-Strike 2 server answers. }
+  TEST_GS_RULE = 'tsapi_test';
+  { 127.0.0.1 in host order: the test queries its own server. }
+  TEST_GS_LOCALHOST = $7F000001;
   { AppID whose Internet server list the MatchmakingServers test reads: a
     game with many public servers (Counter-Strike 2), so ServerResponded
     and the ping / players / rules queries meet a real server. Read-only. }
@@ -109,6 +148,36 @@ const
   { A requested callback / call result that has not arrived after this many
     milliseconds is reported as NO ANSWER and the component fails. }
   TEST_TIMEOUT_MS = 20000;
+  { Item definition of docs/test-setup/itemdefs_2275430.json: the promo
+    item "TSteamAPI Test Token" (AddPromoItem). The extended Inventory test
+    runs only when GetAllItems answers OK, i.e. once the Inventory Service
+    is enabled for the app (docs/TestSetup.md). }
+  TEST_ITEM_PROMO = 100;
+  { Item definition "TSteamAPI Test Gem" (GenerateItems, then ConsumeItem). }
+  TEST_ITEM_GEM = 101;
+  { Item definition of the playtime generator that drops a Test Gem
+    (TriggerItemDrop). }
+  TEST_ITEM_DROP = 10;
+  { Extended Inventory step: GenerateItems (index of @code(FInvSteps)). }
+  INV_GENERATE = 0;
+  { Extended Inventory step: ConsumeItem of the generated Test Gem. }
+  INV_CONSUME = 1;
+  { Extended Inventory step: AddPromoItem. }
+  INV_PROMO = 2;
+  { Extended Inventory step: TriggerItemDrop. }
+  INV_DROP = 3;
+  { Names of the extended Inventory steps (they are also the answer names). }
+  InvStepNames: array[INV_GENERATE..INV_DROP] of string =
+    ('GenerateItems', 'ConsumeItem', 'AddPromoItem', 'TriggerItemDrop');
+  { Title of the Workshop item the extended UGC test creates and deletes
+    again. The test runs only when GetWorkshopEULAStatus answers OK (the
+    Workshop is set up for the app, docs/TestSetup.md). }
+  TEST_UGC_TITLE = 'TSteamAPI component test item (deleted again by the test)';
+  { Sub-folder of the settings folder the extended UGC test uploads as the
+    item's content (one small file), removed after the upload. }
+  TEST_UGC_FOLDER = 'WorkshopTest';
+  { The one file in @link(TEST_UGC_FOLDER). }
+  TEST_UGC_FILE = 'readme.txt';
   { Steam Cloud file the RemoteStorage test writes, reads back and deletes. }
   TEST_CLOUD_FILE = 'steamdemo_component_test.txt';
   { Row titles, indexed by the CT_ constants. }
@@ -117,7 +186,9 @@ const
     'TSteamMatchmaking', 'TSteamParties', 'TSteamMusic', 'TSteamHTTP', 'TSteamHTMLSurface',
     'TSteamInventory', 'TSteamVideo', 'TSteamParentalSettings', 'TSteamRemotePlay',
     'TSteamNetworking', 'TSteamNetworkingSockets', 'TSteamNetworkingMessages', 'TSteamNetworkingUtils',
-    'TSteamMatchmakingServers');
+    'TSteamMatchmakingServers', 'TSteamGameServer', 'TSteamGameServerStats', 'TSteamGameServerUtils',
+    'TSteamGameServerNetworking', 'TSteamGameServerNetworkingSockets', 'TSteamGameServerNetworkingMessages',
+    'TSteamGameServerHTTP', 'TSteamGameServerUGC', 'TSteamGameServerInventory');
 
 type
   { State of one component in the test. }
@@ -198,6 +269,24 @@ type
     SteamNetworkingUtils1: TSteamNetworkingUtils;
     { See SteamUtils1. }
     SteamMatchmakingServers1: TSteamMatchmakingServers;
+    { The game server's components (attach when the server starts). }
+    SteamGameServer1: TSteamGameServer;
+    { See SteamGameServer1. }
+    SteamGameServerStats1: TSteamGameServerStats;
+    { See SteamGameServer1. }
+    SteamGSUtils1: TSteamGameServerUtils;
+    { See SteamGameServer1. }
+    SteamGSNetworking1: TSteamGameServerNetworking;
+    { See SteamGameServer1. }
+    SteamGSSockets1: TSteamGameServerNetworkingSockets;
+    { See SteamGameServer1. }
+    SteamGSMessages1: TSteamGameServerNetworkingMessages;
+    { See SteamGameServer1. }
+    SteamGSHTTP1: TSteamGameServerHTTP;
+    { See SteamGameServer1. }
+    SteamGSUGC1: TSteamGameServerUGC;
+    { See SteamGameServer1. }
+    SteamGSInventory1: TSteamGameServerInventory;
     { Backing field of @link(OnLog). }
     FOnLog: TComponentTestLogEvent;
     { Backing field of @link(OnRowChanged). }
@@ -230,6 +319,15 @@ type
     FHTMLInit: Boolean;
     { Inventory result of the Inventory test (k_SteamInventoryResultInvalid = none). }
     FInvResult: SteamInventoryResult_t;
+    { Results of the extended Inventory steps (@link(InvStepNames));
+      destroyed when ready or when the test ends
+      (k_SteamInventoryResultInvalid = none). }
+    FInvSteps: array[INV_GENERATE..INV_DROP] of SteamInventoryResult_t;
+    { Workshop item the extended UGC test created (0 = none); deleted by the
+      test, or by the cleanup when the test ends first. }
+    FUGCItem: PublishedFileId_t;
+    { Content folder the extended UGC test uploaded ('' = none). }
+    FUGCFolder: string;
     { The NetworkingSockets test's socket pair (k_HSteamNetConnection_Invalid = none). }
     FSockConn1, FSockConn2: HSteamNetConnection;
     { The MatchmakingServers test's Internet and LAN lists (@nil = none). }
@@ -250,6 +348,31 @@ type
     FFirstName: string;
     { Players / rules reported by the queries. }
     FPlayerCount, FRuleCount: Integer;
+    { @true when this test started the game server (it logs it on and sets
+      its name / map; a server it found running only gets the test's rule). }
+    FServerStartedByTest: Boolean;
+    { @true while this test counts in @link(DemoGameServerUsers). }
+    FUsingServer: Boolean;
+    { Query port of the game server being tested. }
+    FGSQueryPort: UInt16;
+    { The test's queries of its own server (HSERVERQUERY_INVALID = none). }
+    FGSPingQuery, FGSPlayersQuery, FGSRulesQuery: HServerQuery;
+    { Rules the own-server query reported. }
+    FGSRuleCount: Integer;
+    { @true when @link(TEST_GS_RULE) was among them. }
+    FGSRuleSeen: Boolean;
+    { The user's ticket for the game server (k_HAuthTicketInvalid = none). }
+    FGSTicket: HAuthTicket;
+    { The ticket bytes (FGSTicketSize used). }
+    FGSTicketData: TBytes;
+    { See FGSTicketData. }
+    FGSTicketSize: UInt32;
+    { The server began an auth session for the user (EndAuthSession due). }
+    FGSAuthBegun: Boolean;
+    { The server HTTP test's request (0 = none). }
+    FGSHTTPRequest: HTTPRequestHandle;
+    { The server UGC test's query (k_UGCQueryHandleInvalid = none). }
+    FGSUGCQuery: UGCQueryHandle_t;
     { Read accessor of @link(RowText). }
     function GetRowText(AIndex: Integer): string;
     { Read accessor of @link(Screenshots). }
@@ -268,6 +391,27 @@ type
     function BeginTest(AIndex: Integer; AComponent: TSteamPluginComponent; APlugin: TObject): Boolean;
     { Records a failed synchronous call of component AIndex. }
     procedure ReadFailed(AIndex: Integer; const AWhat: string; E: Exception);
+    { Appends AText to the note of test row AIndex. }
+    procedure AddNote(AIndex: Integer; const AText: string);
+    { Extended Inventory test, started when GetAllItems answered OK:
+      GenerateItems (a Test Gem), AddPromoItem (the Test Token) and
+      TriggerItemDrop; ConsumeItem follows when the generated Gem arrives. }
+    procedure TestInventoryExtended;
+    { Books one extended Inventory step that was just sent; AOK is what the
+      call returned. }
+    procedure InventoryStepSent(AStep: Integer; AOK: Boolean);
+    { Logs the items of an extended step's result and returns them as a
+      short text; AGem receives the instance of the first Test Gem in it
+      (k_SteamItemInstanceIDInvalid = none). }
+    function InventoryItemsText(AHandle: SteamInventoryResult_t; out AGem: SteamItemInstanceID_t): string;
+    { Extended Workshop test, started when GetWorkshopEULAStatus answered
+      OK: CreateItem; the item is uploaded (title, private, content folder)
+      when it exists and deleted after the upload. }
+    procedure TestUGCExtended;
+    { Sends DeleteItem for @code(FUGCItem) (no-op without an item). }
+    procedure DeleteUGCItem;
+    { Removes @code(FUGCFolder) and its file (no-op without one). }
+    procedure RemoveUGCFolder;
     { Registers an awaited callback (not a call result). }
     procedure Expect(AIndex: Integer; const AName: string);
     { Registers an awaited call result; an invalid handle is recorded as missing at once. }
@@ -282,6 +426,9 @@ type
     procedure StopServerRequests(const AWhy: string);
     { Adds S to the MatchmakingServers row. }
     procedure AddServerNote(const S: string);
+    { A query of the Internet server answered: forgets its handle (Steam
+      reuses query numbers) and adds ANote to the row. }
+    procedure ForgetQuery(var AQuery: HServerQuery; const ANote: string);
     { Registers a started server-browser request (AOk) or records it as refused. }
     procedure ServerRequestStarted(const AName, AWhat: string; AOk: Boolean);
     { The Internet list has answered enough: releases it and queries its first server. }
@@ -312,6 +459,35 @@ type
     procedure TestHTMLSurface;
     { TSteamInventory: LoadItemDefinitions + GetAllItems. }
     procedure TestInventory;
+    { Starts the listen server (unless one runs) and every game-server row. }
+    procedure TestGameServers;
+    { TSteamGameServer: LogOnAnonymous; then rules / ping / players of the
+      own server and an auth session (see @link(GSLoggedOn)). }
+    procedure TestGameServer;
+    { TSteamGameServerStats: RequestUserStats once the server is logged on. }
+    procedure TestGSStats;
+    { The server's TSteamGameServerUtils: reads. }
+    procedure TestGSUtils;
+    { The server's TSteamGameServerNetworking: reads. }
+    procedure TestGSNetworking;
+    { The server's TSteamGameServerNetworkingSockets: GetIdentity after log-on. }
+    procedure TestGSSockets;
+    { The server's TSteamGameServerNetworkingMessages: reads. }
+    procedure TestGSMessages;
+    { The server's TSteamGameServerHTTP: one GET. }
+    procedure TestGSHTTP;
+    { The server's TSteamGameServerUGC: a Workshop query after log-on. }
+    procedure TestGSUGC;
+    { The server's TSteamGameServerInventory: LoadItemDefinitions. }
+    procedure TestGSInventory;
+    { The server is logged on: server-browser data, the own-server queries,
+      the auth ticket and the rows that waited for the log-on. }
+    procedure GSLoggedOn;
+    { The log-on failed: the rows waiting for it are answered with that. }
+    procedure GSLogOnFailed(const AWhy: string);
+    { Stops the own-server queries, the auth session and the server's
+      requests; stops the server if the test started it. }
+    procedure GameServerCleanup;
     { TSteamVideo: IsBroadcasting + GetOPFSettings. }
     procedure TestVideo;
     { TSteamParentalSettings: lock and block state (reads only). }
@@ -370,6 +546,15 @@ type
     procedure UGCQueryCompleted(Sender: TObject; const AData: SteamUGCQueryCompleted_t);
     { See UtilsCheckFileSignature. }
     procedure UGCWorkshopEULAStatus(Sender: TObject; const AData: WorkshopEULAStatus_t);
+    { SteamUGC1.OnCreateItemResult (call result 3403): the extended UGC
+      test uploads the new item. }
+    procedure UGCCreateItemResult(Sender: TObject; const AData: CreateItemResult_t);
+    { SteamUGC1.OnSubmitItemUpdateResult (call result 3404): the extended
+      UGC test deletes the item again. }
+    procedure UGCSubmitItemUpdateResult(Sender: TObject; const AData: SubmitItemUpdateResult_t);
+    { SteamUGC1.OnDeleteItemResult (call result 3417): end of the extended
+      UGC test. }
+    procedure UGCDeleteItemResult(Sender: TObject; const AData: DeleteItemResult_t);
     { See UtilsCheckFileSignature. }
     procedure UGCSubscribedListChanged(Sender: TObject; const AData: UserSubscribedItemsListChanged_t);
     { See UtilsCheckFileSignature. }
@@ -382,6 +567,22 @@ type
     procedure HTMLBrowserReady(Sender: TObject; const AData: HTML_BrowserReady_t);
     { See UtilsCheckFileSignature. }
     procedure InventoryResultReady(Sender: TObject; const AData: SteamInventoryResultReady_t);
+    { SteamGameServer1.OnSteamServersConnected (101, server pipe). }
+    procedure GSServersConnected(Sender: TObject; const AData: SteamServersConnected_t);
+    { SteamGameServer1.OnSteamServerConnectFailure (102, server pipe). }
+    procedure GSConnectFailure(Sender: TObject; const AData: SteamServerConnectFailure_t);
+    { SteamGameServer1.OnSteamServersDisconnected (103, server pipe). }
+    procedure GSDisconnected(Sender: TObject; const AData: SteamServersDisconnected_t);
+    { SteamGameServer1.OnGSPolicyResponse (115): VAC status. }
+    procedure GSPolicy(Sender: TObject; const AData: GSPolicyResponse_t);
+    { SteamGameServer1.OnValidateAuthTicketResponse (143, server pipe). }
+    procedure GSAuthValidated(Sender: TObject; const AData: ValidateAuthTicketResponse_t);
+    { SteamGameServerStats1.OnGSStatsReceived (1800). }
+    procedure GSStatsReceived(Sender: TObject; const AData: GSStatsReceived_t);
+    { SteamGSHTTP1.OnHTTPRequestCompleted (2101, server pipe). }
+    procedure GSHTTPCompleted(Sender: TObject; const AData: HTTPRequestCompleted_t);
+    { SteamGSUGC1.OnSteamUGCQueryCompleted (3401, server pipe). }
+    procedure GSUGCQueryCompleted(Sender: TObject; const AData: SteamUGCQueryCompleted_t);
     { See UtilsCheckFileSignature. }
     procedure VideoOPFSettingsResult(Sender: TObject; const AData: GetOPFSettingsResult_t);
     { See UtilsCheckFileSignature. }
@@ -414,7 +615,7 @@ type
     { See UtilsCheckFileSignature. }
     procedure RulesComplete(Sender: TObject; AQuery: HServerQuery);
   public
-    { Creates the 21 components, owned by the test and linked to ASteamAPI. }
+    { Creates the 30 components (21 client + 9 game-server ones), owned by the test and linked to ASteamAPI. }
     constructor Create(AOwner: TComponent; ASteamAPI: TCustomSteamAPI); reintroduce;
     { Runs the test (Steam must be running); a running test is finished first. }
     procedure Start;
@@ -441,6 +642,12 @@ type
     { The test ended (every answer arrived, timed out, or Finish). }
     property OnFinished: TNotifyEvent read FOnFinished write FOnFinished;
   end;
+
+var
+  { How many of the demos' tests use the process's one game server now
+    (the component test and the pair test may share it): the LAST one to
+    finish logs it off and stops it. }
+  DemoGameServerUsers: Integer = 0;
 
 { The OS's usual per-user folder for a demo's settings: Windows
   %APPDATA%\G3DGames\<AApp>, macOS ~/Library/Application Support/G3DGames/<AApp>,
@@ -575,11 +782,18 @@ begin
   SteamAPI1 := ASteamAPI;
   FUGCQuery := k_UGCQueryHandleInvalid;
   FInvResult := k_SteamInventoryResultInvalid;
+  for I := INV_GENERATE to INV_DROP do
+    FInvSteps[I] := k_SteamInventoryResultInvalid;
   FSockConn1 := k_HSteamNetConnection_Invalid;
   FSockConn2 := k_HSteamNetConnection_Invalid;
   FPingQuery := HSERVERQUERY_INVALID;
   FPlayersQuery := HSERVERQUERY_INVALID;
   FRulesQuery := HSERVERQUERY_INVALID;
+  FGSPingQuery := HSERVERQUERY_INVALID;
+  FGSPlayersQuery := HSERVERQUERY_INVALID;
+  FGSRulesQuery := HSERVERQUERY_INVALID;
+  FGSTicket := k_HAuthTicketInvalid;
+  FGSUGCQuery := k_UGCQueryHandleInvalid;
   for I := 0 to CT_COUNT - 1 do
     FRows[I] := 'not run - press Test components (Steam must be started)';
   // Each: create, wire the events, link (SteamAPI last: it attaches the
@@ -625,6 +839,9 @@ begin
   SteamUGC1.Name := 'SteamUGC1';
   SteamUGC1.OnSteamUGCQueryCompleted := UGCQueryCompleted;
   SteamUGC1.OnWorkshopEULAStatus := UGCWorkshopEULAStatus;
+  SteamUGC1.OnCreateItemResult := UGCCreateItemResult;
+  SteamUGC1.OnSubmitItemUpdateResult := UGCSubmitItemUpdateResult;
+  SteamUGC1.OnDeleteItemResult := UGCDeleteItemResult;
   SteamUGC1.OnUserSubscribedItemsListChanged := UGCSubscribedListChanged;
   SteamUGC1.OnItemInstalled := UGCItemInstalled;
   SteamUGC1.SteamAPI := ASteamAPI;
@@ -688,6 +905,42 @@ begin
   SteamMatchmakingServers1.OnRulesFailed := RulesFailed;
   SteamMatchmakingServers1.OnRulesComplete := RulesComplete;
   SteamMatchmakingServers1.SteamAPI := ASteamAPI;
+  // The game server's components: they attach when a game server starts
+  SteamGameServer1 := TSteamGameServer.Create(Self);
+  SteamGameServer1.Name := 'SteamGameServer1';
+  SteamGameServer1.OnSteamServersConnected := GSServersConnected;
+  SteamGameServer1.OnSteamServerConnectFailure := GSConnectFailure;
+  SteamGameServer1.OnSteamServersDisconnected := GSDisconnected;
+  SteamGameServer1.OnGSPolicyResponse := GSPolicy;
+  SteamGameServer1.OnValidateAuthTicketResponse := GSAuthValidated;
+  SteamGameServer1.SteamAPI := ASteamAPI;
+  SteamGameServerStats1 := TSteamGameServerStats.Create(Self);
+  SteamGameServerStats1.Name := 'SteamGameServerStats1';
+  SteamGameServerStats1.OnGSStatsReceived := GSStatsReceived;
+  SteamGameServerStats1.SteamAPI := ASteamAPI;
+  SteamGSUtils1 := TSteamGameServerUtils.Create(Self);
+  SteamGSUtils1.Name := 'SteamGSUtils1';
+  SteamGSUtils1.SteamAPI := ASteamAPI;
+  SteamGSNetworking1 := TSteamGameServerNetworking.Create(Self);
+  SteamGSNetworking1.Name := 'SteamGSNetworking1';
+  SteamGSNetworking1.SteamAPI := ASteamAPI;
+  SteamGSSockets1 := TSteamGameServerNetworkingSockets.Create(Self);
+  SteamGSSockets1.Name := 'SteamGSSockets1';
+  SteamGSSockets1.SteamAPI := ASteamAPI;
+  SteamGSMessages1 := TSteamGameServerNetworkingMessages.Create(Self);
+  SteamGSMessages1.Name := 'SteamGSMessages1';
+  SteamGSMessages1.SteamAPI := ASteamAPI;
+  SteamGSHTTP1 := TSteamGameServerHTTP.Create(Self);
+  SteamGSHTTP1.Name := 'SteamGSHTTP1';
+  SteamGSHTTP1.OnHTTPRequestCompleted := GSHTTPCompleted;
+  SteamGSHTTP1.SteamAPI := ASteamAPI;
+  SteamGSUGC1 := TSteamGameServerUGC.Create(Self);
+  SteamGSUGC1.Name := 'SteamGSUGC1';
+  SteamGSUGC1.OnSteamUGCQueryCompleted := GSUGCQueryCompleted;
+  SteamGSUGC1.SteamAPI := ASteamAPI;
+  SteamGSInventory1 := TSteamGameServerInventory.Create(Self);
+  SteamGSInventory1.Name := 'SteamGSInventory1';
+  SteamGSInventory1.SteamAPI := ASteamAPI;
 end;
 
 function TSteamComponentTest.GetRowText(AIndex: Integer): string;
@@ -852,11 +1105,22 @@ begin
         SteamInventory1.Plugin.DestroyResult(FInvResult);
         AddLog('Test cleanup: inventory result ' + IntToStr(FInvResult) + ' destroyed (never ready)');
       end;
+      if SteamInventory1.Plugin <> nil then
+        for I := INV_GENERATE to INV_DROP do
+          if FInvSteps[I] <> k_SteamInventoryResultInvalid then
+          begin
+            SteamInventory1.Plugin.DestroyResult(FInvSteps[I]);
+            AddLog(Format('Test cleanup: %s result %d destroyed (never ready)', [InvStepNames[I], FInvSteps[I]]));
+          end;
+      if (FUGCItem <> 0) and (SteamUGC1.Plugin <> nil) then
+        AddLog(Format('Test cleanup: Workshop item %s still there, DeleteItem sent (call %s)',
+          [U64Str(FUGCItem), U64Str(SteamUGC1.Plugin.DeleteItem(FUGCItem))]));
       if FHTMLInit and (SteamHTMLSurface1.Plugin <> nil) then
         AddLog('Test cleanup: ISteamHTMLSurface.Shutdown ' +
           BoolToStr(SteamHTMLSurface1.Plugin.Shutdown, True));
       CloseSocketPair('Test cleanup');
       StopServerRequests('Test cleanup');
+      GameServerCleanup;
     except
       on E: Exception do AddLog('Test cleanup failed: ' + E.Message);
     end;
@@ -866,6 +1130,10 @@ begin
   FHTTPRequest := 0;
   FHTMLInit := False;
   FInvResult := k_SteamInventoryResultInvalid;
+  for I := INV_GENERATE to INV_DROP do
+    FInvSteps[I] := k_SteamInventoryResultInvalid;
+  FUGCItem := 0;
+  RemoveUGCFolder;   // no Steam call: also when Steam has gone
   FSockConn1 := k_HSteamNetConnection_Invalid;
   FSockConn2 := k_HSteamNetConnection_Invalid;
   FServerList := nil;
@@ -873,6 +1141,14 @@ begin
   FPingQuery := HSERVERQUERY_INVALID;
   FPlayersQuery := HSERVERQUERY_INVALID;
   FRulesQuery := HSERVERQUERY_INVALID;
+  FGSPingQuery := HSERVERQUERY_INVALID;
+  FGSPlayersQuery := HSERVERQUERY_INVALID;
+  FGSRulesQuery := HSERVERQUERY_INVALID;
+  FGSTicket := k_HAuthTicketInvalid;
+  FGSAuthBegun := False;
+  FGSHTTPRequest := 0;
+  FGSUGCQuery := k_UGCQueryHandleInvalid;
+  FServerStartedByTest := False;
   Passed := 0;
   for I := 0 to CT_COUNT - 1 do
   begin
@@ -938,6 +1214,7 @@ begin
   TestNetworkingMessages;
   TestNetworkingUtils;
   TestMatchmakingServers;
+  TestGameServers;
   CheckTestsDone;
 end;
 
@@ -972,7 +1249,7 @@ begin
     FOnScreenshotRequested(Self);
 end;
 
-{ --- the tests (a port of demos/SteamDemo/src/uMain.pas) --- }
+{ --- the tests --- }
 
 function TSteamComponentTest.BeginTest(AIndex: Integer; AComponent: TSteamPluginComponent; APlugin: TObject): Boolean;
 begin
@@ -989,6 +1266,13 @@ begin
     FTests[AIndex].ReadsOK := False;
     FTests[AIndex].Note := 'plug-in not active';
   end;
+end;
+
+procedure TSteamComponentTest.AddNote(AIndex: Integer; const AText: string);
+begin
+  if FTests[AIndex].Note <> '' then
+    FTests[AIndex].Note := FTests[AIndex].Note + ', ';
+  FTests[AIndex].Note := FTests[AIndex].Note + AText;
 end;
 
 procedure TSteamComponentTest.ReadFailed(AIndex: Integer; const AWhat: string; E: Exception);
@@ -1132,9 +1416,43 @@ begin
 end;
 
 procedure TSteamComponentTest.UserAuthTicketResponse(Sender: TObject; const AData: GetAuthSessionTicketResponse_t);
+var
+  G: TSteamGameServerPlugin;
+  Res: EBeginAuthSessionResult;
+  Me: TSteamID;
 begin
   AddLog(Format('TSteamUser.OnGetAuthSessionTicketResponse: ticket %s, result %s',
     [U64Str(AData.m_hAuthTicket), ResultText(AData.m_eResult)]));
+  // The ticket for our own game server: the server begins a session with it
+  if (FGSTicket <> k_HAuthTicketInvalid) and (AData.m_hAuthTicket = FGSTicket) then
+  begin
+    if not Answered(CT_GAMESERVER, 'GetAuthSessionTicket (for the server)') then
+      Exit;
+    G := SteamGameServer1.Plugin;
+    if (AData.m_eResult <> k_EResultOK) or (G = nil) or (SteamUser1.Plugin = nil) then
+    begin
+      AddNote(CT_GAMESERVER, 'ticket for the server ' + ResultText(AData.m_eResult));
+      CheckTestsDone;
+      Exit;
+    end;
+    try
+      Me := SteamUser1.Plugin.GetSteamID;
+      Res := G.BeginAuthSession(@FGSTicketData[0], Integer(FGSTicketSize), Me);
+      AddLog(Format('Test TSteamGameServer: BeginAuthSession(our ticket, %d bytes, %s) -> %d (0 = OK)',
+        [FGSTicketSize, U64Str(Me.Value), Ord(Res)]));
+      if Res = k_EBeginAuthSessionResultOK then
+      begin
+        FGSAuthBegun := True;
+        Expect(CT_GAMESERVER, 'ValidateAuthTicketResponse');
+      end
+      else
+        AddNote(CT_GAMESERVER, Format('BeginAuthSession %d', [Ord(Res)]));
+    except
+      on E: Exception do ReadFailed(CT_GAMESERVER, 'BeginAuthSession', E);
+    end;
+    CheckTestsDone;
+    Exit;
+  end;
   if (AData.m_hAuthTicket = FAuthTicket) and (FAuthTicket <> k_HAuthTicketInvalid) and
     Answered(CT_USER, 'GetAuthSessionTicket') then
   begin
@@ -1593,11 +1911,168 @@ begin
   else
     AddLog(Format('TSteamUGC.OnWorkshopEULAStatus: result %s, app %d (no EULA data: is the Workshop ' +
       'set up for the app?)', [ResultText(AData.m_eResult), AData.m_nAppID]));
-  if FTests[CT_UGC].Note <> '' then
-    FTests[CT_UGC].Note := FTests[CT_UGC].Note + ', ';
-  FTests[CT_UGC].Note := FTests[CT_UGC].Note + 'EULA status ' + ResultText(AData.m_eResult);
-  if Answered(CT_UGC, 'GetWorkshopEULAStatus') then
+  if not Answered(CT_UGC, 'GetWorkshopEULAStatus') then
+    Exit;
+  AddNote(CT_UGC, 'EULA status ' + ResultText(AData.m_eResult));
+  if AData.m_eResult = k_EResultOK then
+    TestUGCExtended
+  else
+    AddNote(CT_UGC, 'Workshop item test skipped (Workshop not set up? docs/TestSetup.md)');
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.TestUGCExtended;
+var
+  G: TSteamUGCPlugin;
+begin
+  G := SteamUGC1.Plugin;
+  if G = nil then
+    Exit;
+  AddLog('Test TSteamUGC: the Workshop answers - extended test: CreateItem, upload, DeleteItem');
+  try
+    ExpectCall(CT_UGC, 'CreateItem', G.CreateItem(FAppID, k_EWorkshopFileTypeCommunity));
+  except
+    on E: Exception do ReadFailed(CT_UGC, 'CreateItem', E);
+  end;
+end;
+
+procedure TSteamComponentTest.UGCCreateItemResult(Sender: TObject; const AData: CreateItemResult_t);
+var
+  G: TSteamUGCPlugin;
+  Update: UGCUpdateHandle_t;
+  Lines: TStringList;
+  Base: string;
+  OK: Boolean;
+begin
+  AddLog(Format('TSteamUGC.OnCreateItemResult: result %s, item %s, user needs to accept the Workshop ' +
+    'legal agreement %s', [ResultText(AData.m_eResult), U64Str(AData.m_nPublishedFileId),
+    BoolToStr(AData.m_bUserNeedsToAcceptWorkshopLegalAgreement, True)]));
+  if not Answered(CT_UGC, 'CreateItem') then
+  begin
+    // too late (the test timed out or ended): never leave the item behind
+    if (AData.m_eResult = k_EResultOK) and (AData.m_nPublishedFileId <> 0) and
+      (AData.m_nPublishedFileId <> FUGCItem) and (SteamUGC1.Plugin <> nil) then
+      AddLog(Format('Test TSteamUGC: late item %s - DeleteItem sent (call %s)', [U64Str(AData.m_nPublishedFileId),
+        U64Str(SteamUGC1.Plugin.DeleteItem(AData.m_nPublishedFileId))]));
+    Exit;
+  end;
+  AddNote(CT_UGC, 'CreateItem ' + ResultText(AData.m_eResult));
+  if AData.m_bUserNeedsToAcceptWorkshopLegalAgreement then
+    AddNote(CT_UGC, 'legal agreement not accepted (the item stays hidden)');
+  G := SteamUGC1.Plugin;
+  if (AData.m_eResult <> k_EResultOK) or (G = nil) then
+  begin
     CheckTestsDone;
+    Exit;
+  end;
+  FUGCItem := AData.m_nPublishedFileId;
+  try
+    OK := False;
+    Base := DemoSettingsFolder('SteamDemo');
+    if Base = '' then
+    begin
+      AddLog('Test TSteamUGC: no settings folder for the content - not uploaded');
+      AddNote(CT_UGC, 'no settings folder - item not uploaded');
+    end
+    else
+    begin
+      FUGCFolder := ExpandFileName(IncludeTrailingPathDelimiter(Base) + TEST_UGC_FOLDER);
+      ForceDirectories(FUGCFolder);
+      Lines := TStringList.Create;
+      try
+        Lines.Add('TSteamAPI component test upload - the test deletes the item again.');
+        Lines.SaveToFile(IncludeTrailingPathDelimiter(FUGCFolder) + TEST_UGC_FILE);
+      finally
+        Lines.Free;
+      end;
+      Update := G.StartItemUpdate(FAppID, FUGCItem);
+      OK := Update <> k_UGCUpdateHandleInvalid;
+      if OK then
+        AddLog('Test TSteamUGC: StartItemUpdate, update handle ' + U64Str(Update))
+      else
+        AddLog('Test TSteamUGC: StartItemUpdate returned k_UGCUpdateHandleInvalid');
+      if OK then
+      begin
+        OK := G.SetItemTitle(Update, TEST_UGC_TITLE);
+        AddLog('Test TSteamUGC: SetItemTitle ' + BoolToStr(OK, True));
+      end;
+      if OK then
+      begin
+        OK := G.SetItemVisibility(Update, k_ERemoteStoragePublishedFileVisibilityPrivate);
+        AddLog('Test TSteamUGC: SetItemVisibility (private) ' + BoolToStr(OK, True));
+      end;
+      if OK then
+      begin
+        OK := G.SetItemContent(Update, FUGCFolder);
+        AddLog('Test TSteamUGC: SetItemContent (' + FUGCFolder + ') ' + BoolToStr(OK, True));
+      end;
+      if OK then
+        ExpectCall(CT_UGC, 'SubmitItemUpdate', G.SubmitItemUpdate(Update, 'TSteamAPI component test upload'));
+    end;
+    if not OK then
+    begin
+      if Base <> '' then
+        FTests[CT_UGC].ReadsOK := False;
+      RemoveUGCFolder;
+      DeleteUGCItem;
+    end;
+  except
+    on E: Exception do
+    begin
+      ReadFailed(CT_UGC, 'item update', E);
+      RemoveUGCFolder;
+      DeleteUGCItem;
+    end;
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.UGCSubmitItemUpdateResult(Sender: TObject; const AData: SubmitItemUpdateResult_t);
+begin
+  AddLog(Format('TSteamUGC.OnSubmitItemUpdateResult: result %s, item %s, user needs to accept the Workshop ' +
+    'legal agreement %s', [ResultText(AData.m_eResult), U64Str(AData.m_nPublishedFileId),
+    BoolToStr(AData.m_bUserNeedsToAcceptWorkshopLegalAgreement, True)]));
+  if not Answered(CT_UGC, 'SubmitItemUpdate') then
+    Exit;
+  AddNote(CT_UGC, 'SubmitItemUpdate ' + ResultText(AData.m_eResult));
+  RemoveUGCFolder;
+  DeleteUGCItem;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.UGCDeleteItemResult(Sender: TObject; const AData: DeleteItemResult_t);
+begin
+  AddLog(Format('TSteamUGC.OnDeleteItemResult: result %s, item %s',
+    [ResultText(AData.m_eResult), U64Str(AData.m_nPublishedFileId)]));
+  if not Answered(CT_UGC, 'DeleteItem') then
+    Exit;
+  AddNote(CT_UGC, 'DeleteItem ' + ResultText(AData.m_eResult));
+  if AData.m_eResult = k_EResultOK then
+    FUGCItem := 0;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.DeleteUGCItem;
+begin
+  if (FUGCItem = 0) or (SteamUGC1.Plugin = nil) then
+    Exit;
+  try
+    ExpectCall(CT_UGC, 'DeleteItem', SteamUGC1.Plugin.DeleteItem(FUGCItem));
+  except
+    on E: Exception do ReadFailed(CT_UGC, 'DeleteItem', E);
+  end;
+end;
+
+procedure TSteamComponentTest.RemoveUGCFolder;
+var
+  F: string;
+begin
+  if FUGCFolder = '' then
+    Exit;
+  F := IncludeTrailingPathDelimiter(FUGCFolder) + TEST_UGC_FILE;
+  AddLog(Format('Test TSteamUGC: content folder removed (file %s, folder %s)',
+    [BoolToStr(not FileExists(F) or DeleteFile(F), True), BoolToStr(RemoveDir(FUGCFolder), True)]));
+  FUGCFolder := '';
 end;
 
 procedure TSteamComponentTest.UGCSubscribedListChanged(Sender: TObject; const AData: UserSubscribedItemsListChanged_t);
@@ -1817,26 +2292,140 @@ procedure TSteamComponentTest.InventoryResultReady(Sender: TObject; const AData:
 var
   I: TSteamInventoryPlugin;
   Count: UInt32;
+  Step: Integer;
+  Gem: SteamItemInstanceID_t;
+  Text: string;
 begin
   AddLog(Format('TSteamInventory.OnSteamInventoryResultReady: result %d, %s',
     [AData.m_handle, ResultText(AData.m_result)]));
-  if (AData.m_handle <> FInvResult) or not Answered(CT_INVENTORY, 'GetAllItems') then
-    Exit;
-  FTests[CT_INVENTORY].Note := 'result ' + ResultText(AData.m_result);
   I := SteamInventory1.Plugin;
-  if I <> nil then
-  try
-    // nil array: only the item count
-    Count := 0;
-    if I.GetResultItems(FInvResult, nil, Count) then
-      AddLog(Format('Test TSteamInventory: %d items', [Count]));
-    I.DestroyResult(FInvResult);
-    AddLog('Test TSteamInventory: result destroyed');
-    FInvResult := k_SteamInventoryResultInvalid;
-  except
-    on E: Exception do ReadFailed(CT_INVENTORY, 'GetResultItems / DestroyResult', E);
+  if (FInvResult <> k_SteamInventoryResultInvalid) and (AData.m_handle = FInvResult) then
+  begin
+    if not Answered(CT_INVENTORY, 'GetAllItems') then
+      Exit;
+    AddNote(CT_INVENTORY, 'result ' + ResultText(AData.m_result));
+    if I <> nil then
+    try
+      // nil array: only the item count
+      Count := 0;
+      if I.GetResultItems(FInvResult, nil, Count) then
+        AddLog(Format('Test TSteamInventory: %d items', [Count]));
+      I.DestroyResult(FInvResult);
+      AddLog('Test TSteamInventory: result destroyed');
+      FInvResult := k_SteamInventoryResultInvalid;
+    except
+      on E: Exception do ReadFailed(CT_INVENTORY, 'GetResultItems / DestroyResult', E);
+    end;
+    // Fail while the Inventory Service is off for the app (every run so far)
+    if AData.m_result = k_EResultOK then
+      TestInventoryExtended
+    else
+      AddNote(CT_INVENTORY, 'item test skipped (Inventory Service off? docs/TestSetup.md)');
+    CheckTestsDone;
+    Exit;
   end;
-  CheckTestsDone;
+  for Step := INV_GENERATE to INV_DROP do
+    if (FInvSteps[Step] <> k_SteamInventoryResultInvalid) and (AData.m_handle = FInvSteps[Step]) and
+      ((I = nil) or (I.GetResultStatus(AData.m_handle) <> k_EResultPending)) then
+    begin   // (pending = a repeat for an older result whose number Steam reused)
+      if not Answered(CT_INVENTORY, InvStepNames[Step]) then
+        Exit;
+      Text := InvStepNames[Step] + ' ' + ResultText(AData.m_result);
+      Gem := k_SteamItemInstanceIDInvalid;
+      if I <> nil then
+      try
+        if AData.m_result = k_EResultOK then
+          Text := Text + ' (' + InventoryItemsText(AData.m_handle, Gem) + ')';
+        I.DestroyResult(AData.m_handle);
+      except
+        on E: Exception do ReadFailed(CT_INVENTORY, InvStepNames[Step] + ' result', E);
+      end;
+      FInvSteps[Step] := k_SteamInventoryResultInvalid;
+      AddNote(CT_INVENTORY, Text);
+      if (Step = INV_GENERATE) and (I <> nil) then
+      begin
+        if Gem = k_SteamItemInstanceIDInvalid then
+          AddNote(CT_INVENTORY, 'ConsumeItem skipped (no Test Gem in the result)')
+        else
+        try
+          InventoryStepSent(INV_CONSUME, I.ConsumeItem(FInvSteps[INV_CONSUME], Gem, 1));
+        except
+          on E: Exception do ReadFailed(CT_INVENTORY, 'ConsumeItem', E);
+        end;
+      end;
+      CheckTestsDone;
+      Exit;
+    end;
+end;
+
+procedure TSteamComponentTest.TestInventoryExtended;
+var
+  I: TSteamInventoryPlugin;
+  Def: SteamItemDef_t;
+  Qty: UInt32;
+begin
+  I := SteamInventory1.Plugin;
+  if I = nil then
+    Exit;
+  AddLog('Test TSteamInventory: the Inventory Service answers - extended test with the item ' +
+    'definitions of docs/test-setup/itemdefs_2275430.json');
+  try
+    Def := TEST_ITEM_GEM;
+    Qty := 1;
+    InventoryStepSent(INV_GENERATE, I.GenerateItems(FInvSteps[INV_GENERATE], @Def, @Qty, 1));
+    InventoryStepSent(INV_PROMO, I.AddPromoItem(FInvSteps[INV_PROMO], TEST_ITEM_PROMO));
+    InventoryStepSent(INV_DROP, I.TriggerItemDrop(FInvSteps[INV_DROP], TEST_ITEM_DROP));
+  except
+    on E: Exception do ReadFailed(CT_INVENTORY, 'extended Inventory calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.InventoryStepSent(AStep: Integer; AOK: Boolean);
+begin
+  if AOK then
+  begin
+    AddLog(Format('Test TSteamInventory: %s, result handle %d - waiting for callback 4700',
+      [InvStepNames[AStep], FInvSteps[AStep]]));
+    Expect(CT_INVENTORY, InvStepNames[AStep]);
+  end
+  else
+  begin
+    FInvSteps[AStep] := k_SteamInventoryResultInvalid;
+    Inc(FTests[CT_INVENTORY].Sent);
+    if FTests[CT_INVENTORY].Missing <> '' then
+      FTests[CT_INVENTORY].Missing := FTests[CT_INVENTORY].Missing + ', ';
+    FTests[CT_INVENTORY].Missing := FTests[CT_INVENTORY].Missing + InvStepNames[AStep] + ' (returned False)';
+    AddLog('Test TSteamInventory: ' + InvStepNames[AStep] + ' returned False');
+  end;
+end;
+
+function TSteamComponentTest.InventoryItemsText(AHandle: SteamInventoryResult_t; out AGem: SteamItemInstanceID_t): string;
+var
+  I: TSteamInventoryPlugin;
+  Items: array of SteamItemDetails_t;
+  Count: UInt32;
+  K: Integer;
+begin
+  AGem := k_SteamItemInstanceIDInvalid;
+  I := SteamInventory1.Plugin;
+  Count := 0;
+  if (I = nil) or not I.GetResultItems(AHandle, nil, Count) then
+    Exit('GetResultItems False');
+  Result := Format('%d items', [Count]);
+  if Count = 0 then
+    Exit;
+  SetLength(Items, Count);
+  if not I.GetResultItems(AHandle, @Items[0], Count) then
+    Exit(Result + ', GetResultItems False');
+  for K := 0 to Integer(Count) - 1 do
+  begin
+    // m_unFlags: 1 = no trade, $100 = removed (consumed), $200 = consumed
+    AddLog(Format('Test TSteamInventory: item %d: instance %s, definition %d, quantity %d, flags $%x',
+      [K, U64Str(Items[K].m_itemId), Items[K].m_iDefinition, Items[K].m_unQuantity, Items[K].m_unFlags]));
+    if (Items[K].m_iDefinition = TEST_ITEM_GEM) and (Items[K].m_unQuantity > 0) and
+      (AGem = k_SteamItemInstanceIDInvalid) then
+      AGem := Items[K].m_itemId;
+  end;
 end;
 
 procedure TSteamComponentTest.TestVideo;
@@ -2145,6 +2734,12 @@ begin
   Result := Format('%d.%d.%d.%d', [(AIP shr 24) and 255, (AIP shr 16) and 255, (AIP shr 8) and 255, AIP and 255]);
 end;
 
+procedure TSteamComponentTest.ForgetQuery(var AQuery: HServerQuery; const ANote: string);
+begin
+  AQuery := HSERVERQUERY_INVALID;
+  AddServerNote(ANote);
+end;
+
 procedure TSteamComponentTest.AddServerNote(const S: string);
 begin
   if FTests[CT_SERVERS].Note <> '' then
@@ -2306,21 +2901,44 @@ procedure TSteamComponentTest.PingResponded(Sender: TObject; AQuery: HServerQuer
 begin
   AddLog(Format('TSteamMatchmakingServers.OnPingResponded: query %d, "%s", %d ms',
     [AQuery, SteamText(@AServer.m_szServerName[0]), AServer.m_nPing]));
-  if (AQuery = FPingQuery) and Answered(CT_SERVERS, 'Ping') then
-    AddServerNote(Format('ping %d ms', [AServer.m_nPing]));
+  if (AQuery = FGSPingQuery) and (FGSPingQuery <> HSERVERQUERY_INVALID) and
+    Answered(CT_GAMESERVER, 'Ping (own server)') then
+  begin
+    FGSPingQuery := HSERVERQUERY_INVALID;
+    AddNote(CT_GAMESERVER, Format('own server: ping %d ms, "%s", %d/%d players',
+      [AServer.m_nPing, SteamText(@AServer.m_szServerName[0]), AServer.m_nPlayers, AServer.m_nMaxPlayers]));
+    CheckTestsDone;
+    Exit;
+  end;
+  if (AQuery = FPingQuery) and (FPingQuery <> HSERVERQUERY_INVALID) and Answered(CT_SERVERS, 'Ping') then
+    ForgetQuery(FPingQuery, Format('ping %d ms', [AServer.m_nPing]));
 end;
 
 procedure TSteamComponentTest.PingFailed(Sender: TObject; AQuery: HServerQuery);
 begin
   AddLog(Format('TSteamMatchmakingServers.OnPingFailed: query %d', [AQuery]));
-  if (AQuery = FPingQuery) and Answered(CT_SERVERS, 'Ping') then
-    AddServerNote('ping: no answer from the server');
+  if (AQuery = FGSPingQuery) and (FGSPingQuery <> HSERVERQUERY_INVALID) and
+    Answered(CT_GAMESERVER, 'Ping (own server)') then
+  begin
+    FGSPingQuery := HSERVERQUERY_INVALID;
+    AddNote(CT_GAMESERVER, 'own server: ping FAILED');
+    FTests[CT_GAMESERVER].ReadsOK := False;
+    CheckTestsDone;
+    Exit;
+  end;
+  if (AQuery = FPingQuery) and (FPingQuery <> HSERVERQUERY_INVALID) and Answered(CT_SERVERS, 'Ping') then
+    ForgetQuery(FPingQuery, 'ping: no answer from the server');
 end;
 
 procedure TSteamComponentTest.ServerPlayer(Sender: TObject; AQuery: HServerQuery; const AName: string;
   AScore: Integer; ATimePlayed: Single);
 begin
-  if AQuery <> FPlayersQuery then
+  if (AQuery = FGSPlayersQuery) and (FGSPlayersQuery <> HSERVERQUERY_INVALID) then
+  begin
+    AddLog(Format('TSteamMatchmakingServers.OnPlayer (own server): "%s"', [AName]));
+    Exit;
+  end;
+  if (AQuery <> FPlayersQuery) or (FPlayersQuery = HSERVERQUERY_INVALID) then
     Exit;
   Inc(FPlayerCount);
   if FPlayerCount <= 3 then
@@ -2331,20 +2949,46 @@ end;
 procedure TSteamComponentTest.PlayersFailed(Sender: TObject; AQuery: HServerQuery);
 begin
   AddLog(Format('TSteamMatchmakingServers.OnPlayersFailed: query %d', [AQuery]));
-  if (AQuery = FPlayersQuery) and Answered(CT_SERVERS, 'Players') then
-    AddServerNote('players: no answer from the server');
+  if (AQuery = FGSPlayersQuery) and (FGSPlayersQuery <> HSERVERQUERY_INVALID) and
+    Answered(CT_GAMESERVER, 'Players (own server)') then
+  begin
+    FGSPlayersQuery := HSERVERQUERY_INVALID;
+    AddNote(CT_GAMESERVER, 'own server: players FAILED');
+    FTests[CT_GAMESERVER].ReadsOK := False;
+    CheckTestsDone;
+    Exit;
+  end;
+  if (AQuery = FPlayersQuery) and (FPlayersQuery <> HSERVERQUERY_INVALID) and Answered(CT_SERVERS, 'Players') then
+    ForgetQuery(FPlayersQuery, 'players: no answer from the server');
 end;
 
 procedure TSteamComponentTest.PlayersComplete(Sender: TObject; AQuery: HServerQuery);
 begin
   AddLog(Format('TSteamMatchmakingServers.OnPlayersComplete: query %d, %d players', [AQuery, FPlayerCount]));
-  if (AQuery = FPlayersQuery) and Answered(CT_SERVERS, 'Players') then
-    AddServerNote(Format('%d players', [FPlayerCount]));
+  if (AQuery = FGSPlayersQuery) and (FGSPlayersQuery <> HSERVERQUERY_INVALID) and
+    Answered(CT_GAMESERVER, 'Players (own server)') then
+  begin
+    FGSPlayersQuery := HSERVERQUERY_INVALID;
+    AddNote(CT_GAMESERVER, 'own server: players query complete (0 players expected)');
+    CheckTestsDone;
+    Exit;
+  end;
+  if (AQuery = FPlayersQuery) and (FPlayersQuery <> HSERVERQUERY_INVALID) and Answered(CT_SERVERS, 'Players') then
+    ForgetQuery(FPlayersQuery, Format('%d players', [FPlayerCount]));
 end;
 
 procedure TSteamComponentTest.ServerRule(Sender: TObject; AQuery: HServerQuery; const ARule, AValue: string);
 begin
-  if AQuery <> FRulesQuery then
+  if (AQuery = FGSRulesQuery) and (FGSRulesQuery <> HSERVERQUERY_INVALID) then
+  begin
+    // RulesResponded of the response object - never seen from a CS2 server
+    Inc(FGSRuleCount);
+    AddLog(Format('TSteamMatchmakingServers.OnRule (own server): %s = "%s"', [ARule, AValue]));
+    if (ARule = TEST_GS_RULE) and (AValue = '1') then
+      FGSRuleSeen := True;
+    Exit;
+  end;
+  if (AQuery <> FRulesQuery) or (FRulesQuery = HSERVERQUERY_INVALID) then
     Exit;
   Inc(FRuleCount);
   if FRuleCount <= 3 then
@@ -2354,15 +2998,38 @@ end;
 procedure TSteamComponentTest.RulesFailed(Sender: TObject; AQuery: HServerQuery);
 begin
   AddLog(Format('TSteamMatchmakingServers.OnRulesFailed: query %d', [AQuery]));
-  if (AQuery = FRulesQuery) and Answered(CT_SERVERS, 'Rules') then
-    AddServerNote('rules: no answer from the server');
+  if (AQuery = FGSRulesQuery) and (FGSRulesQuery <> HSERVERQUERY_INVALID) and
+    Answered(CT_GAMESERVER, 'Rules (own server)') then
+  begin
+    FGSRulesQuery := HSERVERQUERY_INVALID;
+    AddNote(CT_GAMESERVER, 'own server: rules FAILED');
+    FTests[CT_GAMESERVER].ReadsOK := False;
+    CheckTestsDone;
+    Exit;
+  end;
+  if (AQuery = FRulesQuery) and (FRulesQuery <> HSERVERQUERY_INVALID) and Answered(CT_SERVERS, 'Rules') then
+    ForgetQuery(FRulesQuery, 'rules: no answer from the server');
 end;
 
 procedure TSteamComponentTest.RulesComplete(Sender: TObject; AQuery: HServerQuery);
 begin
   AddLog(Format('TSteamMatchmakingServers.OnRulesComplete: query %d, %d rules', [AQuery, FRuleCount]));
-  if (AQuery = FRulesQuery) and Answered(CT_SERVERS, 'Rules') then
-    AddServerNote(Format('%d rules', [FRuleCount]));
+  if (AQuery = FGSRulesQuery) and (FGSRulesQuery <> HSERVERQUERY_INVALID) and
+    Answered(CT_GAMESERVER, 'Rules (own server)') then
+  begin
+    FGSRulesQuery := HSERVERQUERY_INVALID;
+    if FGSRuleSeen then
+      AddNote(CT_GAMESERVER, Format('own server: %d rules, %s = 1 read back', [FGSRuleCount, TEST_GS_RULE]))
+    else
+    begin
+      AddNote(CT_GAMESERVER, Format('own server: %d rules, %s NOT among them', [FGSRuleCount, TEST_GS_RULE]));
+      FTests[CT_GAMESERVER].ReadsOK := False;
+    end;
+    CheckTestsDone;
+    Exit;
+  end;
+  if (AQuery = FRulesQuery) and (FRulesQuery <> HSERVERQUERY_INVALID) and Answered(CT_SERVERS, 'Rules') then
+    ForgetQuery(FRulesQuery, Format('%d rules', [FRuleCount]));
 end;
 
 procedure TSteamComponentTest.StopServerRequests(const AWhy: string);
@@ -2395,6 +3062,524 @@ begin
   FPingQuery := HSERVERQUERY_INVALID;
   FPlayersQuery := HSERVERQUERY_INVALID;
   FRulesQuery := HSERVERQUERY_INVALID;
+end;
+
+{ --- Game server (a listen server in this process) --- }
+
+procedure TSteamComponentTest.TestGameServers;
+var
+  OldGame, OldQuery: Word;
+begin
+  FServerStartedByTest := False;
+  FUsingServer := False;
+  if SteamAPI1.IsGameServerRunning then
+    AddLog(Format('Test game server: a game server runs already (query port %d, %d other test(s) using it) - ' +
+      'tested as it is', [SteamAPI1.Steam.GameServerQueryPort, DemoGameServerUsers]))
+  else
+  begin
+    // the test's ports for this start only: the form's settings stay
+    OldGame := SteamAPI1.GameServerGamePort;
+    OldQuery := SteamAPI1.GameServerQueryPort;
+    SteamAPI1.GameServerGamePort := TEST_GS_GAME_PORT;
+    SteamAPI1.GameServerQueryPort := TEST_GS_QUERY_PORT;
+    try
+      if SteamAPI1.StartGameServer then
+      begin
+        FServerStartedByTest := True;
+        AddLog(Format('Test game server: listen server started (game port %d, query port %d, version %s)',
+          [TEST_GS_GAME_PORT, TEST_GS_QUERY_PORT, SteamAPI1.GameServerVersion]));
+      end
+      else
+        AddLog('Test game server: StartGameServer FAILED: ' + SteamAPI1.Steam.LastError);
+    finally
+      SteamAPI1.GameServerGamePort := OldGame;
+      SteamAPI1.GameServerQueryPort := OldQuery;
+    end;
+  end;
+  if SteamAPI1.IsGameServerRunning then
+  begin
+    FUsingServer := True;
+    Inc(DemoGameServerUsers);
+  end;
+  FGSQueryPort := SteamAPI1.Steam.GameServerQueryPort;   // the port it runs on
+  // TestGameServer LAST: when the server is logged on already it answers
+  // at once, and the rows below must have registered their 'log-on' first
+  TestGSStats;
+  TestGSUtils;
+  TestGSNetworking;
+  TestGSSockets;
+  TestGSMessages;
+  TestGSHTTP;
+  TestGSUGC;
+  TestGSInventory;
+  TestGameServer;
+end;
+
+procedure TSteamComponentTest.TestGameServer;
+var
+  G: TSteamGameServerPlugin;
+begin
+  G := SteamGameServer1.Plugin;
+  if not BeginTest(CT_GAMESERVER, SteamGameServer1, G) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamGameServer: logged on %s, secure %s, SteamID %s',
+      [BoolToStr(G.BLoggedOn, True), BoolToStr(G.BSecure, True), U64Str(G.GetSteamID.Value)]));
+    if G.BLoggedOn then
+      GSLoggedOn
+    else if not FServerStartedByTest then
+    begin
+      // another test's server whose log-on is still on its way: wait for 101
+      AddLog('Test TSteamGameServer: the server''s log-on is under way - waiting for 101');
+      Expect(CT_GAMESERVER, 'LogOnAnonymous');
+    end
+    else
+    begin
+      G.SetModDir('tsteamapi');
+      G.SetProduct('TSteamAPI');
+      G.SetGameDescription('TSteamAPI component test');
+      G.SetDedicatedServer(False);
+      G.LogOnAnonymous;
+      AddLog('Test TSteamGameServer: LogOnAnonymous - waiting for SteamServersConnected_t (101) on the ' +
+        'SERVER''s pipe');
+      Expect(CT_GAMESERVER, 'LogOnAnonymous');
+    end;
+  except
+    on E: Exception do ReadFailed(CT_GAMESERVER, 'log-on calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestGSStats;
+begin
+  if not BeginTest(CT_GSSTATS, SteamGameServerStats1, SteamGameServerStats1.Plugin) then
+    Exit;
+  Expect(CT_GSSTATS, 'log-on');   // RequestUserStats needs a logged-on server
+end;
+
+procedure TSteamComponentTest.TestGSUtils;
+var
+  U: TSteamUtilsPlugin;
+begin
+  U := SteamGSUtils1.Plugin;
+  if not BeginTest(CT_GSUTILS, SteamGSUtils1, U) then
+    Exit;
+  try
+    AddLog(Format('Test TSteamGameServerUtils: app %d (client %d), universe %d, server time %s',
+      [U.GetAppID, FAppID, Ord(U.GetConnectedUniverse),
+       FormatDateTime('yyyy-mm-dd hh:nn:ss', UnixUTC(Int64(U.GetServerRealTime)))]));
+    if U.GetAppID <> FAppID then
+    begin
+      FTests[CT_GSUTILS].ReadsOK := False;
+      AddNote(CT_GSUTILS, 'server app id differs from the client''s');
+    end
+    else
+      AddNote(CT_GSUTILS, 'reads only; app id = the client''s');
+  except
+    on E: Exception do ReadFailed(CT_GSUTILS, 'reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestGSNetworking;
+var
+  N: TSteamNetworkingPlugin;
+  Size: UInt32;
+begin
+  N := SteamGSNetworking1.Plugin;
+  if not BeginTest(CT_GSNETWORKING, SteamGSNetworking1, N) then
+    Exit;
+  try
+    Size := 0;
+    AddLog('Test TSteamGameServerNetworking: P2P packet waiting on channel 0 ' +
+      BoolToStr(N.IsP2PPacketAvailable(Size, 0), True));
+    AddNote(CT_GSNETWORKING, 'reads only');
+  except
+    on E: Exception do ReadFailed(CT_GSNETWORKING, 'reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestGSSockets;
+begin
+  if not BeginTest(CT_GSSOCKETS, SteamGSSockets1, SteamGSSockets1.Plugin) then
+    Exit;
+  Expect(CT_GSSOCKETS, 'log-on');   // the server's identity is known after it
+end;
+
+procedure TSteamComponentTest.TestGSMessages;
+var
+  M: TSteamNetworkingMessagesPlugin;
+  Msgs: array[0..3] of PSteamNetworkingMessage_t;
+  Count, I: Integer;
+begin
+  M := SteamGSMessages1.Plugin;
+  if not BeginTest(CT_GSMESSAGES, SteamGSMessages1, M) then
+    Exit;
+  try
+    FillChar(Msgs, SizeOf(Msgs), 0);
+    Count := M.ReceiveMessages(0, Msgs);
+    for I := 0 to Count - 1 do
+      M.ReleaseMessage(Msgs[I]);
+    AddLog(Format('Test TSteamGameServerNetworkingMessages: %d messages waiting on channel 0', [Count]));
+    AddNote(CT_GSMESSAGES, 'reads only');
+  except
+    on E: Exception do ReadFailed(CT_GSMESSAGES, 'reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestGSHTTP;
+var
+  H: TSteamHTTPPlugin;
+  Call: SteamAPICall_t;
+begin
+  H := SteamGSHTTP1.Plugin;
+  if not BeginTest(CT_GSHTTP, SteamGSHTTP1, H) then
+    Exit;
+  try
+    FGSHTTPRequest := H.CreateHTTPRequest(k_EHTTPMethodGET, TEST_HTTP_URL);
+    if FGSHTTPRequest = 0 then
+    begin
+      FTests[CT_GSHTTP].ReadsOK := False;
+      AddNote(CT_GSHTTP, 'CreateHTTPRequest returned 0');
+      Exit;
+    end;
+    Call := k_uAPICallInvalid;
+    if not H.SendHTTPRequest(FGSHTTPRequest, Call) then
+      AddLog('Test TSteamGameServerHTTP: SendHTTPRequest returned False');
+    AddLog('Test TSteamGameServerHTTP: GET ' + TEST_HTTP_URL + ', request ' + U64Str(FGSHTTPRequest));
+    ExpectCall(CT_GSHTTP, 'SendHTTPRequest', Call);
+  except
+    on E: Exception do ReadFailed(CT_GSHTTP, 'HTTP calls', E);
+  end;
+end;
+
+procedure TSteamComponentTest.TestGSUGC;
+begin
+  if not BeginTest(CT_GSUGC, SteamGSUGC1, SteamGSUGC1.Plugin) then
+    Exit;
+  Expect(CT_GSUGC, 'log-on');   // the query is sent once the server is logged on
+end;
+
+procedure TSteamComponentTest.TestGSInventory;
+var
+  I: TSteamInventoryPlugin;
+begin
+  I := SteamGSInventory1.Plugin;
+  if not BeginTest(CT_GSINVENTORY, SteamGSInventory1, I) then
+    Exit;
+  try
+    AddLog('Test TSteamGameServerInventory: LoadItemDefinitions ' + BoolToStr(I.LoadItemDefinitions, True));
+    AddNote(CT_GSINVENTORY, 'reads only');
+  except
+    on E: Exception do ReadFailed(CT_GSINVENTORY, 'reads', E);
+  end;
+end;
+
+procedure TSteamComponentTest.GSServersConnected(Sender: TObject; const AData: SteamServersConnected_t);
+begin
+  AddLog('TSteamGameServer.OnSteamServersConnected: the game server is logged on (server pipe)');
+  if Answered(CT_GAMESERVER, 'LogOnAnonymous') then
+  begin
+    AddNote(CT_GAMESERVER, 'logged on (anonymous)');
+    GSLoggedOn;
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.GSConnectFailure(Sender: TObject; const AData: SteamServerConnectFailure_t);
+begin
+  AddLog(Format('TSteamGameServer.OnSteamServerConnectFailure: result %s, still retrying %s',
+    [ResultText(AData.m_eResult), BoolToStr(AData.m_bStillRetrying, True)]));
+  if AData.m_bStillRetrying then
+    Exit;   // Steam keeps trying: wait for 101
+  if Answered(CT_GAMESERVER, 'LogOnAnonymous') then
+  begin
+    AddNote(CT_GAMESERVER, 'log-on FAILED: ' + ResultText(AData.m_eResult));
+    GSLogOnFailed('server log-on failed');
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.GSDisconnected(Sender: TObject; const AData: SteamServersDisconnected_t);
+begin
+  AddLog('TSteamGameServer.OnSteamServersDisconnected: result ' + ResultText(AData.m_eResult));
+end;
+
+procedure TSteamComponentTest.GSPolicy(Sender: TObject; const AData: GSPolicyResponse_t);
+begin
+  AddLog(Format('TSteamGameServer.OnGSPolicyResponse: secure (VAC) %d', [AData.m_bSecure]));
+end;
+
+procedure TSteamComponentTest.GSLoggedOn;
+var
+  G: TSteamGameServerPlugin;
+  M: TSteamMatchmakingServers;
+  Ident: SteamNetworkingIdentity;
+  ServerID, Me: TSteamID;
+  IP: UInt32;
+  Call: SteamAPICall_t;
+begin
+  G := SteamGameServer1.Plugin;
+  if G = nil then
+  begin
+    GSLogOnFailed('the game server plug-in is gone');
+    Exit;
+  end;
+  try
+    // What the server browser shows - on a server another test started
+    // only the test's own rule
+    if FServerStartedByTest then
+    begin
+      G.SetServerName('TSteamAPI test server');
+      G.SetMapName('test_map');
+      G.SetMaxPlayerCount(4);
+      G.SetKeyValue('tsapi_kind', 'component test');
+      G.SetAdvertiseServerActive(True);
+    end;
+    G.SetKeyValue(TEST_GS_RULE, '1');
+    ServerID := G.GetSteamID;
+    IP := G.PublicIPv4;
+    AddLog(Format('Test TSteamGameServer: SteamID %s, secure %s, public IP %d.%d.%d.%d (GetPublicIP); name, map, ' +
+      '4 players, rules %s = 1 and tsapi_kind set, advertised', [U64Str(ServerID.Value), BoolToStr(G.BSecure, True),
+      (IP shr 24) and $FF, (IP shr 16) and $FF, (IP shr 8) and $FF, IP and $FF, TEST_GS_RULE]));
+    // Our own server through the server browser (127.0.0.1, its query port)
+    M := SteamMatchmakingServers1;
+    if M.Plugin <> nil then
+    begin
+      FGSRuleCount := 0;
+      FGSRuleSeen := False;
+      FGSRulesQuery := M.StartServerRules(TEST_GS_LOCALHOST, FGSQueryPort);
+      FGSPingQuery := M.StartPing(TEST_GS_LOCALHOST, FGSQueryPort);
+      FGSPlayersQuery := M.StartPlayerDetails(TEST_GS_LOCALHOST, FGSQueryPort);
+      AddLog(Format('Test TSteamGameServer: own server queried at 127.0.0.1:%d - rules %d, ping %d, players %d',
+        [FGSQueryPort, FGSRulesQuery, FGSPingQuery, FGSPlayersQuery]));
+      if FGSRulesQuery <> HSERVERQUERY_INVALID then
+        Expect(CT_GAMESERVER, 'Rules (own server)');
+      if FGSPingQuery <> HSERVERQUERY_INVALID then
+        Expect(CT_GAMESERVER, 'Ping (own server)');
+      if FGSPlayersQuery <> HSERVERQUERY_INVALID then
+        Expect(CT_GAMESERVER, 'Players (own server)');
+      if (FGSRulesQuery = HSERVERQUERY_INVALID) or (FGSPingQuery = HSERVERQUERY_INVALID) or
+        (FGSPlayersQuery = HSERVERQUERY_INVALID) then
+      begin
+        FTests[CT_GAMESERVER].ReadsOK := False;
+        AddNote(CT_GAMESERVER, 'a server-browser query of the own server was refused (invalid handle)');
+      end;
+    end;
+    // Auth: the logged-on user's ticket for this server's identity
+    if SteamUser1.Plugin <> nil then
+    begin
+      Me := SteamUser1.Plugin.GetSteamID;
+      FillChar(Ident, SizeOf(Ident), 0);
+      Ident.m_eType := k_ESteamNetworkingIdentityType_SteamID;
+      Ident.m_cbSize := 8;
+      Ident.m_steamID64 := ServerID.Value;
+      SetLength(FGSTicketData, 2048);
+      FGSTicketSize := 0;
+      FGSTicket := SteamUser1.Plugin.GetAuthSessionTicket(@FGSTicketData[0], Length(FGSTicketData),
+        FGSTicketSize, @Ident);
+      if FGSTicket = k_HAuthTicketInvalid then
+        AddNote(CT_GAMESERVER, 'GetAuthSessionTicket (for the server) gave no ticket')
+      else
+      begin
+        AddLog(Format('Test TSteamGameServer: user %s asked for ticket %s (%d bytes) for the server - waiting ' +
+          'for 163, then BeginAuthSession on the server', [U64Str(Me.Value), U64Str(FGSTicket), FGSTicketSize]));
+        Expect(CT_GAMESERVER, 'GetAuthSessionTicket (for the server)');
+      end;
+    end;
+  except
+    on E: Exception do ReadFailed(CT_GAMESERVER, 'server set-up after log-on', E);
+  end;
+  // The rows that waited for the log-on
+  if Answered(CT_GSSTATS, 'log-on') and (SteamGameServerStats1.Plugin <> nil) and (SteamUser1.Plugin <> nil) then
+  try
+    ExpectCall(CT_GSSTATS, 'RequestUserStats',
+      SteamGameServerStats1.Plugin.RequestUserStats(SteamUser1.Plugin.GetSteamID));
+  except
+    on E: Exception do ReadFailed(CT_GSSTATS, 'RequestUserStats', E);
+  end;
+  if Answered(CT_GSSOCKETS, 'log-on') and (SteamGSSockets1.Plugin <> nil) then
+  try
+    FillChar(Ident, SizeOf(Ident), 0);
+    if SteamGSSockets1.Plugin.GetIdentity(Ident) then
+    begin
+      AddLog(Format('Test TSteamGameServerNetworkingSockets: identity type %d, SteamID %s - %s the server',
+        [Ord(Ident.m_eType), U64Str(Ident.m_steamID64), IfThen(Ident.m_steamID64 = G.GetSteamID.Value,
+        'same as', 'DIFFERENT FROM')]));
+      if Ident.m_steamID64 = G.GetSteamID.Value then
+        AddNote(CT_GSSOCKETS, 'identity = the server''s SteamID')
+      else
+      begin
+        FTests[CT_GSSOCKETS].ReadsOK := False;
+        AddNote(CT_GSSOCKETS, 'identity is NOT the server''s SteamID');
+      end;
+    end
+    else
+      AddNote(CT_GSSOCKETS, 'GetIdentity False');
+  except
+    on E: Exception do ReadFailed(CT_GSSOCKETS, 'GetIdentity', E);
+  end;
+  if Answered(CT_GSUGC, 'log-on') and (SteamGSUGC1.Plugin <> nil) then
+  try
+    FGSUGCQuery := SteamGSUGC1.Plugin.CreateQueryAllUGCRequestPage(k_EUGCQuery_RankedByPublicationDate,
+      k_EUGCMatchingUGCType_Items, FAppID, FAppID, 1);
+    if FGSUGCQuery = k_UGCQueryHandleInvalid then
+    begin
+      FTests[CT_GSUGC].ReadsOK := False;
+      AddNote(CT_GSUGC, 'CreateQueryAllUGCRequestPage: invalid handle');
+    end
+    else
+    begin
+      Call := SteamGSUGC1.Plugin.SendQueryUGCRequest(FGSUGCQuery);
+      ExpectCall(CT_GSUGC, 'SendQueryUGCRequest', Call);
+    end;
+  except
+    on E: Exception do ReadFailed(CT_GSUGC, 'Workshop query', E);
+  end;
+end;
+
+procedure TSteamComponentTest.GSLogOnFailed(const AWhy: string);
+begin
+  if Answered(CT_GSSTATS, 'log-on') then
+    AddNote(CT_GSSTATS, AWhy + ' - nothing requested');
+  if Answered(CT_GSSOCKETS, 'log-on') then
+    AddNote(CT_GSSOCKETS, AWhy + ' - identity not read');
+  if Answered(CT_GSUGC, 'log-on') then
+    AddNote(CT_GSUGC, AWhy + ' - no query sent');
+end;
+
+procedure TSteamComponentTest.GSAuthValidated(Sender: TObject; const AData: ValidateAuthTicketResponse_t);
+begin
+  AddLog(Format('TSteamGameServer.OnValidateAuthTicketResponse: user %s, response %d (0 = OK), owner %s',
+    [U64Str(AData.m_SteamID.Value), Ord(AData.m_eAuthSessionResponse), U64Str(AData.m_OwnerSteamID.Value)]));
+  // only OUR user: the pair test's guest may be validated by the same server
+  if not FGSAuthBegun or (SteamUser1.Plugin = nil) or (AData.m_SteamID <> SteamUser1.Plugin.GetSteamID) or
+    not Answered(CT_GAMESERVER, 'ValidateAuthTicketResponse') then
+    Exit;
+  if AData.m_eAuthSessionResponse = k_EAuthSessionResponseOK then
+    AddNote(CT_GAMESERVER, 'the user''s ticket validated by the server')
+  else
+  begin
+    AddNote(CT_GAMESERVER, Format('ticket NOT validated: response %d', [Ord(AData.m_eAuthSessionResponse)]));
+    FTests[CT_GAMESERVER].ReadsOK := False;
+  end;
+  try
+    if SteamGameServer1.Plugin <> nil then
+      SteamGameServer1.Plugin.EndAuthSession(AData.m_SteamID);
+    FGSAuthBegun := False;
+    if (SteamUser1.Plugin <> nil) and (FGSTicket <> k_HAuthTicketInvalid) then
+      SteamUser1.Plugin.CancelAuthTicket(FGSTicket);
+    FGSTicket := k_HAuthTicketInvalid;
+    AddLog('Test TSteamGameServer: EndAuthSession, ticket cancelled');
+  except
+    on E: Exception do ReadFailed(CT_GAMESERVER, 'EndAuthSession', E);
+  end;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.GSStatsReceived(Sender: TObject; const AData: GSStatsReceived_t);
+begin
+  AddLog(Format('TSteamGameServerStats.OnGSStatsReceived: user %s, result %s',
+    [U64Str(AData.m_steamIDUser.Value), ResultText(AData.m_eResult)]));
+  if Answered(CT_GSSTATS, 'RequestUserStats') then
+  begin
+    AddNote(CT_GSSTATS, 'RequestUserStats ' + ResultText(AData.m_eResult));
+    CheckTestsDone;
+  end;
+end;
+
+procedure TSteamComponentTest.GSHTTPCompleted(Sender: TObject; const AData: HTTPRequestCompleted_t);
+var
+  H: TSteamHTTPPlugin;
+begin
+  AddLog(Format('TSteamGameServerHTTP.OnHTTPRequestCompleted: request %s, successful %s, HTTP status %d, %d bytes',
+    [U64Str(AData.m_hRequest), BoolToStr(AData.m_bRequestSuccessful, True), Ord(AData.m_eStatusCode),
+     AData.m_unBodySize]));
+  if (AData.m_hRequest <> FGSHTTPRequest) or not Answered(CT_GSHTTP, 'SendHTTPRequest') then
+    Exit;
+  AddNote(CT_GSHTTP, Format('HTTP %d, %d bytes', [Ord(AData.m_eStatusCode), AData.m_unBodySize]));
+  H := SteamGSHTTP1.Plugin;
+  if H <> nil then
+  try
+    AddLog('Test TSteamGameServerHTTP: ReleaseHTTPRequest ' + BoolToStr(H.ReleaseHTTPRequest(FGSHTTPRequest), True));
+  except
+    on E: Exception do ReadFailed(CT_GSHTTP, 'ReleaseHTTPRequest', E);
+  end;
+  FGSHTTPRequest := 0;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.GSUGCQueryCompleted(Sender: TObject; const AData: SteamUGCQueryCompleted_t);
+begin
+  AddLog(Format('TSteamGameServerUGC.OnSteamUGCQueryCompleted: query %s, result %s, %d returned, %d matching',
+    [U64Str(AData.m_handle), ResultText(AData.m_eResult), AData.m_unNumResultsReturned,
+     AData.m_unTotalMatchingResults]));
+  if (AData.m_handle <> FGSUGCQuery) or not Answered(CT_GSUGC, 'SendQueryUGCRequest') then
+    Exit;
+  AddNote(CT_GSUGC, Format('query %s, %d items', [ResultText(AData.m_eResult), AData.m_unTotalMatchingResults]));
+  try
+    if SteamGSUGC1.Plugin <> nil then
+      AddLog('Test TSteamGameServerUGC: ReleaseQueryUGCRequest ' +
+        BoolToStr(SteamGSUGC1.Plugin.ReleaseQueryUGCRequest(FGSUGCQuery), True));
+  except
+    on E: Exception do ReadFailed(CT_GSUGC, 'ReleaseQueryUGCRequest', E);
+  end;
+  FGSUGCQuery := k_UGCQueryHandleInvalid;
+  CheckTestsDone;
+end;
+
+procedure TSteamComponentTest.GameServerCleanup;
+var
+  P: TSteamMatchmakingServersPlugin;
+begin
+  P := SteamMatchmakingServers1.Plugin;
+  if P <> nil then
+  begin
+    // harmless for queries that have ended
+    if FGSPingQuery <> HSERVERQUERY_INVALID then
+      P.StopServerQuery(FGSPingQuery);
+    if FGSPlayersQuery <> HSERVERQUERY_INVALID then
+      P.StopServerQuery(FGSPlayersQuery);
+    if FGSRulesQuery <> HSERVERQUERY_INVALID then
+      P.StopServerQuery(FGSRulesQuery);
+  end;
+  if FGSAuthBegun and (SteamGameServer1.Plugin <> nil) and (SteamUser1.Plugin <> nil) then
+  begin
+    SteamGameServer1.Plugin.EndAuthSession(SteamUser1.Plugin.GetSteamID);
+    AddLog('Test cleanup: server auth session ended (never validated)');
+  end;
+  if (FGSTicket <> k_HAuthTicketInvalid) and (SteamUser1.Plugin <> nil) then
+  begin
+    SteamUser1.Plugin.CancelAuthTicket(FGSTicket);
+    AddLog('Test cleanup: ticket for the server ' + U64Str(FGSTicket) + ' cancelled');
+  end;
+  if (FGSHTTPRequest <> 0) and (SteamGSHTTP1.Plugin <> nil) then
+    AddLog('Test cleanup: server ReleaseHTTPRequest (never completed): ' +
+      BoolToStr(SteamGSHTTP1.Plugin.ReleaseHTTPRequest(FGSHTTPRequest), True));
+  if (FGSUGCQuery <> k_UGCQueryHandleInvalid) and (SteamGSUGC1.Plugin <> nil) then
+    AddLog('Test cleanup: server ReleaseQueryUGCRequest (never completed): ' +
+      BoolToStr(SteamGSUGC1.Plugin.ReleaseQueryUGCRequest(FGSUGCQuery), True));
+  if FUsingServer then
+  begin
+    FUsingServer := False;
+    Dec(DemoGameServerUsers);
+    if (DemoGameServerUsers <= 0) and SteamAPI1.IsGameServerRunning then
+    begin
+      DemoGameServerUsers := 0;
+      if SteamGameServer1.Plugin <> nil then
+      begin
+        SteamGameServer1.Plugin.SetAdvertiseServerActive(False);
+        SteamGameServer1.Plugin.LogOff;
+      end;
+      // From a handler (CheckTestsDone) the core finishes this after the callback
+      SteamAPI1.StopGameServer;
+      AddLog('Test cleanup: the listen server logged off and stopped (no test uses it any more)');
+    end
+    else if SteamAPI1.IsGameServerRunning then
+    begin
+      if SteamGameServer1.Plugin <> nil then
+        SteamGameServer1.Plugin.SetKeyValue(TEST_GS_RULE, '');
+      AddLog('Test cleanup: the listen server stays up - the pair test still uses it (our rule removed)');
+    end;
+  end;
 end;
 
 end.

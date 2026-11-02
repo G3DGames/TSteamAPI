@@ -79,6 +79,19 @@ type
   TSteamAPI_ManualDispatch_GetAPICallResult = function(hSteamPipe: HSteamPipe; hSteamAPICall: SteamAPICall_t;
     pCallback: Pointer; cubCallback: Integer; iCallbackExpected: Integer; var pbFailed: Boolean): Boolean; cdecl;
 
+  // --- steam_gameserver.h ---------------------------------------------------
+  { Signature of the @code(SteamInternal_GameServer_Init_V2) export (SDK
+    1.59+). eServerMode is an @code(EServerMode) value (4-byte C enum);
+    usQueryPort $FFFF = STEAMGAMESERVER_QUERY_PORT_SHARED. }
+  TSteamInternal_GameServer_Init_V2 = function(unIP: UInt32; usGamePort, usQueryPort: UInt16;
+    eServerMode: Integer; pchVersionString, pszInternalCheckInterfaceVersions: PAnsiChar;
+    pOutErrMsg: PSteamErrMsg): ESteamAPIInitResult; cdecl;
+  { Signature of the @code(SteamInternal_GameServer_Init) export (before SDK
+    1.59; usLegacySteamPort is ignored by Steam - pass 0). From older SDK
+    headers, not checked against a 1.58 redistributable. }
+  TSteamInternal_GameServer_Init = function(unIP: UInt32; usLegacySteamPort, usGamePort, usQueryPort: UInt16;
+    eServerMode: Integer; pchVersionString: PAnsiChar): Boolean; cdecl;
+
   // --- steam_api_internal.h -------------------------------------------------
   { Signature of the @code(SteamInternal_CreateInterface) export. }
   TSteamInternal_CreateInterface                 = function(ver: PAnsiChar): Pointer; cdecl;
@@ -175,6 +188,17 @@ type
     class var SteamAPI_ManualDispatch_FreeLastCallback: TSteamAPI_ManualDispatch_FreeLastCallback;
     { Bound @code(SteamAPI_ManualDispatch_GetAPICallResult) export (@nil if missing). }
     class var SteamAPI_ManualDispatch_GetAPICallResult: TSteamAPI_ManualDispatch_GetAPICallResult;
+    // --- steam_gameserver.h / steam_api_internal.h (game server) ---
+    { Bound @code(SteamInternal_GameServer_Init_V2) export (@nil if missing). }
+    class var SteamInternal_GameServer_Init_V2: TSteamInternal_GameServer_Init_V2;
+    { Bound @code(SteamInternal_GameServer_Init) export (@nil if missing). }
+    class var SteamInternal_GameServer_Init: TSteamInternal_GameServer_Init;
+    { Bound @code(SteamGameServer_Shutdown) export (@nil if missing). }
+    class var SteamGameServer_Shutdown: TSteamAPI_Shutdown;
+    { Bound @code(SteamGameServer_GetHSteamPipe) export (@nil if missing). }
+    class var SteamGameServer_GetHSteamPipe: TSteamAPI_GetHSteamPipe;
+    { Bound @code(SteamGameServer_GetHSteamUser) export (@nil if missing). }
+    class var SteamGameServer_GetHSteamUser: TSteamAPI_GetHSteamUser;
     // --- steam_api_internal.h ---
     { Bound @code(SteamInternal_CreateInterface) export (@nil if missing). }
     class var SteamInternal_CreateInterface: TSteamInternal_CreateInterface;
@@ -968,6 +992,11 @@ begin
   SteamInternal_CreateInterface := nil;
   SteamInternal_FindOrCreateUserInterface := nil;
   SteamInternal_FindOrCreateGameServerInterface := nil;
+  SteamInternal_GameServer_Init_V2 := nil;
+  SteamInternal_GameServer_Init := nil;
+  SteamGameServer_Shutdown := nil;
+  SteamGameServer_GetHSteamPipe := nil;
+  SteamGameServer_GetHSteamUser := nil;
   ISteamClient_CreateSteamPipe := nil;
   ISteamClient_BReleaseSteamPipe := nil;
   ISteamClient_ConnectToGlobalUser := nil;
@@ -1051,6 +1080,14 @@ begin
   Req(SteamInternal_CreateInterface,                 'SteamInternal_CreateInterface');
   Req(SteamInternal_FindOrCreateUserInterface,       'SteamInternal_FindOrCreateUserInterface');
   Opt(SteamInternal_FindOrCreateGameServerInterface, 'SteamInternal_FindOrCreateGameServerInterface');
+
+  // Game server (TSteamworks.StartGameServer) - all optional: a client-only
+  // game never needs them
+  Opt(SteamInternal_GameServer_Init_V2, 'SteamInternal_GameServer_Init_V2');   // SDK 1.59+
+  Opt(SteamInternal_GameServer_Init,    'SteamInternal_GameServer_Init');      // before 1.59
+  Opt(SteamGameServer_Shutdown,         'SteamGameServer_Shutdown');
+  Opt(SteamGameServer_GetHSteamPipe,    'SteamGameServer_GetHSteamPipe');
+  Opt(SteamGameServer_GetHSteamUser,    'SteamGameServer_GetHSteamUser');
 
   // ISteamClient - all optional
   Opt(ISteamClient_CreateSteamPipe,      'SteamAPI_ISteamClient_CreateSteamPipe');

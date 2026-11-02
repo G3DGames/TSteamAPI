@@ -93,6 +93,19 @@ type
     property QuitOnSteamShutdown;
     { Shut Steam down (not the app) as soon as the Steam client exits. }
     property ShutdownOnSteamExit;
+    { What Active starts: [srClient] (a game, default), [srClient,
+      srGameServer] (a listen server) or [srGameServer] (a dedicated server). }
+    property Roles;
+    { IP address the game server binds to, host order (0 = any). }
+    property GameServerIP;
+    { UDP port of the game server's own traffic (27015). }
+    property GameServerGamePort;
+    { UDP port Steam answers server-browser queries on (27016; 65535 = shared). }
+    property GameServerQueryPort;
+    { Authentication / listing / VAC mode of the game server. }
+    property GameServerMode;
+    { Version of the game server ('1.0.0.0'). }
+    property GameServerVersion;
     { Steam started successfully (plug-in components are attached already). }
     property OnInitialized;
     { Steam could not start; see the message. }
@@ -109,6 +122,12 @@ type
     property OnWarning;
     { Every Steam callback, for diagnostics. }
     property OnCallback;
+    { The game server started (its components are attached already). }
+    property OnGameServerStarted;
+    { The game server was shut down. }
+    property OnGameServerStopped;
+    { The game server could not start; see the message. }
+    property OnGameServerFailed;
   end;
 
 { Copies a Steam image into an FMX bitmap: an avatar handle from

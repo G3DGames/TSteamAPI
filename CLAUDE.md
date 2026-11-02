@@ -197,9 +197,11 @@ Project AppID: 2275430.
   (Indy; Delphi only) + src/RemoteLog.SenderFPC.pas (the same classes for
   FPC 3.2.2 on its Sockets unit). No Steam unit may use it and lib/ /
   packages never reference it. EXCEPTION to "demos search only their own
-  sources": SteamInputDemo, VirtualGamepad (..\..\RemoteLogging\src) and
-  VirtualGamepadLCL (../../RemoteLogging/src in the .lpi) have it on their
-  search path for File > Send log to receiver. Its README must keep saying it is 100%
+  sources": SteamInputDemo, VirtualGamepad, SteamDemo, SteamDemoVCL
+  (..\..\RemoteLogging\src) and VirtualGamepadLCL, SteamDemoLCL
+  (../../RemoteLogging/src in the .lpi) have it on their search path for
+  File > Send log to receiver (the three SteamDemos through
+  demos/Shared/DemoRemoteLog.pas). Its README must keep saying it is 100%
   optional. pasdoc_check.py scans it too.
 - `packages/` - runtime and design-time packages.
 - `Steamworks.groupproj` at the root lists every project.
@@ -838,6 +840,259 @@ Project AppID: 2275430.
   BATCH 2C: all four Delphi builds (FMX / VCL x Win64 / Win32) + LCL Win64.
 - OWNER (16:45): FPC Win32 is for the END, with macOS and Linux (the
   thunks' FPC asm path and the FPC Win32 probe wait until then).
+- PLAN for the game-server batch (owner asked 16:47): its demo should
+  close the last server-browser gap - run our own game server (own query
+  port, NOT STEAMGAMESERVER_QUERY_PORT_SHARED, so Steam answers A2S
+  itself), SetKeyValue a few rules, then the client side StartServerRules
+  / StartPlayerDetails / StartPing at 127.0.0.1 (or the LAN address) and
+  the query port -> RulesResponded finally fires; the LAN list should
+  then list the server too (LAN ServerResponded). A listen server
+  (SteamAPI_Init + SteamGameServer_Init in one process) is allowed by
+  Valve - check the core's one-instance assumptions when writing it.
+- PUSH 8f5e38b "Batch2c" (16:48) VERIFIED: all 21 files delivered since
+  Notes9 (Batch2c, Fix10-12, Notes12-13) identical ignoring CRLF / BOM,
+  except packages/Steamworks.dproj (IDE re-save: default platform Win32 -
+  accepted; MatchmakingServers reference kept). Also pushed: IDE
+  default-platform re-saves of 11 other .dproj files - accepted. Group
+  Dependencies intact (10); pasdoc / project checks 0 problems. Working
+  copy reset to origin/main (this note and the game-server plan above go
+  out with the next zip).
+- OWNER (16:53): the Win64 round must also cover what needs a SECOND
+  USER (he has one) and Workshop / Inventory / Cloud enablement.
+  Decisions (16:55): two-user tests in a new TAB of SteamDemo (FMX /
+  VCL / LCL), the copies PAIR THROUGH A LOBBY, and I write a partner-site
+  CHECKLIST he applies. Zip Setup1 (follows Notes13): docs/TestSetup.md
+  (second user; Steam Cloud quota + developers-only + publish; Workshop
+  ISteamUGC file transfer + visibility; Inventory Service + upload +
+  enable; facts from partner.steamgames.com docs, the exact checkbox
+  labels unverified), docs/test-setup/itemdefs_2275430.json (100 promo
+  "manual" Test Token, 101 Test Gem, 10 playtimegenerator -> 101; none
+  tradable) + test_item.png / test_gem.png (200x200, made here; the JSON
+  uses their raw GitHub URLs, so PUSH BEFORE UPLOADING), docs/README.md
+  row. Next: the two-user test unit, then the opt-in Cloud / Workshop /
+  Inventory tests.
+- Zip Pair1 (follows Setup1): TWO-USER PAIR TEST + EXTENDED TESTS.
+  * demos/Shared/SteamPairTest.pas (Delphi + FPC, framework-free,
+    TSteamPairTest creates its own User / Friends / Matchmaking /
+    Networking / NetworkingSockets / NetworkingMessages components):
+    pairing = RequestLobbyList (string filter tsteamapi_pair = 1,
+    worldwide), else CreateLobby(public, 2) + lobby data; a rescan every
+    5 s while waiting, tie-break: the copy with the HIGHER SteamID joins
+    the other. Rows: Lobby (data + member data), Chat (HELLO both ways),
+    Friends (persona + rich presence "status"), Auth (ticket for the
+    peer's identity, sent as hex after 163, peer BeginAuthSession -> 143),
+    Messages (ping / pong), Sockets (host listens P2P port 0, guest
+    ConnectP2P, hello / reply), P2P (old SendP2PPacket ping / answer).
+    Lobby chat lines "TSAPI|CMD|arg": HELLO, AUTH, LISTEN, DONE. A copy
+    closes only when it AND the peer have sent DONE (or 60 s after its own
+    DONE) - closing first would cancel the peer's auth validation / rich
+    presence. Session requests that arrive before pairing are kept and
+    accepted in Paired. Rich presence is set before HELLO and re-requested
+    every 5 s (non-friends get one answer per request). Lobby search
+    results without the pair tag are ignored (the FMX component test's
+    RequestLobbyList answers the same 510).
+  * Wiring: SteamDemoVCL / SteamDemoLCL (btnPair, tsPair + lvPair,
+    tmTests drives Tick) and SteamDemo FMX (btnPair, tiPair + lbPair,
+    tmPair); .dpr / .dproj / .lpr / .lpi / gen_projects.py; README.
+  * EXTENDED single-user tests (shared SteamComponentTest AND the FMX
+    copy, kept in step), detection-based - nothing changes until the
+    partner site is set up: Inventory - when GetAllItems answers OK:
+    GenerateItems(101) -> ConsumeItem(that instance), AddPromoItem(100),
+    TriggerItemDrop(10), every result's items logged then destroyed;
+    UGC - when GetWorkshopEULAStatus answers OK: CreateItem(Community) ->
+    StartItemUpdate / SetItemTitle / SetItemVisibility(private) /
+    SetItemContent(<settings folder>/WorkshopTest, one readme.txt) ->
+    SubmitItemUpdate -> DeleteItem; cleanup deletes a leftover item and
+    the folder. UNVERIFIED: that the EULA status turns OK once the
+    Workshop is set up (otherwise the gate never opens - change it to
+    "always CreateItem"). Cloud needed no new code (the RemoteStorage row
+    reports cloud for app on / off).
+  NO PACKAGE REBUILD. NOT YET COMPILED. Independent review of the pair
+  test (no compiler): no compile errors; its four protocol findings are
+  the fixes above (DONE, rich presence, early requests, lobby tag) plus
+  the documented identity for GetAuthSessionTicket. Second review (the
+  extended tests + those fixes, no compiler): no compile errors; fixed
+  from it - a CreateItem answer arriving after the test ended deletes
+  its item (it would have stayed for good), a 4700 for a handle whose
+  result is still Pending is ignored (Steam reusing a destroyed number),
+  the content folder is removed even when Steam has gone, the EULA note
+  is added only once, a missing settings folder is a note (not "calls
+  FAILED"); pair test: a repeated 163 / AUTH no longer fails the Auth
+  row (DuplicateRequest), and a peer that LEAVES the lobby before both
+  DONEs ends the test at once. TestSetup.md: GenerateItems is for
+  partner-group accounts only (Fail for the second user - expected), a
+  repeated AddPromoItem answers OK with 0 items; promo "manual" for the
+  client's AddPromoItem unverified.
+- PAIR1 COMPILES (owner, 17:21; which demos / platforms not said). The
+  pair test and the extended tests wait for the second user / the
+  partner-site set-up - not run yet.
+- PAIR1 FMX SOLO RUN (owner, 17:24-17:29, Win64): Test components 21 OF
+  21 PASS; Inventory row "item test skipped (Inventory Service off?)",
+  UGC row "Workshop item test skipped" (EULA InvalidParam) - the gates
+  stay shut as intended. Pair test (pressed while the component test was
+  still finishing - no interference): no pair lobby -> lobby created
+  (HOST), rescan every 5 s for 5 min (each sees 1 lobby = our own,
+  skipped; 510 twice + 703 per rescan), stopped "the other copy did not
+  join within 300 s", 0 of 7 (all "not finished"), lobby left. The
+  cleanup line claimed "closed: connection, listen socket, sessions,
+  auth, rich presence, lobby" although only the lobby was open - zip
+  Pair2 (follows Pair1): it names only what was open ("closed: lobby
+  <id>" here, "nothing was open" when nothing was). Two-user run still to
+  come (owner: a second account on a second machine; it must own the app
+  - key or partner group).
+  PAIR2 SOLO RUN (owner, 17:46-17:51, FMX Win64): same as above, 21 of
+  21 PASS, and the cleanup line now reads "closed: lobby <id>" - CONFIRMED.
+- GAME-SERVER BATCH DECISIONS (owner, 17:58): BOTH a listen server
+  (client + server in one process) AND a dedicated server-only path
+  (no SteamAPI_Init) NOW; ALL server copies of the interfaces
+  (SteamGameServer, ...Stats, ...Utils, ...Networking,
+  ...NetworkingSockets_SteamAPI, ...NetworkingMessages_SteamAPI, ...HTTP,
+  ...UGC, ...Inventory - accessor versions equal the client ones in 1.65).
+  Second account is in the partner group (full access) - owner wants
+  SteamDemo* complete before copying them to the other machine.
+  DESIGN (draft): core keeps the server apart - its own pipe / HSteamUser
+  (SteamGameServer_GetHSteamPipe / _GetHSteamUser) and its own
+  TSteamCallbackDispatcher (callback ids repeat across pipes: 101-103,
+  143 arrive on both), pumped by the same pump; plug-in classes say
+  IsGameServer (server plug-ins init / finalise with the server);
+  server copies are generated SUBCLASSES (TSteamGameServerUtilsPlugin =
+  class(TSteamUtilsPlugin), IsGameServer True, accessor "SteamGameServer"
+  + base without "Steam") + components; the root gets Roles [srClient,
+  srGameServer] + server settings (IP, game / query port, mode, version)
+  and StartGameServer / StopGameServer for a listen server started at run
+  time. LATENT BUG to fix: AcquireGameServerInterface passed the CLIENT
+  HSteamUser to SteamInternal_FindOrCreateGameServerInterface.
+- Zip GS1 (follows Pair2): THE GAME-SERVER BATCH.
+  * lib/Steamworks.API.pas: optional exports SteamInternal_GameServer_Init_V2
+    (1.59+) / _Init (older, signature from old headers, unverified),
+    SteamGameServer_Shutdown / _GetHSteamPipe / _GetHSteamUser.
+  * lib/Steamworks.Core.pas: TSteamRole / TSteamRoles; FClientUp / FServerUp
+    (State swsRunning = either; IsRunning = CLIENT; IsGameServerRunning);
+    second dispatcher ServerDispatcher (server pipe; DispatcherFor);
+    StartGameServer (listen next to the client, or dedicated alone; stops
+    the worker around it, ManualDispatch_Init once per session) /
+    StopGameServer (from a handler: deferred, FServerStopPending; on the
+    sdPumpThread worker stopped in place under the lock, no worker
+    restart) / Shutdown stops the server first; PumpAll / DeliverAllQueued;
+    plug-ins with IsGameServer are created / freed with the server;
+    TSteamPlugin.Dispatcher (the side's dispatcher) and
+    AcquireUserInterface maps a server copy's accessor (SteamUtils ->
+    SteamGameServerUtils); FindPlugin / Plugin<T>: exact class first, then a
+    descendant OF THE SAME SIDE (server copies descend from client
+    classes). GameServer* settings (IP, game 27015 / query 27016, mode,
+    version). LATENT BUG FIXED: AcquireGameServerInterface passed the
+    client's HSteamUser. Failed starts roll back without Stopped / Shutdown
+    events (FRollingBack). Initialize refuses to run from a handler while a
+    server runs; a failing client next to a dedicated server leaves the
+    server up.
+  * lib/Steamworks.Components.pas + fmx/vcl/lcl: Roles (default
+    [srClient]), GameServerIP / GamePort / QueryPort / Mode
+    (TSteamServerMode - EServerMode has explicit values, no RTTI) /
+    Version, StartGameServer / StopGameServer, IsGameServerRunning,
+    OnGameServerStarted / Stopped / Failed; TSteamPluginComponent
+    .IsGameServer (attach with the server, subscribe on its dispatcher).
+  * Generator: PLUGINS + GameServer, GameServerStats (SERVER_PLUGINS);
+    SERVER_COPIES Utils, Networking, NetworkingSockets, NetworkingMessages,
+    HTTP, UGC, Inventory -> TSteamGameServer<Name>Plugin + component
+    subclasses in the client units; components' virtual class function
+    PluginClass; Async methods use Dispatcher.AwaitCallResult;
+    CALLBACK_EXTRA GameServer 101/102/103/115/143, GameServerStats 1108
+    (extras now bypass the id-range rule); accessor_base takes the
+    GameServer accessor for server plug-ins. tools/plugin_extras/
+    GameServer.pas.txt: GetPublicIP by-value shim (20-byte SteamIPAddress_t,
+    hidden pointer everywhere like GetMotionData) + PublicIPv4;
+    verify_generated BYVALUE + GetPublicIP: 1290 layouts, 54 named, 829
+    flat signatures, 32 by-value (4 x 8) - ALL IDENTICAL. Reg units list
+    33 plug-in components (+ TSteamAPI in the LCL one). Note: event types of 101-103 / 143 are declared in
+    both User and GameServer units (compatible, cosmetic).
+  * Docs: doc_extras GameServer.md / GameServerStats.md + generated pages,
+    components index, TSteamAPI.md (properties, events, methods, "Game
+    servers"), README, TestSetup.md (pair ports 27215 / 27216).
+  * Demos: shared SteamComponentTest 21 -> 30 rows (listen server on
+    27115 / 27116, anonymous log-on, own-server rules / ping / players at
+    127.0.0.1 - RulesResponded finally exercised -, server validates the
+    user's ticket, server stats / HTTP / UGC / reads of the copies; stops
+    the server it started). SteamPairTest + PT_SERVER: host starts a
+    listen server, sends SERVER|id,ip,port; guest's ticket for the
+    server identity -> GSAUTH -> server BeginAuthSession -> 143 ->
+    GSAUTHRESULT; guest's rules query of the public address informational.
+    FMX SteamDemo now uses the shared test (uMain.pas 3523 -> ~1170 lines;
+    21 test components off its form; File > Take Screenshot via
+    FTest.Screenshots).
+  REBUILD ALL RUNTIME PACKAGES (STEAMWORKS, STEAMWORKSFMX, STEAMWORKSVCL),
+  REINSTALL DCLSTEAMWORKS (+ DCLSTEAMWORKSFMX / VCL: published properties
+  changed), REBUILD THE LAZARUS PACKAGE STEAMWORKSLCL. NOT YET COMPILED.
+  Independent review of the core (no compiler): fixed from it - worker
+  stopping the server restarted itself (race with Shutdown, thread leak),
+  Initialize from a handler, client exception killing a dedicated server,
+  queued callbacks left undelivered after a worker restart
+  (StartPumpThread schedules a delivery), Assigned(Dispatcher) on a
+  method, Plugin<T> side check, rollback events.
+  Second review (the demo tests, no compiler): no compile errors; fixed -
+  the pair HOST could never start its server (Paired runs inside a
+  callback handler and StartGameServer refuses that: now started on the
+  next Tick); TestGameServer runs LAST (an already logged-on server
+  answered before the stats / sockets / UGC rows had registered their
+  'log-on' wait); the component test's 143 handler checks it is OUR user
+  (the pair guest's validation may share the server); DemoGameServerUsers
+  (SteamComponentTest interface, used by SteamPairTest) counts the tests
+  using the one server - the LAST stops it, a borrowed server only gets
+  the test's own rule and no second LogOnAnonymous; server-query handles
+  are forgotten once answered (Steam reuses numbers); a refused own-server
+  query fails the row; the test ports are restored on TSteamAPI after the
+  start; TSteamAPI.StartGameServer on a running client pushes only the
+  GameServer* settings (PushServerSettings). Known, not changed: Steam's
+  LAN server list only probes query ports 27015-27020 (from memory), so the
+  test servers (27116 / 27216) do not show in the LAN list.
+- FIRST TWO-PLAYER RUN (owner, 18:31, a Pair1 / Pair2 build - not GS1;
+  host = SteamDemoVCL Win64 on the main PC, guest = SteamDemo FMX Debug on a
+  second PC, second account in the partner group, the two accounts NOT
+  friends): host 6 OF 7 PASS - lobby (guest joined, member data read),
+  chat both ways, auth ticket (guest's ticket validated, response 0),
+  NetworkingMessages ping / pong, NetworkingSockets P2P (listen, accept,
+  hello / reply), old P2P packets. FAIL: Friends - the guest's rich
+  presence not read after 5 s (re-requested once), because the guest sent
+  DONE at 18:31:25.84 and LEFT THE LOBBY 66 ms later without the host's
+  DONE (host: "the other copy left the lobby before both were done"). The
+  guest's normal close waits 3 s after BOTH DONEs, so its test was ended
+  some other way (an exception in Tick -> "stopped: error ...", Stop,
+  window close) - unknown: NO GUEST LOG (the FMX demo rewrote its log next
+  to the exe at every start). Open: whether Steam gives a non-friend's
+  rich presence at all (repeat as friends to compare). Harmless at the
+  end: "[S_API WARN] CancelAuthTicket called on nonexistent ticket".
+- Zip RLog1 (follows GS1; owner: "add remote logging to SteamDemo*"):
+  demos/Shared/DemoRemoteLog.pas (TDemoRemoteLog: Toggle / Send / Shutdown,
+  auto-discovery of LogReceiver, backlog first, lines logged during the
+  2.5 s search join the backlog; RemoteLog.Sender under Delphi,
+  RemoteLog.SenderFPC under FPC) wired into SteamDemo FMX, SteamDemoVCL,
+  SteamDemoLCL as File > Send log to receiver (after Copy Log); projects
+  search ..\..\RemoteLogging\src (.dproj Base; LCL .lpi OtherUnitFiles);
+  gen_projects.py; README. All three demos now keep the previous run's log
+  as SteamDemo.previous.log instead of wiping it at start. NO PACKAGE
+  REBUILD. NOT YET COMPILED.
+- OWNER (18:15): the FMX SteamDemo SWITCHES TO THE SHARED
+  demos/Shared/SteamComponentTest.pas (no more FMX copy of the test; the
+  test's plug-in components leave its form); the DEDICATED server is
+  tested with SteamConsole --server (console batch, after this one).
+- OWNER'S PLAN (17:15) - CHANGES THE ORDER above ("GameServer LATER,
+  AFTER the full Win64 round"): first make the SteamDemo* demos FEATURE
+  COMPLETE INCLUDING THE GAME SERVER, so the second user needs only ONE
+  testing session; then the Win64 round. Also: SteamConsole only has the
+  start of the API - bring it up to date, and an FPC version of the
+  console is wanted. Proposed order: (1) game-server batch (GameServer +
+  GameServerStats plug-ins, SteamGameServer_Init path in the core, a
+  server in the demos with its own query port - closes RulesResponded -
+  and server rows in the pair test: the guest joins the host's server,
+  auth through the server); (2) SteamConsole runs the shared
+  SteamComponentTest / SteamPairTest (framework-free already) from
+  command-line switches, plus SteamConsoleFPC (.lpi / .lpr, plain FPC,
+  no LCL) next to the Delphi project.
+- OWNER (17:08): setting up Lazarus / FPC on the Mac and on Linux for the
+  end-of-project round. Waiting there: FPC LayoutProbe on Linux64 /
+  macOS ARM64 (expect 0 different with Fix9's padding), FPC Win32
+  (thunks' FPC asm path + probe), SteamTimeToLocal's localtime_r path,
+  LCL SteamFormToRGB (PaintTo on Cocoa / GTK2), SteamDemoLCL's pair test
+  against a Delphi copy.
 - Callback updating (owner, 2026-10-30: "threaded is vital" for game
   engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
   Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror

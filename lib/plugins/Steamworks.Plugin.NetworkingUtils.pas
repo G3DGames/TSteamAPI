@@ -336,6 +336,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamNetworkingUtilsPlugin) (a game-server
+      copy of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamNetworkingUtils plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamNetworkingUtilsPlugin read GetPlugin;
   published
@@ -751,7 +754,12 @@ function TSteamNetworkingUtils.GetPlugin: TSteamNetworkingUtilsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamNetworkingUtilsPlugin(TSteamworks.Instance.FindPlugin(TSteamNetworkingUtilsPlugin));
+    Result := TSteamNetworkingUtilsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamNetworkingUtils.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamNetworkingUtilsPlugin;
 end;
 
 procedure TSteamNetworkingUtils.DoAttach;

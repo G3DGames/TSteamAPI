@@ -492,7 +492,7 @@ component's event.
 function RequestLobbyListAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestLobbyList` and registers AHandler for its result (`LobbyMatchList_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestLobbyList` and registers AHandler for its result (`LobbyMatchList_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### CreateLobbyAsync
 
@@ -500,7 +500,7 @@ Calls `RequestLobbyList` and registers AHandler for its result (`LobbyMatchList_
 function CreateLobbyAsync(AELobbyType: ELobbyType; cMaxMembers: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `CreateLobby` and registers AHandler for its result (`LobbyCreated_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `CreateLobby` and registers AHandler for its result (`LobbyCreated_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### JoinLobbyAsync
 
@@ -508,7 +508,7 @@ Calls `CreateLobby` and registers AHandler for its result (`LobbyCreated_t`). Th
 function JoinLobbyAsync(const steamIDLobby: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `JoinLobby` and registers AHandler for its result (`LobbyEnter_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `JoinLobby` and registers AHandler for its result (`LobbyEnter_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

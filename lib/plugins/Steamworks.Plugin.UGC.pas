@@ -261,7 +261,7 @@ type
     function SendQueryUGCRequest(AHandle: UGCQueryHandle_t): SteamAPICall_t;
     { Calls @link(SendQueryUGCRequest) and registers AHandler for its result
       (@link(SteamUGCQueryCompleted_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function SendQueryUGCRequestAsync(AHandle: UGCQueryHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Retrieve an individual result after receiving the callback for querying UGC. }
@@ -347,14 +347,14 @@ type
     function RequestUGCDetails(nPublishedFileID: PublishedFileId_t; unMaxAgeSeconds: UInt32): SteamAPICall_t;
     { Calls @link(RequestUGCDetails) and registers AHandler for its result
       (@link(SteamUGCRequestUGCDetailsResult_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function RequestUGCDetailsAsync(nPublishedFileID: PublishedFileId_t; unMaxAgeSeconds: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Steam Workshop Creator API. Call result: @link(CreateItemResult_t)
       (@code(CreateItemResult_t_k_iCallback)). }
     function CreateItem(nConsumerAppId: AppId_t; eFileType: EWorkshopFileType): SteamAPICall_t;
     { Calls @link(CreateItem) and registers AHandler for its result (@link(CreateItemResult_t)).
-      The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner).
+      The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner).
       @returns(The call handle, or k_uAPICallInvalid when Steam refused the call.) }
     function CreateItemAsync(nConsumerAppId: AppId_t; eFileType: EWorkshopFileType; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_StartItemUpdate). }
@@ -404,7 +404,7 @@ type
     function SubmitItemUpdate(AHandle: UGCUpdateHandle_t; const pchChangeNote: string): SteamAPICall_t;
     { Calls @link(SubmitItemUpdate) and registers AHandler for its result
       (@link(SubmitItemUpdateResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function SubmitItemUpdateAsync(AHandle: UGCUpdateHandle_t; const pchChangeNote: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_GetItemUpdateProgress). }
@@ -414,7 +414,7 @@ type
     function SetUserItemVote(nPublishedFileID: PublishedFileId_t; bVoteUp: Boolean): SteamAPICall_t;
     { Calls @link(SetUserItemVote) and registers AHandler for its result
       (@link(SetUserItemVoteResult_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function SetUserItemVoteAsync(nPublishedFileID: PublishedFileId_t; bVoteUp: Boolean; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_GetUserItemVote). Call result: @link(GetUserItemVoteResult_t)
@@ -422,7 +422,7 @@ type
     function GetUserItemVote(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(GetUserItemVote) and registers AHandler for its result
       (@link(GetUserItemVoteResult_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function GetUserItemVoteAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_AddItemToFavorites). Call result:
@@ -430,7 +430,7 @@ type
     function AddItemToFavorites(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(AddItemToFavorites) and registers AHandler for its result
       (@link(UserFavoriteItemsListChanged_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function AddItemToFavoritesAsync(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_RemoveItemFromFavorites). Call result:
@@ -438,7 +438,7 @@ type
     function RemoveItemFromFavorites(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(RemoveItemFromFavorites) and registers AHandler for its result
       (@link(UserFavoriteItemsListChanged_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function RemoveItemFromFavoritesAsync(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_SubscribeItem). Call result:
@@ -447,7 +447,7 @@ type
     function SubscribeItem(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(SubscribeItem) and registers AHandler for its result
       (@link(RemoteStorageSubscribePublishedFileResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function SubscribeItemAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_UnsubscribeItem). Call result:
@@ -456,7 +456,7 @@ type
     function UnsubscribeItem(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(UnsubscribeItem) and registers AHandler for its result
       (@link(RemoteStorageUnsubscribePublishedFileResult_t)). The handler's object owns the
-      registration (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      registration (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function UnsubscribeItemAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_GetNumSubscribedItems). }
@@ -489,7 +489,7 @@ type
     function StartPlaytimeTracking(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32): SteamAPICall_t;
     { Calls @link(StartPlaytimeTracking) and registers AHandler for its result
       (@link(StartPlaytimeTrackingResult_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function StartPlaytimeTrackingAsync(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_StopPlaytimeTracking). Call result:
@@ -497,7 +497,7 @@ type
     function StopPlaytimeTracking(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32): SteamAPICall_t;
     { Calls @link(StopPlaytimeTracking) and registers AHandler for its result
       (@link(StopPlaytimeTrackingResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function StopPlaytimeTrackingAsync(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_StopPlaytimeTrackingForAllItems). Call result:
@@ -505,7 +505,7 @@ type
     function StopPlaytimeTrackingForAllItems: SteamAPICall_t;
     { Calls @link(StopPlaytimeTrackingForAllItems) and registers AHandler for its result
       (@link(StopPlaytimeTrackingResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function StopPlaytimeTrackingForAllItemsAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { parent-child relationship or dependency management. Call result:
@@ -513,7 +513,7 @@ type
     function AddDependency(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(AddDependency) and registers AHandler for its result
       (@link(AddUGCDependencyResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function AddDependencyAsync(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_RemoveDependency). Call result:
@@ -521,7 +521,7 @@ type
     function RemoveDependency(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(RemoveDependency) and registers AHandler for its result
       (@link(RemoveUGCDependencyResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function RemoveDependencyAsync(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { add/remove app dependence/requirements (usually DLC). Call result:
@@ -529,7 +529,7 @@ type
     function AddAppDependency(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t): SteamAPICall_t;
     { Calls @link(AddAppDependency) and registers AHandler for its result
       (@link(AddAppDependencyResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function AddAppDependencyAsync(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Wraps @code(SteamAPI_ISteamUGC_RemoveAppDependency). Call result:
@@ -537,7 +537,7 @@ type
     function RemoveAppDependency(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t): SteamAPICall_t;
     { Calls @link(RemoveAppDependency) and registers AHandler for its result
       (@link(RemoveAppDependencyResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function RemoveAppDependencyAsync(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { request app dependencies. note that whatever callback you register for
@@ -547,14 +547,14 @@ type
     function GetAppDependencies(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(GetAppDependencies) and registers AHandler for its result
       (@link(GetAppDependenciesResult_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function GetAppDependenciesAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { delete the item without prompting the user. Call result: @link(DeleteItemResult_t)
       (@code(DeleteItemResult_t_k_iCallback)). }
     function DeleteItem(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
     { Calls @link(DeleteItem) and registers AHandler for its result (@link(DeleteItemResult_t)).
-      The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner).
+      The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner).
       @returns(The call handle, or k_uAPICallInvalid when Steam refused the call.) }
     function DeleteItemAsync(nPublishedFileID: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Show the app's latest Workshop EULA to the user in an overlay window, where they can accept
@@ -565,7 +565,7 @@ type
     function GetWorkshopEULAStatus: SteamAPICall_t;
     { Calls @link(GetWorkshopEULAStatus) and registers AHandler for its result
       (@link(WorkshopEULAStatus_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function GetWorkshopEULAStatusAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Return the user's community content descriptor preferences. }
@@ -737,6 +737,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamUGCPlugin) (a game-server copy of this
+      component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamUGC plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamUGCPlugin read GetPlugin;
   published
@@ -788,6 +791,33 @@ type
     { Callback 3420 (WorkshopEULAStatus_t): Status of the user's acceptable/rejection of the app's
       specific Workshop EULA. }
     property OnWorkshopEULAStatus: TWorkshopEULAStatusEvent read FOnWorkshopEULAStatus write FOnWorkshopEULAStatus;
+  end;
+
+  { ISteamUGC of the GAME SERVER (@code(SteamAPI_SteamGameServerUGC_v...)): the same methods as
+    @link(TSteamUGCPlugin), on the server's interface and pipe. Created by
+    TSteamworks.StartGameServer, freed by StopGameServer; find it with
+    @code(Steam.FindPlugin(TSteamGameServerUGCPlugin)) - the client's
+    @code(FindPlugin(TSteamUGCPlugin)) never returns it. }
+  TSteamGameServerUGCPlugin = class(TSteamUGCPlugin)
+  public
+    { Returns @code('ISteamUGC (game server)'). }
+    class function PluginName: string; override;
+    { @true: a game-server plug-in. }
+    class function IsGameServer: Boolean; override;
+  end;
+
+{$ifndef FPC}
+  [ComponentPlatformsAttribute(STEAM_COMPONENT_PLATFORMS)]
+{$endif}
+  { ISteamUGC of the GAME SERVER as a component: the events and @link(TSteamUGC.Plugin) of
+    @link(TSteamUGC), attached while the game server runs (TSteamAPI.StartGameServer); its events
+    come from the server's pipe. }
+  TSteamGameServerUGC = class(TSteamUGC)
+  public
+    { Returns @link(TSteamGameServerUGCPlugin). }
+    class function PluginClass: TSteamPluginClass; override;
+    { @true: attaches with the game server. }
+    class function IsGameServer: Boolean; override;
   end;
 
 implementation
@@ -1080,7 +1110,7 @@ function TSteamUGCPlugin.SendQueryUGCRequestAsync(AHandle: UGCQueryHandle_t; AHa
 begin
   Result := SendQueryUGCRequest(AHandle);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamUGCQueryCompleted_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamUGCQueryCompleted_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.GetQueryUGCResult(AHandle: UGCQueryHandle_t; index: UInt32; var pDetails: SteamUGCDetails_t): Boolean;
@@ -1344,7 +1374,7 @@ function TSteamUGCPlugin.RequestUGCDetailsAsync(nPublishedFileID: PublishedFileI
 begin
   Result := RequestUGCDetails(nPublishedFileID, unMaxAgeSeconds);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SteamUGCRequestUGCDetailsResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SteamUGCRequestUGCDetailsResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.CreateItem(nConsumerAppId: AppId_t; eFileType: EWorkshopFileType): SteamAPICall_t;
@@ -1357,7 +1387,7 @@ function TSteamUGCPlugin.CreateItemAsync(nConsumerAppId: AppId_t; eFileType: EWo
 begin
   Result := CreateItem(nConsumerAppId, eFileType);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, CreateItemResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, CreateItemResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.StartItemUpdate(nConsumerAppId: AppId_t; nPublishedFileID: PublishedFileId_t): UGCUpdateHandle_t;
@@ -1542,7 +1572,7 @@ function TSteamUGCPlugin.SubmitItemUpdateAsync(AHandle: UGCUpdateHandle_t; const
 begin
   Result := SubmitItemUpdate(AHandle, pchChangeNote);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SubmitItemUpdateResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SubmitItemUpdateResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.GetItemUpdateProgress(AHandle: UGCUpdateHandle_t; var punBytesProcessed: UInt64; var punBytesTotal: UInt64): EItemUpdateStatus;
@@ -1561,7 +1591,7 @@ function TSteamUGCPlugin.SetUserItemVoteAsync(nPublishedFileID: PublishedFileId_
 begin
   Result := SetUserItemVote(nPublishedFileID, bVoteUp);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, SetUserItemVoteResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, SetUserItemVoteResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.GetUserItemVote(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1574,7 +1604,7 @@ function TSteamUGCPlugin.GetUserItemVoteAsync(nPublishedFileID: PublishedFileId_
 begin
   Result := GetUserItemVote(nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, GetUserItemVoteResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, GetUserItemVoteResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.AddItemToFavorites(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1587,7 +1617,7 @@ function TSteamUGCPlugin.AddItemToFavoritesAsync(nAppId: AppId_t; nPublishedFile
 begin
   Result := AddItemToFavorites(nAppId, nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, UserFavoriteItemsListChanged_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, UserFavoriteItemsListChanged_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.RemoveItemFromFavorites(nAppId: AppId_t; nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1600,7 +1630,7 @@ function TSteamUGCPlugin.RemoveItemFromFavoritesAsync(nAppId: AppId_t; nPublishe
 begin
   Result := RemoveItemFromFavorites(nAppId, nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, UserFavoriteItemsListChanged_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, UserFavoriteItemsListChanged_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.SubscribeItem(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1613,7 +1643,7 @@ function TSteamUGCPlugin.SubscribeItemAsync(nPublishedFileID: PublishedFileId_t;
 begin
   Result := SubscribeItem(nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageSubscribePublishedFileResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageSubscribePublishedFileResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.UnsubscribeItem(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1626,7 +1656,7 @@ function TSteamUGCPlugin.UnsubscribeItemAsync(nPublishedFileID: PublishedFileId_
 begin
   Result := UnsubscribeItem(nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoteStorageUnsubscribePublishedFileResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoteStorageUnsubscribePublishedFileResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.GetNumSubscribedItems(bIncludeLocallyDisabled: Boolean): UInt32;
@@ -1690,7 +1720,7 @@ function TSteamUGCPlugin.StartPlaytimeTrackingAsync(pvecPublishedFileID: Pointer
 begin
   Result := StartPlaytimeTracking(pvecPublishedFileID, unNumPublishedFileIDs);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, StartPlaytimeTrackingResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, StartPlaytimeTrackingResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.StopPlaytimeTracking(pvecPublishedFileID: Pointer; unNumPublishedFileIDs: UInt32): SteamAPICall_t;
@@ -1703,7 +1733,7 @@ function TSteamUGCPlugin.StopPlaytimeTrackingAsync(pvecPublishedFileID: Pointer;
 begin
   Result := StopPlaytimeTracking(pvecPublishedFileID, unNumPublishedFileIDs);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, StopPlaytimeTrackingResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, StopPlaytimeTrackingResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.StopPlaytimeTrackingForAllItems: SteamAPICall_t;
@@ -1716,7 +1746,7 @@ function TSteamUGCPlugin.StopPlaytimeTrackingForAllItemsAsync(AHandler: TSteamCa
 begin
   Result := StopPlaytimeTrackingForAllItems;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, StopPlaytimeTrackingResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, StopPlaytimeTrackingResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.AddDependency(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1729,7 +1759,7 @@ function TSteamUGCPlugin.AddDependencyAsync(nParentPublishedFileID: PublishedFil
 begin
   Result := AddDependency(nParentPublishedFileID, nChildPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, AddUGCDependencyResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, AddUGCDependencyResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.RemoveDependency(nParentPublishedFileID: PublishedFileId_t; nChildPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1742,7 +1772,7 @@ function TSteamUGCPlugin.RemoveDependencyAsync(nParentPublishedFileID: Published
 begin
   Result := RemoveDependency(nParentPublishedFileID, nChildPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoveUGCDependencyResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoveUGCDependencyResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.AddAppDependency(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t): SteamAPICall_t;
@@ -1755,7 +1785,7 @@ function TSteamUGCPlugin.AddAppDependencyAsync(nPublishedFileID: PublishedFileId
 begin
   Result := AddAppDependency(nPublishedFileID, nAppID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, AddAppDependencyResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, AddAppDependencyResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.RemoveAppDependency(nPublishedFileID: PublishedFileId_t; nAppID: AppId_t): SteamAPICall_t;
@@ -1768,7 +1798,7 @@ function TSteamUGCPlugin.RemoveAppDependencyAsync(nPublishedFileID: PublishedFil
 begin
   Result := RemoveAppDependency(nPublishedFileID, nAppID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, RemoveAppDependencyResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, RemoveAppDependencyResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.GetAppDependencies(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1781,7 +1811,7 @@ function TSteamUGCPlugin.GetAppDependenciesAsync(nPublishedFileID: PublishedFile
 begin
   Result := GetAppDependencies(nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, GetAppDependenciesResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, GetAppDependenciesResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.DeleteItem(nPublishedFileID: PublishedFileId_t): SteamAPICall_t;
@@ -1794,7 +1824,7 @@ function TSteamUGCPlugin.DeleteItemAsync(nPublishedFileID: PublishedFileId_t; AH
 begin
   Result := DeleteItem(nPublishedFileID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, DeleteItemResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, DeleteItemResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.ShowWorkshopEULA: Boolean;
@@ -1813,7 +1843,7 @@ function TSteamUGCPlugin.GetWorkshopEULAStatusAsync(AHandler: TSteamCallResultEv
 begin
   Result := GetWorkshopEULAStatus;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, WorkshopEULAStatus_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, WorkshopEULAStatus_t_k_iCallback, AHandler);
 end;
 
 function TSteamUGCPlugin.GetUserContentDescriptorPreferences(pvecDescriptors: Pointer; cMaxEntries: UInt32): UInt32;
@@ -1858,7 +1888,12 @@ function TSteamUGC.GetPlugin: TSteamUGCPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamUGCPlugin(TSteamworks.Instance.FindPlugin(TSteamUGCPlugin));
+    Result := TSteamUGCPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamUGC.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamUGCPlugin;
 end;
 
 procedure TSteamUGC.DoAttach;
@@ -2112,10 +2147,36 @@ begin
   FOnWorkshopEULAStatus(Self, Ev);
 end;
 
+{ TSteamGameServerUGCPlugin }
+
+class function TSteamGameServerUGCPlugin.PluginName: string;
+begin
+  Result := 'ISteamUGC (game server)';
+end;
+
+class function TSteamGameServerUGCPlugin.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
+{ TSteamGameServerUGC }
+
+class function TSteamGameServerUGC.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamGameServerUGCPlugin;
+end;
+
+class function TSteamGameServerUGC.IsGameServer: Boolean;
+begin
+  Result := True;
+end;
+
 initialization
   TSteamworks.RegisterPlugin(TSteamUGCPlugin);
+  TSteamworks.RegisterPlugin(TSteamGameServerUGCPlugin);
 
 finalization
+  TSteamworks.UnregisterPlugin(TSteamGameServerUGCPlugin);
   TSteamworks.UnregisterPlugin(TSteamUGCPlugin);
 
 end.

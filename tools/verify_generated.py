@@ -423,6 +423,8 @@ BYVALUE = {
                                                  {"i686-pc-windows": "sret", "x86_64-pc-windows": "sret", "i686-unknown-linux": "sret",
                                                   "": "two"}),
     "SteamAPI_ISteamInput_GetMotionData": ("InputMotionData_t", 1, {"": "sret"}),
+    # 20 bytes, pack(1): tools/plugin_extras/GameServer.pas.txt (2026-11-02)
+    "SteamAPI_ISteamGameServer_GetPublicIP": ("SteamIPAddress_t", 0, {"": "sret"}),
 }
 
 
@@ -463,7 +465,8 @@ def _byvalue_ir(clang, sdk_dir, tmp):
     src = ['#include "steam_api_flat.h"']
     for i, (name, (struct, nparams, _)) in enumerate(BYVALUE.items()):
         args = ", ".join(["0"] * nparams)
-        src.append(f"{struct} call{i}(ISteamInput* s) {{ return {name}(s{', ' + args if args else ''}); }}")
+        iface = name.split("_")[1]   # SteamAPI_<ISteamX>_<Method>
+        src.append(f"{struct} call{i}(void* s) {{ return {name}(({iface}*)s{', ' + args if args else ''}); }}")
     cpp = os.path.join(tmp, "byval.cpp")
     open(cpp, "w").write("\n".join(src) + "\n")
     resdir = subprocess.run([clang, "-print-resource-dir"], capture_output=True, text=True).stdout.strip()

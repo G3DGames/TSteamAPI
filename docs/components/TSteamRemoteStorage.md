@@ -726,7 +726,7 @@ there the handler variant is an overload of the same name with the extra
 function FileWriteAsync(const pchFile: string; pvData: Pointer; cubData: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t; overload;
 ```
 
-Calls `FileWriteAsync` and registers AHandler for its result (`RemoteStorageFileWriteAsyncComplete_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `FileWriteAsync` and registers AHandler for its result (`RemoteStorageFileWriteAsyncComplete_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### FileReadAsync
 
@@ -734,7 +734,7 @@ Calls `FileWriteAsync` and registers AHandler for its result (`RemoteStorageFile
 function FileReadAsync(const pchFile: string; nOffset: UInt32; cubToRead: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t; overload;
 ```
 
-Calls `FileReadAsync` and registers AHandler for its result (`RemoteStorageFileReadAsyncComplete_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `FileReadAsync` and registers AHandler for its result (`RemoteStorageFileReadAsyncComplete_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### FileShareAsync
 
@@ -742,7 +742,7 @@ Calls `FileReadAsync` and registers AHandler for its result (`RemoteStorageFileR
 function FileShareAsync(const pchFile: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `FileShare` and registers AHandler for its result (`RemoteStorageFileShareResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `FileShare` and registers AHandler for its result (`RemoteStorageFileShareResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### UGCDownloadAsync
 
@@ -750,7 +750,7 @@ Calls `FileShare` and registers AHandler for its result (`RemoteStorageFileShare
 function UGCDownloadAsync(hContent: UGCHandle_t; unPriority: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `UGCDownload` and registers AHandler for its result (`RemoteStorageDownloadUGCResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `UGCDownload` and registers AHandler for its result (`RemoteStorageDownloadUGCResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### PublishWorkshopFileAsync
 
@@ -758,7 +758,7 @@ Calls `UGCDownload` and registers AHandler for its result (`RemoteStorageDownloa
 function PublishWorkshopFileAsync(const pchFile: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t; AEWorkshopFileType: EWorkshopFileType; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `PublishWorkshopFile` and registers AHandler for its result (`RemoteStoragePublishFileProgress_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `PublishWorkshopFile` and registers AHandler for its result (`RemoteStoragePublishFileProgress_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### CommitPublishedFileUpdateAsync
 
@@ -766,7 +766,7 @@ Calls `PublishWorkshopFile` and registers AHandler for its result (`RemoteStorag
 function CommitPublishedFileUpdateAsync(updateHandle: PublishedFileUpdateHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `CommitPublishedFileUpdate` and registers AHandler for its result (`RemoteStorageUpdatePublishedFileResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `CommitPublishedFileUpdate` and registers AHandler for its result (`RemoteStorageUpdatePublishedFileResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetPublishedFileDetailsAsync
 
@@ -774,7 +774,7 @@ Calls `CommitPublishedFileUpdate` and registers AHandler for its result (`Remote
 function GetPublishedFileDetailsAsync(unPublishedFileId: PublishedFileId_t; unMaxSecondsOld: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetPublishedFileDetails` and registers AHandler for its result (`RemoteStorageGetPublishedFileDetailsResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetPublishedFileDetails` and registers AHandler for its result (`RemoteStorageGetPublishedFileDetailsResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### DeletePublishedFileAsync
 
@@ -782,7 +782,7 @@ Calls `GetPublishedFileDetails` and registers AHandler for its result (`RemoteSt
 function DeletePublishedFileAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `DeletePublishedFile` and registers AHandler for its result (`RemoteStorageDeletePublishedFileResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `DeletePublishedFile` and registers AHandler for its result (`RemoteStorageDeletePublishedFileResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### EnumerateUserPublishedFilesAsync
 
@@ -790,7 +790,7 @@ Calls `DeletePublishedFile` and registers AHandler for its result (`RemoteStorag
 function EnumerateUserPublishedFilesAsync(unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `EnumerateUserPublishedFiles` and registers AHandler for its result (`RemoteStorageEnumerateUserPublishedFilesResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `EnumerateUserPublishedFiles` and registers AHandler for its result (`RemoteStorageEnumerateUserPublishedFilesResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### SubscribePublishedFileAsync
 
@@ -798,7 +798,7 @@ Calls `EnumerateUserPublishedFiles` and registers AHandler for its result (`Remo
 function SubscribePublishedFileAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `SubscribePublishedFile` and registers AHandler for its result (`RemoteStorageSubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `SubscribePublishedFile` and registers AHandler for its result (`RemoteStorageSubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### EnumerateUserSubscribedFilesAsync
 
@@ -806,7 +806,7 @@ Calls `SubscribePublishedFile` and registers AHandler for its result (`RemoteSto
 function EnumerateUserSubscribedFilesAsync(unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `EnumerateUserSubscribedFiles` and registers AHandler for its result (`RemoteStorageEnumerateUserSubscribedFilesResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `EnumerateUserSubscribedFiles` and registers AHandler for its result (`RemoteStorageEnumerateUserSubscribedFilesResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### UnsubscribePublishedFileAsync
 
@@ -814,7 +814,7 @@ Calls `EnumerateUserSubscribedFiles` and registers AHandler for its result (`Rem
 function UnsubscribePublishedFileAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `UnsubscribePublishedFile` and registers AHandler for its result (`RemoteStorageUnsubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `UnsubscribePublishedFile` and registers AHandler for its result (`RemoteStorageUnsubscribePublishedFileResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetPublishedItemVoteDetailsAsync
 
@@ -822,7 +822,7 @@ Calls `UnsubscribePublishedFile` and registers AHandler for its result (`RemoteS
 function GetPublishedItemVoteDetailsAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetPublishedItemVoteDetails` and registers AHandler for its result (`RemoteStorageGetPublishedItemVoteDetailsResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetPublishedItemVoteDetails` and registers AHandler for its result (`RemoteStorageGetPublishedItemVoteDetailsResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### UpdateUserPublishedItemVoteAsync
 
@@ -830,7 +830,7 @@ Calls `GetPublishedItemVoteDetails` and registers AHandler for its result (`Remo
 function UpdateUserPublishedItemVoteAsync(unPublishedFileId: PublishedFileId_t; bVoteUp: Boolean; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `UpdateUserPublishedItemVote` and registers AHandler for its result (`RemoteStorageUpdateUserPublishedItemVoteResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `UpdateUserPublishedItemVote` and registers AHandler for its result (`RemoteStorageUpdateUserPublishedItemVoteResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetUserPublishedItemVoteDetailsAsync
 
@@ -838,7 +838,7 @@ Calls `UpdateUserPublishedItemVote` and registers AHandler for its result (`Remo
 function GetUserPublishedItemVoteDetailsAsync(unPublishedFileId: PublishedFileId_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetUserPublishedItemVoteDetails` and registers AHandler for its result (`RemoteStorageGetPublishedItemVoteDetailsResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetUserPublishedItemVoteDetails` and registers AHandler for its result (`RemoteStorageGetPublishedItemVoteDetailsResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### EnumerateUserSharedWorkshopFilesAsync
 
@@ -846,7 +846,7 @@ Calls `GetUserPublishedItemVoteDetails` and registers AHandler for its result (`
 function EnumerateUserSharedWorkshopFilesAsync(const steamId: TSteamID; unStartIndex: UInt32; var pRequiredTags: SteamParamStringArray_t; var pExcludedTags: SteamParamStringArray_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `EnumerateUserSharedWorkshopFiles` and registers AHandler for its result (`RemoteStorageEnumerateUserPublishedFilesResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `EnumerateUserSharedWorkshopFiles` and registers AHandler for its result (`RemoteStorageEnumerateUserPublishedFilesResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### PublishVideoAsync
 
@@ -854,7 +854,7 @@ Calls `EnumerateUserSharedWorkshopFiles` and registers AHandler for its result (
 function PublishVideoAsync(eVideoProvider: EWorkshopVideoProvider; const pchVideoAccount: string; const pchVideoIdentifier: string; const pchPreviewFile: string; nConsumerAppId: AppId_t; const pchTitle: string; const pchDescription: string; eVisibility: ERemoteStoragePublishedFileVisibility; var pTags: SteamParamStringArray_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `PublishVideo` and registers AHandler for its result (`RemoteStoragePublishFileProgress_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `PublishVideo` and registers AHandler for its result (`RemoteStoragePublishFileProgress_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### SetUserPublishedFileActionAsync
 
@@ -862,7 +862,7 @@ Calls `PublishVideo` and registers AHandler for its result (`RemoteStoragePublis
 function SetUserPublishedFileActionAsync(unPublishedFileId: PublishedFileId_t; eAction: EWorkshopFileAction; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `SetUserPublishedFileAction` and registers AHandler for its result (`RemoteStorageSetUserPublishedFileActionResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `SetUserPublishedFileAction` and registers AHandler for its result (`RemoteStorageSetUserPublishedFileActionResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### EnumeratePublishedFilesByUserActionAsync
 
@@ -870,7 +870,7 @@ Calls `SetUserPublishedFileAction` and registers AHandler for its result (`Remot
 function EnumeratePublishedFilesByUserActionAsync(eAction: EWorkshopFileAction; unStartIndex: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `EnumeratePublishedFilesByUserAction` and registers AHandler for its result (`RemoteStorageEnumeratePublishedFilesByUserActionResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `EnumeratePublishedFilesByUserAction` and registers AHandler for its result (`RemoteStorageEnumeratePublishedFilesByUserActionResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### EnumeratePublishedWorkshopFilesAsync
 
@@ -878,7 +878,7 @@ Calls `EnumeratePublishedFilesByUserAction` and registers AHandler for its resul
 function EnumeratePublishedWorkshopFilesAsync(eEnumerationType: EWorkshopEnumerationType; unStartIndex: UInt32; unCount: UInt32; unDays: UInt32; var pTags: SteamParamStringArray_t; var pUserTags: SteamParamStringArray_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `EnumeratePublishedWorkshopFiles` and registers AHandler for its result (`RemoteStorageEnumerateWorkshopFilesResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `EnumeratePublishedWorkshopFiles` and registers AHandler for its result (`RemoteStorageEnumerateWorkshopFilesResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### UGCDownloadToLocationAsync
 
@@ -886,7 +886,7 @@ Calls `EnumeratePublishedWorkshopFiles` and registers AHandler for its result (`
 function UGCDownloadToLocationAsync(hContent: UGCHandle_t; const pchLocation: string; unPriority: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `UGCDownloadToLocation` and registers AHandler for its result (`RemoteStorageDownloadUGCResult_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `UGCDownloadToLocation` and registers AHandler for its result (`RemoteStorageDownloadUGCResult_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

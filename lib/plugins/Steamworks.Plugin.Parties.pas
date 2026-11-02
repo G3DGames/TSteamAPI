@@ -79,7 +79,7 @@ type
       (@code(JoinPartyCallback_t_k_iCallback)). }
     function JoinParty(ulBeaconID: PartyBeaconID_t): SteamAPICall_t;
     { Calls @link(JoinParty) and registers AHandler for its result (@link(JoinPartyCallback_t)).
-      The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner).
+      The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner).
       @returns(The call handle, or k_uAPICallInvalid when Steam refused the call.) }
     function JoinPartyAsync(ulBeaconID: PartyBeaconID_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Get a list of possible beacon locations. }
@@ -94,7 +94,7 @@ type
     function CreateBeacon(unOpenSlots: UInt32; var pBeaconLocation: SteamPartyBeaconLocation_t; const pchConnectString: string; const pchMetadata: string): SteamAPICall_t;
     { Calls @link(CreateBeacon) and registers AHandler for its result
       (@link(CreateBeaconCallback_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function CreateBeaconAsync(unOpenSlots: UInt32; var pBeaconLocation: SteamPartyBeaconLocation_t; const pchConnectString: string; const pchMetadata: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Call this function when a user that had a reservation (see callback below) has successfully
@@ -111,7 +111,7 @@ type
     function ChangeNumOpenSlots(ulBeacon: PartyBeaconID_t; unOpenSlots: UInt32): SteamAPICall_t;
     { Calls @link(ChangeNumOpenSlots) and registers AHandler for its result
       (@link(ChangeNumOpenSlotsCallback_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function ChangeNumOpenSlotsAsync(ulBeacon: PartyBeaconID_t; unOpenSlots: UInt32; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Turn off the beacon. }
@@ -180,6 +180,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamPartiesPlugin) (a game-server copy of
+      this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamParties plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamPartiesPlugin read GetPlugin;
   published
@@ -311,7 +314,7 @@ function TSteamPartiesPlugin.JoinPartyAsync(ulBeaconID: PartyBeaconID_t; AHandle
 begin
   Result := JoinParty(ulBeaconID);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, JoinPartyCallback_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, JoinPartyCallback_t_k_iCallback, AHandler);
 end;
 
 function TSteamPartiesPlugin.GetNumAvailableBeaconLocations(var puNumLocations: UInt32): Boolean;
@@ -341,7 +344,7 @@ function TSteamPartiesPlugin.CreateBeaconAsync(unOpenSlots: UInt32; var pBeaconL
 begin
   Result := CreateBeacon(unOpenSlots, pBeaconLocation, pchConnectString, pchMetadata);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, CreateBeaconCallback_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, CreateBeaconCallback_t_k_iCallback, AHandler);
 end;
 
 procedure TSteamPartiesPlugin.OnReservationCompleted(ulBeacon: PartyBeaconID_t; const steamIDUser: TSteamID);
@@ -366,7 +369,7 @@ function TSteamPartiesPlugin.ChangeNumOpenSlotsAsync(ulBeacon: PartyBeaconID_t; 
 begin
   Result := ChangeNumOpenSlots(ulBeacon, unOpenSlots);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, ChangeNumOpenSlotsCallback_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, ChangeNumOpenSlotsCallback_t_k_iCallback, AHandler);
 end;
 
 function TSteamPartiesPlugin.DestroyBeacon(ulBeacon: PartyBeaconID_t): Boolean;
@@ -381,7 +384,12 @@ function TSteamParties.GetPlugin: TSteamPartiesPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamPartiesPlugin(TSteamworks.Instance.FindPlugin(TSteamPartiesPlugin));
+    Result := TSteamPartiesPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamParties.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamPartiesPlugin;
 end;
 
 procedure TSteamParties.DoAttach;

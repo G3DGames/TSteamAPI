@@ -384,6 +384,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamMatchmakingServersPlugin) (a
+      game-server copy of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamMatchmakingServers plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamMatchmakingServersPlugin read GetPlugin;
     { Asks Steam for a server list (see
@@ -1560,7 +1563,12 @@ function TSteamMatchmakingServers.GetPlugin: TSteamMatchmakingServersPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamMatchmakingServersPlugin(TSteamworks.Instance.FindPlugin(TSteamMatchmakingServersPlugin));
+    Result := TSteamMatchmakingServersPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamMatchmakingServers.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamMatchmakingServersPlugin;
 end;
 
 procedure TSteamMatchmakingServers.DoAttach;

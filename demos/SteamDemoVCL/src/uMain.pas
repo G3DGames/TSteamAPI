@@ -10,7 +10,9 @@
   enabled only when it makes sense), a File menu - Auto Start Steam (on /
   off, saved per user: DemoSettingsFolder in SteamComponentTest), Take
   Screenshot (this window to the user's Steam screenshots, SteamFormToRGB),
-  Copy Log, Exit - and four tabs: Output (the log, also appended to
+  Copy Log, Send log to receiver (optional, nothing to do with Steam:
+  streams the log to a LogReceiver, demos/Shared/DemoRemoteLog.pas), Exit -
+  and four tabs: Output (the log, also appended to
   SteamDemo.log next to the executable), Personal (the user's avatar,
   persona, Steam ids, level, the friends list with avatars), Achievements
   (icons, unlock state) and Components (the base test of 21 more plug-in
@@ -27,8 +29,11 @@ uses
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
   Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
   Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage,
-  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Menus, SteamComponentTest, System.ImageList,
-  Vcl.ImgList;
+  Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Menus, SteamComponentTest, SteamPairTest, System.ImageList,
+  Vcl.ImgList,
+  // optional remote logging (File > Send log to receiver; nothing to do
+  // with Steam - RemoteLogging/README.md)
+  DemoRemoteLog;
 
 type
   { The demo's main form (uMain.dfm). }
@@ -43,6 +48,8 @@ type
     btnStop: TButton;
     { Runs the component test (Components tab). }
     btnTest: TButton;
+    { Runs the two-user test (Two users tab; press it on both machines). }
+    btnPair: TButton;
     { The main menu (File). }
     MainMenu1: TMainMenu;
     { File menu. }
@@ -53,6 +60,9 @@ type
     mnuTakeScreenshot: TMenuItem;
     { Copies the log to the clipboard. }
     mnuCopyLog: TMenuItem;
+    { Send log to receiver / Stop sending log (@link(FRemote); the state is
+      in the caption). }
+    mnuRemoteLog: TMenuItem;
     { Separator above Exit. }
     mnuSep1: TMenuItem;
     { Closes the program. }
@@ -88,6 +98,10 @@ type
     tsComponents: TTabSheet;
     { One row per tested component: name and verdict (row I = CT_ constant I). }
     lvComponents: TListView;
+    { Two users tab. }
+    tsPair: TTabSheet;
+    { One row per two-user test (row I = PT_ constant I). }
+    lvPair: TListView;
     { 64 x 64 friend avatars for @link(lvFriends). }
     ilFriends: TImageList;
     { 64 x 64 achievement icons for @link(lvAchievements). }
@@ -111,12 +125,17 @@ type
     procedure btnStopClick(Sender: TObject);
     { Test components button. }
     procedure btnTestClick(Sender: TObject);
+    { Pair test button. }
+    procedure btnPairClick(Sender: TObject);
     { File > Auto Start Steam: toggles and saves the setting. }
     procedure mnuAutoStartClick(Sender: TObject);
     { File > Take Screenshot. }
     procedure mnuTakeScreenshotClick(Sender: TObject);
     { File > Copy Log. }
     procedure mnuCopyLogClick(Sender: TObject);
+    { File > Send log to receiver: starts / stops sending the log to a
+      LogReceiver (@link(FRemote)). }
+    procedure mnuRemoteLogClick(Sender: TObject);
     { File > Exit. }
     procedure mnuExitClick(Sender: TObject);
     { Starts Steam once (Auto Start Steam). }
@@ -150,6 +169,13 @@ type
     FLogFile: string;
     { The component test (creates its own 21 components). }
     FTest: TSteamComponentTest;
+    { The two-user test (creates its own six components). }
+    FPair: TSteamPairTest;
+    { File > Send log to receiver (demos/Shared/DemoRemoteLog.pas; optional,
+      nothing to do with Steam); every log line goes to it. }
+    FRemote: TDemoRemoteLog;
+    { FRemote.OnChanged: shows its state in @link(mnuRemoteLog)'s caption. }
+    procedure RemoteLogChanged(Sender: TObject);
     { Auto Start Steam setting, saved in @link(FSettingsFile). }
     FAutoStart: Boolean;
     { SteamDemo.ini in DemoSettingsFolder('SteamDemo') ('' = unknown). }
@@ -172,6 +198,10 @@ type
     procedure TestRow(AIndex: Integer; const AText: string);
     { FTest.OnScreenshotRequested: writes this window. }
     procedure TestScreenshotRequested(Sender: TObject);
+    { Fills @link(lvPair) with one row per two-user test. }
+    procedure FillPairList;
+    { FPair.OnRowChanged. }
+    procedure PairRow(AIndex: Integer; const AText: string);
     { Captures this window (SteamFormToRGB) and writes it with
       WriteScreenshot. @returns(The handle, 0 on failure.) }
     function WriteFormScreenshot(AShots: TSteamScreenshotsPlugin): ScreenshotHandle;
@@ -253,6 +283,13 @@ end;
 procedure TfrmSteamDemo.FormCreate(Sender: TObject);
 begin
   FLogFile := ExpandFileName(ExtractFilePath(ParamStr(0))) + 'SteamDemo.log';
+  // the previous run's log stays as SteamDemo.previous.log (a restart
+  // must not wipe the log of a test run on a second machine)
+  if FileExists(FLogFile) then
+  begin
+    System.SysUtils.DeleteFile(ChangeFileExt(FLogFile, '.previous.log'));
+    RenameFile(FLogFile, ChangeFileExt(FLogFile, '.previous.log'));
+  end;
   try
     with TFileStream.Create(FLogFile, fmCreate) do
       Free;
@@ -278,6 +315,13 @@ begin
   FTest.OnRowChanged := TestRow;
   FTest.OnScreenshotRequested := TestScreenshotRequested;
   FillTestList;
+  FPair := TSteamPairTest.Create(Self, SteamAPI1);
+  FPair.OnLog := TestLog;
+  FPair.OnRowChanged := PairRow;
+  FillPairList;
+  FRemote := TDemoRemoteLog.Create(Self, 'SteamDemoVCL', TSteamLib.PlatformDescription);
+  FRemote.OnLog := AddLog;
+  FRemote.OnChanged := RemoteLogChanged;
   AddLog(Format('Steamworks VCL demo, AppID %d, %d plug-in class(es) linked',
     [SteamAPI1.AppID, Length(TSteamworks.RegisteredPlugins)]));
   if FLogFile <> '' then
@@ -335,6 +379,7 @@ begin
   btnInfo.Enabled := Running;
   btnStop.Enabled := Running;
   btnTest.Enabled := Running;
+  btnPair.Enabled := Running;
   mnuTakeScreenshot.Enabled := Running;
 end;
 
@@ -450,9 +495,42 @@ begin
   FTest.Start;
 end;
 
+procedure TfrmSteamDemo.FillPairList;
+var
+  I: Integer;
+  Item: TListItem;
+begin
+  lvPair.Items.BeginUpdate;
+  try
+    lvPair.Items.Clear;
+    for I := 0 to PT_COUNT - 1 do
+    begin
+      Item := lvPair.Items.Add;
+      Item.Caption := PairTestNames[I];
+      Item.SubItems.Add(FPair.RowText[I]);
+    end;
+  finally
+    lvPair.Items.EndUpdate;
+  end;
+end;
+
+procedure TfrmSteamDemo.PairRow(AIndex: Integer; const AText: string);
+begin
+  if (AIndex >= 0) and (AIndex < lvPair.Items.Count) then
+    lvPair.Items[AIndex].SubItems[0] := AText;
+end;
+
+procedure TfrmSteamDemo.btnPairClick(Sender: TObject);
+begin
+  AddLog('Pair test pressed');
+  pgcMain.ActivePage := tsPair;
+  FPair.Start;
+end;
+
 procedure TfrmSteamDemo.tmTestsTimer(Sender: TObject);
 begin
   FTest.Tick;
+  FPair.Tick;
 end;
 
 function TfrmSteamDemo.WriteFormScreenshot(AShots: TSteamScreenshotsPlugin): ScreenshotHandle;
@@ -510,8 +588,7 @@ var
 begin
   Line := FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S;
   memLog.Lines.Add(Line);
-  if FLogFile = '' then
-    Exit;
+  if FLogFile <> '' then
   try
     // Open, append, close per line: nothing is lost if the process is killed
     AssignFile(F, FLogFile);
@@ -527,6 +604,14 @@ begin
   except
     FLogFile := '';
   end;
+  // the same line to a LogReceiver while sending (a no-op otherwise)
+  if FRemote <> nil then
+    FRemote.Send(Line);
+end;
+
+procedure TfrmSteamDemo.RemoteLogChanged(Sender: TObject);
+begin
+  mnuRemoteLog.Caption := FRemote.MenuText;
 end;
 
 procedure TfrmSteamDemo.AddInfo(const AName, AValue: string);
@@ -824,6 +909,8 @@ begin
   // Before Close: the test's cleanup needs Steam (OnShutdown is too late)
   if FTest.Running then
     FTest.Finish('Stop pressed');
+  if FPair.Running then
+    FPair.Finish('Stop pressed');
   SteamAPI1.Close;
   UpdateControls;
 end;
@@ -834,6 +921,11 @@ begin
   AddLog('Log copied to clipboard');
 end;
 
+procedure TfrmSteamDemo.mnuRemoteLogClick(Sender: TObject);
+begin
+  FRemote.Toggle(memLog.Lines);
+end;
+
 procedure TfrmSteamDemo.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   AddLog(Format('FormClose: window closing (Steam running: %s)', [BoolToStr(SteamAPI1.IsRunning, True)]));
@@ -842,7 +934,11 @@ begin
   tmTests.Enabled := False;
   if FTest.Running then
     FTest.Finish('window closing');
+  if FPair.Running then
+    FPair.Finish('window closing');
   SteamAPI1.Close;
+  // last: the lines above still reach the receiver
+  FRemote.Shutdown;
 end;
 
 procedure TfrmSteamDemo.SteamLog(Sender: TObject; ALevel: TSteamLogLevel; const AMessage: string);
@@ -872,6 +968,8 @@ begin
   // (client exit): SteamAPI is already shut down, no cleanup possible
   if FTest.Running then
     FTest.Finish('Steam shut down while the component test was running (no cleanup possible)');
+  if FPair.Running then
+    FPair.Finish('Steam shut down while the pair test was running (no cleanup possible)');
   // Also after a Steam client exit: Start becomes possible again
   UpdateControls;
 end;

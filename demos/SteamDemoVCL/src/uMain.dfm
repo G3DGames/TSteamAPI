@@ -60,6 +60,15 @@ object frmSteamDemo: TfrmSteamDemo
       TabOrder = 3
       OnClick = btnTestClick
     end
+    object btnPair: TButton
+      Left = 500
+      Top = 10
+      Width = 160
+      Height = 28
+      Caption = 'Pair test (2 users)'
+      TabOrder = 4
+      OnClick = btnPairClick
+    end
   end
   object pgcMain: TPageControl
     Left = 0
@@ -216,6 +225,29 @@ object frmSteamDemo: TfrmSteamDemo
         ViewStyle = vsReport
       end
     end
+    object tsPair: TTabSheet
+      Caption = 'Two users'
+      object lvPair: TListView
+        Left = 0
+        Top = 0
+        Width = 936
+        Height = 523
+        Align = alClient
+        Columns = <
+          item
+            Caption = 'Test'
+            Width = 260
+          end
+          item
+            Caption = 'Result'
+            Width = 1200
+          end>
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 0
+        ViewStyle = vsReport
+      end
+    end
   end
   object ilFriends: TImageList
     ColorDepth = cd32Bit
@@ -274,6 +306,10 @@ object frmSteamDemo: TfrmSteamDemo
       object mnuCopyLog: TMenuItem
         Caption = '&Copy Log'
         OnClick = mnuCopyLogClick
+      end
+      object mnuRemoteLog: TMenuItem
+        Caption = 'Send log to receiver...'
+        OnClick = mnuRemoteLogClick
       end
       object mnuSep1: TMenuItem
         Caption = '-'

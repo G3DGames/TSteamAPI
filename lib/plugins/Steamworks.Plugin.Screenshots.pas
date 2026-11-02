@@ -132,6 +132,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamScreenshotsPlugin) (a game-server copy
+      of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamScreenshots plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamScreenshotsPlugin read GetPlugin;
   published
@@ -292,7 +295,12 @@ function TSteamScreenshots.GetPlugin: TSteamScreenshotsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamScreenshotsPlugin(TSteamworks.Instance.FindPlugin(TSteamScreenshotsPlugin));
+    Result := TSteamScreenshotsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamScreenshots.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamScreenshotsPlugin;
 end;
 
 procedure TSteamScreenshots.DoAttach;

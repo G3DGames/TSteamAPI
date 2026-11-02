@@ -10,6 +10,8 @@ program SteamDemoVCL;
 uses
   Vcl.Forms,
   SteamComponentTest in '..\Shared\SteamComponentTest.pas',
+  SteamPairTest in '..\Shared\SteamPairTest.pas',
+  DemoRemoteLog in '..\Shared\DemoRemoteLog.pas',
   uMain in 'src\uMain.pas' {frmSteamDemo};
 
 {$R *.res}

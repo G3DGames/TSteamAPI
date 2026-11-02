@@ -137,7 +137,7 @@ type
     function CreateBrowser(const pchUserAgent: string; const pchUserCSS: string): SteamAPICall_t;
     { Calls @link(CreateBrowser) and registers AHandler for its result
       (@link(HTML_BrowserReady_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function CreateBrowserAsync(const pchUserAgent: string; const pchUserCSS: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Call this when you are done with a html surface, this lets us free the resources being used
@@ -405,6 +405,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamHTMLSurfacePlugin) (a game-server copy
+      of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamHTMLSurface plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamHTMLSurfacePlugin read GetPlugin;
   published
@@ -628,7 +631,7 @@ function TSteamHTMLSurfacePlugin.CreateBrowserAsync(const pchUserAgent: string; 
 begin
   Result := CreateBrowser(pchUserAgent, pchUserCSS);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, HTML_BrowserReady_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, HTML_BrowserReady_t_k_iCallback, AHandler);
 end;
 
 procedure TSteamHTMLSurfacePlugin.RemoveBrowser(unBrowserHandle: HHTMLBrowser);
@@ -866,7 +869,12 @@ function TSteamHTMLSurface.GetPlugin: TSteamHTMLSurfacePlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamHTMLSurfacePlugin(TSteamworks.Instance.FindPlugin(TSteamHTMLSurfacePlugin));
+    Result := TSteamHTMLSurfacePlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamHTMLSurface.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamHTMLSurfacePlugin;
 end;
 
 procedure TSteamHTMLSurface.DoAttach;

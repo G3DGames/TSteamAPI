@@ -185,7 +185,7 @@ type
     function RequestUserStats(const steamIDUser: TSteamID): SteamAPICall_t;
     { Calls @link(RequestUserStats) and registers AHandler for its result
       (@link(UserStatsReceived_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function RequestUserStatsAsync(const steamIDUser: TSteamID; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { requests stat information for a user, usable after a successful call to RequestUserStats(). }
@@ -204,7 +204,7 @@ type
     function FindOrCreateLeaderboard(const pchLeaderboardName: string; AELeaderboardSortMethod: ELeaderboardSortMethod; AELeaderboardDisplayType: ELeaderboardDisplayType): SteamAPICall_t;
     { Calls @link(FindOrCreateLeaderboard) and registers AHandler for its result
       (@link(LeaderboardFindResult_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function FindOrCreateLeaderboardAsync(const pchLeaderboardName: string; AELeaderboardSortMethod: ELeaderboardSortMethod; AELeaderboardDisplayType: ELeaderboardDisplayType; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { as above, but won't create the leaderboard if it's not found This call is asynchronous, with
@@ -213,7 +213,7 @@ type
     function FindLeaderboard(const pchLeaderboardName: string): SteamAPICall_t;
     { Calls @link(FindLeaderboard) and registers AHandler for its result
       (@link(LeaderboardFindResult_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function FindLeaderboardAsync(const pchLeaderboardName: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { returns the name of a leaderboard. }
@@ -239,7 +239,7 @@ type
     function DownloadLeaderboardEntries(hSteamLeaderboard: SteamLeaderboard_t; AELeaderboardDataRequest: ELeaderboardDataRequest; nRangeStart: Integer; nRangeEnd: Integer): SteamAPICall_t;
     { Calls @link(DownloadLeaderboardEntries) and registers AHandler for its result
       (@link(LeaderboardScoresDownloaded_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function DownloadLeaderboardEntriesAsync(hSteamLeaderboard: SteamLeaderboard_t; AELeaderboardDataRequest: ELeaderboardDataRequest; nRangeStart: Integer; nRangeEnd: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { as above, but downloads leaderboard entries for an arbitrary set of users -
@@ -250,7 +250,7 @@ type
     function DownloadLeaderboardEntriesForUsers(hSteamLeaderboard: SteamLeaderboard_t; prgUsers: Pointer; cUsers: Integer): SteamAPICall_t;
     { Calls @link(DownloadLeaderboardEntriesForUsers) and registers AHandler for its result
       (@link(LeaderboardScoresDownloaded_t)). The handler's object owns the registration (remove
-      it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function DownloadLeaderboardEntriesForUsersAsync(hSteamLeaderboard: SteamLeaderboard_t; prgUsers: Pointer; cUsers: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     (* Returns data about a single leaderboard entry use a for loop from 0 to
@@ -271,7 +271,7 @@ type
     function UploadLeaderboardScore(hSteamLeaderboard: SteamLeaderboard_t; AELeaderboardUploadScoreMethod: ELeaderboardUploadScoreMethod; nScore: Int32; pScoreDetails: Pointer; cScoreDetailsCount: Integer): SteamAPICall_t;
     { Calls @link(UploadLeaderboardScore) and registers AHandler for its result
       (@link(LeaderboardScoreUploaded_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function UploadLeaderboardScoreAsync(hSteamLeaderboard: SteamLeaderboard_t; AELeaderboardUploadScoreMethod: ELeaderboardUploadScoreMethod; nScore: Int32; pScoreDetails: Pointer; cScoreDetailsCount: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Attaches a piece of user generated content the user's entry on a leaderboard. hContent is a
@@ -282,7 +282,7 @@ type
     function AttachLeaderboardUGC(hSteamLeaderboard: SteamLeaderboard_t; hUGC: UGCHandle_t): SteamAPICall_t;
     { Calls @link(AttachLeaderboardUGC) and registers AHandler for its result
       (@link(LeaderboardUGCSet_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function AttachLeaderboardUGCAsync(hSteamLeaderboard: SteamLeaderboard_t; hUGC: UGCHandle_t; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Retrieves the number of players currently playing your game (online + offline) This call is
@@ -291,7 +291,7 @@ type
     function GetNumberOfCurrentPlayers: SteamAPICall_t;
     { Calls @link(GetNumberOfCurrentPlayers) and registers AHandler for its result
       (@link(NumberOfCurrentPlayers_t)). The handler's object owns the registration (remove it
-      with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
+      with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when
       Steam refused the call.) }
     function GetNumberOfCurrentPlayersAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Requests that Steam fetch data on the percentage of players who have received each
@@ -301,7 +301,7 @@ type
     function RequestGlobalAchievementPercentages: SteamAPICall_t;
     { Calls @link(RequestGlobalAchievementPercentages) and registers AHandler for its result
       (@link(GlobalAchievementPercentagesReady_t)). The handler's object owns the registration
-      (remove it with Steam.Dispatcher.RemoveOwner). @returns(The call handle, or
+      (remove it with Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or
       k_uAPICallInvalid when Steam refused the call.) }
     function RequestGlobalAchievementPercentagesAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Get the info on the most achieved achievement for the game, returns an iterator index you
@@ -323,7 +323,7 @@ type
     function RequestGlobalStats(nHistoryDays: Integer): SteamAPICall_t;
     { Calls @link(RequestGlobalStats) and registers AHandler for its result
       (@link(GlobalStatsReceived_t)). The handler's object owns the registration (remove it with
-      Steam.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
+      Plugin.Dispatcher.RemoveOwner). @returns(The call handle, or k_uAPICallInvalid when Steam
       refused the call.) }
     function RequestGlobalStatsAsync(nHistoryDays: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
     { Gets the lifetime totals for an aggregated stat. }
@@ -450,6 +450,9 @@ type
     { Subscribes every callback of this interface. }
     procedure DoAttach; override;
   public
+    { The plug-in class @link(Plugin) looks up: @link(TSteamUserStatsPlugin) (a game-server copy
+      of this component returns its own subclass). }
+    class function PluginClass: TSteamPluginClass; virtual;
     { The ISteamUserStats plug-in, for calls; @nil while Steam is not running. }
     property Plugin: TSteamUserStatsPlugin read GetPlugin;
   published
@@ -777,7 +780,7 @@ function TSteamUserStatsPlugin.RequestUserStatsAsync(const steamIDUser: TSteamID
 begin
   Result := RequestUserStats(steamIDUser);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, UserStatsReceived_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, UserStatsReceived_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.GetUserStatInt32(const steamIDUser: TSteamID; const pchName: string; var pData: Int32): Boolean;
@@ -835,7 +838,7 @@ function TSteamUserStatsPlugin.FindOrCreateLeaderboardAsync(const pchLeaderboard
 begin
   Result := FindOrCreateLeaderboard(pchLeaderboardName, AELeaderboardSortMethod, AELeaderboardDisplayType);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LeaderboardFindResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LeaderboardFindResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.FindLeaderboard(const pchLeaderboardName: string): SteamAPICall_t;
@@ -851,7 +854,7 @@ function TSteamUserStatsPlugin.FindLeaderboardAsync(const pchLeaderboardName: st
 begin
   Result := FindLeaderboard(pchLeaderboardName);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LeaderboardFindResult_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LeaderboardFindResult_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.GetLeaderboardName(hSteamLeaderboard: SteamLeaderboard_t): string;
@@ -888,7 +891,7 @@ function TSteamUserStatsPlugin.DownloadLeaderboardEntriesAsync(hSteamLeaderboard
 begin
   Result := DownloadLeaderboardEntries(hSteamLeaderboard, AELeaderboardDataRequest, nRangeStart, nRangeEnd);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LeaderboardScoresDownloaded_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LeaderboardScoresDownloaded_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.DownloadLeaderboardEntriesForUsers(hSteamLeaderboard: SteamLeaderboard_t; prgUsers: Pointer; cUsers: Integer): SteamAPICall_t;
@@ -901,7 +904,7 @@ function TSteamUserStatsPlugin.DownloadLeaderboardEntriesForUsersAsync(hSteamLea
 begin
   Result := DownloadLeaderboardEntriesForUsers(hSteamLeaderboard, prgUsers, cUsers);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LeaderboardScoresDownloaded_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LeaderboardScoresDownloaded_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.GetDownloadedLeaderboardEntry(hSteamLeaderboardEntries: SteamLeaderboardEntries_t; index: Integer; var pLeaderboardEntry: LeaderboardEntry_t; pDetails: Pointer; cDetailsMax: Integer): Boolean;
@@ -920,7 +923,7 @@ function TSteamUserStatsPlugin.UploadLeaderboardScoreAsync(hSteamLeaderboard: St
 begin
   Result := UploadLeaderboardScore(hSteamLeaderboard, AELeaderboardUploadScoreMethod, nScore, pScoreDetails, cScoreDetailsCount);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LeaderboardScoreUploaded_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LeaderboardScoreUploaded_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.AttachLeaderboardUGC(hSteamLeaderboard: SteamLeaderboard_t; hUGC: UGCHandle_t): SteamAPICall_t;
@@ -933,7 +936,7 @@ function TSteamUserStatsPlugin.AttachLeaderboardUGCAsync(hSteamLeaderboard: Stea
 begin
   Result := AttachLeaderboardUGC(hSteamLeaderboard, hUGC);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, LeaderboardUGCSet_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, LeaderboardUGCSet_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.GetNumberOfCurrentPlayers: SteamAPICall_t;
@@ -946,7 +949,7 @@ function TSteamUserStatsPlugin.GetNumberOfCurrentPlayersAsync(AHandler: TSteamCa
 begin
   Result := GetNumberOfCurrentPlayers;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, NumberOfCurrentPlayers_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, NumberOfCurrentPlayers_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.RequestGlobalAchievementPercentages: SteamAPICall_t;
@@ -959,7 +962,7 @@ function TSteamUserStatsPlugin.RequestGlobalAchievementPercentagesAsync(AHandler
 begin
   Result := RequestGlobalAchievementPercentages;
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, GlobalAchievementPercentagesReady_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, GlobalAchievementPercentagesReady_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.GetMostAchievedAchievementInfo(pchName: PAnsiChar; unNameBufLen: UInt32; var pflPercent: Single; var pbAchieved: Boolean): Integer;
@@ -993,7 +996,7 @@ function TSteamUserStatsPlugin.RequestGlobalStatsAsync(nHistoryDays: Integer; AH
 begin
   Result := RequestGlobalStats(nHistoryDays);
   if Result <> k_uAPICallInvalid then
-    Steam.Dispatcher.AwaitCallResult(Result, GlobalStatsReceived_t_k_iCallback, AHandler);
+    Dispatcher.AwaitCallResult(Result, GlobalStatsReceived_t_k_iCallback, AHandler);
 end;
 
 function TSteamUserStatsPlugin.GetGlobalStatInt64(const pchStatName: string; var pData: Int64): Boolean;
@@ -1056,7 +1059,12 @@ function TSteamUserStats.GetPlugin: TSteamUserStatsPlugin;
 begin
   Result := nil;
   if TSteamworks.HasInstance then
-    Result := TSteamUserStatsPlugin(TSteamworks.Instance.FindPlugin(TSteamUserStatsPlugin));
+    Result := TSteamUserStatsPlugin(TSteamworks.Instance.FindPlugin(PluginClass));
+end;
+
+class function TSteamUserStats.PluginClass: TSteamPluginClass;
+begin
+  Result := TSteamUserStatsPlugin;
 end;
 
 procedure TSteamUserStats.DoAttach;

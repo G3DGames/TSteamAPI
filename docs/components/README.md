@@ -38,6 +38,8 @@ link to it.
 | [TSteamNetworkingMessages](TSteamNetworkingMessages.md) | ISteamNetworkingMessages | P2P messages to a Steam user, no connection to manage |
 | [TSteamNetworkingUtils](TSteamNetworkingUtils.md) | ISteamNetworkingUtils | Relay network status, ping locations, clock, settings |
 | [TSteamMatchmakingServers](TSteamMatchmakingServers.md) | ISteamMatchmakingServers | Server browser: server lists, ping, players, rules |
+| [TSteamGameServer](TSteamGameServer.md) | ISteamGameServer | Game server (listen or dedicated): log-on, server browser listing and rules, player auth; its server copies TSteamGameServerUtils / Networking / NetworkingSockets / NetworkingMessages / HTTP / UGC / Inventory |
+| [TSteamGameServerStats](TSteamGameServerStats.md) | ISteamGameServerStats | Players' stats and achievements, set by the game server |
 
 Still to come: the game-server API. ISteamController is not
 bound (deprecated by Valve; use TSteamInput).

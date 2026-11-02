@@ -440,7 +440,7 @@ component's event.
 function RequestEncryptedAppTicketAsync(pDataToInclude: Pointer; cbDataToInclude: Integer; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestEncryptedAppTicket` and registers AHandler for its result (`EncryptedAppTicketResponse_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestEncryptedAppTicket` and registers AHandler for its result (`EncryptedAppTicketResponse_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### RequestStoreAuthURLAsync
 
@@ -448,7 +448,7 @@ Calls `RequestEncryptedAppTicket` and registers AHandler for its result (`Encryp
 function RequestStoreAuthURLAsync(const pchRedirectURL: string; AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `RequestStoreAuthURL` and registers AHandler for its result (`StoreAuthURLResponse_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `RequestStoreAuthURL` and registers AHandler for its result (`StoreAuthURLResponse_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetMarketEligibilityAsync
 
@@ -456,7 +456,7 @@ Calls `RequestStoreAuthURL` and registers AHandler for its result (`StoreAuthURL
 function GetMarketEligibilityAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetMarketEligibility` and registers AHandler for its result (`MarketEligibilityResponse_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetMarketEligibility` and registers AHandler for its result (`MarketEligibilityResponse_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 #### GetDurationControlAsync
 
@@ -464,7 +464,7 @@ Calls `GetMarketEligibility` and registers AHandler for its result (`MarketEligi
 function GetDurationControlAsync(AHandler: TSteamCallResultEvent): SteamAPICall_t;
 ```
 
-Calls `GetDurationControl` and registers AHandler for its result (`DurationControl_t`). The handler's object owns the registration (remove it with Steam.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
+Calls `GetDurationControl` and registers AHandler for its result (`DurationControl_t`). The handler's object owns the registration (remove it with Plugin.Dispatcher.RemoveOwner). Returns: (The call handle, or k_uAPICallInvalid when Steam refused the call.)
 
 ### Properties
 

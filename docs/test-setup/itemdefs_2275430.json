@@ -1,0 +1,40 @@
+{
+  "appid": 2275430,
+  "items": [
+    {
+      "itemdefid": 100,
+      "type": "item",
+      "name": "TSteamAPI Test Token",
+      "description": "Promo test item of the TSteamAPI component test (AddPromoItem). Not tradable, no value.",
+      "promo": "manual",
+      "icon_url": "https://raw.githubusercontent.com/G3DGames/TSteamAPI/main/docs/test-setup/test_item.png",
+      "icon_url_large": "https://raw.githubusercontent.com/G3DGames/TSteamAPI/main/docs/test-setup/test_item.png",
+      "tradable": false,
+      "marketable": false
+    },
+    {
+      "itemdefid": 101,
+      "type": "item",
+      "name": "TSteamAPI Test Gem",
+      "description": "Test item of the TSteamAPI component test (GenerateItems, ConsumeItem). Not tradable, no value.",
+      "icon_url": "https://raw.githubusercontent.com/G3DGames/TSteamAPI/main/docs/test-setup/test_gem.png",
+      "icon_url_large": "https://raw.githubusercontent.com/G3DGames/TSteamAPI/main/docs/test-setup/test_gem.png",
+      "tradable": false,
+      "marketable": false
+    },
+    {
+      "itemdefid": 10,
+      "type": "playtimegenerator",
+      "name": "TSteamAPI Test Drop",
+      "description": "Playtime drop generator of the TSteamAPI component test (TriggerItemDrop); drops a Test Gem.",
+      "bundle": "101",
+      "icon_url": "https://raw.githubusercontent.com/G3DGames/TSteamAPI/main/docs/test-setup/test_gem.png",
+      "tradable": false,
+      "marketable": false,
+      "drop_interval": 1,
+      "use_drop_window": true,
+      "drop_window": 1440,
+      "drop_max_per_window": 3
+    }
+  ]
+}
