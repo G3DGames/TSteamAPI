@@ -325,7 +325,7 @@ copy /Y "$(PROJECTDIR)\..\..\models\SteamController_Animated.glb" "$(OUTPUTDIR)"
                 <Source>
                     <Source Name="MainSource">VirtualGamepad.dpr</Source>
                 </Source>
-                <WelcomePageFile Path="..\..\README.md"/>
+                <WelcomePageFile Path="README.md"/>
             </Delphi.Personality>
             <Deployment Version="5">
                 <DeployFile LocalName="$(BDS)\Redist\iossimulator\libcgunwind.1.0.dylib" Class="DependencyModule">
@@ -508,6 +508,23 @@ copy /Y "$(PROJECTDIR)\..\..\models\SteamController_Animated.glb" "$(OUTPUTDIR)"
                     <Platform Name="OSXARM64">
                         <RemoteDir>Contents\MacOS\</RemoteDir>
                         <RemoteName>libsteam_api.dylib</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="OSXARM64\Release\VirtualGamepad.entitlements" Configuration="Release" Class="ProjectOSXEntitlements">
+                    <Platform Name="OSXARM64">
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="OSXARM64\Release\VirtualGamepad.info.plist" Configuration="Release" Class="ProjectOSXInfoPList">
+                    <Platform Name="OSXARM64">
+                        <RemoteName>Info.plist</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="OSXARM64\Release\VirtualGamepad" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="OSXARM64">
+                        <RemoteName>VirtualGamepad</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

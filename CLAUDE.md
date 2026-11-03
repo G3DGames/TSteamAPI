@@ -1239,9 +1239,16 @@ Project AppID: 2275430.
   that can run on the worker: use TThread.Queue (see SafeTerminate).
 
 ## Project files
-- Every .dproj has `<WelcomePageFile Path="..\..\README.md"/>` (relative to
-  the project) inside `<Delphi.Personality>`, so the IDE shows README.md as
-  the project page; gen_projects.py writes it too.
+- Every .dproj has a `<WelcomePageFile Path="..."/>` inside
+  `<Delphi.Personality>`, so the IDE shows a README as the project page;
+  gen_projects.py writes it too. Demos (owner, 2026-11-03): their OWN
+  `demos/<Demo>/README.md` next to the .dproj (`Path="README.md"`) - the
+  WINDOWS RELEASE DEPLOYMENT for a Steam depot: which files, where relative
+  to the .exe, what must not ship (steam_appid.txt), the launch option,
+  testing the Release folder. The Lazarus demos have the same page next to
+  their .lpi. Keep these pages in step with the post-build events / data
+  files whenever a demo's deployment changes. Packages and LogReceiver keep
+  the repository / RemoteLogging README.
 - The .dproj / .groupproj files in the repository were re-saved by the Delphi
   13 IDE (ProjectVersion 20.5, extra platform sections, post-build events
   repeated per configuration). They are now AUTHORITATIVE.
@@ -3119,6 +3126,11 @@ Fix14d to Fix20, 13 files, identical ignoring CRLF / BOM). Delivered since:
 NOTHING except this CLAUDE.md (zip Handover7, follows Fix20). Nothing to
 delete. NO PACKAGE REBUILD (the packages were last rebuilt by the owner for
 Fix13 / Fix14; every later zip touched demos, docs and tools only).
+TENTH SESSION (2026-11-03): zip Deploy1 (follows Handover7) - a README.md
+per demo next to its .dproj / .lpi: Windows RELEASE deployment for a Steam
+depot (owner: other OSes already deploy through the .dproj). The five demo
+.dproj files now open their own README.md as the welcome page;
+gen_projects.py writes that for demos. NO PACKAGE REBUILD.
 NEXT SESSION FIRST: verify the Handover7 push as in "Syncing safely"
 (only CLAUDE.md should differ from caa00b9), run pasdoc_check.py and
 project_check.py on the clone.

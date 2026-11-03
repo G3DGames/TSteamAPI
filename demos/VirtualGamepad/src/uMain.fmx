@@ -19,7 +19,6 @@ object frmGamepad: TfrmGamepad
     object lblPadName: TLabel
       Align = Client
       Margins.Left = 8.000000000000000000
-      Position.X = 8.000000000000000000
       Size.Width = 1092.000000000000000000
       Size.Height = 44.000000000000000000
       Size.PlatformDefault = False
@@ -45,17 +44,21 @@ object frmGamepad: TfrmGamepad
     object mnuFile: TMenuItem
       Text = 'File'
       object mnuLayout: TMenuItem
+        Locked = True
         Text = 'View Controller Settings...'
         OnClick = mnuLayoutClick
       end
       object mnuRemoteLog: TMenuItem
+        Locked = True
         Text = 'Send log to receiver...'
         OnClick = mnuRemoteLogClick
       end
       object mnuSep1: TMenuItem
+        Locked = True
         Text = '-'
       end
       object mnuExit: TMenuItem
+        Locked = True
         Text = 'Exit'
         OnClick = mnuExitClick
       end
@@ -63,21 +66,25 @@ object frmGamepad: TfrmGamepad
     object mnuView: TMenuItem
       Text = 'View'
       object mnuMotion: TMenuItem
+        Locked = True
         Text = 'Follow pad motion: off'
         OnClick = mnuMotionClick
       end
       object mnuRecenter: TMenuItem
+        Locked = True
         Text = 'Recenter motion'
         OnClick = mnuRecenterClick
       end
       object mnuShowBack: TMenuItem
+        Locked = True
         Text = 'Show back'
         OnClick = mnuShowBackClick
       end
     end
   end
   object SteamAPI1: TSteamAPI
-    AppID = 2275430
+    AppID = 4108310
+    GameServerVersion = '1.0.0.0'
     OnInitialized = SteamInitialized
     OnInitFailed = SteamInitFailed
     OnShutdown = SteamShutdown

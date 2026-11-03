@@ -897,7 +897,8 @@ begin
   FPresenceTicks := PairTicks;
   if OK then
     RowNote(PT_FRIENDS, Format('peer persona "%s"; rich presence set, the peer''s requested ' +
-      '(not friends: a limited new account may never show it - try as friends)',
+      '(it needs: both signed in to Steam Friends / online, each account on ONE machine, and friends ' +
+      'when an account is new and limited - docs/TestSetup.md)',
       [FFriends.Plugin.GetFriendPersonaName(FPeer)]))
   else
     RowNote(PT_FRIENDS, Format('peer persona "%s"; SetRichPresence returned False here, the peer''s requested',

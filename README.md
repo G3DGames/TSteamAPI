@@ -189,6 +189,9 @@ demos/
                             Gorilla3D on Linux: X11 only, OpenGL 4.3+, needs
                             libsk4d.so; on macOS: Intel x64 (Apple silicon not
                             native yet, per Gorilla3D's docs)
+  (every demo)              README.md next to the .dproj / .lpi: deploying its
+                            Windows Release build (Steam depot layout); the
+                            .dproj opens it as the project's welcome page
 RemoteLogging/              OPTIONAL, nothing to do with Steam: LogReceiver app +
                             RemoteLog.Sender unit to stream a program's log to a
                             desk machine (e.g. from a Steam Deck); see its README

@@ -36,14 +36,14 @@ own game, use your AppID and your own item definitions.
   friends or both are full accounts. As friends it passed at once (both
   sides read the other's within a second), and the whole pair test took
   about 10 s instead of waiting out the 60 s time-out.
-* Each account signed in on ONE machine only. With the main account's
-  Steam client also running on a second PC, rich presence crossed in
-  neither direction (Steam sent updates for the peer with no keys at
-  all). After Steam > Exit on that PC, the macOS copy read the Windows
-  account's rich presence at once, but the Windows copy still did not see
-  the macOS account's (2026-11-02, still open: does the Windows friend
-  list show the macOS account as in-game?). Closing Steam's window is not
-  enough - it keeps running in the tray / menu bar.
+* For the rich-presence row both accounts must be ONLINE IN STEAM
+  FRIENDS (Friends & Chat signed in, not offline / invisible) and each
+  signed in on ONE machine only. Seen 2026-11-02: on a Linux PC not
+  signed in to Friends, the other account's rich presence stayed empty
+  (Steam sent updates with no keys) and arrived within a second of
+  signing in; with the main account's Steam also running on a second PC
+  neither side saw the other's. Closing Steam's window is not enough to
+  end a session - it keeps running in the tray / menu bar.
 * Both PCs need internet access; P2P connections go through Steam's relay
   network when a direct path is not possible.
 * The host's listen server (game-server row) uses UDP 27215 (game) and

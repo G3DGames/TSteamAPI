@@ -60,7 +60,7 @@ uses
   Steamworks.FMX, Steamworks.Plugin.Input,
   // optional remote logging (RemoteLogging\src, nothing to do with Steam;
   // the same code as SteamInputDemo's)
-  RemoteLog.Sender;
+  RemoteLog.Sender, Steamworks.Callbacks;
 
 type
   { The InGame actions of steam_input_manifest.vdf: one per physical

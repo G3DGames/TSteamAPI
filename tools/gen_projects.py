@@ -374,9 +374,14 @@ def dproj(p):
     a('                <Source>')
     a(f'                    <Source Name="MainSource">{main}</Source>')
     a('                </Source>')
-    # Project page: the IDE shows the repository README when the project opens
-    up = "..\\" * (p["dir"].count("\\") + 1)
-    a(f'                <WelcomePageFile Path="{up}README.md"/>')
+    # Project page: the IDE shows a README when the project opens - a demo's
+    # own README.md next to its .dproj (Windows deployment), otherwise the
+    # repository README
+    if p["dir"].startswith("demos\\"):
+        a('                <WelcomePageFile Path="README.md"/>')
+    else:
+        up = "..\\" * (p["dir"].count("\\") + 1)
+        a(f'                <WelcomePageFile Path="{up}README.md"/>')
     a('            </Delphi.Personality>')
     if p.get("redist") or p.get("files"):
         # "files" are data next to the program: beside the library on desktop

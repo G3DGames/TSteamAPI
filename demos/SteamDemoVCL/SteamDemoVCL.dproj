@@ -121,7 +121,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
                 <Source>
                     <Source Name="MainSource">SteamDemoVCL.dpr</Source>
                 </Source>
-                <WelcomePageFile Path="..\..\README.md"/>
+                <WelcomePageFile Path="README.md"/>
             </Delphi.Personality>
             <Deployment Version="5"/>
             <Platforms>

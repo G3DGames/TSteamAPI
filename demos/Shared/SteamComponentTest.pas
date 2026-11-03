@@ -1750,14 +1750,15 @@ begin
     AddLog(Format('Test TSteamScreenshots: hooked before %s, after HookScreenshots(True) %s, ' +
       'after HookScreenshots(False) %s', [BoolToStr(Before, True), BoolToStr(Hooked, True),
       BoolToStr(Unhooked, True)]));
-{$if defined(DARWIN) or defined(MACOS)}
+{$ifndef MSWINDOWS}
     if not Hooked and not Unhooked and not Before then
-      // macOS ARM64 (2026-11-02): the Mac Steam client never takes the hook
-      // (IsScreenshotsHooked stays False) - the same with FPC (LCL) and
-      // Delphi (FMX), overlay off; on Windows it takes with the overlay off
-      // too. A Steam-client limit, not the binding: informational
-      FTests[CT_SHOTS].Note := 'hook not taken - the macOS Steam client keeps it off (seen with FPC and ' +
-        'Delphi; informational); File > Take Screenshot tests writing one'
+      // macOS ARM64 and Linux x64 (2026-11-02): the hook never takes
+      // (IsScreenshotsHooked stays False) - on macOS with FPC and Delphi,
+      // and on Linux Steam says why: "The loaded overlay DLL doesn't
+      // support ValveHookScreenshots". On Windows it takes even with the
+      // overlay off. A Steam-client limit, not the binding: informational
+      FTests[CT_SHOTS].Note := 'hook not taken - Steam on this OS keeps it off (macOS, Linux: its ' +
+        'overlay has no screenshot hook; informational); File > Take Screenshot tests writing one'
     else
 {$endif}
     if not Hooked or Unhooked then
