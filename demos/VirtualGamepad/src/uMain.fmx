@@ -1,7 +1,7 @@
 object frmGamepad: TfrmGamepad
   Left = 0
   Top = 0
-  Caption = 'Virtual Gamepad - AppID 2275430 (SDK 1.65)'
+  Caption = 'Virtual Gamepad'
   ClientHeight = 800
   ClientWidth = 1100
   FormFactor.Width = 320

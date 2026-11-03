@@ -7,9 +7,8 @@
         <MainSource>LogReceiver.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Linux64</Platform>
         <TargetedPlatforms>135299</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">LogReceiver</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -268,6 +267,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="src\FmxLinuxGtkGlobal.pas"/>
+        <DCCReference Include="src\FmxWineCanvas.pas"/>
         <DCCReference Include="src\FmxLinuxMenu.pas"/>
         <DCCReference Include="src\uNetworks.pas"/>
         <DCCReference Include="src\uReceiver.pas">

@@ -24,14 +24,14 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 | `SteamInputDemo.exe` | `demos\SteamInputDemo\Win64\Release\` (or `Win32\Release\`) |
 | `steam_api64.dll` - Win64 build only | `redistributable_bin\win64\steam_api64.dll` |
 | `steam_api.dll` - Win32 build only | `redistributable_bin\steam_api.dll` |
-| `steam_input_manifest.vdf` | `demos\SteamInputDemo\src\` |
+| `steam_controllers.vdf` | `demos\SteamInputDemo\src\` |
 | `controller_*.vdf` - 11 files, listed below | `demos\SteamInputDemo\src\` |
 
 ```
 <depot root>\
     SteamInputDemo.exe
     steam_api64.dll        (Win64 build)   - or -   steam_api.dll   (Win32 build)
-    steam_input_manifest.vdf
+    steam_controllers.vdf
     controller_generic.vdf
     controller_neptune.vdf
     controller_ps4.vdf
@@ -62,7 +62,7 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 
 * **Launch option** (partner site, Installation -> General): executable `SteamInputDemo.exe`, operating system Windows, no arguments, working folder empty (the depot root).
 * The Release build has `RestartIfNecessary` on and does **not** set the AppID itself. Started by Steam, Steam supplies the AppID. Started by double-clicking the .exe, it asks Steam to launch AppID 2275430 and closes at once - Steam then starts the installed copy through the launch option above.
-* Steam Input: set the game's Steam Input configuration on the partner site. If you point it at the action manifest in the install folder, the name is `steam_input_manifest.vdf` at the depot root. Xbox and generic controllers reach Steam Input only when it is enabled for the game (README, "Known issues").
+* Steam Input: set the game's Steam Input configuration on the partner site. If you point it at the action manifest in the install folder, the name is `steam_controllers.vdf` at the depot root. Xbox and generic controllers reach Steam Input only when it is enabled for the game (README, "Known issues").
 * Files it writes: `SteamInputDemo.log` **next to the .exe**, i.e. in the Steam install folder (`steamapps\common\<install folder>\`), which is normally writable. If it cannot be written the program still runs and says "Log file NOT written" in its log.
 
 ## 5. Testing the Release folder before uploading
@@ -73,4 +73,4 @@ Copy exactly the depot files (section 2) into an empty folder and add, **for thi
 
 ## Check
 
-The log says which manifest it loaded (`SetInputActionManifestFilePath(<path>): True`) - the path must be the .exe's own folder - and, per controller, "layout controller_xxx.vdf (ours)" when it found the matching layout next to the manifest. "Action manifest not found" means `steam_input_manifest.vdf` is not next to the .exe.
+The log says which manifest it loaded (`SetInputActionManifestFilePath(<path>): True`) - the path must be the .exe's own folder - and, per controller, "layout controller_xxx.vdf (ours)" when it found the matching layout next to the manifest. "Action manifest not found" means `steam_controllers.vdf` is not next to the .exe.

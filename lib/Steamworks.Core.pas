@@ -1258,20 +1258,20 @@ begin
         [TSteamLib.LibraryPath, FVersions.Count]))
     else
       Log(sllWarning, 'Could not scan the Steam library for interface versions; using built-in defaults');
-    if TSteamLib.SDKGeneration = '1.65+' then
-      Log(sllInfo, 'Steam redistributable is from SDK 1.65 or newer')
+    if TSteamLib.SDKGeneration = TSteamLib.TargetSDKGeneration then
+      Log(sllInfo, Format('Steam redistributable is from SDK %s or newer', [STEAMWORKS_SDK_VERSION]))
     else
-      Log(sllWarning, Format('Steam redistributable %s is from SDK %s; this library targets 1.65 - ' +
-        'copy redistributable_bin from the 1.65 SDK and run tools/check_redist.py',
-        [TSteamLib.LibraryPath, TSteamLib.SDKGeneration]));
+      Log(sllWarning, Format('Steam redistributable %s is from SDK %s; this library targets %s - ' +
+        'copy redistributable_bin from the %s SDK and run tools/check_redist.py',
+        [TSteamLib.LibraryPath, TSteamLib.SDKGeneration, STEAMWORKS_SDK_VERSION, STEAMWORKS_SDK_VERSION]));
     FState := swsLibraryLoaded;
     Result := True;
   except
     on E: Exception do
     begin
       if TSteamLib.RedistributableName <> '' then
-        SetFailure(E.Message + sLineBreak + 'This build needs redistributable_bin/' +
-          TSteamLib.RedistributableName + ' from the Steamworks SDK 1.65 next to the executable')
+        SetFailure(E.Message + sLineBreak + Format('This build needs redistributable_bin/%s from the ' +
+          'Steamworks SDK %s next to the executable', [TSteamLib.RedistributableName, STEAMWORKS_SDK_VERSION]))
       else
         SetFailure(E.Message);
       Result := False;
@@ -1673,16 +1673,16 @@ procedure TSteamworks.HandleSteamShutdown(const AData: TSteamCallbackData);
 begin
   if FSteamExitSeen then
   begin
-    Log(sllDebug, 'SteamShutdown_t (704) received again - ignored');
+    Log(sllDebug, Format('SteamShutdown_t (%d) received again - ignored', [SteamShutdown_t_k_iCallback]));
     Exit;
   end;
   FSteamExitSeen := True;
   if FShutdownOnSteamExit then
-    Log(sllInfo, 'Steam client is shutting down (SteamShutdown_t, 704); ' +
-      'SteamAPI shuts down after OnSteamShutdown (ShutdownOnSteamExit)')
+    Log(sllInfo, Format('Steam client is shutting down (SteamShutdown_t, %d); ' +
+      'SteamAPI shuts down after OnSteamShutdown (ShutdownOnSteamExit)', [SteamShutdown_t_k_iCallback]))
   else
-    Log(sllInfo, 'Steam client is shutting down (SteamShutdown_t, 704); ' +
-      'SteamAPI stays up (ShutdownOnSteamExit is off)');
+    Log(sllInfo, Format('Steam client is shutting down (SteamShutdown_t, %d); ' +
+      'SteamAPI stays up (ShutdownOnSteamExit is off)', [SteamShutdown_t_k_iCallback]));
   try
     if Assigned(FOnSteamShutdown) then
       FOnSteamShutdown(Self);

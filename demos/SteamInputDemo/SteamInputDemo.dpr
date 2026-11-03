@@ -2,7 +2,7 @@ program SteamInputDemo;
 
 { Steam Input test for the Steamworks library (AppID 2275430): live digital,
   analog and motion values of every connected controller, read through
-  TSteamInput. The redistributable and src\steam_input_manifest.vdf are
+  TSteamInput. The redistributable and src\steam_controllers.vdf are
   copied next to the executable by the post-build event (Windows) or
   deployed by the Deployment entries (macOS / Linux). }
 
@@ -10,6 +10,9 @@ uses
   System.StartUpCopy,
   FMX.Forms,
   FmxLinuxGtkGlobal in 'src\FmxLinuxGtkGlobal.pas',
+  // Windows build under Wine / Proton: FMX draws with GDI+, because Wine's
+  // Direct2D leaves FMX windows white; a no-op on Windows and elsewhere
+  FmxWineCanvas in 'src\FmxWineCanvas.pas',
   FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   uMain in 'src\uMain.pas' {frmInput};
 

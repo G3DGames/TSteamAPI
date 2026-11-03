@@ -6,7 +6,7 @@ controller type from ONE table of action sets, actions and bindings.
 
 Output (every folder in OUTS - demos/SteamInputDemo/src/,
 demos/VirtualGamepad/src/ and demos/VirtualGamepadLCL/src/, IDENTICAL
-files: projects use only their own sources, owner 2026-10-31): steam_input_manifest.vdf and
+files: projects use only their own sources, owner 2026-10-31): MANIFEST_NAME and
 controller_<type>.vdf for every type in CONTROLLERS. Never edit those
 files by hand: change the tables here and run the script again.
 
@@ -48,7 +48,10 @@ OUTS = [os.path.join(ROOT, "demos", d, "src")
         for d in ("SteamInputDemo", "VirtualGamepad", "VirtualGamepadLCL")]
 
 TITLE = "SteamInputDemo default layout"
-DESCRIPTION = "Default bindings for the TSteamAPI Steam Input test (AppID 2275430)."
+# No AppID in the text: the same files serve SteamInputDemo, VirtualGamepad
+# and VirtualGamepadLCL, which run under different AppIDs (each program's
+# TSteamAPI.AppID is the only place an AppID is kept)
+DESCRIPTION = "Default bindings for the TSteamAPI Steam Input test."
 # Each layout gets its own title: Steam's layout browser lists every
 # official layout of the game together, so identical titles cannot be told
 # apart (owner, 2026-10-31). Every type in CONTROLLERS needs a name here.
@@ -336,7 +339,16 @@ def manifest():
 #       (VirtualGamepad's overlay menu)
 #   4 - 2026-11-01: Menu set gains MenuLeft / MenuRight on the D-pad
 #       (the overlay's controller row)
-LAYOUT_REVISION = 4
+#  20 - 2026-11-03: no content change - a jump well above any revision an
+#       old test used, so Steam replaces a stale stored copy (an AppID
+#       reused from an old test kept loading its old layout; owner)
+LAYOUT_REVISION = 20
+
+# File name of the action manifest (the programs' MANIFEST_FILE and
+# gen_projects.py's INPUT_FILES must match it). Was steam_input_manifest.vdf
+# until 2026-11-03: renamed so Steam reads it afresh instead of an old
+# manifest of that name it kept for an AppID used by an earlier test.
+MANIFEST_NAME = "steam_controllers.vdf"
 
 
 def layout(ctype):
@@ -351,7 +363,7 @@ def layout(ctype):
     # revision is in the title so the browser shows which copy Steam has.
     title = f"SteamInputDemo - {CONTROLLER_NAMES[ctype]} (r{LAYOUT_REVISION})"
     description = (f"Default layout for the {CONTROLLER_NAMES[ctype]} ({ctype}.vdf, revision "
-                   f"{LAYOUT_REVISION}) - TSteamAPI Steam Input test (AppID 2275430): one action "
+                   f"{LAYOUT_REVISION}) - TSteamAPI Steam Input test: one action "
                    f"per physical control.")
     w = W()
     w.open("controller_mappings")
@@ -443,7 +455,7 @@ def write(name, text):
 
 
 def main():
-    write("steam_input_manifest.vdf", manifest())
+    write(MANIFEST_NAME, manifest())
     for ctype in CONTROLLERS:
         write(ctype + ".vdf", layout(ctype))
 

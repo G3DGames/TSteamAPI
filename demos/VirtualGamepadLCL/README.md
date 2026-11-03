@@ -24,7 +24,7 @@ Everything sits **next to the .exe** - no subfolders (the models too: not in a `
 | `VirtualGamepadLCL.exe` | the build folder above |
 | `steam_api64.dll` - x86_64-win64 build only | `redistributable_bin\win64\steam_api64.dll` |
 | `steam_api.dll` - i386-win32 build only | `redistributable_bin\steam_api.dll` |
-| `steam_input_manifest.vdf` | `demos\VirtualGamepadLCL\src\` |
+| `steam_controllers.vdf` | `demos\VirtualGamepadLCL\src\` |
 | `controller_*.vdf` - 11 files, listed below | `demos\VirtualGamepadLCL\src\` |
 | `XBoxOne_Animated.glb` | `models\` (repository root) |
 | `PS5_Animated.glb` | `models\` (repository root) |
@@ -34,7 +34,7 @@ Everything sits **next to the .exe** - no subfolders (the models too: not in a `
 <program folder>\
     VirtualGamepadLCL.exe
     steam_api64.dll        (64-bit)   - or -   steam_api.dll   (32-bit)
-    steam_input_manifest.vdf
+    steam_controllers.vdf
     controller_generic.vdf
     controller_neptune.vdf
     controller_ps4.vdf

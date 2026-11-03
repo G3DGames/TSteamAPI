@@ -10,6 +10,10 @@ One Steam app (one AppID) with a launcher as its only launch option. The
 launcher shows a menu of its child programs plus Exit. So far the children
 are SteamDemo, SteamInputDemo and VirtualGamepad.
 
+> **2026-11-03: VirtualGamepad now has its own AppID (4108310, set on its
+> TSteamAPI).** As planned below it cannot be a child under the
+> launcher's AppID - see open decision 4.
+
 - Choosing a child starts it as a child process and hides the launcher.
 - When the child exits, the launcher shows itself again.
 - Exit closes the launcher, which ends the game for Steam.
@@ -162,3 +166,8 @@ presence and leaderboards.
 3. **The children's own Exit:** whether a child started by the launcher
    shows "Back to launcher" instead of Exit (same action: the child just
    ends).
+4. **VirtualGamepad under its own AppID (4108310):** drop it from the
+   launcher (it ships as its own Steam app), or start it from the
+   launcher through Steam (`steam://run/4108310`) instead of as a child
+   process - it then leaves the launcher's AppID, Steam Input manifest
+   and overlay session, and the launcher cannot wait for it to exit.

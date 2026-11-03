@@ -1,6 +1,7 @@
 program VirtualGamepad;
 
-{ 3D gamepad visualiser for the Steamworks library (AppID 2275430): the
+{ 3D gamepad visualiser for the Steamworks library (its own AppID - set on
+  SteamAPI1 in src/uMain.fmx, the only place it is kept): the
   model of the connected controller (models/*.glb) in Gorilla3D, animated
   by the real pad through Steam Input (whole model turned by the pad's
   motion sensors; moving its parts waits for Gorilla3D's parallel
@@ -15,13 +16,21 @@ program VirtualGamepad;
 uses
   System.StartUpCopy,
   FMX.Forms,
+  FMX.Skia,
   FmxLinuxGtkGlobal in 'src\FmxLinuxGtkGlobal.pas',
+  // Windows build under Wine / Proton: FMX draws with GDI+, because Wine's
+  // Direct2D leaves FMX windows white; a no-op on Windows and elsewhere
+  FmxWineCanvas in 'src\FmxWineCanvas.pas',
+  // ... and Skia's raster / Vulkan canvas when TSAPI_FMX_CANVAS asks for it
+  // (Skia is enabled for this project only; a no-op elsewhere)
+  FmxSkiaCanvas in 'src\FmxSkiaCanvas.pas',
   FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   Sprite3DCamera in 'src\Sprite3DCamera.pas',
   Gorilla.Animation.Parallel in 'src\Gorilla.Animation.Parallel.pas',
   uMain in 'src\uMain.pas' {frmGamepad};
 
 begin
+  GlobalUseSkia := True;
 {$IFDEF DEBUG}
   // Debug builds list leaked blocks when the program ends (Windows only).
   ReportMemoryLeaksOnShutdown := True;

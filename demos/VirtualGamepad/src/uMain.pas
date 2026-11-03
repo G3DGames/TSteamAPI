@@ -21,7 +21,9 @@
   than one controller connected, first a controller row (D-pad left /
   right goes through the pads, wrapping; A shows the one named), then
   Return to App, Enable / Disable Motion (greyed out while the pad has reported no
-  motion data), Start / Stop Remote Logging (the log sender of
+  motion data), Controller Settings (Steam's binding panel, as File > View
+  Controller Settings - Big Picture / Game Mode shows no window menu),
+  Start / Stop Remote Logging (the log sender of
   SteamInputDemo, RemoteLogging/src) and Exit; every choice closes the
   overlay. When the layout Steam loaded does not bind the Menu set (an
   older copy), the overlay reads the InGame set's D-pad, A and B instead.
@@ -63,7 +65,7 @@ uses
   RemoteLog.Sender, Steamworks.Callbacks;
 
 type
-  { The InGame actions of steam_input_manifest.vdf: one per physical
+  { The InGame actions of @link(MANIFEST_FILE): one per physical
     control, named by position with the Xbox letters (iaButtonA = the
     bottom face button on every pad). Same order as in SteamInputDemo. }
   TInputAction = (iaLeftStick, iaRightStick, iaGyro,
@@ -79,7 +81,7 @@ type
 
   { The overlay menu's items, top to bottom (oiController only with more
     than one controller connected). }
-  TOverlayItem = (oiController, oiReturn, oiMotion, oiRemoteLog, oiExit);
+  TOverlayItem = (oiController, oiReturn, oiMotion, oiSettings, oiRemoteLog, oiExit);
 
   { A rotation as Steam reports it (InputMotionData_t.rotQuat*). }
   TPadQuat = record
@@ -174,6 +176,26 @@ type
     FLogFile: string;
     { The Gorilla3D viewport (created in code, Align Client). }
     FViewport: TGorillaViewport;
+    { Samples the viewport's frame time for the frame-rate log line. }
+    FFpsTimer: TTimer;
+    { Sum of the sampled frame times (seconds) since the last log line. }
+    FFpsSum: Double;
+    { Number of samples in @link(FFpsSum). }
+    FFpsSamples: Integer;
+    { Samples taken since the last log line, counted or not. }
+    FFpsTicks: Integer;
+    { The frame time seen at the previous sample: an unchanged value means
+      no new frame since, and is not counted again. }
+    FFpsLastDelta: Double;
+    { Mean frame time of the last frame-rate period, in ms: the shortest
+      gap between two motion updates of the model (@link(ApplyMotion)). }
+    FFrameTimeMs: Integer;
+    { Tick (ms) of the last motion update written to the model. }
+    FMotionWrittenAt: UInt64;
+    { Motion arrived that is not written to the model yet. }
+    FMotionPending: Boolean;
+    { The newest motion turn, kept until it is written. }
+    FPendingMotion: TPadQuat;
     { The camera: Sprite3D's orbit camera, framing the model exactly with
       FitToBounds from Gorilla's own projection. }
     FCamera: TSprite3DCamera;
@@ -341,6 +363,9 @@ type
     procedure CheckDeployment;
     { Creates the viewport, the orbiting camera and the light. }
     procedure CreateScene;
+    { Samples FViewport.DeltaTime; every @link(FPS_LOG_MS) logs the mean
+      frame rate with the canvas FMX draws with and the viewport's size. }
+    procedure FpsTimerTick(Sender: TObject);
     { Shows the model for controller type T (keeps the one shown when it
       is the same file). }
     procedure ShowModelFor(T: ESteamInputType);
@@ -380,7 +405,7 @@ type
     procedure SetModelRotation(const AQ: TPadQuat);
     { The started ISteamInput plug-in, or @nil. }
     function Input: TSteamInputPlugin;
-    { Full path of steam_input_manifest.vdf, or '' when not found. }
+    { Full path of @link(MANIFEST_FILE), or '' when not found. }
     function ManifestPath: string;
     { Full path of the model file AFileName: in @link(DataFolder), or - run
       from the IDE without the post-build copy - in the repository's
@@ -452,11 +477,11 @@ implementation
 uses
   System.IOUtils, System.DateUtils,
   System.Math,       // Max - BEFORE System.StrUtils, whose string IfThen must win
-  System.StrUtils, Steamworks.API, FmxLinuxMenu;
+  System.StrUtils, Steamworks.API, Steamworks.Versions, FmxLinuxMenu, FmxWineCanvas, FmxSkiaCanvas;
 
 const
   { Manifest file name, in @link(DataFolder). }
-  MANIFEST_FILE = 'steam_input_manifest.vdf';
+  MANIFEST_FILE = 'steam_controllers.vdf';   // tools/gen_input_mapping.py MANIFEST_NAME
   { Default layouts expected next to the manifest (keep in step with
     CONTROLLERS in tools/gen_input_mapping.py). }
   EXPECTED_LAYOUTS = 11;
@@ -522,6 +547,17 @@ const
   OVERLAY_GREYED: TAlphaColor = $FF6E747B;
   { Milliseconds between attempts to open Steam while it fails. }
   RETRY_MS = 5000;
+  { Overlay menu panel width (the same as VirtualGamepadLCL's). }
+  PANEL_WIDTH = 600;
+  { Milliseconds between two samples of the viewport's frame time. }
+  FPS_SAMPLE_MS = 100;
+  { Milliseconds between two frame-rate log lines. }
+  FPS_LOG_MS = 5000;
+  { Shortest gap between two motion updates of the model before a frame
+    time is measured, in ms (about one frame at 60 fps). }
+  MOTION_MIN_MS = 16;
+  { Poll errors in a row after which polling stops. }
+  MAX_POLL_ERRORS = 3;
   { The identity rotation. }
   QUAT_IDENTITY: TPadQuat = (X: 0; Y: 0; Z: 0; W: 1);
   { Half a turn about X: the model's FACE to the camera, right way up
@@ -722,7 +758,17 @@ begin
   AddLog('FormCreate started');
   // Which build runs on which system (native or Proton / Wine on SteamOS,
   // Rosetta 2 on macOS, Steam's Linux runtime container ...)
-  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
+  // Title from the live values: SteamAPI1.AppID (set in the form file) and
+  // the SDK level this library targets - never typed into the caption
+  Caption := Format('%s - AppID %d (SDK %s) - %s', [Caption, SteamAPI1.AppID,
+    STEAMWORKS_SDK_VERSION, TSteamLib.PlatformDescription]);
+  // Under Wine / Proton: which canvas FMX draws with (FmxWineCanvas)
+  if FmxWineCanvasNote <> '' then
+    AddLog(FmxWineCanvasNote);
+  if FmxSkiaCanvasNote <> '' then
+    AddLog(FmxSkiaCanvasNote);
+  // The canvas FMX really draws with, on every platform (FmxWineCanvas)
+  AddLog('FMX canvas in use: ' + FmxCanvasClassName);
   AddLog('Platform: ' + TSteamLib.PlatformDescription);
   if LogFileError <> '' then
     AddLog('Log file NOT written: ' + LogFileError);
@@ -766,7 +812,7 @@ begin
     on E: Exception do
       AddLog('Overlay menu could not be created: ' + E.ClassName + ': ' + E.Message);
   end;
-  AddLog(Format('Hold Start for %d ms for the overlay menu (motion, remote logging, exit).',
+  AddLog(Format('Hold Start for %d ms for the overlay menu (motion, controller settings, remote logging, exit).',
     [LONG_PRESS_MS]));
   AddLog('Drag on the 3D view to orbit the camera. Steam is opened automatically; then '
     + 'connect a controller. Steam Input must be enabled for this game in the Steam client '
@@ -876,6 +922,54 @@ begin
   FPivot.Parent := FViewport;
   FAnimator := TGorillaParallelAnimator.Create(Self);
   AddLog('3D scene created: Gorilla3D viewport, Sprite3D orbit camera, point light, parallel animator');
+  // Frame-rate log (compares FMX canvases under Proton - FmxWineCanvas)
+  FFpsTimer := TTimer.Create(Self);
+  FFpsTimer.Interval := FPS_SAMPLE_MS;
+  FFpsTimer.OnTimer := FpsTimerTick;
+  FFpsTimer.Enabled := True;
+  AddLog(Format('Frame rate: logged every %d ms from the viewport''s frame time, sampled every %d ms',
+    [FPS_LOG_MS, FPS_SAMPLE_MS]));
+  // Gorilla3D's own check (docs v1.5, Core / Skia): whether it treats the
+  // canvas as repainting the whole form (Skia) and merges repaints
+  AddLog(Format('Gorilla3D: whole-form repaint handling %s (canvas %s)',
+    [BoolToStr(FViewport.UsesWholeFormRepaintHandling, True), FmxCanvasClassName]));
+end;
+
+procedure TfrmGamepad.FpsTimerTick(Sender: TObject);
+var
+  D: Double;
+  Canvas: string;
+begin
+  if FViewport = nil then
+    Exit;
+  D := FViewport.DeltaTime;
+  if (D > 0) and (D <> FFpsLastDelta) then
+  begin
+    FFpsSum := FFpsSum + D;
+    Inc(FFpsSamples);
+  end;
+  FFpsLastDelta := D;
+  Inc(FFpsTicks);
+  if FFpsTicks * FPS_SAMPLE_MS < FPS_LOG_MS then
+    Exit;
+  // what FMX really uses, plus what FmxWineCanvas asked for under Wine
+  Canvas := FmxCanvasClassName;
+  if FmxWineCanvasName <> '' then
+    Canvas := Format('%s (%s=%s)', [Canvas, FMX_WINE_CANVAS_ENV, FmxWineCanvasName]);
+  if FFpsSamples = 0 then
+    AddLog(Format('Frame rate: no new frame in %d ms (canvas %s, viewport %d x %d)',
+      [FPS_LOG_MS, Canvas, Round(FViewport.Width), Round(FViewport.Height)]))
+  else
+  begin
+    // the motion updates follow the frame rate (ApplyMotion)
+    FFrameTimeMs := Round(1000 * FFpsSum / FFpsSamples);
+    AddLog(Format('Frame rate: %.1f fps (mean of %d frame times; target %d, fixed rate %s; canvas %s; viewport %d x %d)',
+      [FFpsSamples / FFpsSum, FFpsSamples, FViewport.FixedFrameRate,
+       BoolToStr(FViewport.UseFixedFrameRate, True), Canvas, Round(FViewport.Width), Round(FViewport.Height)]));
+  end;
+  FFpsSum := 0;
+  FFpsSamples := 0;
+  FFpsTicks := 0;
 end;
 
 procedure TfrmGamepad.FitView;
@@ -1092,9 +1186,21 @@ begin
       AddLog(Format('Motion recentered at quat %s %s %s %s', [F2(Q.X), F2(Q.Y), F2(Q.Z), F2(Q.W)]));
     FRecenter := False;
   end;
-  if FFollowMotion then
-    // the turn since the front view (FMotionZero) was taken
-    SetModelRotation(QuatMul(QuatConj(FMotionZero), Q));
+  if not FFollowMotion then
+    Exit;
+  // The turn since the front view (FMotionZero) was taken. Written to the
+  // model at most once per measured frame time: every write asks for a
+  // repaint, and writing on every 16 ms poll while a frame takes longer
+  // (GDI+ under Proton: ~55 ms) stopped drawing altogether (ROG Ally,
+  // 2026-11-03, every controller). The newest reading always wins.
+  FPendingMotion := QuatMul(QuatConj(FMotionZero), Q);
+  FMotionPending := True;
+  if TThread.GetTickCount64 - FMotionWrittenAt >= UInt64(Max(FFrameTimeMs, MOTION_MIN_MS)) then
+  begin
+    FMotionWrittenAt := TThread.GetTickCount64;
+    FMotionPending := False;
+    SetModelRotation(FPendingMotion);
+  end;
 end;
 
 function TfrmGamepad.Input: TSteamInputPlugin;
@@ -1318,7 +1424,8 @@ begin
     mnuMotion.Text := 'Follow pad motion: off';
     SetModelRotation(QUAT_IDENTITY);
   end;
-  AddLog('Follow pad motion: ' + BoolToStr(AOn, True));
+  AddLog(Format('Follow pad motion: %s (the model follows at most every %d ms - the measured frame ' +
+    'time, or %d ms before one is measured)', [BoolToStr(AOn, True), Max(FFrameTimeMs, MOTION_MIN_MS), MOTION_MIN_MS]));
   UpdateOverlay;
 end;
 
@@ -1352,7 +1459,7 @@ begin
   FOverlayPanel := TRectangle.Create(Self);
   FOverlayPanel.Parent := FOverlay;
   FOverlayPanel.Align := TAlignLayout.Center;
-  FOverlayPanel.Width := 600;
+  FOverlayPanel.Width := PANEL_WIDTH;
   // the height follows the items shown (UpdateOverlay)
   FOverlayPanel.Fill.Color := $FF2A2E33;
   FOverlayPanel.Stroke.Color := $FF5A6068;
@@ -1404,6 +1511,7 @@ begin
   case I of
     oiController: Result := Length(FMenuPads) > 1;
     oiMotion:    Result := FHasMotion;
+    oiSettings:  Result := (Input <> nil) and (FActive <> 0);   // a pad to show the layout of
     oiRemoteLog: Result := not FRemoteBusy;
   else
     Result := True;
@@ -1473,6 +1581,7 @@ begin
       oiController: T := PadRowText;
       oiReturn: T := 'Return to App';
       oiMotion: T := IfThen(FFollowMotion, 'Disable Motion', 'Enable Motion');
+      oiSettings: T := 'Controller Settings';
       oiRemoteLog:
         if FSender <> nil then
           T := 'Stop Remote Logging'
@@ -1605,6 +1714,15 @@ begin
       ;   // closing is all they do (the switch happens in RefreshControllers)
     oiMotion:
       SetFollowMotion(not FFollowMotion);
+    oiSettings:
+      // Steam's binding panel, as File > View Controller Settings (Big
+      // Picture / Game Mode has no window menu); after this poll, with the
+      // InGame set back, so the panel opens for the game's own layout
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          mnuLayoutClick(nil);
+        end);
     oiRemoteLog:
       if FSender <> nil then
         StopRemoteLog('overlay menu')
@@ -2139,10 +2257,10 @@ begin
       begin
         Inc(FPollErrors);
         AddLog('Poll failed: ' + E.ClassName + ': ' + E.Message);
-        if FPollErrors >= 3 then
+        if FPollErrors >= MAX_POLL_ERRORS then
         begin
           tmPoll.Enabled := False;
-          AddLog('Polling stopped after 3 errors');
+          AddLog(Format('Polling stopped after %d errors', [MAX_POLL_ERRORS]));
         end;
       end;
     end;

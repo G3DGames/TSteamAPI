@@ -13,6 +13,9 @@ uses
   // crashes in Steam's Linux runtime 3.0 when a TListBox is created
   // (docs/fmx-steamos-gtk3-bug.md); compiles to nothing off Linux
   FmxLinuxGtkGlobal in 'src\FmxLinuxGtkGlobal.pas',
+  // Windows build under Wine / Proton: FMX draws with GDI+, because Wine's
+  // Direct2D leaves FMX windows white; a no-op on Windows and elsewhere
+  FmxWineCanvas in 'src\FmxWineCanvas.pas',
   // Linux: FMX's own menu bar instead of GTK's, which shows only the first
   // letter of each menu (docs/fmx-menu-bug-fix.md); a no-op elsewhere
   FmxLinuxMenu in 'src\FmxLinuxMenu.pas',

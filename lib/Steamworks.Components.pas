@@ -1,11 +1,12 @@
 (* @abstract(Framework-independent component layer: @link(TCustomSteamAPI), the
-  base of the TSteamAPI component every framework unit (Steamworks.FMX, later
+  base of the TSteamAPI component every framework unit (Steamworks.FMX,
   Steamworks.VCL and Steamworks.LCL) declares, and @link(TSteamPluginComponent),
   the base of the generated plug-in components (TSteamFriends, TSteamUser, ...).)
 
   Only RTL units are used (Classes), so this unit is part of the framework-free
   runtime package and compiles with FPC. A framework unit adds just the callback
-  timer, exception display and application exit:
+  timer, exception display, application exit and the window / display work
+  of Big Picture:
   @longCode(#
   TSteamAPI = class(TCustomSteamAPI)
   protected
@@ -13,6 +14,9 @@
     procedure PumpStop; override;
     procedure ShowHandlerException(E: Exception); override;
     procedure TerminateApplication; override;
+    function ApplyBigPictureWindow(AMode: TSteamBigPictureWindow): string; override;
+  public
+    function DisplaySize(out AWidth, AHeight: Integer; out AScale: Single): Boolean; override;
   end;
   #)
   Plug-in components link to the root through their SteamAPI property (set
@@ -58,6 +62,19 @@ type
     ssmAuthentication,
     { eServerModeAuthenticationAndSecure: as above plus VAC (Valve's default). }
     ssmAuthenticationAndSecure
+  );
+
+  { What @link(TCustomSteamAPI) does with the main window when Steam runs in
+    Big Picture (desktop Big Picture, and Game Mode on a Steam Deck, a
+    SteamOS handheld or a Steam Machine - always full screen there). Outside
+    Big Picture nothing is changed. }
+  TSteamBigPictureWindow = (
+    { Leave the window as designed. }
+    bpwNone,
+    { Maximise it (default): it fills the display, whatever its size. }
+    bpwMaximized,
+    { Full screen: no border or title bar (VCL: bsNone + maximised). }
+    bpwFullScreen
   );
 
   { Base of the generated plug-in components. Link it to a TSteamAPI through
@@ -188,6 +205,10 @@ type
     FOnGameServerStopped: TNotifyEvent;
     { Backing field of @link(OnGameServerFailed). }
     FOnGameServerFailed: TSteamInitFailedEvent;
+    { Backing field of @link(BigPictureWindow). }
+    FBigPictureWindow: TSteamBigPictureWindow;
+    { Backing field of @link(InBigPicture). }
+    FInBigPicture: Boolean;
     { Write accessor of @link(Active). }
     procedure SetActive(const AValue: Boolean);
     { Write accessor of @link(CallbackInterval). }
@@ -207,6 +228,11 @@ type
     { Ends the application from any thread: directly on the main thread,
       otherwise queued to it (TThread.Queue). }
     procedure SafeTerminate;
+    { After the client started: asks Steam whether it is in Big Picture
+      (ISteamUtils::IsSteamInBigPictureMode), applies
+      @link(BigPictureWindow) through @link(ApplyBigPictureWindow) and
+      logs what it did. Never raises. }
+    procedure CheckBigPicture;
     { TThread.Queue target of @link(SafeTerminate). }
     procedure QueuedTerminate;
     { Read accessor of @link(Steam). }
@@ -262,6 +288,12 @@ type
     procedure ShowHandlerException(E: Exception); virtual; abstract;
     { Ends the application (relaunch through Steam, QuitOnSteamShutdown). }
     procedure TerminateApplication; virtual; abstract;
+    { Big Picture: puts the window this component belongs to (its owner
+      form, else the application's main form) into AMode (never
+      @link(bpwNone)) the framework's way.
+      @returns(What was done, for the log - e.g. the form's name and the
+        size of its display, or why nothing was done.) }
+    function ApplyBigPictureWindow(AMode: TSteamBigPictureWindow): string; virtual; abstract;
     { Applies a streamed Active value (starts Steam at run time only). }
     procedure Loaded; override;
     { Configures and starts the core. @returns(@true when Steam is running.) }
@@ -306,6 +338,19 @@ type
     { @true while a game server runs (@link(StartGameServer), or
       @link(Roles) with @link(srGameServer)). }
     property IsGameServerRunning: Boolean read GetIsGameServerRunning;
+    { @true when Steam reported Big Picture (or Game Mode) as the client
+      started; @false before that and outside Big Picture. }
+    property InBigPicture: Boolean read FInBigPicture;
+    { Size of the display the component's window is on, in the framework's
+      units, from the framework (Steam does not report it): physical pixels
+      in VCL and LCL; in FMX logical units - multiply by AScale for pixels.
+      Steam's Big Picture has no fixed size (1280 x 800 on a Steam Deck,
+      1920 x 1080 on many handhelds, up to 4K on a Steam Machine).
+      @param(AWidth Display width.)
+      @param(AHeight Display height.)
+      @param(AScale The display's scale factor (1 in VCL and LCL).)
+      @returns(@false when there is no window or display to ask.) }
+    function DisplaySize(out AWidth, AHeight: Integer; out AScale: Single): Boolean; virtual; abstract;
 
     { Starts a game server with the GameServer* properties while the client
       runs (a LISTEN server, started when the player chooses to host), or
@@ -378,6 +423,12 @@ type
     { Version of the game server ('1.0.0.0'); Steam compares it with the one
       set on the partner site. }
     property GameServerVersion: string read FGameServerVersion write FGameServerVersion;
+    { What happens to the window when Steam runs in Big Picture / Game Mode:
+      @link(bpwMaximized) (default) fills the display, whatever its size;
+      @link(bpwFullScreen) also drops the border; @link(bpwNone) leaves it.
+      Applied once, as the client starts; see @link(InBigPicture). }
+    property BigPictureWindow: TSteamBigPictureWindow read FBigPictureWindow write FBigPictureWindow
+      default bpwMaximized;
 
     { Steam started successfully (plug-in components are attached already). }
     property OnInitialized: TNotifyEvent read FOnInitialized write FOnInitialized;
@@ -406,7 +457,8 @@ type
 implementation
 
 uses
-  Math, Steamworks.SDKTypes;
+  Math, TypInfo, Steamworks.SDKTypes,
+  Steamworks.Plugin.Utils;   // IsSteamInBigPictureMode (CheckBigPicture)
 
 var
   GComponentCount: Integer = 0;
@@ -550,6 +602,7 @@ begin
   FGameServerQueryPort := 27016;
   FGameServerMode := ssmAuthenticationAndSecure;
   FGameServerVersion := '1.0.0.0';
+  FBigPictureWindow := bpwMaximized;
 end;
 
 destructor TCustomSteamAPI.Destroy;
@@ -917,11 +970,51 @@ begin
     FActive := True;
     UpdatePump;
     AttachLinked;
+    if srClient in FRoles then
+      CheckBigPicture;
     if Assigned(FOnInitialized) then
       FOnInitialized(Self);
   end
   else if Assigned(FOnInitFailed) then
     FOnInitFailed(Self, Ord(S.LastInitResult), S.LastError);
+end;
+
+procedure TCustomSteamAPI.CheckBigPicture;
+var
+  S: TSteamworks;
+  U: TSteamUtilsPlugin;
+  Mode, Answer: string;
+begin
+  S := TSteamworks.Instance;
+  FInBigPicture := False;
+  Mode := GetEnumName(TypeInfo(TSteamBigPictureWindow), Ord(FBigPictureWindow));
+  try
+    U := TSteamUtilsPlugin(S.FindPlugin(TSteamUtilsPlugin));
+    if (U = nil) or not U.Active then
+    begin
+      S.Log(sllWarning, 'Big Picture: unknown - ISteamUtils is not running; window left as designed');
+      Exit;
+    end;
+    FInBigPicture := U.IsSteamInBigPictureMode;
+    if not FInBigPicture then
+      S.Log(sllInfo, 'Big Picture: no - window left as designed')
+    else if FBigPictureWindow = bpwNone then
+      S.Log(sllInfo, Format('Big Picture: yes - BigPictureWindow is %s, window left as designed', [Mode]))
+    else
+      S.Log(sllInfo, Format('Big Picture: yes - BigPictureWindow %s: %s',
+        [Mode, ApplyBigPictureWindow(FBigPictureWindow)]));
+  except
+    on E: Exception do
+    begin
+      // (Delphi's BoolToStr has no TrueS / FalseS parameters - FPC's has)
+      if FInBigPicture then
+        Answer := 'yes'
+      else
+        Answer := 'no';
+      S.Log(sllWarning, Format('Big Picture: %s (BigPictureWindow %s not applied): %s',
+        [Answer, Mode, E.Message]));
+    end;
+  end;
 end;
 
 function TCustomSteamAPI.StartGameServer: Boolean;

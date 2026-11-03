@@ -3,7 +3,7 @@ object frmSteamDemo: TfrmSteamDemo
   Height = 902
   Top = 0
   Width = 1416
-  Caption = 'Steamworks LCL Demo - AppID 2275430 (SDK 1.65)'
+  Caption = 'Steamworks LCL Demo'
   ClientHeight = 902
   ClientWidth = 1416
   DesignTimePPI = 144

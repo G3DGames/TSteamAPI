@@ -44,7 +44,7 @@ names per language.
 did not work (2026-10-31), and neither Valve's sample nor shipped games'
 manifests contain any. Keep notes elsewhere.
 
-`demos/SteamInputDemo/src/steam_input_manifest.vdf` is a complete example,
+`demos/SteamInputDemo/src/steam_controllers.vdf` is a complete example,
 written by `tools/gen_input_mapping.py` (section 2).
 The `actions` and `localization` sections use Valve's In-Game Actions
 format:
@@ -490,6 +490,14 @@ to export it - is enough to cause this. To get the game's own layout back
    does not. (An earlier note said a restart was always needed - wrong:
    a controller can appear seconds before its layout, and the demo used to
    list every action as NOT BOUND in that gap.)
+
+**An AppID used before** (by another program or an older manifest) brings
+its saved layout back the same way - seen 2026-11-03 when VirtualGamepad
+moved to its own AppID. The quickest fix: turn on Steam's **developer
+mode** (Settings -> Interface -> Enable Steam developer mode); the game's
+controller settings then offer **Reset Controller Layout**, which drops
+the saved layout and reloads the default from the manifest. Restart the
+Steam client and reset again if the old layout still comes back.
 
 Adding the game's executable to Steam as a non-Steam game does NOT help:
 the game already identifies itself (SteamAppId / steam_appid.txt), and a

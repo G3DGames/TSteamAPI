@@ -45,10 +45,6 @@ uses
   // with Steam - RemoteLogging/README.md)
   DemoRemoteLog;
 
-const
-  { AppID of this project on Steam. }
-  APP_ID = 2275430;
-
 type
   { Demo main form. }
   TfrmMain = class(TForm)
@@ -265,7 +261,7 @@ implementation
 
 uses
   System.IOUtils, System.DateUtils, System.IniFiles, FMX.Platform, Steamworks.API,
-  FmxLinuxMenu;
+  Steamworks.Versions, FmxLinuxMenu, FmxWineCanvas;
 
 const
   { Vendor folder of the settings (under the OS's per-user settings folder). }
@@ -363,7 +359,15 @@ begin
   AddLog('Main menu ready (on Linux: replaced by FMX''s own menu bar)');
   // Which build runs on which system (native or Proton / Wine on SteamOS,
   // Rosetta 2 on macOS, Steam's Linux runtime container ...)
-  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
+  // Title from the live values: SteamAPI1.AppID (set in the form file) and
+  // the SDK level this library targets - never typed into the caption
+  Caption := Format('%s - AppID %d (SDK %s) - %s', [Caption, SteamAPI1.AppID,
+    STEAMWORKS_SDK_VERSION, TSteamLib.PlatformDescription]);
+  // Under Wine / Proton: which canvas FMX draws with (FmxWineCanvas)
+  if FmxWineCanvasNote <> '' then
+    AddLog(FmxWineCanvasNote);
+  // The canvas FMX really draws with, on every platform (FmxWineCanvas)
+  AddLog('FMX canvas in use: ' + FmxCanvasClassName);
   // AppID, UpdateMode, events and the plug-in links are set in uMain.fmx.
   // A form file cannot depend on the build configuration, so this is here:
 {$IFDEF DEBUG}
@@ -1188,7 +1192,7 @@ begin
     // answers with OnScreenshotReady, which the component test's
     // TSteamScreenshots handles (SetLocation tags the picture)
     if WriteFormScreenshot(S) <> 0 then
-      AddLog('Screenshot: waiting for OnScreenshotReady (callback 2301)');
+      AddLog(Format('Screenshot: waiting for OnScreenshotReady (callback %d)', [ScreenshotReady_t_k_iCallback]));
   except
     on E: Exception do AddLog('Screenshot FAILED: ' + E.Message);
   end;

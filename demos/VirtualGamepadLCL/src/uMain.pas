@@ -25,7 +25,9 @@
   of the 3D view) and switches to the Menu action set: with several pads
   a controller row (D-pad left / right, A shows that pad), then Return to
   App, Enable / Disable Motion (greyed out until the pad sends motion
-  data), Start / Stop Remote Logging and Exit; D-pad up / down moves, A
+  data), Controller Settings (Steam's binding panel, as File > View
+  Controller Settings - Big Picture shows no window menu), Start / Stop
+  Remote Logging and Exit; D-pad up / down moves, A
   chooses, B goes back, every choice closes it. Remote logging (also File
   > Send log to receiver) uses RemoteLog.SenderFPC
   (RemoteLogging/src, FPC's Sockets unit - the Delphi sender needs Indy)
@@ -55,7 +57,7 @@ uses
   PadAnimator;
 
 type
-  { The InGame actions of steam_input_manifest.vdf: one per physical
+  { The InGame actions of @link(MANIFEST_FILE): one per physical
     control, named by position with the Xbox letters (iaButtonA = the
     bottom face button on every pad). Same order as in VirtualGamepad. }
   TInputAction = (iaLeftStick, iaRightStick, iaGyro,
@@ -70,7 +72,7 @@ type
 
   { The overlay menu's items, top to bottom (oiController only with more
     than one controller connected). }
-  TOverlayItem = (oiController, oiReturn, oiMotion, oiRemoteLog, oiExit);
+  TOverlayItem = (oiController, oiReturn, oiMotion, oiSettings, oiRemoteLog, oiExit);
 
   { A rotation as Steam reports it (InputMotionData_t.rotQuat*). }
   TPadQuat = record
@@ -326,7 +328,7 @@ type
     procedure ResetAnimState;
     { The started ISteamInput plug-in, or @nil. }
     function Input: TSteamInputPlugin;
-    { Full path of steam_input_manifest.vdf, or '' when not found. }
+    { Full path of @link(MANIFEST_FILE), or '' when not found. }
     function ManifestPath: string;
     { Full path of the model file AFileName, or '' when not found. }
     function ModelPath(const AFileName: string): string;
@@ -373,6 +375,9 @@ type
     procedure ReadMenuActions(P: TSteamInputPlugin);
     { Closes the form after the current poll (queued). }
     procedure AsyncClose(Data: PtrInt);
+    { Opens Steam's binding panel after the current poll (queued; the
+      overlay menu's Controller Settings). }
+    procedure AsyncControllerSettings(Data: PtrInt);
   public
     { Drops queued calls, frees the animator and the backlog. }
     destructor Destroy; override;
@@ -394,11 +399,11 @@ implementation
 uses
   DateUtils,
   Math,       // before StrUtils, whose string IfThen must win
-  StrUtils, CastleUriUtils, Steamworks.API;
+  StrUtils, CastleUriUtils, Steamworks.API, Steamworks.Versions;
 
 const
   { Manifest file name. }
-  MANIFEST_FILE = 'steam_input_manifest.vdf';
+  MANIFEST_FILE = 'steam_controllers.vdf';   // tools/gen_input_mapping.py MANIFEST_NAME
   { Default layouts expected next to the manifest (keep in step with
     CONTROLLERS in tools/gen_input_mapping.py). }
   EXPECTED_LAYOUTS = 11;
@@ -443,6 +448,8 @@ const
   LONG_PRESS_MS = 800;
   { Milliseconds between attempts to open Steam while it fails. }
   RETRY_MS = 5000;
+  { Poll errors in a row after which polling stops. }
+  MAX_POLL_ERRORS = 3;
   { The identity rotation. }
   QUAT_IDENTITY: TPadQuat = (X: 0; Y: 0; Z: 0; W: 1);
   { Half a turn about Y: the model's back to the camera (View > Show
@@ -646,7 +653,10 @@ begin
     end;
   end;
   AddLog('FormCreate started');
-  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
+  // Title from the live values: SteamAPI1.AppID (set in the form file) and
+  // the SDK level this library targets - never typed into the caption
+  Caption := Format('%s - AppID %d (SDK %s) - %s', [Caption, SteamAPI1.AppID,
+    STEAMWORKS_SDK_VERSION, TSteamLib.PlatformDescription]);
   AddLog('Platform: ' + TSteamLib.PlatformDescription);
   if LogFileError <> '' then
     AddLog('Log file NOT written: ' + LogFileError);
@@ -680,7 +690,7 @@ begin
     on E: Exception do
       AddLog('Overlay menu could not be created: ' + E.ClassName + ': ' + E.Message);
   end;
-  AddLog(Format('Hold Start for %d ms for the overlay menu (motion, remote logging, controller, exit). '
+  AddLog(Format('Hold Start for %d ms for the overlay menu (motion, controller settings, remote logging, controller, exit). '
     + 'Drag on the 3D view to turn it, wheel to zoom. Steam is opened automatically.',
     [LONG_PRESS_MS]));
 end;
@@ -1618,6 +1628,7 @@ begin
   case I of
     oiController: Result := Length(FMenuPads) > 1;
     oiMotion:     Result := FHasMotion;
+    oiSettings:   Result := (Input <> nil) and (FActive <> 0);   // a pad to show the layout of
     oiRemoteLog:  Result := not FRemoteBusy;
   else
     Result := True;
@@ -1689,6 +1700,7 @@ begin
       oiController: T := PadRowText;
       oiReturn:     T := 'Return to App';
       oiMotion:     T := IfThen(FFollowMotion, 'Disable Motion', 'Enable Motion');
+      oiSettings:   T := 'Controller Settings';
       oiRemoteLog:
         if FSender <> nil then
           T := 'Stop Remote Logging'
@@ -1819,6 +1831,10 @@ begin
   case Item of
     oiMotion:
       SetFollowMotion(not FFollowMotion);
+    oiSettings:
+      // Steam's binding panel, as File > View Controller Settings (Big
+      // Picture / Game Mode has no window menu); after this poll
+      Application.QueueAsyncCall(AsyncControllerSettings, 0);
     oiRemoteLog:
       if FSender <> nil then
         StopRemoteLog('overlay menu')
@@ -1835,6 +1851,11 @@ end;
 procedure TfrmGamepadLCL.AsyncClose(Data: PtrInt);
 begin
   Close;
+end;
+
+procedure TfrmGamepadLCL.AsyncControllerSettings(Data: PtrInt);
+begin
+  mnuLayoutClick(nil);
 end;
 
 procedure TfrmGamepadLCL.OverlaySwallowPress(const Sender: TCastleUserInterface;
@@ -1937,10 +1958,10 @@ begin
       begin
         Inc(FPollErrors);
         AddLog('Poll failed: ' + E.ClassName + ': ' + E.Message);
-        if FPollErrors >= 3 then
+        if FPollErrors >= MAX_POLL_ERRORS then
         begin
           tmPoll.Enabled := False;
-          AddLog('Polling stopped after 3 errors');
+          AddLog(Format('Polling stopped after %d errors', [MAX_POLL_ERRORS]));
         end;
       end;
     end;

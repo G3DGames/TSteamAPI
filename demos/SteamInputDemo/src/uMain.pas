@@ -10,7 +10,7 @@
   and tried again every few seconds while it fails or after the Steam
   client exits; @link(TfrmInput.SteamInitialized) then starts
   ISteamInput with an explicit RunFrame, enables device callbacks and points
-  Steam at steam_input_manifest.vdf next to the executable (the action sets
+  Steam at @link(MANIFEST_FILE) next to the executable (the action sets
   InGame and Menu). A 16 ms timer is the "game loop": RunFrame, the
   connected controllers, then every action of the active set on the selected
   controller - all on the UI thread, so no ISteamInput call crosses threads
@@ -43,7 +43,7 @@ uses
   RemoteLog.Sender;
 
 type
-  { The actions of steam_input_manifest.vdf: in InGame one per physical
+  { The actions of @link(MANIFEST_FILE): in InGame one per physical
     control, named by position with the Xbox letters (iaButtonA = the bottom
     face button on every pad), so every pad reports the same actions. }
   TInputAction = (iaLeftStick, iaRightStick, iaGyro,
@@ -53,7 +53,7 @@ type
     iaStart, iaSelect, iaBackLeft, iaBackRight, iaBackLeftUpper, iaBackRightUpper,
     iaLeftTrackpadClick, iaRightTrackpadClick, iaCenterTrackpadClick,
     iaMenuConfirm, iaMenuBack);
-  { The action sets of steam_input_manifest.vdf. }
+  { The action sets of @link(MANIFEST_FILE). }
   TInputSet = (isInGame, isMenu);
 
   { Steam Input test form. }
@@ -248,7 +248,7 @@ type
     procedure AddLog(const S: string);
     { The started ISteamInput plug-in, or @nil. }
     function Input: TSteamInputPlugin;
-    { Full path of steam_input_manifest.vdf, or '' when not found. }
+    { Full path of @link(MANIFEST_FILE), or '' when not found. }
     function ManifestPath: string;
     { Forgets every handle and controller (Steam stopped). }
     procedure ResetState;
@@ -314,7 +314,7 @@ implementation
 {$R *.fmx}
 
 uses
-  System.IOUtils, System.DateUtils, System.StrUtils, Steamworks.API, FmxLinuxMenu
+  System.IOUtils, System.DateUtils, System.StrUtils, Steamworks.API, Steamworks.Versions, FmxLinuxMenu, FmxWineCanvas
 {$IFDEF MSWINDOWS}
   , Winapi.ShellAPI   // not Winapi.Windows: its TBitmap would hide FMX's here
 {$ENDIF}
@@ -341,7 +341,7 @@ end;
 
 const
   { Manifest file name, next to the executable. }
-  MANIFEST_FILE = 'steam_input_manifest.vdf';
+  MANIFEST_FILE = 'steam_controllers.vdf';   // tools/gen_input_mapping.py MANIFEST_NAME
   { Text of each log level. }
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
   { Action names as in the manifest. }
@@ -394,6 +394,11 @@ const
   LAYOUT_WAIT_MS = 15000;
   { Milliseconds between attempts to open Steam while it fails. }
   RETRY_MS = 5000;
+  { Poll errors in a row after which polling stops. }
+  MAX_POLL_ERRORS = 3;
+  { Speed of both rumble motors for File > Rumble (0..65535); how long it
+    lasts is tmRumble.Interval. }
+  RUMBLE_SPEED = 40000;
   { Fewest milliseconds between two log lines of one analog action. }
   ANALOG_LOG_MS = 250;
   { Rotation speed (largest axis, raw units) above which motion is logged -
@@ -779,7 +784,15 @@ begin
   AddLog('FormCreate started');
   // Which build runs on which system (native or Proton / Wine on SteamOS,
   // Rosetta 2 on macOS, Steam's Linux runtime container ...)
-  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
+  // Title from the live values: SteamAPI1.AppID (set in the form file) and
+  // the SDK level this library targets - never typed into the caption
+  Caption := Format('%s - AppID %d (SDK %s) - %s', [Caption, SteamAPI1.AppID,
+    STEAMWORKS_SDK_VERSION, TSteamLib.PlatformDescription]);
+  // Under Wine / Proton: which canvas FMX draws with (FmxWineCanvas)
+  if FmxWineCanvasNote <> '' then
+    AddLog(FmxWineCanvasNote);
+  // The canvas FMX really draws with, on every platform (FmxWineCanvas)
+  AddLog('FMX canvas in use: ' + FmxCanvasClassName);
   AddLog('Platform: ' + TSteamLib.PlatformDescription);
   if LogFileError <> '' then
     AddLog('Log file NOT written: ' + LogFileError);
@@ -968,9 +981,10 @@ begin
     Exit;
   end;
   try
-    P.TriggerVibration(FActive, 40000, 40000);
+    P.TriggerVibration(FActive, RUMBLE_SPEED, RUMBLE_SPEED);
     tmRumble.Enabled := True;
-    AddLog('Rumble: TriggerVibration(40000, 40000) for 500 ms on ' + ControllerText(P, FActive));
+    AddLog(Format('Rumble: TriggerVibration(%d, %d) for %d ms on %s', [RUMBLE_SPEED, RUMBLE_SPEED,
+      tmRumble.Interval, ControllerText(P, FActive)]));
   except
     on E: Exception do AddLog('TriggerVibration failed: ' + E.Message);
   end;
@@ -1933,10 +1947,10 @@ begin
       begin
         Inc(FPollErrors);
         AddLog('Poll failed: ' + E.ClassName + ': ' + E.Message);
-        if FPollErrors >= 3 then
+        if FPollErrors >= MAX_POLL_ERRORS then
         begin
           tmPoll.Enabled := False;
-          AddLog('Polling stopped after 3 errors');
+          AddLog(Format('Polling stopped after %d errors', [MAX_POLL_ERRORS]));
         end;
       end;
     end;

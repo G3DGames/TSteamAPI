@@ -1,8 +1,8 @@
 # Game engine integration
 
 How TSteamAPI gets Steam's callbacks into your program, and how to wire it
-into FMX, VCL, LCL, Castle Game Engine, Gorilla3D, Skia4Delphi, PasVulkan or
-a loop of your own, with or without a worker thread.
+into FMX, VCL, LCL, Castle Game Engine, Gorilla3D, Skia4Delphi or a loop
+of your own, with or without a worker thread.
 
 > **Status (2026-10-30):** the update modes described here are new and have
 > not been compiled or run yet. The timer mode (`sumTimer`) is the behaviour
@@ -21,8 +21,7 @@ a loop of your own, with or without a worker thread.
    * [Castle Game Engine](#64-castle-game-engine)
    * [Gorilla3D](#65-gorilla3d)
    * [Skia4Delphi](#66-skia4delphi)
-   * [PasVulkan](#67-pasvulkan)
-   * [Console program or a loop of your own](#68-console-program-or-a-loop-of-your-own)
+   * [Console program or a loop of your own](#67-console-program-or-a-loop-of-your-own)
 7. [Choosing the interval](#7-choosing-the-interval)
 8. [Shutdown and the Steam client exiting](#8-shutdown-and-the-steam-client-exiting)
 9. [Testing it: SteamConsole](#9-testing-it-steamconsole)
@@ -486,53 +485,7 @@ end;
 It only fires while the animation runs, so prefer `sdMainThread` if the
 animation can stop.
 
-### 6.7 PasVulkan
-
-A PasVulkan application calls, per frame, `Check(DeltaTime)` and then
-`Update(DeltaTime)` on the active `TpvApplicationScreen`. They do not run on
-the same thread:
-
-* `Check` runs on the application's run-loop thread.
-* `Update` may run on a different thread: with `UseExtraUpdateThread` it
-  runs on a dedicated update thread, and when frames are processed in
-  parallel it runs as a PasMP job on a worker - not necessarily the same
-  thread every frame.
-
-So:
-
-* **`sumManual`:** call `Steam.Update` from `Check`. Reading must stay on
-  one thread, and `Check` guarantees that.
-* **`sumThread` + `sdOnUpdate`:** call `Steam.Update` from `Update` if your
-  game state lives there, so your Steam handlers run with the rest of the
-  frame's game logic. Calls from `Update` never overlap (PasVulkan runs one
-  update at a time), which is all `sdOnUpdate` needs.
-
-```pascal
-type
-  TGameScreen = class(TpvApplicationScreen)
-  public
-    procedure Update(const aDeltaTime: TpvDouble); override;
-  end;
-
-procedure TGameScreen.Update(const aDeltaTime: TpvDouble);
-begin
-  Steam.Update;            // sumThread + sdOnUpdate: Steam handlers run here
-  inherited Update(aDeltaTime);
-  // ... game logic ...
-end;
-
-// program start, before the application runs:
-//   Steam.AppID := ...;
-//   Steam.SetUpdateMode(sumThread, sdOnUpdate);
-//   if not Steam.Initialize then ...
-// after it ends:
-//   Steam.Shutdown;
-```
-
-PasVulkan is threaded, so on Unix its programs already need `cthreads`
-first (rule 7).
-
-### 6.8 Console program or a loop of your own
+### 6.7 Console program or a loop of your own
 
 ```pascal
 Steam.AppID := 2275430;

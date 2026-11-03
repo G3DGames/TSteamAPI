@@ -30,6 +30,7 @@ time is fine.)
 * [Life cycle](#life-cycle)
 * [Plug-in components](#plug-in-components)
 * [Game servers](#game-servers)
+* [Big Picture and Game Mode](#big-picture-and-game-mode)
 * [Images: SteamImageToBitmap](#images-steamimagetobitmap)
 * [Screenshots: SteamFormToRGB](#screenshots-steamformtorgb)
 * [Errors](#errors)
@@ -88,6 +89,8 @@ All published (Object Inspector) unless noted.
 | `GameServerVersion` | `string`, '1.0.0.0' | Server version; Steam compares it with the partner site's. |
 | `IsRunning` | `Boolean` (public, read-only) | `True` while SteamAPI (the CLIENT) is initialised. |
 | `IsGameServerRunning` | `Boolean` (public, read-only) | `True` while a game server runs. |
+| `BigPictureWindow` | `TSteamBigPictureWindow`, `bpwMaximized` | What happens to the window when Steam runs in Big Picture / Game Mode: `bpwMaximized` fills the display, `bpwFullScreen` also drops the border, `bpwNone` leaves it. See [Big Picture and Game Mode](#big-picture-and-game-mode). |
+| `InBigPicture` | `Boolean` (public, read-only) | `True` when Steam reported Big Picture as the client started. |
 
 ## Events
 
@@ -114,6 +117,7 @@ All published (Object Inspector) unless noted.
 | `Update` / `RunCallbacks` | Reads and / or delivers callbacks now (what exactly depends on `UpdateMode`). Call per frame in `sumManual`, or in `sumThread` + `sdOnUpdate`. |
 | `StartGameServer: Boolean` | Starts a game server with the `GameServer*` settings: next to the running client (a listen server) or on its own (a dedicated server; `Active` becomes `True`). |
 | `StopGameServer` | Shuts the game server down; the client keeps running (a dedicated server: same as `Close`). |
+| `DisplaySize(out W, H; out Scale): Boolean` | Size of the display the component's form is on, from the framework (Steam does not report it): pixels in VCL / LCL; logical units in FMX, times `Scale` for pixels. |
 | `SetUpdateMode(Mode, Delivery, IntervalMs = -1)` | Sets `UpdateMode`, `Delivery` and (when >= 0) `CallbackInterval` in one call; applies at once while running. Main thread only, never from an event handler. |
 
 ## Life cycle
@@ -128,7 +132,9 @@ All published (Object Inspector) unless noted.
 4. Initialises every linked plug-in, in dependency order.
 5. Starts the timer (`sumTimer`) or the worker (`sumThread`).
 6. Attaches the plug-in components (their events become live).
-7. `OnInitialized`.
+7. Big Picture: asks Steam (`IsSteamInBigPictureMode`) and applies
+   `BigPictureWindow` - see [Big Picture and Game Mode](#big-picture-and-game-mode).
+8. `OnInitialized`.
 
 `Active := False` / `Close` / destroying the form reverses it: stops the
 timer / worker, detaches the components, finalises the plug-ins,
@@ -165,6 +171,30 @@ when it starts. See [TSteamGameServer.md](TSteamGameServer.md).
 
 `Close` / `Active := False` shuts down whatever runs (the game server
 first).
+
+## Big Picture and Game Mode
+
+Big Picture - on a desktop, and Game Mode on a Steam Deck, a SteamOS
+handheld or a Steam Machine - shows a game full screen, and it has no
+fixed size: 1280 x 800 on a Steam Deck, 1920 x 1080 on many handhelds, up to
+4K on a Steam Machine. A form designed for a desktop window would otherwise
+start narrower than the display.
+
+As the client starts (step 7 of the life cycle) `TSteamAPI` asks Steam
+(`ISteamUtils::IsSteamInBigPictureMode`). In Big Picture it puts its form
+(its owner when that is a form, else the application's main form) into
+`BigPictureWindow`: `bpwMaximized` (default) fills the display whatever its
+size, `bpwFullScreen` also drops the border, `bpwNone` leaves the window
+alone. Outside Big Picture nothing changes. Either way one log line says
+what happened, with the display's size from the framework, e.g.:
+
+```
+Big Picture: yes - BigPictureWindow bpwMaximized: TfrmGamepad maximised on a 1920 x 1080 pixel display
+Big Picture: no - window left as designed
+```
+
+`InBigPicture` keeps the answer and `DisplaySize` reports the display for
+your own layout code. Steam itself has no call for the display size.
 
 ## Images: SteamImageToBitmap
 

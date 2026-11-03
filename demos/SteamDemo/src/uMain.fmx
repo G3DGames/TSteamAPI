@@ -1,7 +1,7 @@
 object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'Steamworks FMX Demo - AppID 2275430 (SDK 1.65)'
+  Caption = 'Steamworks FMX Demo'
   ClientHeight = 520
   ClientWidth = 720
   FormFactor.Width = 320

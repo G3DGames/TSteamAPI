@@ -1,6 +1,6 @@
 # VirtualGamepad (FMX + Gorilla3D)
 
-3D gamepad visualiser: shows the model of the connected controller in Gorilla3D 1.5.4, animated from Steam Input, with the Steam Input overlay menu. AppID 2275430. Building it is described in the repository [README](../../README.md) ("Repository layout" and "Getting started").
+3D gamepad visualiser: shows the model of the connected controller in Gorilla3D 1.5.4, animated from Steam Input, with the Steam Input overlay menu. AppID 4108310. Building it is described in the repository [README](../../README.md) ("Repository layout" and "Getting started").
 
 This page says how to **deploy the Windows Release build** - the build that is packaged into a Steam depot: which files go in the depot and where they sit relative to the executable. macOS and Linux are deployed by the project's Deployment entries (Project -> Deployment), not covered here.
 
@@ -24,7 +24,7 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 | `VirtualGamepad.exe` | `demos\VirtualGamepad\Win64\Release\` (or `Win32\Release\`) |
 | `steam_api64.dll` - Win64 build only | `redistributable_bin\win64\steam_api64.dll` |
 | `steam_api.dll` - Win32 build only | `redistributable_bin\steam_api.dll` |
-| `steam_input_manifest.vdf` | `demos\VirtualGamepad\src\` |
+| `steam_controllers.vdf` | `demos\VirtualGamepad\src\` |
 | `controller_*.vdf` - 11 files, listed below | `demos\VirtualGamepad\src\` |
 | `XBoxOne_Animated.glb` | `models\` (repository root) |
 | `PS5_Animated.glb` | `models\` (repository root) |
@@ -34,7 +34,7 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 <depot root>\
     VirtualGamepad.exe
     steam_api64.dll        (Win64 build)   - or -   steam_api.dll   (Win32 build)
-    steam_input_manifest.vdf
+    steam_controllers.vdf
     controller_generic.vdf
     controller_neptune.vdf
     controller_ps4.vdf
@@ -67,13 +67,13 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 ## 4. On Steam
 
 * **Launch option** (partner site, Installation -> General): executable `VirtualGamepad.exe`, operating system Windows, no arguments, working folder empty (the depot root).
-* The Release build has `RestartIfNecessary` on and does **not** set the AppID itself. Started by Steam, Steam supplies the AppID. Started by double-clicking the .exe, it asks Steam to launch AppID 2275430 and closes at once - Steam then starts the installed copy through the launch option above.
-* Steam Input: set the game's Steam Input configuration on the partner site. If you point it at the action manifest in the install folder, the name is `steam_input_manifest.vdf` at the depot root. Xbox and generic controllers reach Steam Input only when it is enabled for the game (README, "Known issues").
+* The Release build has `RestartIfNecessary` on and does **not** set the AppID itself. Started by Steam, Steam supplies the AppID. Started by double-clicking the .exe, it asks Steam to launch AppID 4108310 and closes at once - Steam then starts the installed copy through the launch option above.
+* Steam Input: set the game's Steam Input configuration on the partner site. If you point it at the action manifest in the install folder, the name is `steam_controllers.vdf` at the depot root. Xbox and generic controllers reach Steam Input only when it is enabled for the game (README, "Known issues").
 * Files it writes: `VirtualGamepad.log` **next to the .exe**, i.e. in the Steam install folder (`steamapps\common\<install folder>\`), which is normally writable. If it cannot be written the program still runs and says "Log file NOT written" in its log.
 
 ## 5. Testing the Release folder before uploading
 
-Copy exactly the depot files (section 2) into an empty folder and add, **for this test only**, a `steam_appid.txt` containing `2275430` - without it the double-clicked .exe hands over to Steam and closes (section 4). Start it with the Steam client running and logged in to an account that owns AppID 2275430. Delete `steam_appid.txt` before the folder becomes the depot.
+Copy exactly the depot files (section 2) into an empty folder and add, **for this test only**, a `steam_appid.txt` containing `4108310` - without it the double-clicked .exe hands over to Steam and closes (section 4). Start it with the Steam client running and logged in to an account that owns AppID 4108310. Delete `steam_appid.txt` before the folder becomes the depot.
 
 (Debug builds set the AppID themselves and never relaunch through Steam, so they run from anywhere without `steam_appid.txt`; they are for development, not for the depot.)
 

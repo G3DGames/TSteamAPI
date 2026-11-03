@@ -84,6 +84,10 @@ const
   PAIR_GS_QUERY_PORT = 27216;
   { Rule the host's server sets; the guest's rules query looks for it. }
   PAIR_GS_RULE = 'tsapi_pair';
+  { Value of @link(PAIR_GS_RULE) that the guest's rules query must read back. }
+  PAIR_GS_RULE_VALUE = '1';
+  { Copies in a pair: the lobby's member limit and the host server's player slots. }
+  PAIR_MEMBERS = 2;
   { Lobby data key that marks the test's lobby (with value @link(PAIR_VALUE)). }
   PAIR_KEY = 'tsteamapi_pair';
   { Value of @link(PAIR_KEY) - change it when the protocol changes, so old builds do not pair. }
@@ -743,9 +747,10 @@ begin
   end
   else
   begin
-    AddLog('no pair lobby found - creating one (public, 2 members) and waiting for the other copy');
+    AddLog(Format('no pair lobby found - creating one (public, %d members) and waiting for the other copy',
+      [PAIR_MEMBERS]));
     FPhase := ppCreating;
-    FMatch.Plugin.CreateLobby(k_ELobbyTypePublic, 2);
+    FMatch.Plugin.CreateLobby(k_ELobbyTypePublic, PAIR_MEMBERS);
   end;
 end;
 
@@ -920,8 +925,8 @@ begin
   if FTicketHandle = k_HAuthTicketInvalid then
     RowDone(PT_AUTH, False, 'GetAuthSessionTicket returned no ticket')
   else
-    RowNote(PT_AUTH, Format('ticket %d (%d bytes) asked for - waiting for Steam''s confirmation (163)',
-      [FTicketHandle, Size]));
+    RowNote(PT_AUTH, Format('ticket %d (%d bytes) asked for - waiting for Steam''s confirmation (%d)',
+      [FTicketHandle, Size, GetAuthSessionTicketResponse_t_k_iCallback]));
   // Host starts the data exchanges; the guest answers
   if FIsHost then
   begin
@@ -1049,7 +1054,8 @@ begin
     if FGSTicket = k_HAuthTicketInvalid then
       RowDone(PT_SERVER, False, 'GetAuthSessionTicket for the host''s server gave no ticket')
     else
-      RowNote(PT_SERVER, 'ticket for the host''s server asked for - waiting for 163');
+      RowNote(PT_SERVER, Format('ticket for the host''s server asked for - waiting for %d',
+        [GetAuthSessionTicketResponse_t_k_iCallback]));
     // the server browser's view of it: informational (NAT may block it)
     if (FServerIP <> 0) and (FServerQueryPort <> 0) and (FServers.Plugin <> nil) then
     begin
@@ -1079,7 +1085,8 @@ begin
     if Res = k_EBeginAuthSessionResultOK then
     begin
       FGSAuthBegun := True;
-      RowNote(PT_SERVER, 'guest''s ticket begun on the server - waiting for 143 (server pipe)');
+      RowNote(PT_SERVER, Format('guest''s ticket begun on the server - waiting for %d (server pipe)',
+        [ValidateAuthTicketResponse_t_k_iCallback]));
     end
     else
     begin
@@ -1111,7 +1118,8 @@ begin
     if Res = k_EBeginAuthSessionResultOK then
     begin
       FAuthBegun := True;
-      RowNote(PT_AUTH, 'peer''s ticket begun - waiting for ValidateAuthTicketResponse (143)');
+      RowNote(PT_AUTH, Format('peer''s ticket begun - waiting for ValidateAuthTicketResponse (%d)',
+        [ValidateAuthTicketResponse_t_k_iCallback]));
     end
     else
       RowDone(PT_AUTH, False, Format('BeginAuthSession returned %d', [Ord(Res)]));
@@ -1638,7 +1646,8 @@ begin
   if G.BLoggedOn then
     ServerReady
   else if not FServerStarted then
-    RowNote(PT_SERVER, 'the running server''s log-on is under way - waiting for 101')
+    RowNote(PT_SERVER, Format('the running server''s log-on is under way - waiting for %d',
+      [SteamServersConnected_t_k_iCallback]))
   else
   begin
     G.SetModDir('tsteamapi');
@@ -1646,7 +1655,8 @@ begin
     G.SetGameDescription('TSteamAPI pair test');
     G.SetDedicatedServer(False);
     G.LogOnAnonymous;
-    RowNote(PT_SERVER, 'listen server started - logging on (101 on the server pipe)');
+    RowNote(PT_SERVER, Format('listen server started - logging on (%d on the server pipe)',
+      [SteamServersConnected_t_k_iCallback]));
   end;
 end;
 
@@ -1662,10 +1672,10 @@ begin
   begin
     G.SetServerName('TSteamAPI pair test (' + FFriends.Plugin.GetPersonaName + ')');
     G.SetMapName('pair_test');
-    G.SetMaxPlayerCount(2);
+    G.SetMaxPlayerCount(PAIR_MEMBERS);
     G.SetAdvertiseServerActive(True);
   end;
-  G.SetKeyValue(PAIR_GS_RULE, '1');
+  G.SetKeyValue(PAIR_GS_RULE, PAIR_GS_RULE_VALUE);
   FServerID := G.GetSteamID;
   FServerIP := G.PublicIPv4;
   AddLog(Format('Game server: logged on as %s, secure %s, public IP %d.%d.%d.%d - telling the guest',
@@ -1679,15 +1689,15 @@ end;
 
 procedure TSteamPairTest.GSConnected(Sender: TObject; const AData: SteamServersConnected_t);
 begin
-  AddLog('Game server: SteamServersConnected_t (101) on the server pipe');
+  AddLog(Format('Game server: SteamServersConnected_t (%d) on the server pipe', [SteamServersConnected_t_k_iCallback]));
   if (FPhase = ppRunning) and FIsHost then
     ServerReady;
 end;
 
 procedure TSteamPairTest.GSConnectFailure(Sender: TObject; const AData: SteamServerConnectFailure_t);
 begin
-  AddLog(Format('Game server: SteamServerConnectFailure_t (102): result %d, still retrying %s',
-    [Ord(AData.m_eResult), BoolToStr(AData.m_bStillRetrying, True)]));
+  AddLog(Format('Game server: SteamServerConnectFailure_t (%d): result %d, still retrying %s',
+    [SteamServerConnectFailure_t_k_iCallback, Ord(AData.m_eResult), BoolToStr(AData.m_bStillRetrying, True)]));
   if (FPhase = ppRunning) and FIsHost and not AData.m_bStillRetrying and not FServerAnnounced then
   begin
     RowDone(PT_SERVER, False, Format('server log-on failed: result %d', [Ord(AData.m_eResult)]));
@@ -1699,8 +1709,8 @@ procedure TSteamPairTest.GSAuthValidated(Sender: TObject; const AData: ValidateA
 begin
   if (FPhase <> ppRunning) or not FIsHost or not FGSAuthBegun or (AData.m_SteamID <> FPeer) then
     Exit;
-  AddLog(Format('Game server: ValidateAuthTicketResponse (143, server pipe) for the guest: response %d, owner %s',
-    [Ord(AData.m_eAuthSessionResponse), IDText(AData.m_OwnerSteamID)]));
+  AddLog(Format('Game server: ValidateAuthTicketResponse (%d, server pipe) for the guest: response %d, owner %s',
+    [ValidateAuthTicketResponse_t_k_iCallback, Ord(AData.m_eAuthSessionResponse), IDText(AData.m_OwnerSteamID)]));
   SendChat('GSAUTHRESULT', IntToStr(Ord(AData.m_eAuthSessionResponse)));
   RowDone(PT_SERVER, AData.m_eAuthSessionResponse = k_EAuthSessionResponseOK,
     Format('listen server %s logged on; the guest''s ticket validated by it: response %d (0 = OK)',
@@ -1712,7 +1722,7 @@ begin
   if (AQuery <> FRulesQuery) or (FRulesQuery = HSERVERQUERY_INVALID) then
     Exit;
   AddLog(Format('Game server: rule of the host''s server: %s = "%s"', [ARule, AValue]));
-  if ARule = PAIR_GS_RULE then
+  if (ARule = PAIR_GS_RULE) and (AValue = PAIR_GS_RULE_VALUE) then
     FRuleSeen := True;
 end;
 
@@ -1722,9 +1732,9 @@ begin
     Exit;
   FRulesQuery := HSERVERQUERY_INVALID;
   if FRuleSeen then
-    FRulesNote := 'rules query OK, ' + PAIR_GS_RULE + ' = 1 read back'
+    FRulesNote := Format('rules query OK, %s = %s read back', [PAIR_GS_RULE, PAIR_GS_RULE_VALUE])
   else
-    FRulesNote := 'rules query answered WITHOUT ' + PAIR_GS_RULE;
+    FRulesNote := Format('rules query answered WITHOUT %s = %s', [PAIR_GS_RULE, PAIR_GS_RULE_VALUE]);
   AddLog('Game server: ' + FRulesNote);
 end;
 

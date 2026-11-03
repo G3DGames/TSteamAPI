@@ -51,7 +51,8 @@ def lib_units(rel):   # rel = path from project dir to repo root
 # Steam Input manifest + one default layout per controller type, all
 # written by tools/gen_input_mapping.py into every Steam Input demo's src
 # (keep this list in step with its CONTROLLERS table)
-INPUT_FILES = ["src\\steam_input_manifest.vdf"] + [
+# (the manifest's name is gen_input_mapping.py's MANIFEST_NAME)
+INPUT_FILES = ["src\\steam_controllers.vdf"] + [
     f"src\\controller_{t}.vdf" for t in ("xboxone", "xbox360", "ps5", "ps4", "switch_pro",
                                          "neptune", "steamcontroller_gordon", "triton",
                                          "switch2_pro", "switch_joycon_pair", "generic")]
@@ -69,6 +70,7 @@ PROJECTS = [
          # runtime, TListBox crash); FmxLinuxMenu: same file as
          # SteamInputDemo's (File menu since 2026-11-02, Linux menu bar fix)
          units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxWineCanvas", "src\\FmxWineCanvas.pas"),
                 ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"),
                 ("SteamComponentTest", "..\\Shared\\SteamComponentTest.pas"),
                 ("SteamPairTest", "..\\Shared\\SteamPairTest.pas"),
@@ -108,6 +110,7 @@ PROJECTS = [
          # FmxLinuxGtkGlobal: GTK 3 in the global symbol scope (FMX crashed in
          # Steam's Linux runtime without it)
          units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxWineCanvas", "src\\FmxWineCanvas.pas"),
                 ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas")],
          forms=[("uMain", "src\\uMain.pas", "frmInput")],
          # ..\\..\\RemoteLogging\\src: the optional log sender (File menu)
@@ -129,6 +132,8 @@ PROJECTS = [
          # author, in the repository with his permission
          # FmxLinuxGtkGlobal: same file as SteamInputDemo's (Steam Linux runtime)
          units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxWineCanvas", "src\\FmxWineCanvas.pas"),
+                ("FmxSkiaCanvas", "src\\FmxSkiaCanvas.pas"),
                 ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"),
                 ("Sprite3DCamera", "src\\Sprite3DCamera.pas"),
                 ("Gorilla.Animation.Parallel", "src\\Gorilla.Animation.Parallel.pas")],
@@ -149,6 +154,7 @@ PROJECTS = [
          # FmxLinuxMenu, FmxLinuxGtkGlobal: same files as SteamInputDemo's
          # (Linux menu bar fix; GTK for Steam's Linux runtime)
          units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxWineCanvas", "src\\FmxWineCanvas.pas"),
                 ("FmxLinuxMenu", "src\\FmxLinuxMenu.pas"), ("uNetworks", "src\\uNetworks.pas")],
          forms=[("uReceiver", "src\\uReceiver.pas", "frmReceiver")],
          search="src;..\\src", depends=[]),

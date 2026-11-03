@@ -93,6 +93,7 @@ MENU_DIRS = ["demos/SteamInputDemo/src", "RemoteLogging/LogReceiver/src",
 SHARED = {
     "FmxLinuxMenu.pas": [f"{d}/FmxLinuxMenu.pas" for d in MENU_DIRS],
     "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas" for d in MENU_DIRS],
+    "FmxWineCanvas.pas": [f"{d}/FmxWineCanvas.pas" for d in MENU_DIRS],
     "ICU launcher": [f"demos/{n}/src/{n}.sh"
                      for n in ("SteamInputDemo", "SteamDemo", "SteamConsole", "VirtualGamepad")],
 }

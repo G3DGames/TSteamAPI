@@ -127,6 +127,10 @@ const
   { Rule (SetKeyValue) the test's server sets and its rules query must see:
     the RulesResponded path that no Counter-Strike 2 server answers. }
   TEST_GS_RULE = 'tsapi_test';
+  { Value of @link(TEST_GS_RULE) that the rules query must read back. }
+  TEST_GS_RULE_VALUE = '1';
+  { Player slots the test's server advertises. }
+  TEST_GS_MAX_PLAYERS = 4;
   { 127.0.0.1 in host order: the test queries its own server. }
   TEST_GS_LOCALHOST = $7F000001;
   { AppID whose Internet server list the MatchmakingServers test reads: a
@@ -1413,8 +1417,8 @@ begin
     end
     else
     begin
-      AddLog(Format('Test TSteamUser: GetAuthSessionTicket handle %s, %d bytes - waiting for callback 163',
-        [U64Str(FAuthTicket), TicketSize]));
+      AddLog(Format('Test TSteamUser: GetAuthSessionTicket handle %s, %d bytes - waiting for callback %d',
+        [U64Str(FAuthTicket), TicketSize, GetAuthSessionTicketResponse_t_k_iCallback]));
       Expect(CT_USER, 'GetAuthSessionTicket');
     end;
   except
@@ -2300,8 +2304,8 @@ begin
     FInvResult := k_SteamInventoryResultInvalid;
     if I.GetAllItems(FInvResult) then
     begin
-      AddLog('Test TSteamInventory: GetAllItems, result handle ' + IntToStr(FInvResult) +
-        ' - waiting for callback 4700');
+      AddLog(Format('Test TSteamInventory: GetAllItems, result handle %d - waiting for callback %d',
+        [FInvResult, SteamInventoryResultReady_t_k_iCallback]));
       Expect(CT_INVENTORY, 'GetAllItems');
     end
     else
@@ -2394,8 +2398,8 @@ begin
   I := SteamInventory1.Plugin;
   if I = nil then
     Exit;
-  AddLog('Test TSteamInventory: the Inventory Service answers - extended test with the item ' +
-    'definitions of docs/test-setup/itemdefs_2275430.json');
+  AddLog(Format('Test TSteamInventory: the Inventory Service answers - extended test with the item ' +
+    'definitions of docs/test-setup/itemdefs_%d.json', [FAppID]));
   try
     Def := TEST_ITEM_GEM;
     Qty := 1;
@@ -2411,8 +2415,8 @@ procedure TSteamComponentTest.InventoryStepSent(AStep: Integer; AOK: Boolean);
 begin
   if AOK then
   begin
-    AddLog(Format('Test TSteamInventory: %s, result handle %d - waiting for callback 4700',
-      [InvStepNames[AStep], FInvSteps[AStep]]));
+    AddLog(Format('Test TSteamInventory: %s, result handle %d - waiting for callback %d',
+      [InvStepNames[AStep], FInvSteps[AStep], SteamInventoryResultReady_t_k_iCallback]));
     Expect(CT_INVENTORY, InvStepNames[AStep]);
   end
   else
@@ -2470,8 +2474,9 @@ begin
     AddLog(Format('Test TSteamVideo: broadcasting %s, %d viewers', [BoolToStr(Broadcasting, True), Viewers]));
     // OPF (360 video) settings of this app: it has none, the answer counts
     V.GetOPFSettings(FAppID);
-    AddLog('Test TSteamVideo: GetOPFSettings - waiting for callback 4624 (UNVERIFIED that Steam ' +
-      'answers for an app without 360 video; NO ANSWER here would be that, not a component fault)');
+    AddLog(Format('Test TSteamVideo: GetOPFSettings - waiting for callback %d (UNVERIFIED that Steam ' +
+      'answers for an app without 360 video; NO ANSWER here would be that, not a component fault)',
+      [GetOPFSettingsResult_t_k_iCallback]));
     Expect(CT_VIDEO, 'GetOPFSettings');
   except
     on E: Exception do ReadFailed(CT_VIDEO, 'Video calls', E);
@@ -2606,8 +2611,8 @@ begin
     FillChar(Info, SizeOf(Info), 0);
     if S.GetConnectionInfo(FSockConn1, Info) then
       AddLog(Format('Test TSteamNetworkingSockets: socket pair %u / %u, connection 1 state %d ' +
-        '(3 = connected), remote identity type %d', [FSockConn1, FSockConn2, Ord(Info.m_eState),
-        Ord(Info.m_identityRemote.m_eType)]));
+        '(%d = connected), remote identity type %d', [FSockConn1, FSockConn2, Ord(Info.m_eState),
+        Ord(k_ESteamNetworkingConnectionState_Connected), Ord(Info.m_identityRemote.m_eType)]));
     Data := Utf8Bytes(TEST_TEXT);
     MsgNo := 0;
     Res := S.SendMessageToConnection(FSockConn1, @Data[0], Length(Data), k_nSteamNetworkingSend_Reliable, MsgNo);
@@ -2725,8 +2730,9 @@ begin
     U.InitRelayNetworkAccess;
     FillChar(Status, SizeOf(Status), 0);
     Avail := U.GetRelayNetworkStatus(Status);
-    AddLog(Format('Test TSteamNetworkingUtils: relay network availability %d (100 = current), ' +
-      'network config %d, any relay %d, "%s"', [Ord(Avail), Ord(Status.m_eAvailNetworkConfig),
+    AddLog(Format('Test TSteamNetworkingUtils: relay network availability %d (%d = current), ' +
+      'network config %d, any relay %d, "%s"', [Ord(Avail), Ord(k_ESteamNetworkingAvailability_Current),
+      Ord(Status.m_eAvailNetworkConfig),
       Ord(Status.m_eAvailAnyRelay), SteamText(@Status.m_debugMsg[0])]));
     FTests[CT_NETUTILS].Note := Format('relay availability %d', [Ord(Avail)]);
   except
@@ -3011,7 +3017,7 @@ begin
     // RulesResponded of the response object - never seen from a CS2 server
     Inc(FGSRuleCount);
     AddLog(Format('TSteamMatchmakingServers.OnRule (own server): %s = "%s"', [ARule, AValue]));
-    if (ARule = TEST_GS_RULE) and (AValue = '1') then
+    if (ARule = TEST_GS_RULE) and (AValue = TEST_GS_RULE_VALUE) then
       FGSRuleSeen := True;
     Exit;
   end;
@@ -3046,7 +3052,8 @@ begin
   begin
     FGSRulesQuery := HSERVERQUERY_INVALID;
     if FGSRuleSeen then
-      AddNote(CT_GAMESERVER, Format('own server: %d rules, %s = 1 read back', [FGSRuleCount, TEST_GS_RULE]))
+      AddNote(CT_GAMESERVER, Format('own server: %d rules, %s = %s read back', [FGSRuleCount, TEST_GS_RULE,
+        TEST_GS_RULE_VALUE]))
     else
     begin
       AddNote(CT_GAMESERVER, Format('own server: %d rules, %s NOT among them', [FGSRuleCount, TEST_GS_RULE]));
@@ -3157,7 +3164,8 @@ begin
     else if not FServerStartedByTest then
     begin
       // another test's server whose log-on is still on its way: wait for 101
-      AddLog('Test TSteamGameServer: the server''s log-on is under way - waiting for 101');
+      AddLog(Format('Test TSteamGameServer: the server''s log-on is under way - waiting for %d',
+        [SteamServersConnected_t_k_iCallback]));
       Expect(CT_GAMESERVER, 'LogOnAnonymous');
     end
     else
@@ -3167,8 +3175,8 @@ begin
       G.SetGameDescription('TSteamAPI component test');
       G.SetDedicatedServer(False);
       G.LogOnAnonymous;
-      AddLog('Test TSteamGameServer: LogOnAnonymous - waiting for SteamServersConnected_t (101) on the ' +
-        'SERVER''s pipe');
+      AddLog(Format('Test TSteamGameServer: LogOnAnonymous - waiting for SteamServersConnected_t (%d) on the ' +
+        'SERVER''s pipe', [SteamServersConnected_t_k_iCallback]));
       Expect(CT_GAMESERVER, 'LogOnAnonymous');
     end;
   except
@@ -3357,16 +3365,17 @@ begin
     begin
       G.SetServerName('TSteamAPI test server');
       G.SetMapName('test_map');
-      G.SetMaxPlayerCount(4);
+      G.SetMaxPlayerCount(TEST_GS_MAX_PLAYERS);
       G.SetKeyValue('tsapi_kind', 'component test');
       G.SetAdvertiseServerActive(True);
     end;
-    G.SetKeyValue(TEST_GS_RULE, '1');
+    G.SetKeyValue(TEST_GS_RULE, TEST_GS_RULE_VALUE);
     ServerID := G.GetSteamID;
     IP := G.PublicIPv4;
     AddLog(Format('Test TSteamGameServer: SteamID %s, secure %s, public IP %d.%d.%d.%d (GetPublicIP); name, map, ' +
-      '4 players, rules %s = 1 and tsapi_kind set, advertised', [U64Str(ServerID.Value), BoolToStr(G.BSecure, True),
-      (IP shr 24) and $FF, (IP shr 16) and $FF, (IP shr 8) and $FF, IP and $FF, TEST_GS_RULE]));
+      '%d players, rules %s = %s and tsapi_kind set, advertised', [U64Str(ServerID.Value), BoolToStr(G.BSecure, True),
+      (IP shr 24) and $FF, (IP shr 16) and $FF, (IP shr 8) and $FF, IP and $FF, TEST_GS_MAX_PLAYERS, TEST_GS_RULE,
+      TEST_GS_RULE_VALUE]));
     // Our own server through the server browser (127.0.0.1, its query port)
     M := SteamMatchmakingServers1;
     if M.Plugin <> nil then

@@ -3,7 +3,7 @@ object frmGamepadLCL: TfrmGamepadLCL
   Height = 800
   Top = 0
   Width = 1100
-  Caption = 'Virtual Gamepad LCL - AppID 480 (SDK 1.65)'
+  Caption = 'Virtual Gamepad LCL'
   ClientHeight = 800
   ClientWidth = 1100
   Menu = MainMenu1

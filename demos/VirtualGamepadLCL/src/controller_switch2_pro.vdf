@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - Switch 2 Pro (r4)"
-	"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 4) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
+	"title"		"SteamInputDemo - Switch 2 Pro (r20)"
+	"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 20) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_switch2_pro"
 	"major_revision"		"0"
-	"minor_revision"		"4"
+	"minor_revision"		"20"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - Switch 2 Pro (r4)"
-			"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 4) - TSteamAPI Steam Input test (AppID 2275430): one action per physical control."
+			"title"		"SteamInputDemo - Switch 2 Pro (r20)"
+			"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 20) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"

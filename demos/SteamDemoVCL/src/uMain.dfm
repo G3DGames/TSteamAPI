@@ -1,7 +1,7 @@
 object frmSteamDemo: TfrmSteamDemo
   Left = 0
   Top = 0
-  Caption = 'Steamworks VCL Demo - AppID 2275430 (SDK 1.65)'
+  Caption = 'Steamworks VCL Demo'
   ClientHeight = 601
   ClientWidth = 944
   Color = clBtnFace

@@ -28,7 +28,7 @@ interface
 
 uses
   SysUtils, Classes, Generics.Collections,
-  Steamworks.Types, Steamworks.DynLib;
+  Steamworks.Types, Steamworks.DynLib, Steamworks.Versions;
 
 type
   { Base class of all Steamworks library exceptions. }
@@ -352,11 +352,16 @@ type
     class function LibraryPath: string; static;
 
     { SDK generation of the loaded redistributable, judged by its exports:
-      @code('1.65+') (has IsRunningOnSteamHardware, no IsRunningOnSteamDeck),
-      @code('1.59-1.64') (has SteamAPI_InitFlat), @code('pre-1.59'), or
-      '' when nothing is loaded. tools/check_redist.py applies the same test
-      to the files in redistributable_bin. }
+      @link(TargetSDKGeneration) (has IsRunningOnSteamHardware, no
+      IsRunningOnSteamDeck), @code('1.59-1.64') (has SteamAPI_InitFlat),
+      @code('pre-1.59'), or '' when nothing is loaded.
+      tools/check_redist.py applies the same test to the files in
+      redistributable_bin. }
     class function SDKGeneration: string; static;
+
+    { The @link(SDKGeneration) of a redistributable from the SDK this
+      library targets: STEAMWORKS_SDK_VERSION followed by '+'. }
+    class function TargetSDKGeneration: string; static;
 
     { Exports that were looked up but not found. }
     class function MissingExports: TSteamStringArray; static;
@@ -910,13 +915,18 @@ begin
     Result := FLib.Bind(AProc, AName, ARequired);
 end;
 
+class function TSteamLib.TargetSDKGeneration: string;
+begin
+  Result := STEAMWORKS_SDK_VERSION + '+';
+end;
+
 class function TSteamLib.SDKGeneration: string;
 begin
   if FLib = nil then
     Result := ''
   else if FLib.HasSymbol('SteamAPI_ISteamUtils_IsRunningOnSteamHardware') and
           not FLib.HasSymbol('SteamAPI_ISteamUtils_IsRunningOnSteamDeck') then
-    Result := '1.65+'
+    Result := TargetSDKGeneration
   else if FLib.HasSymbol('SteamAPI_InitFlat') then
     Result := '1.59-1.64'
   else

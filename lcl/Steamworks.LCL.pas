@@ -27,6 +27,10 @@ type
     FTimer: TTimer;
     { Timer handler: pumps callbacks. }
     procedure TimerTick(Sender: TObject);
+    { The form this component belongs to: its owner when that is a form,
+      else Application.MainForm (@nil while the main form is still being
+      created and the owner is not a form). }
+    function HostForm: TForm;
   protected
     { Starts the timer. }
     procedure PumpStart(AIntervalMs: Integer); override;
@@ -36,7 +40,12 @@ type
     procedure ShowHandlerException(E: Exception); override;
     { Application.Terminate. }
     procedure TerminateApplication; override;
+    { Big Picture: maximises (or makes full screen) the owner form, else
+      the main form. }
+    function ApplyBigPictureWindow(AMode: TSteamBigPictureWindow): string; override;
   public
+    { Size of the display of @link(HostForm), in pixels (AScale is 1). }
+    function DisplaySize(out AWidth, AHeight: Integer; out AScale: Single): Boolean; override;
     { Creates the (disabled) timer. }
     constructor Create(AOwner: TComponent); override;
     { Stops and frees the timer, then shuts Steam down (inherited). }
@@ -104,6 +113,9 @@ type
     property OnGameServerStopped;
     { The game server could not start; see the message. }
     property OnGameServerFailed;
+    { What happens to the window in Big Picture / Game Mode (default
+      bpwMaximized: it fills the display, whatever its size). }
+    property BigPictureWindow;
   end;
 
 { Copies a Steam image into a bitmap: an avatar handle from
@@ -278,6 +290,56 @@ end;
 procedure TSteamAPI.TerminateApplication;
 begin
   Application.Terminate;
+end;
+
+function TSteamAPI.HostForm: TForm;
+begin
+  if Owner is TForm then
+    Result := TForm(Owner)
+  else
+    Result := Application.MainForm;
+end;
+
+function TSteamAPI.DisplaySize(out AWidth, AHeight: Integer; out AScale: Single): Boolean;
+var
+  F: TForm;
+  M: TMonitor;
+begin
+  AWidth := 0;
+  AHeight := 0;
+  AScale := 1;
+  F := HostForm;
+  if F = nil then
+    Exit(False);
+  M := Screen.MonitorFromRect(F.BoundsRect);
+  if M = nil then
+    Exit(False);
+  AWidth := M.Width;
+  AHeight := M.Height;
+  Result := True;
+end;
+
+function TSteamAPI.ApplyBigPictureWindow(AMode: TSteamBigPictureWindow): string;
+var
+  F: TForm;
+  W, H: Integer;
+  Scale: Single;
+begin
+  F := HostForm;
+  if F = nil then
+    Exit('no form to change (the owner is not a form and Application.MainForm is not set yet)');
+  if AMode = bpwFullScreen then
+  begin
+    F.WindowState := wsFullScreen;
+    Result := F.ClassName + ' full screen';
+  end
+  else
+  begin
+    F.WindowState := wsMaximized;
+    Result := F.ClassName + ' maximised';
+  end;
+  if DisplaySize(W, H, Scale) then
+    Result := Result + Format(' on a %d x %d pixel display', [W, H]);
 end;
 
 end.

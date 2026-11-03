@@ -233,7 +233,7 @@ achievement icons into a `TBitmap`. See [components/README.md](components/README
 
 Use the core (`Steamworks.Core`) and call `Steam.Update` from your loop -
 [GameEngineIntegration.md](GameEngineIntegration.md) has recipes for Castle
-Game Engine, PasVulkan and plain loops.
+Game Engine and plain loops.
 
 ## 7. Differences from Delphi
 

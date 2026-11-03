@@ -26,7 +26,8 @@ interface
 uses
   SysUtils, Classes, Controls, Forms, StdCtrls, ComCtrls, ExtCtrls, Graphics,
   Steamworks.VCL,
-  Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Callbacks, Steamworks.Core,
+  Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Versions, Steamworks.Callbacks,
+  Steamworks.Core,
   Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends,
   Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage,
   Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Menus, SteamComponentTest, SteamPairTest, System.ImageList,
@@ -298,7 +299,10 @@ begin
   end;
   // Which build runs on which system (native or Proton / Wine on SteamOS,
   // Rosetta 2 on macOS, Steam's Linux runtime container ...)
-  Caption := Caption + ' - ' + TSteamLib.PlatformDescription;
+  // Title from the live values: SteamAPI1.AppID (set in the form file) and
+  // the SDK level this library targets - never typed into the caption
+  Caption := Format('%s - AppID %d (SDK %s) - %s', [Caption, SteamAPI1.AppID,
+    STEAMWORKS_SDK_VERSION, TSteamLib.PlatformDescription]);
   // AppID, UpdateMode, events and the plug-in links are set in the form file.
   // A form file cannot depend on the build configuration, so this is here:
   {$ifdef DEBUG}
@@ -566,7 +570,7 @@ begin
     // WriteScreenshot needs no overlay; Steam answers with OnScreenshotReady
     // (handled by the component test's TSteamScreenshots: SetLocation)
     if WriteFormScreenshot(S) <> 0 then
-      AddLog('Screenshot: waiting for OnScreenshotReady (callback 2301)');
+      AddLog(Format('Screenshot: waiting for OnScreenshotReady (callback %d)', [ScreenshotReady_t_k_iCallback]));
   except
     on E: Exception do AddLog('Screenshot FAILED: ' + E.Message);
   end;

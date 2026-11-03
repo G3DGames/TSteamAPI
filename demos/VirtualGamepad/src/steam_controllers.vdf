@@ -167,7 +167,7 @@
 		"english"
 		{
 			"title"		"SteamInputDemo default layout"
-			"description"		"Default bindings for the TSteamAPI Steam Input test (AppID 2275430)."
+			"description"		"Default bindings for the TSteamAPI Steam Input test."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
