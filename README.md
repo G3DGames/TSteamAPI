@@ -194,6 +194,17 @@ demos/
                             Gorilla3D on Linux: X11 only, OpenGL 4.3+, needs
                             libsk4d.so; on macOS: Intel x64 (Apple silicon not
                             native yet, per Gorilla3D's docs)
+  VirtualGamepadVCL/        the same visualiser for Delphi's VCL (Windows) with
+                            Castle Game Engine (Vcl.CastleControl), AppID
+                            4108310 like VirtualGamepad: a port of
+                            VirtualGamepadLCL - same manifest, layouts, models,
+                            overlay menu (incl. Controller Settings) and the
+                            SAME src/PadAnimator.pas (it compiles with FPC and
+                            Delphi; Delphi takes fpjson from Castle's
+                            src/compatibility/delphi-only/fcl-json). Remote
+                            logging through RemoteLog.Sender; the post-build
+                            event copies the DLL, .vdf files and models; logs
+                            Castle's frame rate every 5 s
   (every demo)              README.md next to the .dproj / .lpi: deploying its
                             Windows Release build (Steam depot layout); the
                             .dproj opens it as the project's welcome page

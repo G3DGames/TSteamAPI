@@ -146,6 +146,17 @@ PROJECTS = [
          # rejects data there) - the program looks there on macOS
          files=INPUT_FILES + MODEL_FILES, mac_data="Contents\\Resources\\",
          linux_files=["src\\VirtualGamepad.sh"]),
+    # 3D gamepad visualiser for the VCL (Windows) with Castle Game Engine -
+    # the port of VirtualGamepadLCL (owner 2026-11-03: "to complete the
+    # set"); AppID 4108310 like the FMX VirtualGamepad. Castle's units (and
+    # its Delphi fcl-json for PadAnimator) come from the IDE library path.
+    dict(name="VirtualGamepadVCL", dir="demos\\VirtualGamepadVCL", kind="app", framework="VCL",
+         platforms=["Win32", "Win64"], default="Win64",
+         # PadAnimator: the same file as VirtualGamepadLCL's
+         units=[("PadAnimator", "src\\PadAnimator.pas")],
+         forms=[("uMain", "src\\uMain.pas", "frmGamepadVCL")],
+         search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksVCL"],
+         files=INPUT_FILES + MODEL_FILES),
     # OPTIONAL remote logging (RemoteLogging/, nothing to do with Steam): the
     # receiver app. Senders (SteamInputDemo, VirtualGamepad, SteamDemo,
     # SteamDemoVCL) use RemoteLogging\src directly.

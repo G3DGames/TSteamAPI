@@ -210,8 +210,9 @@ problem), `err:`, `Graphics Backend` (Gorilla3D's choice), `steam_api64`
 * **For SteamOS, the native Linux build** (OpenGL for FMX and Gorilla3D,
   no Proton) is expected to be the fast option - to measure.
 * **VCL and LCL Windows builds** have not been run under Proton yet
-  (VirtualGamepadLCL next: LCL draws with GDI, Castle Game Engine with
-  OpenGL - neither uses Direct2D).
+  (VirtualGamepadLCL and VirtualGamepadVCL next: LCL and VCL draw with GDI,
+  Castle Game Engine with OpenGL - neither uses Direct2D, so neither needs
+  the canvas switch).
 * **Skia** (`GlobalUseSkia`) under Proton: worth one measured run.
 * **The Steam overlay** (Shift+Tab, screenshots through it) under Proton.
 * **Display size in Game Mode:** the `Big Picture:` log line should report

@@ -1,5 +1,5 @@
 { @abstract(Plays any number of a gamepad model's glTF clips at once, on
-  the joints themselves (Free Pascal; no engine code).)
+  the joints themselves (Free Pascal and Delphi; no engine code).)
 
   Our models (models/*_Animated.glb) have one clip per control
   (A_Press, Stick_Left_Up, Trigger_Right_Press_Full, ...). Every clip
@@ -35,7 +35,9 @@
   sampler (three values per key) is skipped. }
 unit PadAnimator;
 
-{$mode delphi}{$H+}
+// Free Pascal (VirtualGamepadLCL) and Delphi (VirtualGamepadVCL: fpjson /
+// jsonparser from Castle Game Engine's src/compatibility/delphi-only/fcl-json)
+{$IFDEF FPC}{$mode delphi}{$H+}{$ENDIF}
 
 interface
 
@@ -243,6 +245,9 @@ const
   GLB_BIN = $004E4942;
   { Two values closer than this count as the same (movement test). }
   EPS = 1E-5;
+  { Windows code page number of UTF-8 (named here: Delphi's System may not
+    declare CP_UTF8, Winapi.Windows does). }
+  UTF8_CODE_PAGE = 65001;
 
 { V limited to ALow..AHigh (Single only: Math's Min / Max / EnsureRange
   overloads are ambiguous for mixed integer / float arguments in FPC). }
@@ -580,8 +585,13 @@ begin
       F.Free;
     end;
     // the chunk is UTF-8 text: no code-page conversion on the way in
-    SetCodePage(JsonText, CP_UTF8, False);
+    SetCodePage(JsonText, UTF8_CODE_PAGE, False);
+    // fpjson takes UTF8String in FPC, UnicodeString in CGE's Delphi port
+{$IFDEF FPC}
     Doc := GetJSON(UTF8String(JsonText));
+{$ELSE}
+    Doc := GetJSON(UTF8ToString(JsonText));
+{$ENDIF}
     if (Doc = nil) or (Doc.JSONType <> jtObject) then
       Exit('JSON chunk is not an object');
     Root := TJSONObject(Doc);

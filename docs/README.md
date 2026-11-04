@@ -10,6 +10,7 @@
 | [components/](components/README.md) | One page per component / plug-in: every property, method, event and payload record |
 | [fmx-steamos-icu-bug-fix.md](fmx-steamos-icu-bug-fix.md) | Starting a Delphi game on SteamOS: the launcher script that steers Delphi's runtime to a complete ICU (short, with code) |
 | [fmx-steamos-icu-bug.md](fmx-steamos-icu-bug.md) | Bug report for Embarcadero: Delphi's runtime picks a half-present ICU in Steam Linux Runtime 3.0 on SteamOS and crashes in System's initialization |
+| [gorilla-opengl-bug.md](gorilla-opengl-bug.md) | Bug report for Gorilla3D's author: a Gorilla3D program dies at start-up (Runtime error 217 in Gorilla.Linux.Glx.InitGLX) inside Steam Linux Runtime 3.0; works outside it |
 | [fmx-menu-bug-fix.md](fmx-menu-bug-fix.md) | FMX main menu on Linux shows only first letters: replacing it with an FMX menu bar (short, with code) |
 | [fmx-steamos-gtk3-bug-fix.md](fmx-steamos-gtk3-bug-fix.md) | Getting an FMX game to start in Steam's Linux runtime: use Runtime 3.0, and make GTK 3 globally visible (short, with code) |
 | [fmx-steamos-gtk3-bug.md](fmx-steamos-gtk3-bug.md) | Bug report for Embarcadero: FMX on Linux crashes inside Steam Linux Runtime 3.0 when a TListBox is created (GTK functions looked up in the global scope); FMX cannot run in Runtime 4.0 (no GTK 3) |

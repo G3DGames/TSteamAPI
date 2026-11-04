@@ -96,7 +96,7 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
   Also GENERATED: steam_controllers.vdf (the action manifest; named
   steam_input_manifest.vdf before 2026-11-03) and controller_*.vdf in
   demos/SteamInputDemo/src, demos/VirtualGamepad/src AND
-  demos/VirtualGamepadLCL/src (identical copies, owner 2026-10-31) - by tools/gen_input_mapping.py (one table of sets,
+  demos/VirtualGamepadLCL/src AND demos/VirtualGamepadVCL/src (identical copies, owner 2026-10-31) - by tools/gen_input_mapping.py (one table of sets,
   actions, bindings; its CONTROLLERS list and gen_projects.py's "files"
   list for SteamInputDemo must stay in step). Steam Input files: NO //
   comments (a manifest that started with comments did not work).
@@ -3145,6 +3145,54 @@ Fix14d to Fix20, 13 files, identical ignoring CRLF / BOM). Delivered since:
 NOTHING except this CLAUDE.md (zip Handover7, follows Fix20). Nothing to
 delete. NO PACKAGE REBUILD (the packages were last rebuilt by the owner for
 Fix13 / Fix14; every later zip touched demos, docs and tools only).
+TENTH SESSION, zip GorillaDoc1 (follows VclPad1; REPLACES LinuxPad1 - do
+not apply LinuxPad1): NATIVE LINUX VirtualGamepad under Steam (IdeaPad,
+Ubuntu 26.04, Runtime 3.0) dies with "Runtime error 217 at
+0000000000B63B34" during unit initialization (after the GTK fix lines,
+before "units initialised"); from a terminal (outside the runtime) it
+works. addr2line -f -C -e VirtualGamepad 0xB63B34 ->
+Gorilla::Linux::Glx::InitGLX(unsigned long long). shaderc RULED OUT: with
+Gorilla3D's libshaderc_shared.so.1 next to the program it loads, same
+crash, same address (LoadShaderc evidently does not raise) - so no shaderc
+deployment (LinuxPad1 withdrawn). Bug report docs/gorilla-opengl-bug.md
+(owner: "for the author"); cause INSIDE InitGLX still unknown. OPEN: the
+owner's Gorilla.Linux.Glx.pas (InitGLX: dlopen names, raise) and the
+trace's find library= lines for libGL / libGLX / libX11; reproduce with
+SteamLinuxRuntime_sniper/run -- ./prog. Method for any start-up 217:
+LD_DEBUG=libs %command% > ~/vg-stderr.txt 2>&1 + addr2line on the
+address (Delphi Linux has no map-file option). ====> NO PACKAGE REBUILD <====
+TENTH SESSION, zip VclPad1 (follows Overlay1): NEW demos/VirtualGamepadVCL
+(owner: "to complete the set"; Castle Game Engine; AppID 4108310; now).
+A port of VirtualGamepadLCL by checked text replacements (scratch script):
+Vcl.CastleControl (UI via FControl.Container.Controls - the VCL control has
+no Controls shortcut), Steamworks.VCL, RemoteLog.Sender (Delphi; same API
+as SenderFPC), Debug SetAppIdEnvironment / Release RestartIfNecessary,
+queued Exit / Controller Settings via PostMessage(WM_VG_CLOSE /
+WM_VG_SETTINGS) (dropped if the form is gone), TFormatSettings.Invariant,
+data fallback ..\..\src and ..\..\..\..\models (IDE output folders), frame
+rate from Container.Fps.RealFps / OnlyRenderFps every FPS_LOG_MS.
+PadAnimator.pas is ONE source for FPC and Delphi ({$IFDEF FPC}{$mode
+delphi}{$ENDIF}; Delphi's fpjson = CGE's delphi-only fcl-json), identical
+copies in LCL + VCL (project_check.py SHARED). gen_projects.py entry
+(.dproj generated: post-build DLL + 12 .vdf + 3 .glb, Win32/Win64,
+WelcomePage README.md), gen_input_mapping OUTS += VirtualGamepadVCL,
+Steamworks.groupproj entry (Dependencies SteamworksVCL; Build / Clean /
+Make lists) - Dependencies of the group kept intact. NOT COMPILED: check
+Vcl.CastleControl, Container.Fps.RealFps / OnlyRenderFps, fpjson from CGE
+on the Delphi library path, TCastleScene.Node(..., [fnNilOnMissing]).
+====> NO PACKAGE REBUILD <====
+Review of the port (independent agent, against CGE 5c63b34): no compile
+error found. Fixed in BOTH PadAnimator copies: SetCodePage(..., UTF8_CODE_PAGE
+= 65001) (Delphi's System may not declare CP_UTF8); GetJSON(UTF8ToString())
+under Delphi (CGE's fpjson takes UnicodeString; W1057 otherwise). Watch:
+wheel zoom needs FControl focused (VCL sends WM_MOUSEWHEEL to the focused
+control); bpwFullScreen recreates the window (and the GL context).
+Also in VclPad1: VirtualGamepad.dpr WITHOUT the IDE's GlobalUseSkia := True
+(push b0a18b2 kept it, so Skia drew FMX on every platform). Owner 23:32:
+native Linux VirtualGamepad does not start under Steam - cause UNKNOWN;
+asked for %command% > ~/vg-stderr.txt 2>&1 (suspects: that line;
+libsk4d.so not found inside the runtime -> launcher adds $here to
+LD_LIBRARY_PATH).
 TENTH SESSION, zip Overlay1 (follows Skia1): overlay menu item
 "Controller Settings" (oiSettings, after Motion; enabled with Steam Input
 running and a pad shown) in VirtualGamepad AND VirtualGamepadLCL - calls

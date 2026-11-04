@@ -5,7 +5,8 @@ controller type from ONE table of action sets, actions and bindings.
     python3 tools/gen_input_mapping.py
 
 Output (every folder in OUTS - demos/SteamInputDemo/src/,
-demos/VirtualGamepad/src/ and demos/VirtualGamepadLCL/src/, IDENTICAL
+demos/VirtualGamepad/src/, demos/VirtualGamepadLCL/src/ and
+demos/VirtualGamepadVCL/src/, IDENTICAL
 files: projects use only their own sources, owner 2026-10-31): MANIFEST_NAME and
 controller_<type>.vdf for every type in CONTROLLERS. Never edit those
 files by hand: change the tables here and run the script again.
@@ -45,7 +46,7 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTS = [os.path.join(ROOT, "demos", d, "src")
-        for d in ("SteamInputDemo", "VirtualGamepad", "VirtualGamepadLCL")]
+        for d in ("SteamInputDemo", "VirtualGamepad", "VirtualGamepadLCL", "VirtualGamepadVCL")]
 
 TITLE = "SteamInputDemo default layout"
 # No AppID in the text: the same files serve SteamInputDemo, VirtualGamepad

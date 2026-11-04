@@ -18,6 +18,9 @@
         <Projects Include="demos\VirtualGamepad\VirtualGamepad.dproj">
             <Dependencies>packages\SteamworksFMX.dproj</Dependencies>
         </Projects>
+        <Projects Include="demos\VirtualGamepadVCL\VirtualGamepadVCL.dproj">
+            <Dependencies>packages\SteamworksVCL.dproj</Dependencies>
+        </Projects>
         <Projects Include="RemoteLogging\LogReceiver\LogReceiver.dproj">
             <Dependencies/>
         </Projects>
@@ -92,6 +95,15 @@
     <Target Name="VirtualGamepad:Make">
         <MSBuild Projects="demos\VirtualGamepad\VirtualGamepad.dproj" Targets="Make"/>
     </Target>
+    <Target Name="VirtualGamepadVCL">
+        <MSBuild Projects="demos\VirtualGamepadVCL\VirtualGamepadVCL.dproj"/>
+    </Target>
+    <Target Name="VirtualGamepadVCL:Clean">
+        <MSBuild Projects="demos\VirtualGamepadVCL\VirtualGamepadVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="VirtualGamepadVCL:Make">
+        <MSBuild Projects="demos\VirtualGamepadVCL\VirtualGamepadVCL.dproj" Targets="Make"/>
+    </Target>
     <Target Name="LogReceiver">
         <MSBuild Projects="RemoteLogging\LogReceiver\LogReceiver.dproj"/>
     </Target>
@@ -156,13 +168,13 @@
         <MSBuild Projects="packages\dclSteamworksVCL.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="Steamworks;SteamworksFMX;SteamworksVCL;dclSteamworks;dclSteamworksFMX;dclSteamworksVCL;SteamDemo;SteamDemoVCL;SteamConsole;SteamInputDemo;VirtualGamepad;LogReceiver"/>
+        <CallTarget Targets="Steamworks;SteamworksFMX;SteamworksVCL;dclSteamworks;dclSteamworksFMX;dclSteamworksVCL;SteamDemo;SteamDemoVCL;SteamConsole;SteamInputDemo;VirtualGamepad;VirtualGamepadVCL;LogReceiver"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Steamworks:Clean;SteamworksFMX:Clean;SteamworksVCL:Clean;dclSteamworks:Clean;dclSteamworksFMX:Clean;dclSteamworksVCL:Clean;SteamDemo:Clean;SteamDemoVCL:Clean;SteamConsole:Clean;SteamInputDemo:Clean;VirtualGamepad:Clean;LogReceiver:Clean"/>
+        <CallTarget Targets="Steamworks:Clean;SteamworksFMX:Clean;SteamworksVCL:Clean;dclSteamworks:Clean;dclSteamworksFMX:Clean;dclSteamworksVCL:Clean;SteamDemo:Clean;SteamDemoVCL:Clean;SteamConsole:Clean;SteamInputDemo:Clean;VirtualGamepad:Clean;VirtualGamepadVCL:Clean;LogReceiver:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Steamworks:Make;SteamworksFMX:Make;SteamworksVCL:Make;dclSteamworks:Make;dclSteamworksFMX:Make;dclSteamworksVCL:Make;SteamDemo:Make;SteamDemoVCL:Make;SteamConsole:Make;SteamInputDemo:Make;VirtualGamepad:Make;LogReceiver:Make"/>
+        <CallTarget Targets="Steamworks:Make;SteamworksFMX:Make;SteamworksVCL:Make;dclSteamworks:Make;dclSteamworksFMX:Make;dclSteamworksVCL:Make;SteamDemo:Make;SteamDemoVCL:Make;SteamConsole:Make;SteamInputDemo:Make;VirtualGamepad:Make;VirtualGamepadVCL:Make;LogReceiver:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

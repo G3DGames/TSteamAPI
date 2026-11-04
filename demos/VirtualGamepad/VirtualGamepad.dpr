@@ -30,7 +30,6 @@ uses
   uMain in 'src\uMain.pas' {frmGamepad};
 
 begin
-  GlobalUseSkia := True;
 {$IFDEF DEBUG}
   // Debug builds list leaked blocks when the program ends (Windows only).
   ReportMemoryLeaksOnShutdown := True;

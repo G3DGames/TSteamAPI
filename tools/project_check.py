@@ -94,6 +94,8 @@ SHARED = {
     "FmxLinuxMenu.pas": [f"{d}/FmxLinuxMenu.pas" for d in MENU_DIRS],
     "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas" for d in MENU_DIRS],
     "FmxWineCanvas.pas": [f"{d}/FmxWineCanvas.pas" for d in MENU_DIRS],
+    # one animator source for Free Pascal (LCL) and Delphi (VCL)
+    "PadAnimator.pas": [f"demos/{d}/src/PadAnimator.pas" for d in ("VirtualGamepadLCL", "VirtualGamepadVCL")],
     "ICU launcher": [f"demos/{n}/src/{n}.sh"
                      for n in ("SteamInputDemo", "SteamDemo", "SteamConsole", "VirtualGamepad")],
 }
