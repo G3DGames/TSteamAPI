@@ -490,7 +490,7 @@ Calls `CreateBrowser` and registers AHandler for its result (`HTML_BrowserReady_
 ## Payload records
 
 Declared in `Steamworks.SDKTypes` (generated from the SDK headers; layouts verified
-against the C headers for Win64, Win32, Linux64 and macOS ARM64).
+against the C headers for Win64, Win32, Linux64, Linux32, LinuxARM64 and macOS ARM64).
 
 ### HTML_BrowserReady_t
 

@@ -146,7 +146,7 @@ function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
     SteamScreenshots1.Plugin.WriteScreenshot(@RGB[0], Length(RGB), W, H);
   #)
   What the form paints is what is captured; a covered or minimised window
-  may come out incomplete. UNTESTED so far (written 2026-11-02).
+  may come out incomplete. Tested on Win64 (2026-11-02).
   @param(AForm The form to capture.)
   @param(AWidth Width of the image in pixels (0 on failure).)
   @param(AHeight Height of the image in pixels (0 on failure).)

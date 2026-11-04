@@ -652,8 +652,15 @@ type
 var
   { How many of the demos' tests use the process's one game server now
     (the component test and the pair test may share it): the LAST one to
-    finish logs it off and stops it. }
+    finish logs it off and stops it - when a test started it, see
+    @link(DemoGameServerOwnedByTests). }
   DemoGameServerUsers: Integer = 0;
+  { @true when one of the demos' tests called StartGameServer for the game
+    server counted by @link(DemoGameServerUsers). A server the form started
+    (TSteamAPI.Roles with srGameServer, SteamConsole --server) is only
+    borrowed: the last test to finish leaves it running. Reset by the test
+    that stops the server. }
+  DemoGameServerOwnedByTests: Boolean = False;
 
 { The OS's usual per-user folder for a demo's settings: Windows
   %APPDATA%\G3DGames\<AApp>, macOS ~/Library/Application Support/G3DGames/<AApp>,
@@ -664,6 +671,11 @@ function DemoSettingsFolder(const AApp: string): string;
 
 { The time-stamp source of the test, in milliseconds. }
 function TestTicks: UInt64;
+
+{ Milliseconds from AFrom to ANow; 0 when AFrom is later. The tick values
+  are UInt64, so a plain ANow - AFrom wraps to a huge number when AFrom
+  was taken after ANow (the same guard as the pair test's TicksSince). }
+function TicksSince(ANow, AFrom: UInt64): UInt64;
 
 { The name of a TSteamUpdateMode value. }
 function UpdateModeText(AMode: TSteamUpdateMode): string;
@@ -679,6 +691,14 @@ begin
 {$else}
   Result := TThread.GetTickCount64;
 {$endif}
+end;
+
+function TicksSince(ANow, AFrom: UInt64): UInt64;
+begin
+  if ANow > AFrom then
+    Result := ANow - AFrom
+  else
+    Result := 0;
 end;
 
 function DemoSettingsFolder(const AApp: string): string;
@@ -743,6 +763,7 @@ var
   U: UTF8String;
 begin
   U := UTF8String(S);
+  Result := nil;
   SetLength(Result, Length(U));
   if Length(U) > 0 then
     Move(U[1], Result[0], Length(U));
@@ -1060,7 +1081,7 @@ begin
   PendingDelete(I);
   Inc(FTests[AIndex].Arrived);
   AddLog(Format('Test %s: %s answered after %d ms', [TestNames[AIndex], AName,
-    Int64(TestTicks - Sent)]));
+    Int64(TicksSince(TestTicks, Sent))]));
   Result := True;
 end;
 
@@ -1186,7 +1207,7 @@ begin
   if FTestsRunning then
   begin
     AddLog(Format('Test components: already running (started %.1f s ago) - press ignored; ' +
-      'every row has its verdict within %d s', [(TestTicks - FStartTicks) / 1000, TEST_TIMEOUT_MS div 1000]));
+      'every row has its verdict within %d s', [TicksSince(TestTicks, FStartTicks) / 1000, TEST_TIMEOUT_MS div 1000]));
     Exit;
   end;
   FAppID := SteamAPI1.AppID;
@@ -1243,8 +1264,8 @@ begin
     Exit;
   NowTicks := TestTicks;
   for I := High(FPending) downto 0 do
-    // (NowTicks > Sent first: UInt64, a later Sent must not wrap to a time-out)
-    if (NowTicks > FPending[I].Sent) and (NowTicks - FPending[I].Sent >= TEST_TIMEOUT_MS) then
+    // (TicksSince: UInt64, a later Sent must not wrap to a time-out)
+    if TicksSince(NowTicks, FPending[I].Sent) >= TEST_TIMEOUT_MS then
     begin
       Key := FPending[I].Key;
       PendingToMissing(I);
@@ -3120,6 +3141,7 @@ begin
       if SteamAPI1.StartGameServer then
       begin
         FServerStartedByTest := True;
+        DemoGameServerOwnedByTests := True;
         AddLog(Format('Test game server: listen server started (game port %d, query port %d, version %s)',
           [TEST_GS_GAME_PORT, TEST_GS_QUERY_PORT, SteamAPI1.GameServerVersion]));
       end
@@ -3417,7 +3439,8 @@ begin
       else
       begin
         AddLog(Format('Test TSteamGameServer: user %s asked for ticket %s (%d bytes) for the server - waiting ' +
-          'for 163, then BeginAuthSession on the server', [U64Str(Me.Value), U64Str(FGSTicket), FGSTicketSize]));
+          'for %d, then BeginAuthSession on the server', [U64Str(Me.Value), U64Str(FGSTicket), FGSTicketSize,
+          GetAuthSessionTicketResponse_t_k_iCallback]));
         Expect(CT_GAMESERVER, 'GetAuthSessionTicket (for the server)');
       end;
     end;
@@ -3600,14 +3623,25 @@ begin
     if (DemoGameServerUsers <= 0) and SteamAPI1.IsGameServerRunning then
     begin
       DemoGameServerUsers := 0;
-      if SteamGameServer1.Plugin <> nil then
+      if DemoGameServerOwnedByTests then
       begin
-        SteamGameServer1.Plugin.SetAdvertiseServerActive(False);
-        SteamGameServer1.Plugin.LogOff;
+        DemoGameServerOwnedByTests := False;
+        if SteamGameServer1.Plugin <> nil then
+        begin
+          SteamGameServer1.Plugin.SetAdvertiseServerActive(False);
+          SteamGameServer1.Plugin.LogOff;
+        end;
+        // From a handler (CheckTestsDone) the core finishes this after the callback
+        SteamAPI1.StopGameServer;
+        AddLog('Test cleanup: the listen server logged off and stopped (no test uses it any more)');
+      end
+      else
+      begin
+        // the form's (or the console's) server: borrowed, never ours to stop
+        if SteamGameServer1.Plugin <> nil then
+          SteamGameServer1.Plugin.SetKeyValue(TEST_GS_RULE, '');
+        AddLog('Test cleanup: the game server left running: not started by a test (our rule removed)');
       end;
-      // From a handler (CheckTestsDone) the core finishes this after the callback
-      SteamAPI1.StopGameServer;
-      AddLog('Test cleanup: the listen server logged off and stopped (no test uses it any more)');
     end
     else if SteamAPI1.IsGameServerRunning then
     begin

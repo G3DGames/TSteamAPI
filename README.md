@@ -4,7 +4,8 @@ A Pascal binding of the Steamworks SDK **1.65**, built as a small **core**
 (the Steam client part every other interface depends on) plus **plug-ins**,
 one per Steam interface, so a game links only what it uses.
 
-* Target order: **FMX** (now), **VCL** (next), **Free Pascal / Lazarus** (after).
+* Frameworks: **FMX**, **VCL** and **Free Pascal / Lazarus (LCL)** - all
+  three are done and tested on Win64.
   `lib/` is framework-free and written to compile with Delphi (13
   recommended; earlier versions will be tested later, no guarantee yet) and FPC 3.2.2
   (`{$mode delphi}`; the FPC version Castle Game Engine uses); `fmx/`,
@@ -118,12 +119,16 @@ vcl/                        VCL only (Delphi, Windows)
 lcl/                        LCL only (Lazarus / Free Pascal)
   Steamworks.LCL.pas        TSteamAPI for LCL (LCL TTimer), SteamImageToBitmap,
                             SteamFormToRGB (screenshots)
+  Steamworks.LCL.Reg.pas    GENERATED (gen_steam_api.py, needs no SDK): registers the LCL
+                            TSteamAPI and the plug-in components for Lazarus
 design/
   Steamworks.Reg.pas        GENERATED: registers the plug-in components (all frameworks)
 packages/                   Steamworks (runtime: lib + plug-ins + components, no framework),
                             dclSteamworks (design: plug-in components),
                             SteamworksFMX (runtime: FMX TSteamAPI), dclSteamworksFMX (design),
-                            SteamworksVCL (runtime: VCL TSteamAPI), dclSteamworksVCL (design)
+                            SteamworksVCL (runtime: VCL TSteamAPI), dclSteamworksVCL (design);
+                            SteamworksLCL.lpk (Lazarus package: lib + plug-ins + lcl,
+                            run and design time)
 redistributable_bin/        copy of sdk/redistributable_bin from the SDK
                             (git-ignored except its README.md)
 demos/
@@ -133,9 +138,13 @@ demos/
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form,
                               File menu (Auto Start Steam, Take Screenshot, Copy Log,
                               Send log to receiver, Exit) and
-                              the Components tab (base test of 21 more plug-in components)
-  Shared/                   SteamComponentTest.pas: the component test of SteamDemoVCL and
-                            SteamDemoLCL (Delphi + FPC, no UI; creates its own components)
+                              the Components tab (base test of 30 more plug-in components)
+  Shared/                   used by all three SteamDemo programs (FMX, VCL, LCL):
+    SteamComponentTest.pas  the component test (Delphi + FPC, no UI; creates its own
+                            30 components: 21 client + 9 game-server)
+    SteamPairTest.pas       the two-user pair test (Two users tab)
+    DemoRemoteLog.pas       File > Send log to receiver (RemoteLog.Sender under Delphi,
+                            RemoteLog.SenderFPC under FPC; optional, see RemoteLogging/)
   SteamConsole/             console smoke test (no framework; FPC-ready)
   SteamInputDemo/           Steam Input test (FMX): action manifest in src/, the
                             connected controller identified at the top, live
@@ -172,6 +181,13 @@ demos/
                             github.com/peardox/Sprite3D): it frames the pad
                             exactly; drag orbits, wheel zooms, right-click
                             resets.
+                            Data next to the executable (Windows, Linux) or in
+                            the bundle's Contents/Resources (macOS - codesign
+                            rejects data files in Contents/MacOS); the log
+                            says "Deployment OK" or what is missing.
+                            Gorilla3D on Linux: X11 only, OpenGL 4.3+, needs
+                            libsk4d.so; on macOS: Intel x64 (Apple silicon not
+                            native yet, per Gorilla3D's docs)
   VirtualGamepadLCL/        the same visualiser for Lazarus / Free Pascal with
                             Castle Game Engine (LCL form + TCastleControl;
                             .lpi / .lpr, sources in src/), AppID 480 (Spacewar
@@ -187,13 +203,6 @@ demos/
                             model's clips at once on its joints (needs a
                             Castle Game Engine from November 2025 or later -
                             joints moved from code, GPU skinning).
-                            Data next to the executable (Windows, Linux) or in
-                            the bundle's Contents/Resources (macOS - codesign
-                            rejects data files in Contents/MacOS); the log
-                            says "Deployment OK" or what is missing.
-                            Gorilla3D on Linux: X11 only, OpenGL 4.3+, needs
-                            libsk4d.so; on macOS: Intel x64 (Apple silicon not
-                            native yet, per Gorilla3D's docs)
   VirtualGamepadVCL/        the same visualiser for Delphi's VCL (Windows) with
                             Castle Game Engine (Vcl.CastleControl), AppID
                             4108310 like VirtualGamepad: a port of
@@ -214,9 +223,10 @@ RemoteLogging/              OPTIONAL, nothing to do with Steam: LogReceiver app 
 models/                     CC0 3D gamepad models (glTF .glb, rigged, one clip per
                             input): XBoxOne_Animated, PS5_Animated,
                             SteamController_Animated; LICENSE (CC0, credits)
-docs/                       user documentation (Markdown)
+docs/                       user documentation (Markdown) - the index is docs/README.md:
   Install-Delphi.md, Install-Lazarus-FPC.md, GameEngineIntegration.md,
-  SteamInputMapping.md, Proton.md
+  SteamInputMapping.md, Proton.md, TestSetup.md (+ test-setup/), Launcher.md,
+  ComponentIcons.md, the fmx-*-bug*.md / gorilla-opengl-bug.md reports
   components/               TSteamAPI.md + README.md (hand-written),
                             TSteam<Name>.md: GENERATED by tools/gen_docs.py
 tools/
@@ -226,8 +236,12 @@ tools/
   pasdoc.sh                 Linux / macOS: the FPC part only - docs/html/fpc (sh tools/pasdoc.sh)
                             Both need pasdoc: https://github.com/pasdoc/pasdoc/releases/
   gen_docs.py               generates docs/components/TSteam<Name>.md from the plug-in units
-  gen_input_mapping.py      writes the Steam Input manifest and default layouts (SteamInputDemo, VirtualGamepad)
+  gen_input_mapping.py      writes the Steam Input manifest and default layouts to all four
+                            input demos (SteamInputDemo, VirtualGamepad, VirtualGamepadLCL,
+                            VirtualGamepadVCL)
   doc_extras/               hand-written overview text merged into those pages
+  sdk_extras/               hand-written variant records for the SDK's C unions, copied
+                            into Steamworks.SDKTypes by gen_steam_api.py
   check_redist.py           validates all seven redistributables (type, CPU, SDK level)
   project_check.py          .dproj BOM / XML / unit-list agreement check
   gen_projects.py           creates missing .dproj / .dpk / .groupproj (IDE-saved files win)
@@ -395,7 +409,7 @@ end;
 
 ### Components
 Every framework unit declares a `TSteamAPI` with the same properties and
-events (FMX now; VCL and LCL next), all built on `TCustomSteamAPI` in
+events (FMX, VCL and LCL - all three tested on Win64), all built on `TCustomSteamAPI` in
 `Steamworks.Components`, which holds the whole lifecycle. Each generated
 plug-in unit also declares a component named after the interface -
 `TSteamUtils`, `TSteamUser`, `TSteamFriends`, `TSteamApps`, `TSteamUserStats`,
@@ -824,7 +838,7 @@ Windows', normal behaviour. Each says why and what to do.
   VCL demo (buttons enabled by state, File menu, tabs Output, Personal,
   Achievements, Components), with the Steam root and the Friends / UserStats
   components in `src/uMain.lfm`; **Test components** runs
-  `demos/Shared/SteamComponentTest.pas` (21 components, created by that
+  `demos/Shared/SteamComponentTest.pas` (30 components, created by that
   unit - the same tests as the FMX SteamDemo). To open that form in the designer, install
   `packages/SteamworksLCL.lpk` first (docs/Install-Lazarus-FPC.md); before
   that, if Lazarus offers to remove unknown classes, choose Cancel.
@@ -837,6 +851,14 @@ Windows', normal behaviour. Each says why and what to do.
   layouts in `../src/` and the models in the repository's `models/`; a
   deployed copy needs them next to the executable. AppID 480 (Valve's
   Spacewar), never relaunched through Steam.
+* **VirtualGamepadVCL** (Castle Game Engine, Delphi): Castle Game Engine
+  for Delphi must be on the IDE's library path, including its
+  `src\compatibility\delphi-only\fcl-json` folder (`PadAnimator` uses
+  `fpjson` from there; the demo's own README.md says the same). Then
+  build `demos/VirtualGamepadVCL/VirtualGamepadVCL.dproj` from the
+  project group (Win64 or Win32; the post-build event copies the DLL,
+  the .vdf files and the models next to the executable). AppID 4108310,
+  like VirtualGamepad.
 * **SteamConsole:**
 
 ```
@@ -902,7 +924,8 @@ separate, shorter guide (written by hand or by `tools/gen_docs.py`).
 python3 tools/pasdoc_check.py
 python3 tools/project_check.py
 python3 tools/gen_docs.py        # regenerates docs/components/TSteam<Name>.md
-python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three input demos)
+python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all four input demos:
+                                    # SteamInputDemo, VirtualGamepad, VirtualGamepadLCL, VirtualGamepadVCL)
 ```
 
 ## Status / next steps
@@ -910,8 +933,10 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three 
   `isteamclient.h`) done.
 * Generated: all SDK types, and plug-ins for Utils, User, Friends, Apps and
   UserStats, RemoteStorage, Screenshots, Timeline and UGC (tested, Win64),
-  Input (with a hand-written by-value shim and SteamInputDemo; not yet
-  compiled), with one documentation page each (docs/components/).
+  Input (with a hand-written by-value shim; tested on Win64 (FMX, VCL,
+  LCL) with the input demos and every pad the owner has, and on Linux64
+  with SteamInputDemo), with one documentation page each
+  (docs/components/).
 * Update modes (timer / worker thread / manual) - tested on Win64 with
   Delphi 13 and FPC 3.2.2.
 * Components for FMX, VCL and LCL (Lazarus package) - tested on Win64.
@@ -927,13 +952,15 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all three 
   RemotePlayInput_t) - one page each and a SteamDemo test. Not bound:
   `ISteamNetworking.CreateListenSocket` / `CreateConnectionSocket`
   (deprecated `SteamIPAddress_t` by value).
-* Batch 2c (2026-11-02, not yet compiled): MatchmakingServers, the server
+* Batch 2c (2026-11-02, tested on Win64 (FMX, VCL, LCL) and Win32 (FMX,
+  VCL - the thunks)): MatchmakingServers, the server
   browser. Its answers come through C++ response objects, which the
   plug-in builds itself (Pascal vtables; on Win32 a thunk turns MSVC's
   thiscall into stdcall) and turns into ordinary events delivered like
   callbacks (`TSteamCallbackDispatcher.Post`). Not wrapped:
   `ServerFriends` (undocumented; the raw method stays).
-* Game-server batch (2026-11-02, not yet compiled): ISteamGameServer,
+* Game-server batch (2026-11-02, tested on Win64 (FMX, VCL, LCL): the
+  component test's 30 rows and the two-user pair test): ISteamGameServer,
   ISteamGameServerStats and the server copies of Utils, Networking,
   NetworkingSockets, NetworkingMessages, HTTP, UGC and Inventory. The
   core runs a game server next to the client (a listen server,

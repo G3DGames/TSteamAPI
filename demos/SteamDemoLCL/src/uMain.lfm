@@ -63,7 +63,7 @@ object frmSteamDemo: TfrmSteamDemo
       Height = 42
       Top = 15
       Width = 225
-      Caption = 'Pair test (2 users)'
+      Caption = 'Pair test (two users)'
       TabOrder = 4
       OnClick = btnPairClick
     end

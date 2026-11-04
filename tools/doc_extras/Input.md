@@ -22,7 +22,7 @@ begin
   P.Start(True);             // Init; True = the game calls RunFrame itself
   P.EnableDeviceCallbacks;   // OnSteamInputDeviceConnected / ...Disconnected
   // development only: use this manifest instead of the one in the depot
-  P.SetInputActionManifestFilePath(ExtractFilePath(ParamStr(0)) + 'steam_input_manifest.vdf');
+  P.SetInputActionManifestFilePath(ExtractFilePath(ParamStr(0)) + 'steam_controllers.vdf');
 end;
 ```
 

@@ -119,6 +119,13 @@ type
   SteamAPIWarningMessageHook_t = procedure(nSeverity: Integer; pchDebugText: PAnsiChar); cdecl;
 
   // --- steam_api_common.h : manual dispatch ---------------------------------
+  // Declared with C natural alignment: on 64-bit non-Windows targets the
+  // default (Steam's callback packing, 4) gives this record 20 bytes where the
+  // naturally aligned C struct has 24 (tail padding after m_cubParam). The
+  // field offsets are the same either way; the natural size is the safe
+  // superset for an out-parameter that Steam fills (verified by a review,
+  // 2026-11-04; the Linux / macOS LayoutProbe run will confirm the C size).
+{$I Steamworks.AlignNatural.inc}
   { Internal structure used in manual callback dispatch. }
   CallbackMsg_t = record
     { User the callback applies to. }
@@ -130,6 +137,7 @@ type
     { Size in bytes of the struct at @link(m_pubParam). }
     m_cubParam: Int32;
   end;
+{$I Steamworks.AlignDefault.inc}
   { Pointer to a @link(CallbackMsg_t). }
   PCallbackMsg_t = ^CallbackMsg_t;
 

@@ -415,6 +415,10 @@ const
   MODEL_STEAM = 'SteamController_Animated.glb';
   { Every model (the deployment check looks for each). }
   MODEL_FILES: array[0..2] of string = (MODEL_XBOX, MODEL_PS, MODEL_STEAM);
+  { How long a LogReceiver search listens for answers (ms). }
+  REMOTE_SEARCH_MS = 2500;
+  { Pause between attempts to resolve the action handles (ms). }
+  RESOLVE_RETRY_MS = 1000;
   { Text of each log level. }
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
   { Action names as in the manifest. }
@@ -769,7 +773,7 @@ begin
     if not FileExists(Dir + MODEL_FILES[I]) then
       Missing := Missing + ' ' + MODEL_FILES[I];
   if (Missing = '') and (Layouts = EXPECTED_LAYOUTS) then
-    AddLog(Format('Deployment OK: manifest, %d layouts, 3 models', [Layouts]))
+    AddLog(Format('Deployment OK: manifest, %d layouts, %d models', [Layouts, Length(MODEL_FILES)]))
   else
     AddLog(Format('Data not next to the program (%d of %d layouts; missing:%s) - using src/ '
       + 'and the repository''s models/ folder where they exist',
@@ -1092,9 +1096,10 @@ begin
   FRemoteBusy := True;
   // the previous search has delivered its result (FRemoteBusy was False)
   FreeAndNil(FDiscovery);
-  AddLog('[remote log] ' + AWhy + ': looking for LogReceiver apps on the network (2.5 s)...');
+  AddLog(Format('[remote log] %s: looking for LogReceiver apps on the network (%d ms)...',
+    [AWhy, REMOTE_SEARCH_MS]));
   // in the background: the window and the controller poll keep running
-  FDiscovery := TRemoteLogDiscovery.Create(2500, RemoteLogDiscovered);
+  FDiscovery := TRemoteLogDiscovery.Create(REMOTE_SEARCH_MS, RemoteLogDiscovered);
   UpdateRemoteLogText;
 end;
 
@@ -1117,8 +1122,8 @@ begin
   end;
   if Length(AFound) = 0 then
   begin
-    AddLog('[remote log] no LogReceiver answered within 2.5 s - start LogReceiver on a machine '
-      + 'on this network, click OK there, then try again');
+    AddLog(Format('[remote log] no LogReceiver answered within %d ms - start LogReceiver on a machine '
+      + 'on this network, click OK there, then try again', [REMOTE_SEARCH_MS]));
     Exit;
   end;
   for I := 0 to High(AFound) do
@@ -1353,8 +1358,8 @@ begin
   end
   else if not FResolveWarned then
   begin
-    AddLog('Handles still 0 for:' + Missing + ' - the manifest is not loaded yet (retrying every '
-      + 'second; if it stays so, check the manifest path)');
+    AddLog(Format('Handles still 0 for:%s - the manifest is not loaded yet (retrying every '
+      + '%d ms; if it stays so, check the manifest path)', [Missing, RESOLVE_RETRY_MS]));
     FResolveWarned := True;
   end;
 end;
@@ -1762,7 +1767,7 @@ begin
       FMenuPadIndex := I;
   if FMenuUsesInGame then
     AddLog('The layout Steam loaded for this pad binds nothing to' + Unbound + ' in the '
-      + MENU_SET_NAME + ' set (an older copy of the layout - ours binds them all since r4 - or '
+      + MENU_SET_NAME + ' set (an older copy of the layout - ours binds them all - or '
       + 'a player layout): the overlay reads the D-pad, ButtonA and ButtonB of the '
       + SET_NAME + ' set instead');
   FMenuOpen := True;
@@ -1933,7 +1938,7 @@ begin
       UpdatePadBanner(P);
       if FActive <> 0 then
       begin
-        if not FResolved and (MilliSecondsBetween(Now, FLastResolve) >= 1000) then
+        if not FResolved and (MilliSecondsBetween(Now, FLastResolve) >= RESOLVE_RETRY_MS) then
           ResolveHandles(P);
         if FMenuOpen and not FMenuUsesInGame and (FMenuSetHandle <> 0) then
           P.ActivateActionSet(FActive, FMenuSetHandle)

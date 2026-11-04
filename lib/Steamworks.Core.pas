@@ -526,8 +526,16 @@ type
 
     { Finalises plug-ins and shuts SteamAPI down - and the game server if one
       runs. Safe at any time, including from a callback handler (it then
-      completes after the current callback). }
+      completes after the current callback). Call it from the main thread
+      or from the thread that calls @link(Update) (sdOnUpdate). }
     procedure Shutdown;
+
+    { @link(Shutdown) for a caller undoing its own partial start (the client
+      initialised, then its game server failed to start): the same shutdown,
+      but @link(OnShutdown) and @link(OnGameServerStopped) are NOT raised,
+      because the matching started events never were. Not for use from a
+      callback handler. }
+    procedure RollbackShutdown;
 
     { Starts a game server with @link(GameServerIP), @link(GameServerGamePort),
       @link(GameServerQueryPort), @link(GameServerMode) and
@@ -855,7 +863,11 @@ begin
     FOwner.ThreadTick;
     Inc(Ticks);
     // Valve: threads that call Steam should release its per-thread memory
-    // now and then (SteamAPI_RunCallbacks does it for the main thread)
+    // now and then (SteamAPI_RunCallbacks does it for the main thread).
+    // Recomputed each tick: PumpInterval may change while the thread runs.
+    FReleaseEvery := 1000 div FOwner.FPumpInterval;
+    if FReleaseEvery < 1 then
+      FReleaseEvery := 1;
     if Ticks >= FReleaseEvery then
     begin
       Ticks := 0;
@@ -1055,6 +1067,7 @@ begin
     Result := nil
   else
   begin
+    Result := nil;
     SetLength(Result, GRegistry.Count);
     for I := 0 to GRegistry.Count - 1 do
       Result[I] := GRegistry[I];
@@ -1474,12 +1487,13 @@ end;
 function TSteamworks.InitializeGameServerAPI: Boolean;
 var
   Err: TSteamErrMsg;
-  Check, Ver: AnsiString;
+  Check: AnsiString;
+  Ver: UTF8String;   // UTF-8 for Steam, never the ANSI code page
   Msg: string;
 begin
   FillChar(Err, SizeOf(Err), 0);
   FLastInitResult := k_ESteamAPIInitResult_FailedGeneric;
-  Ver := AnsiString(UTF8String(FServerVersion));
+  Ver := UTF8String(FServerVersion);
   if Assigned(TSteamLib.SteamInternal_GameServer_Init_V2) then
   begin
     Check := CheckVersionList(True);
@@ -1781,7 +1795,16 @@ begin
         ApplyUpdateMode;
       end
       else
-        DoShutdown;
+      begin
+        // A rollback, like StartGameServer's: OnInitialized never fired, so
+        // OnShutdown must not either (review, 2026-11-04)
+        FRollingBack := True;
+        try
+          DoShutdown;
+        finally
+          FRollingBack := False;
+        end;
+      end;
       Exit;
     end;
 
@@ -2076,6 +2099,23 @@ begin
   DoShutdown;
 end;
 
+procedure TSteamworks.RollbackShutdown;
+begin
+  if FState <> swsRunning then
+    Exit;
+  if InAnyHandler then
+  begin
+    Shutdown;   // deferred; the events are raised then (the caller asked wrongly)
+    Exit;
+  end;
+  FRollingBack := True;
+  try
+    DoShutdown;
+  finally
+    FRollingBack := False;
+  end;
+end;
+
 procedure TSteamworks.DrainWarnings;
 var
   Pending: TStringList;
@@ -2247,8 +2287,14 @@ begin
   FThreadLock.Enter;
   try
     T := FPumpThread;
-    FPumpThread := nil;
     OnWorker := (T <> nil) and (T.ThreadID = TThread.CurrentThread.ThreadID);
+    // FWorkerStopping goes up BEFORE FPumpThread is taken: between the two,
+    // RunCallbacks on another thread (sumThread + sdOnUpdate) would see "no
+    // worker, not stopping" and read Steam's queue next to the still-running
+    // worker (review, 2026-11-04). Reset in the finally below.
+    if (T <> nil) and not OnWorker then
+      FWorkerStopping := True;
+    FPumpThread := nil;
     OldDead := nil;
     if OnWorker then
     begin
@@ -2273,9 +2319,9 @@ begin
   end;
   // A main-thread delivery queued earlier must not run any more; and while
   // we wait, WaitFor runs other queued main-thread work, which must not
-  // start reading Steam's queue next to the still-running worker.
+  // start reading Steam's queue next to the still-running worker
+  // (FWorkerStopping, set above).
   TThread.RemoveQueuedEvents(nil, MainThreadDeliver);
-  FWorkerStopping := True;
   try
     T.Free;   // Terminate + wake + wait (TSteamPumpThread.Destroy)
   finally
@@ -2420,7 +2466,12 @@ begin
   finally
     FThreadLock.Leave;
   end;
-  TThread.Queue(nil, MainThreadDeliver);
+  // ForceQueue, not Queue: Queue runs the method AT ONCE when the caller is
+  // the main thread (Delphi and FPC), and StartPumpThread schedules a
+  // delivery from the main thread inside Initialize / StartGameServer /
+  // StopGameServer - handlers must run from the message loop, after those
+  // calls have returned (review, 2026-11-04).
+  TThread.ForceQueue(nil, MainThreadDeliver);
 end;
 
 procedure TSteamworks.MainThreadDeliver;

@@ -64,7 +64,7 @@ object frmMain: TfrmMain
       Size.Height = 28.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 4
-      Text = 'Pair test (2 users)'
+      Text = 'Pair test (two users)'
       OnClick = btnPairClick
     end
   end

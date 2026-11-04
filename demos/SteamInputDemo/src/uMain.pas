@@ -342,6 +342,10 @@ end;
 const
   { Manifest file name, next to the executable. }
   MANIFEST_FILE = 'steam_controllers.vdf';   // tools/gen_input_mapping.py MANIFEST_NAME
+  { How long a LogReceiver search listens for answers (ms). }
+  REMOTE_SEARCH_MS = 2500;
+  { Pause between attempts to resolve the action handles (ms). }
+  RESOLVE_RETRY_MS = 1000;
   { Text of each log level. }
   LevelNames: array[TSteamLogLevel] of string = ('debug', 'info', 'warn', 'ERROR');
   { Action names as in the manifest. }
@@ -1035,9 +1039,10 @@ begin
   FRemoteBusy := True;
   // the previous search has delivered its result (FRemoteBusy was False)
   FreeAndNil(FDiscovery);
-  AddLog('[remote log] ' + AWhy + ': looking for LogReceiver apps on the network (2.5 s)...');
+  AddLog(Format('[remote log] %s: looking for LogReceiver apps on the network (%d ms)...',
+    [AWhy, REMOTE_SEARCH_MS]));
   // in the background: the window and the controller poll keep running
-  FDiscovery := TRemoteLogDiscovery.Create(2500, RemoteLogDiscovered);
+  FDiscovery := TRemoteLogDiscovery.Create(REMOTE_SEARCH_MS, RemoteLogDiscovered);
 end;
 
 procedure TfrmInput.RemoteLogDiscovered(Sender: TObject; const AFound: TRemoteLogReceiverArray;
@@ -1056,8 +1061,8 @@ begin
   end;
   if Length(AFound) = 0 then
   begin
-    AddLog('[remote log] no LogReceiver answered within 2.5 s - start LogReceiver on a machine '
-      + 'on this network, click OK there, then try again');
+    AddLog(Format('[remote log] no LogReceiver answered within %d ms - start LogReceiver on a machine '
+      + 'on this network, click OK there, then try again', [REMOTE_SEARCH_MS]));
     Exit;
   end;
   for I := 0 to High(AFound) do
@@ -1446,8 +1451,8 @@ begin
   end
   else if not FResolveWarned then
   begin
-    AddLog('Handles still 0 for:' + Missing + ' - the manifest is not loaded yet (retrying every '
-      + 'second; if it stays so, check the manifest path and that Steam Input is enabled for this game)');
+    AddLog(Format('Handles still 0 for:%s - the manifest is not loaded yet (retrying every '
+      + '%d ms; if it stays so, check the manifest path and that Steam Input is enabled for this game)', [Missing, RESOLVE_RETRY_MS]));
     FResolveWarned := True;
   end;
 end;
@@ -1922,7 +1927,7 @@ begin
         Text := 'No controller connected (or Steam Input is off for this game).'
       else
       begin
-        if not FResolved and (MilliSecondsBetween(Now, FLastResolve) >= 1000) then
+        if not FResolved and (MilliSecondsBetween(Now, FLastResolve) >= RESOLVE_RETRY_MS) then
           ResolveHandles(P);
         if FSetHandles[FCurrentSet] <> 0 then
           P.ActivateActionSet(FActive, FSetHandles[FCurrentSet]);

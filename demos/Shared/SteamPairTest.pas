@@ -925,7 +925,7 @@ begin
   if FTicketHandle = k_HAuthTicketInvalid then
     RowDone(PT_AUTH, False, 'GetAuthSessionTicket returned no ticket')
   else
-    RowNote(PT_AUTH, Format('ticket %d (%d bytes) asked for - waiting for Steam''s confirmation (%d)',
+    RowNote(PT_AUTH, Format('ticket %u (%d bytes) asked for - waiting for Steam''s confirmation (%d)',
       [FTicketHandle, Size, GetAuthSessionTicketResponse_t_k_iCallback]));
   // Host starts the data exchanges; the guest answers
   if FIsHost then
@@ -1031,6 +1031,8 @@ begin
       if Parts.Count >= 3 then
       begin
         Val(Parts[0], ID64, Code);
+        if Code <> 0 then
+          ID64 := 0;
         FServerID := TSteamID.Create(ID64);
         FServerIP := UInt32(StrToInt64Def(Parts[1], 0));
         FServerQueryPort := Word(StrToIntDef(Parts[2], 0));
@@ -1139,7 +1141,7 @@ end;
 procedure TSteamPairTest.SendTicket;
 begin
   if SendChat('AUTH', HexOf(FTicket, FTicketSize)) then
-    AddLog(Format('Auth: ticket %d (%d bytes) sent to the peer through the lobby chat', [FTicketHandle, FTicketSize]))
+    AddLog(Format('Auth: ticket %u (%d bytes) sent to the peer through the lobby chat', [FTicketHandle, FTicketSize]))
   else
     RowDone(PT_AUTH, False, 'sending the ticket (SendLobbyChatMsg) failed');
 end;
@@ -1168,7 +1170,7 @@ begin
     Exit;
   if FTicketSent then
     Exit;   // a repeat of 163: the ticket went out already
-  AddLog(Format('Auth: Steam confirmed ticket %d: result %d', [AData.m_hAuthTicket, Ord(AData.m_eResult)]));
+  AddLog(Format('Auth: Steam confirmed ticket %u: result %d', [AData.m_hAuthTicket, Ord(AData.m_eResult)]));
   if AData.m_eResult = k_EResultOK then
   begin
     FTicketSent := True;
@@ -1543,13 +1545,24 @@ begin
         if (DemoGameServerUsers <= 0) and SteamAPI1.IsGameServerRunning then
         begin
           DemoGameServerUsers := 0;
-          if FGS.Plugin <> nil then
+          if DemoGameServerOwnedByTests then
           begin
-            FGS.Plugin.SetAdvertiseServerActive(False);
-            FGS.Plugin.LogOff;
+            DemoGameServerOwnedByTests := False;
+            if FGS.Plugin <> nil then
+            begin
+              FGS.Plugin.SetAdvertiseServerActive(False);
+              FGS.Plugin.LogOff;
+            end;
+            SteamAPI1.StopGameServer;   // from a handler: the core finishes it after the callback
+            Closed := Closed + ', game server';
+          end
+          else
+          begin
+            // the form's (or the console's) server: borrowed, never ours to stop
+            if FGS.Plugin <> nil then
+              FGS.Plugin.SetKeyValue(PAIR_GS_RULE, '');
+            Closed := Closed + ', our server rule (the game server left running: not started by a test)';
           end;
-          SteamAPI1.StopGameServer;   // from a handler: the core finishes it after the callback
-          Closed := Closed + ', game server';
         end
         else if SteamAPI1.IsGameServerRunning then
         begin
@@ -1628,6 +1641,7 @@ begin
       Exit;
     end;
     FServerStarted := True;
+    DemoGameServerOwnedByTests := True;
     AddLog(Format('Game server: listen server started (game port %d, query port %d)',
       [PAIR_GS_GAME_PORT, PAIR_GS_QUERY_PORT]));
   end

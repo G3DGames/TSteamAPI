@@ -31,7 +31,7 @@ begin
   P.Start(True);             // Init; True = the game calls RunFrame itself
   P.EnableDeviceCallbacks;   // OnSteamInputDeviceConnected / ...Disconnected
   // development only: use this manifest instead of the one in the depot
-  P.SetInputActionManifestFilePath(ExtractFilePath(ParamStr(0)) + 'steam_input_manifest.vdf');
+  P.SetInputActionManifestFilePath(ExtractFilePath(ParamStr(0)) + 'steam_controllers.vdf');
 end;
 ```
 
@@ -674,7 +674,7 @@ None.
 ## Payload records
 
 Declared in `Steamworks.SDKTypes` (generated from the SDK headers; layouts verified
-against the C headers for Win64, Win32, Linux64 and macOS ARM64).
+against the C headers for Win64, Win32, Linux64, Linux32, LinuxARM64 and macOS ARM64).
 
 ### SteamInputDeviceConnected_t
 

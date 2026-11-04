@@ -204,8 +204,8 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
   (Indy; Delphi only) + src/RemoteLog.SenderFPC.pas (the same classes for
   FPC 3.2.2 on its Sockets unit). No Steam unit may use it and lib/ /
   packages never reference it. EXCEPTION to "demos search only their own
-  sources": SteamInputDemo, VirtualGamepad, SteamDemo, SteamDemoVCL
-  (..\..\RemoteLogging\src) and VirtualGamepadLCL, SteamDemoLCL
+  sources": SteamInputDemo, VirtualGamepad, VirtualGamepadVCL, SteamDemo,
+  SteamDemoVCL (..\..\RemoteLogging\src) and VirtualGamepadLCL, SteamDemoLCL
   (../../RemoteLogging/src in the .lpi) have it on their search path for
   File > Send log to receiver (the three SteamDemos through
   demos/Shared/DemoRemoteLog.pas). Its README must keep saying it is 100%
@@ -1292,9 +1292,11 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
   finalization) - keeps FPC behaviour predictable.
 - Steamworks.inc sets Steam's packing ({$ALIGN 4} outside Windows) for EVERY
   record in lib/, not only Steam structs. Never put managed fields (string,
-  dynamic array, interface) in a record or record typed constant in lib/:
-  on Linux64 such a string field sat at offset 4 and Format got a bad
-  pointer (access violation). Use parallel arrays or a class instead.
+  dynamic array, interface) in a record TYPED CONSTANT in lib/, nor in a
+  record Steam or another compiler sees: on Linux64 such a string field sat
+  at offset 4 and Format got a bad pointer (access violation). Use parallel
+  arrays or a class instead. (An in-memory record held in a list, such as
+  the subscription entries of Steamworks.Callbacks, is fine.)
 - FPC aligns a record-typed field by the record's SIZE, not its alignment
   (see PROBE RESULT): generated SDK records are packed under FPC with
   explicit _fpcpad fields (generator), so never hand-write an SDK record
@@ -3139,6 +3141,72 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   ARM64 is now done for both compilers bar the FPC remote-log listener
   and LCL SteamFormToRGB on Cocoa (File > Take Screenshot not tried yet).
 
+## Eleventh session (2026-11-04, in progress)
+- Push 655c430 "Handoner" (= VclPad1 + GorillaDoc1 + Handover8) checked
+  against the clone: pasdoc_check / project_check 0 problems,
+  VirtualGamepadVCL present, PadAnimator identical in LCL + VCL,
+  VirtualGamepad.dpr without GlobalUseSkia, group Dependencies 13. (Zips
+  not here, so no file-by-file comparison.)
+- OWNER (01:58): "First PR the repo" = an independent review of
+  everything (five reviewers, no compiler), then (04:10) "yes" = fix all
+  of it. Zip Review2 (follows Handover8):
+  * NO CERTAIN COMPILE ERROR anywhere (VirtualGamepadVCL included).
+  * lib/Steamworks.Core.pas: ScheduleMainDelivery uses TThread.ForceQueue
+    - Queue runs the method AT ONCE on the main thread (Delphi and FPC),
+    so a delivery scheduled by StartPumpThread inside Initialize /
+    StartGameServer / StopGameServer ran user handlers BEFORE those calls
+    returned (a Shutdown from such a handler left StartGameServer
+    continuing on a torn-down session). StopPumpThread sets
+    FWorkerStopping under FThreadLock before it nils FPumpThread (race
+    with RunCallbacks on a game thread, sumThread + sdOnUpdate). A failed
+    required-plug-in Initialize rolls back without OnShutdown; NEW public
+    TSteamworks.RollbackShutdown (DoShutdown with the events suppressed)
+    used by TCustomSteamAPI when the listen server of a client fails to
+    start (OnInitFailed without a preceding OnShutdown). FReleaseEvery
+    recomputed per tick (PumpInterval changes), server version string
+    UTF-8 not ANSI, Result := nil before SetLength (Core, API).
+  * lib/Steamworks.Types.pas: CallbackMsg_t declared under
+    AlignNatural.inc (24 bytes on 64-bit non-Windows, was 20; offsets
+    unchanged; the C size is natural if the struct is outside the pack
+    region - the Linux / macOS LayoutProbe run will say; the larger
+    buffer is safe either way).
+  * The review's "an exception in ThreadTick's finally ends the worker
+    silently" was WRONG (the outer except covers that finally) - no
+    change. Also unchanged: records with a Proc (anonymous method)
+    field in Callbacks.pas under STEAMWORKS_ANONYMOUS_METHODS - they are
+    in-memory only; the Source rule about managed fields now says so.
+  * demos/Shared: DemoGameServerOwnedByTests (SteamComponentTest) - a
+    server the FORM started (Roles) is no longer logged off / stopped by
+    the last test (it was: only the tests counted DemoGameServerUsers);
+    TicksSince in the component test (two unguarded UInt64 differences);
+    163 formatted from GetAuthSessionTicketResponse_t_k_iCallback; %u for
+    HAuthTicket in the pair test; Val result checked.
+  * Demos: REMOTE_SEARCH_MS / RESOLVE_RETRY_MS constants (the 2.5 s and
+    1 s were typed into text) in SteamInputDemo + the three VirtualGamepads;
+    "%d models" from Length(MODEL_FILES); stale "since r4"; SteamInputDemo
+    lblPadInfo text ("Press Start Steam" - no such button); btnPair
+    caption without a number (x3); dead FMotionPending field (FMX).
+  * Docs: README (30 components, Shared/ list, "all three frameworks
+    done", Input / 2c / game-server status lines, four input demos,
+    Gorilla text under VirtualGamepad, layout additions, VirtualGamepadVCL
+    build step), Install-Lazarus-FPC (macOS ARM64 ran), TSteamAPI.md +
+    vcl/lcl doc comments (SteamFormToRGB tested), VirtualGamepad README
+    (sk4d.dll in the depot), doc_extras/Input.md (steam_controllers.vdf),
+    gen_docs.py targets string (six) -> all 26 component pages
+    regenerated, RemoteLogging README, gen_steam_api.py comments.
+  * Not changed (harmless, owner's .dproj are authoritative):
+    SteamworksFMX.dproj search path lacks ..\lib\plugins; SteamConsole
+    .dproj has Android64 without the .so DeployFile.
+  * Twin drift between the three SteamDemos noted, not harmonised (tab
+    switching on Test, init-failed text, log-file error logging, timer
+    design, settings-folder helper) - offer open.
+  ====> RUNTIME RECOMPILE REQUIRED: STEAMWORKS, STEAMWORKSFMX,
+  STEAMWORKSVCL (ALL PLATFORMS), REINSTALL DCLSTEAMWORKS (+FMX/VCL);
+  LAZARUS: STEAMWORKSLCL <==== (Core / Types / Components / API changed;
+  vcl / lcl comment-only). NOT YET COMPILED.
+  Unverified until a run: TThread.ForceQueue under FPC 3.2.2 (believed
+  present since 3.2.0); the listen-server rollback path.
+
 ## Handover (2026-11-04, end of tenth session) - READ THIS FIRST
 State: last verified push b0a18b2 "VirtualGamepad Steam" (checked
 2026-11-04 against the working copy, ignoring CRLF / BOM): it holds every
@@ -3152,8 +3220,10 @@ Delivered since b0a18b2, in order:
   2. GorillaDoc1 (follows VclPad1) - docs/gorilla-opengl-bug.md.
      LinuxPad1 (shaderc deployment) was WITHDRAWN: do not apply it.
   3. Handover8 (follows GorillaDoc1) - this CLAUDE.md.
-Nothing to delete. ====> NO PACKAGE REBUILD <==== (no package source has
-changed since BigPic2).
+  (Pushed as 655c430.) 4. Review2 (follows Handover8; eleventh session,
+  see above) - the review fixes: ====> RUNTIME RECOMPILE REQUIRED: ALL
+  PACKAGES <====.
+Nothing to delete.
 NEXT SESSION FIRST: verify the push of those three zips as in "Syncing
 safely" (VirtualGamepadVCL new; PadAnimator identical in LCL + VCL;
 VirtualGamepad.dpr has no GlobalUseSkia line), run pasdoc_check.py and

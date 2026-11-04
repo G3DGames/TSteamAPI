@@ -232,7 +232,7 @@ Calls `StoreUserStats` and registers AHandler for its result (`GSStatsStored_t`)
 ## Payload records
 
 Declared in `Steamworks.SDKTypes` (generated from the SDK headers; layouts verified
-against the C headers for Win64, Win32, Linux64 and macOS ARM64).
+against the C headers for Win64, Win32, Linux64, Linux32, LinuxARM64 and macOS ARM64).
 
 ### GSStatsUnloaded_t
 

@@ -192,8 +192,6 @@ type
     FFrameTimeMs: Integer;
     { Tick (ms) of the last motion update written to the model. }
     FMotionWrittenAt: UInt64;
-    { Motion arrived that is not written to the model yet. }
-    FMotionPending: Boolean;
     { The newest motion turn, kept until it is written. }
     FPendingMotion: TPadQuat;
     { The camera: Sprite3D's orbit camera, framing the model exactly with
@@ -494,6 +492,10 @@ const
   MODEL_STEAM = 'SteamController_Animated.glb';
   { Every model (the deployment check looks for each). }
   MODEL_FILES: array[0..2] of string = (MODEL_XBOX, MODEL_PS, MODEL_STEAM);
+  { How long a LogReceiver search listens for answers (ms). }
+  REMOTE_SEARCH_MS = 2500;
+  { Pause between attempts to resolve the action handles (ms). }
+  RESOLVE_RETRY_MS = 1000;
   { Size of the model's largest side in scene units (as in Gorilla3D's
     ParallelAnimation sample; the camera frames it whatever its size). }
   MODEL_SIZE = 8.0;
@@ -886,7 +888,7 @@ begin
     if not TFile.Exists(Dir + MODEL_FILES[I]) then
       Missing := Missing + ' ' + MODEL_FILES[I];
   if (Missing = '') and (Length(Layouts) = EXPECTED_LAYOUTS) then
-    AddLog(Format('Deployment OK: manifest, %d layouts, 3 models', [Length(Layouts)]))
+    AddLog(Format('Deployment OK: manifest, %d layouts, %d models', [Length(Layouts), Length(MODEL_FILES)]))
   else
     AddLog(Format('Deployment INCOMPLETE: %d of %d layouts; missing:%s',
       [Length(Layouts), EXPECTED_LAYOUTS, IfThen(Missing = '', ' nothing else', Missing)]));
@@ -1194,11 +1196,9 @@ begin
   // (GDI+ under Proton: ~55 ms) stopped drawing altogether (ROG Ally,
   // 2026-11-03, every controller). The newest reading always wins.
   FPendingMotion := QuatMul(QuatConj(FMotionZero), Q);
-  FMotionPending := True;
   if TThread.GetTickCount64 - FMotionWrittenAt >= UInt64(Max(FFrameTimeMs, MOTION_MIN_MS)) then
   begin
     FMotionWrittenAt := TThread.GetTickCount64;
-    FMotionPending := False;
     SetModelRotation(FPendingMotion);
   end;
 end;
@@ -1342,9 +1342,10 @@ begin
   FRemoteBusy := True;
   // the previous search has delivered its result (FRemoteBusy was False)
   FreeAndNil(FDiscovery);
-  AddLog('[remote log] ' + AWhy + ': looking for LogReceiver apps on the network (2.5 s)...');
+  AddLog(Format('[remote log] %s: looking for LogReceiver apps on the network (%d ms)...',
+    [AWhy, REMOTE_SEARCH_MS]));
   // in the background: the window and the controller poll keep running
-  FDiscovery := TRemoteLogDiscovery.Create(2500, RemoteLogDiscovered);
+  FDiscovery := TRemoteLogDiscovery.Create(REMOTE_SEARCH_MS, RemoteLogDiscovered);
   UpdateRemoteLogText;
 end;
 
@@ -1367,8 +1368,8 @@ begin
   end;
   if Length(AFound) = 0 then
   begin
-    AddLog('[remote log] no LogReceiver answered within 2.5 s - start LogReceiver on a machine '
-      + 'on this network, click OK there, then try again');
+    AddLog(Format('[remote log] no LogReceiver answered within %d ms - start LogReceiver on a machine '
+      + 'on this network, click OK there, then try again', [REMOTE_SEARCH_MS]));
     Exit;
   end;
   for I := 0 to High(AFound) do
@@ -1647,7 +1648,7 @@ begin
       FMenuPadIndex := I;
   if FMenuUsesInGame then
     AddLog('The layout Steam loaded for this pad binds nothing to' + Unbound + ' in the '
-      + MENU_SET_NAME + ' set (an older copy of the layout - ours binds them all since r4 - or '
+      + MENU_SET_NAME + ' set (an older copy of the layout - ours binds them all - or '
       + 'a player layout): the overlay reads the D-pad, ButtonA and ButtonB of the '
       + SET_NAME + ' set instead');
   FMenuOpen := True;
@@ -1987,8 +1988,8 @@ begin
   end
   else if not FResolveWarned then
   begin
-    AddLog('Handles still 0 for:' + Missing + ' - the manifest is not loaded yet (retrying every '
-      + 'second; if it stays so, check the manifest path and that Steam Input is enabled for this game)');
+    AddLog(Format('Handles still 0 for:%s - the manifest is not loaded yet (retrying every '
+      + '%d ms; if it stays so, check the manifest path and that Steam Input is enabled for this game)', [Missing, RESOLVE_RETRY_MS]));
     FResolveWarned := True;
   end;
 end;
@@ -2240,7 +2241,7 @@ begin
       UpdatePadBanner(P);
       if FActive <> 0 then
       begin
-        if not FResolved and (MilliSecondsBetween(Now, FLastResolve) >= 1000) then
+        if not FResolved and (MilliSecondsBetween(Now, FLastResolve) >= RESOLVE_RETRY_MS) then
           ResolveHandles(P);
         // the overlay menu reads the Menu set, the 3D view the InGame set
         if FMenuOpen and not FMenuUsesInGame and (FMenuSetHandle <> 0) then

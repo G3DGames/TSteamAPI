@@ -7,8 +7,8 @@ inside an engine such as Castle Game Engine.
   builds with, and the library deliberately uses nothing newer. FPC 3.3.1
   (trunk) also gets the anonymous-method extras.
 * **Reference install:** Lazarus 4.8 / FPC 3.2.2, x86_64-win64, win32
-  widgetset - the only FPC combination run so far. Linux and macOS with FPC
-  are written for but **not yet tested**.
+  widgetset. FPC runs so far: Windows x64 and macOS ARM64 (aarch64-darwin,
+  SteamDemoLCL). Linux with FPC is written for but **not yet tested**.
 * **You need:** the Steamworks SDK **1.65** (`steamworks_sdk_165.zip`, from
   the Steamworks partner site), a Steam AppID (480 works for experiments),
   and the Steam client installed and logged in.

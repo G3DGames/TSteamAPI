@@ -962,7 +962,9 @@ begin
     begin
       if not (srClient in FRoles) then
         FFailMessage := Format('Steam did not start (result %d): %s', [Ord(S.LastInitResult), S.LastError]);
-      S.Shutdown;   // all or nothing: the client of a listen server goes too
+      // All or nothing: the client of a listen server goes too - without
+      // OnShutdown, since OnInitialized never fired (OnInitFailed follows)
+      S.RollbackShutdown;
     end;
   end;
   if Result then

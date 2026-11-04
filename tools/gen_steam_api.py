@@ -12,6 +12,10 @@ Output (committed):
                                             struct and callback struct
   lib/plugins/Steamworks.Plugin.<Name>.pas  one plug-in per interface in
                                             PLUGINS below
+  design/Steamworks.Reg.pas                 design-time registration of the
+                                            plug-in components (Delphi)
+  lcl/Steamworks.LCL.Reg.pas                the same for Lazarus, plus the LCL
+                                            TSteamAPI (needs no SDK)
 
 Each plug-in unit has
   * T<Name>Flat - a record of every flat export of the interface, with its
@@ -53,7 +57,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Interfaces generated as plug-ins (class name -> unit / plug-in name).
-# Game-server interfaces and the rest come in later batches.
+# Every interface of SDK 1.65 is here, the game-server ones included
+# (ISteamController is skipped on purpose: deprecated in favour of ISteamInput).
 PLUGINS = {
     "ISteamUtils": "Utils",
     "ISteamUser": "User",

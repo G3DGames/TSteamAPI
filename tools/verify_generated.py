@@ -4,8 +4,9 @@
     python3 tools/verify_generated.py <sdk/public/steam folder>
 
 1. Struct layouts: compiles the SDK headers with clang (no platform SDK
-   needed: system headers are stubbed) for Win64, Win32, Linux x86_64 and
-   macOS ARM64, reads sizeof / alignof / offsetof of every struct generated
+   needed: system headers are stubbed) for Win64, Win32, Linux x86_64,
+   macOS ARM64 and the FPC-only targets Linux32 (i686) and LinuxARM64
+   (aarch64), reads sizeof / alignof / offsetof of every struct generated
    in lib/Steamworks.SDKTypes.pas, and compares them with the layout Delphi
    gives the generated records (alignment rules of {$ALIGN n} / packed
    record, as set by Steamworks.inc and Steamworks.AlignNatural.inc).

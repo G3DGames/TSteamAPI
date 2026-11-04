@@ -234,8 +234,8 @@ if RGB <> nil then
 What the form paints is captured; natively drawn platform controls and 3D
 viewports may be missing (capture those from their render target and use
 `SteamBitmapToRGB`). The VCL and LCL versions take the form's
-`GetFormImage` (client area, screen pixels) - written 2026-11-02, not yet
-tested; SteamDemoVCL / SteamDemoLCL use them for File > Take Screenshot.
+`GetFormImage` (client area, screen pixels) - tested on Win64 (VCL and
+LCL); SteamDemoVCL / SteamDemoLCL use them for File > Take Screenshot.
 
 ## Errors
 

@@ -31,7 +31,7 @@ object frmInput: TfrmInput
       Size.Width = 1192.000000000000000000
       Size.Height = 48.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Press Start Steam, then connect a controller.'
+      Text = 'Steam is opened automatically; then connect a controller.'
     end
   end
   object layLeft: TLayout

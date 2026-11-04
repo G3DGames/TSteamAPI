@@ -942,6 +942,7 @@ begin
     Result := nil;
     Exit;
   end;
+  Result := nil;
   SetLength(Result, FLib.MissingSymbols.Count);
   for I := 0 to FLib.MissingSymbols.Count - 1 do
     Result[I] := FLib.MissingSymbols[I];

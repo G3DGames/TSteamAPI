@@ -14,7 +14,7 @@ You can ignore it completely: the demos work exactly the same without it.
 |---|---|
 | `LogReceiver/` | A small FMX app for your desk machine. It announces itself on the local network, asks you to **Accept** each program that wants to send its log, shows the lines live and saves each session to a file in `Documents/LogReceiver`. |
 | `src/RemoteLog.Sender.pas` | The sending side, one class (`TRemoteLogSender`). A program hands it log lines; it finds receivers, connects and streams the lines in the background. |
-| `src/RemoteLog.SenderFPC.pas` | The same sending side for **Free Pascal / Lazarus** (same classes and methods), on FPC's own `Sockets` unit - no Indy, no extra package. Used by demos/VirtualGamepadLCL. |
+| `src/RemoteLog.SenderFPC.pas` | The same sending side for **Free Pascal / Lazarus** (same classes and methods), on FPC's own `Sockets` unit - no Indy, no extra package. Used by demos/VirtualGamepadLCL and demos/SteamDemoLCL (through demos/Shared/DemoRemoteLog.pas). |
 | `src/RemoteLog.Protocol.pas` | Ports and message formats, shared by all three. |
 
 LogReceiver and RemoteLog.Sender are Delphi (they use Indy, which comes
