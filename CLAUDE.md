@@ -3141,7 +3141,7 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   ARM64 is now done for both compilers bar the FPC remote-log listener
   and LCL SteamFormToRGB on Cocoa (File > Take Screenshot not tried yet).
 
-## Eleventh session (2026-11-04, in progress)
+## Eleventh session (2026-11-04, ended)
 - Push 655c430 "Handoner" (= VclPad1 + GorillaDoc1 + Handover8) checked
   against the clone: pasdoc_check / project_check 0 problems,
   VirtualGamepadVCL present, PadAnimator identical in LCL + VCL,
@@ -3206,6 +3206,84 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   vcl / lcl comment-only). NOT YET COMPILED.
   Unverified until a run: TThread.ForceQueue under FPC 3.2.2 (believed
   present since 3.2.0); the listen-server rollback path.
+- OWNER (04:22): VirtualGamepadVCL COMPILED AND RAN on Win32 and Win64
+  ("ok" - the Castle-for-Delphi names on the watch list are right; no log
+  sent). Gorilla InitGLX (handover NEXT 2) is WAITING ON THE AUTHOR.
+  Review2 is being applied and pushed (handover NEXT 1 + 2).
+
+## Handover (2026-11-04, end of eleventh session) - READ THIS FIRST
+State: last verified push ae2891d "Handoner" (checked 04:25 against a
+separate clone): exactly the 52 files of zip Review2, identical ignoring
+CRLF / BOM, nothing else pushed, pasdoc_check / project_check 0 problems,
+group Dependencies intact (13). Working copy reset to origin/main.
+Delivered since ae2891d: ONLY this CLAUDE.md (zip Handover9, follows
+Review2). Nothing to delete. ====> NO PACKAGE REBUILD FOR HANDOVER9 <====
+(Review2 itself needed ALL packages rebuilt - the owner has applied it.)
+NEXT SESSION FIRST: verify the Handover9 push as in "Syncing safely" (only
+CLAUDE.md should differ from ae2891d), run pasdoc_check.py and
+project_check.py on the clone.
+
+### Done this session
+1. Independent review of the whole repository (five reviewers, no
+   compiler): no certain compile error anywhere; fixes delivered as zip
+   Review2 - details in the "Eleventh session" section above (core
+   ForceQueue delivery, stop-race, CallbackMsg_t natural size,
+   RollbackShutdown, shared-test server ownership, literal-value rule
+   drift in the demos, docs brought up to date, 26 component pages
+   regenerated).
+2. Push ae2891d verified.
+3. Owner: VirtualGamepadVCL compiled and ran on Win32 and Win64 ("ok").
+
+### Results still expected from the owner
+- The Review2 regression (Win64, FMX / VCL / LCL): Test components 30 /
+  30 and one pair run, after the package rebuild - the core changes touch
+  callback delivery and the listen-server start. Also the first sign of
+  trouble would be TThread.ForceQueue under FPC 3.2.2 (believed present
+  since 3.2.0): a Lazarus build of SteamworksLCL settles it.
+- A VirtualGamepadVCL log (none sent; "ok" only).
+
+### NEXT (in order)
+1. SteamConsole batch (ninth-session plan): run the shared
+   SteamComponentTest / SteamPairTest from command-line switches (Tick once
+   a second from the console loop; a TCustomSteamAPI created in code with
+   Roles / UpdateMode / Active), `--server` = the DEDICATED server (Roles =
+   [srGameServer], no Steam client, steam_appid.txt / SetAppIdEnvironment,
+   LogOnAnonymous, advertise, answer queries, stay up until a key /
+   Ctrl+C) - the dedicated path has NEVER RUN; plus SteamConsoleFPC (.lpi /
+   .lpr, plain FPC, no LCL; cthreads first); add both to gen_projects.py /
+   project_check.py. The console's ServerExit (704 on the server pipe)
+   is ignored by the core today - decide whether a dedicated server
+   should react.
+2. Gorilla InitGLX (native Linux VirtualGamepad under Runtime 3.0):
+   WAITING ON THE AUTHOR (owner, 04:22). When he answers: finish
+   docs/gorilla-opengl-bug.md; repro without Steam
+   (SteamLinuxRuntime_sniper/run -- ./VirtualGamepad).
+3. Proton on the Ally: TSAPI_FMX_CANVAS=vulkan (and skia) with the current
+   VirtualGamepad; VirtualGamepadLCL on the Ally.
+4. Full Win64 / Win32 round; then the end-of-project platforms (FPC Win32,
+   macOS ARM64, Linux64 / SteamOS with FPC: LayoutProbe - it will also
+   settle the CallbackMsg_t size -, localtime_r, LCL SteamFormToRGB on
+   Cocoa, FPC remote-log listener on the Mac), the launcher
+   (docs/Launcher.md), component icons.
+Offers not yet answered: harmonise the three SteamDemo twins (tab
+switching on Test, init-failed text, log-file error logging, timer
+design, DemoSettingsFolder in the FMX demo); remote-log retries +
+remembered receiver; TSAPI_ typo warning; log-file fallback to
+~/.config/G3DGames/<program>/ on a read-only program folder; VCL wheel
+zoom focus (FControl.TabStop / SetFocus); shaderc section in the Gorilla
+report; the two harmless .dproj differences vs gen_projects
+(SteamworksFMX search path, SteamConsole Android64 DeployFile).
+
+### Lessons this session (follow them)
+- TThread.Queue runs the method AT ONCE when called on the main thread
+  (Delphi and FPC); use ForceQueue when it must wait for the message loop.
+- A review finding is checked before it is fixed: one of this session's
+  (an exception in a finally "escaping" the worker) was wrong - the outer
+  except covered it.
+- When several agents edit in parallel, give each a disjoint file set;
+  write CLAUDE.md last.
+- A Python edit script must not assert in the middle of a sequence of
+  replacements: a failed assert left an earlier replacement unwritten.
 
 ## Handover (2026-11-04, end of tenth session) - READ THIS FIRST
 State: last verified push b0a18b2 "VirtualGamepad Steam" (checked
