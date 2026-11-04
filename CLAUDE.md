@@ -3597,6 +3597,24 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   (keyboard, mouse or touch)", or "No controller - Steam is not running";
   DEVICE_H 40, the list starts below it; the poll repaints when the text
   changes (FDeviceText). README. NO PACKAGE REBUILD. NOT YET COMPILED.
+- PUSH 7f52a78 "SteamDemoPad" (18:08) VERIFIED against a separate clone:
+  Pad1-Pad7 identical ignoring CRLF / BOM except IDE re-saves (accepted):
+  SteamDemoPad.dproj (default Win64, post-build per configuration, 99
+  DeployFile, all 11 pad layouts copied), SteamConsole.dproj (default
+  platform), Steamworks.groupproj (Dependencies kept, SteamDemoPad in it).
+  Checks 0 problems. Working copy reset. Owner released SteamDemoPad.
+- OWNER (18:45, released build, screenshot with no pad): the hint line
+  showed only pad buttons - with no controller there was no visible way to
+  the menu (right click / M were not shown). Zip Pad8 (follows the push):
+  KeyboardMode (Steam not running or no pad) -> keyboard / mouse key caps
+  (DrawCap / CapWidth; THintItem.Names, KeyHint) in the hint line for page,
+  menu and confirmation, and Q / E beside the page row (PAGE_PREV_KEY /
+  PAGE_NEXT_KEY / MENU_KEY constants, also used by FormKeyDown); hint items
+  with a Button are CLICKABLE (new hit kind hkHint -> PressButton) in both
+  modes: menu, select / choose, close / cancel, the page keys beside the
+  tabs. The bars are now drawn AFTER the overlay (readable over the shade,
+  their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
+  COMPILED.
 
 ## Handover (2026-11-04, end of twelfth session) - READ THIS FIRST
 State: last verified push 0f9ee4e (= Handover9). Delivered since: zip
@@ -3616,7 +3634,9 @@ CLAUDE.md - Steam's button pictures, Big Picture explained), then Pad5
 (follows Pad4: remote-log state, menu wrap / repeat - see "PAD4 RELEASE
 RUN"), then Pad6 (follows Pad5: uMain.pas text, CLAUDE.md - Steam
 Machine run), then Pad7 (follows Pad6: uMain.pas, README of the demo,
-CLAUDE.md - controller line under the tabs) - the SteamConsole batch, details in "Twelfth
+CLAUDE.md - controller line under the tabs); push 7f52a78 verified; then
+Pad8 (follows that push: uMain.pas, README of the demo, CLAUDE.md -
+keyboard / mouse hints, clickable hints) - the SteamConsole batch, details in "Twelfth
 session" above. Files: demos/SteamConsole/{SteamConsole.dpr,
 SteamConsole.dproj, SteamConsoleFPC.lpi (NEW), SteamConsoleFPC.lpr (NEW),
 README.md, src/uConsoleMain.pas, src/uConsoleStop.pas (NEW)},

@@ -95,7 +95,11 @@ type
       hkOutside underneath). }
     hkPanel,
     { Outside the menu / confirmation: closes / cancels it. }
-    hkOutside);
+    hkOutside,
+    { An item of the hint line, or a page key beside the page row: a click
+      or tap is a press of button Index (Ord(TPadButton)) - the mouse / touch
+      way to the menu, back and the pages. }
+    hkHint);
 
   { One part of the hint line: the buttons' icons (or names), then a word.
     Keys holds Ord(TPadButton) values, or @link(KEY_SCROLL) for the
@@ -103,8 +107,14 @@ type
   THintItem = record
     { The buttons, left to right. }
     Keys: array of Integer;
+    { Keyboard / mouse keys, left to right, drawn as key caps (used when no
+      controller is connected; then Keys is empty). }
+    Names: array of string;
     { What they do. }
     Text: string;
+    { The button a click / tap on the item presses (Ord(TPadButton)), or
+      -1 for none. }
+    Button: Integer;
   end;
 
   { One row of a page. }
@@ -350,6 +360,14 @@ type
     { Draws key AKey (picture, else name) with its left edge at AX,
       centred on AY. @returns(Its width.) }
     function DrawKey(C: TCanvas; AKey: Integer; AX, AY: Single): Single;
+    { Width of a keyboard / mouse key cap named AName. }
+    function CapWidth(C: TCanvas; const AName: string): Single;
+    { Draws a key cap named AName with its left edge at AX, centred on AY.
+      @returns(Its width.) }
+    function DrawCap(C: TCanvas; const AName: string; AX, AY: Single): Single;
+    { @true when no controller is connected (or Steam is not running): the
+      hint line and the page keys name keyboard / mouse keys. }
+    function KeyboardMode: Boolean;
     { Draws the hint items centred in ARect. }
     procedure DrawHint(C: TCanvas; const ARect: TRectF; const AItems: array of THintItem);
     { Reads every pad: presses, repeats, scrolling. }
@@ -551,6 +569,12 @@ const
   DEVICE_H = 40;
   { Height of the hint line. }
   HINT_H = 40;
+  { Keyboard keys shown with no controller - FormKeyDown's letters. }
+  PAGE_PREV_KEY = 'Q';
+  { See PAGE_PREV_KEY. }
+  PAGE_NEXT_KEY = 'E';
+  { See PAGE_PREV_KEY. }
+  MENU_KEY = 'M';
   { Height of the status bar. }
   STATUS_H = 44;
   { Left / right margin of the list. }
@@ -672,15 +696,32 @@ begin
   end;
 end;
 
-{ A hint item: keys AKeys, then AText. }
-function HintItem(const AKeys: array of Integer; const AText: string): THintItem;
+{ A hint item: pad keys AKeys, then AText; a click presses AButton
+  (Ord(TPadButton), -1 = none). }
+function HintItem(const AKeys: array of Integer; const AText: string; AButton: Integer = -1): THintItem;
 var
   I: Integer;
 begin
   SetLength(Result.Keys, Length(AKeys));
   for I := 0 to High(AKeys) do
     Result.Keys[I] := AKeys[I];
+  Result.Names := nil;
   Result.Text := AText;
+  Result.Button := AButton;
+end;
+
+{ A hint item for keyboard / mouse: key caps ANames, then AText; a click
+  presses AButton (Ord(TPadButton), -1 = none). }
+function KeyHint(const ANames: array of string; const AText: string; AButton: Integer = -1): THintItem;
+var
+  I: Integer;
+begin
+  Result.Keys := nil;
+  SetLength(Result.Names, Length(ANames));
+  for I := 0 to High(ANames) do
+    Result.Names[I] := ANames[I];
+  Result.Text := AText;
+  Result.Button := AButton;
 end;
 
 { TPadRow }
@@ -2234,9 +2275,9 @@ begin
     vkF10: B := pbMenu;
   else
     case UpCase(KeyChar) of
-      'Q': B := pbPagePrev;
-      'E': B := pbPageNext;
-      'M': B := pbMenu;
+      PAGE_PREV_KEY: B := pbPagePrev;
+      PAGE_NEXT_KEY: B := pbPageNext;
+      MENU_KEY: B := pbMenu;
     else
       Known := False;
     end;
@@ -2287,6 +2328,7 @@ begin
       hkConfirmOK: AnswerConfirm(True);
       hkConfirmCancel: AnswerConfirm(False);
       hkPanel: ;   // inside the panel, but on no button
+      hkHint: PressButton(TPadButton(H.Index));
       hkOutside:
         if FOverlay = okConfirm then
           AnswerConfirm(False)
@@ -2375,11 +2417,13 @@ begin
   ListArea := RectF(MARGIN, TABS_H + DEVICE_H + 4, FVirtualW - MARGIN, FVirtualH - HINT_H - STATUS_H - 8);
   FListH := ListArea.Height;
   DrawList(Canvas, ListArea);
-  DrawBars(Canvas);
   case FOverlay of
     okMenu: DrawMenu(Canvas);
     okConfirm: DrawConfirm(Canvas);
   end;
+  // after the overlay: its hints stay readable and their clicks win over
+  // the overlay's "outside" area
+  DrawBars(Canvas);
 end;
 
 function TfrmPad.KeyWidth(C: TCanvas; AKey: Integer): Single;
@@ -2431,6 +2475,28 @@ begin
       TTextAlign.Center, True);
 end;
 
+function TfrmPad.CapWidth(C: TCanvas; const AName: string): Single;
+begin
+  C.Font.Size := TEXT_DETAIL * FScale;
+  C.Font.Style := [TFontStyle.fsBold];
+  Result := Max(ICON_H, C.TextWidth(AName) / FScale + 20);
+end;
+
+function TfrmPad.DrawCap(C: TCanvas; const AName: string; AX, AY: Single): Single;
+var
+  R: TRectF;
+begin
+  Result := CapWidth(C, AName);
+  R := RectF(AX, AY - ICON_H / 2 + 2, AX + Result, AY + ICON_H / 2 - 2);
+  Box(C, R, COL_TEXT, 6);
+  Text(C, R, AName, TEXT_DETAIL, COL_BACK, TTextAlign.Center, True);
+end;
+
+function TfrmPad.KeyboardMode: Boolean;
+begin
+  Result := (Input = nil) or (TargetPad = 0);
+end;
+
 procedure TfrmPad.DrawHint(C: TCanvas; const ARect: TRectF; const AItems: array of THintItem);
 const
   KEY_GAP = 6;
@@ -2438,13 +2504,15 @@ const
   ITEM_GAP = 40;
 var
   I, K: Integer;
-  Total, X, Y, W: Single;
+  Total, X, Y, W, Start: Single;
 begin
   Total := 0;
   for I := 0 to High(AItems) do
   begin
     for K := 0 to High(AItems[I].Keys) do
       Total := Total + KeyWidth(C, AItems[I].Keys[K]) + KEY_GAP;
+    for K := 0 to High(AItems[I].Names) do
+      Total := Total + CapWidth(C, AItems[I].Names[K]) + KEY_GAP;
     C.Font.Size := TEXT_DETAIL * FScale;
     C.Font.Style := [];
     Total := Total + WORD_GAP + C.TextWidth(AItems[I].Text) / FScale + 4;
@@ -2455,14 +2523,22 @@ begin
   Y := (ARect.Top + ARect.Bottom) / 2;
   for I := 0 to High(AItems) do
   begin
+    Start := X;
     for K := 0 to High(AItems[I].Keys) do
       X := X + DrawKey(C, AItems[I].Keys[K], X, Y) + KEY_GAP;
+    for K := 0 to High(AItems[I].Names) do
+      X := X + DrawCap(C, AItems[I].Names[K], X, Y) + KEY_GAP;
     X := X + WORD_GAP;
     C.Font.Size := TEXT_DETAIL * FScale;
     C.Font.Style := [];
     W := C.TextWidth(AItems[I].Text) / FScale + 4;
     Text(C, RectF(X, ARect.Top, X + W, ARect.Bottom), AItems[I].Text, TEXT_DETAIL, COL_DIM_TEXT);
-    X := X + W + ITEM_GAP;
+    X := X + W;
+    // clickable: the mouse / touch way to the menu, back, pages
+    if AItems[I].Button >= 0 then
+      AddHit(RectF(Start - ITEM_GAP / 2, ARect.Top, X + ITEM_GAP / 2, ARect.Bottom), hkHint,
+        AItems[I].Button);
+    X := X + ITEM_GAP;
   end;
 end;
 
@@ -2472,7 +2548,7 @@ const
   TAB_GAP = 12;
 var
   P: TPadPage;
-  X, TotalW: Single;
+  X, TotalW, W: Single;
   R: TRectF;
 begin
   // no title and no menu button (owner 2026-11-04: pointless, above all in
@@ -2482,7 +2558,17 @@ begin
   TotalW := Ord(High(TPadPage)) * (TAB_W + TAB_GAP) + TAB_W;
   X := (FVirtualW - TotalW) / 2;
   // the shoulder buttons as Steam draws them for this pad (else their names)
-  DrawKey(C, Ord(pbPagePrev), X - 16 - KeyWidth(C, Ord(pbPagePrev)), TABS_H / 2);
+  // ... or the keyboard's Q / E with no controller; both clickable
+  if KeyboardMode then
+    W := CapWidth(C, PAGE_PREV_KEY)
+  else
+    W := KeyWidth(C, Ord(pbPagePrev));
+  R := RectF(X - 16 - W, 14, X - 16, TABS_H - 14);
+  if KeyboardMode then
+    DrawCap(C, PAGE_PREV_KEY, R.Left, TABS_H / 2)
+  else
+    DrawKey(C, Ord(pbPagePrev), R.Left, TABS_H / 2);
+  AddHit(R, hkHint, Ord(pbPagePrev));
   for P := Low(TPadPage) to High(TPadPage) do
   begin
     R := RectF(X, 14, X + TAB_W, TABS_H - 14);
@@ -2494,7 +2580,11 @@ begin
     AddHit(R, hkTab, Ord(P));
     X := X + TAB_W + TAB_GAP;
   end;
-  DrawKey(C, Ord(pbPageNext), X + 4, TABS_H / 2);
+  if KeyboardMode then
+    W := DrawCap(C, PAGE_NEXT_KEY, X + 4, TABS_H / 2)
+  else
+    W := DrawKey(C, Ord(pbPageNext), X + 4, TABS_H / 2);
+  AddHit(RectF(X + 4, 14, X + 4 + W, TABS_H - 14), hkHint, Ord(pbPageNext));
 end;
 
 function TfrmPad.DeviceText: string;
@@ -2596,23 +2686,44 @@ var
 begin
   Y := FVirtualH - HINT_H - STATUS_H;
   R := RectF(MARGIN, Y, FVirtualW - MARGIN, Y + HINT_H);
+  // no controller: keyboard / mouse keys (owner 2026-11-04: the menu had
+  // no visible way in without a pad); every item can be clicked / tapped
+  if KeyboardMode then
+    case FOverlay of
+      okMenu:
+        if FMenuSel = meController then
+          DrawHint(C, R, [KeyHint([#$2190, #$2192], 'another controller'),
+            KeyHint(['Enter'], 'use it', Ord(pbSelect)), KeyHint([#$2191, #$2193], 'move'),
+            KeyHint(['Esc', 'Right click'], 'close', Ord(pbBack))])
+        else
+          DrawHint(C, R, [KeyHint([#$2191, #$2193], 'move'), KeyHint(['Enter', 'Click'], 'choose', Ord(pbSelect)),
+            KeyHint(['Esc', 'Right click'], 'close', Ord(pbBack))]);
+      okConfirm:
+        DrawHint(C, R, [KeyHint([#$2190, #$2192], 'OK or Cancel'), KeyHint(['Enter', 'Click'], 'choose', Ord(pbSelect)),
+          KeyHint(['Esc'], 'cancel', Ord(pbBack))]);
+    else
+      DrawHint(C, R, [KeyHint([#$2191, #$2193], 'move'), KeyHint(['Enter', 'Click'], 'select', Ord(pbSelect)),
+        KeyHint([PAGE_PREV_KEY, PAGE_NEXT_KEY], 'page'), KeyHint(['Wheel'], 'scroll'),
+        KeyHint([MENU_KEY, 'Right click'], 'menu', Ord(pbMenu))]);
+    end
+  else
   // Steam's button pictures for this pad (its names where there is none)
   case FOverlay of
     okMenu:
       if FMenuSel = meController then
         DrawHint(C, R, [HintItem([Ord(pbLeft), Ord(pbRight)], 'another controller'),
           HintItem([Ord(pbSelect)], 'use it'), HintItem([Ord(pbUp), Ord(pbDown)], 'move'),
-          HintItem([Ord(pbBack)], 'close')])
+          HintItem([Ord(pbBack)], 'close', Ord(pbBack))])
       else
         DrawHint(C, R, [HintItem([Ord(pbUp), Ord(pbDown)], 'move'), HintItem([Ord(pbSelect)], 'choose'),
-          HintItem([Ord(pbBack)], 'close')]);
+          HintItem([Ord(pbBack)], 'close', Ord(pbBack))]);
     okConfirm:
       DrawHint(C, R, [HintItem([Ord(pbLeft), Ord(pbRight)], 'OK or Cancel'), HintItem([Ord(pbSelect)], 'choose'),
-        HintItem([Ord(pbBack)], 'cancel')]);
+        HintItem([Ord(pbBack)], 'cancel', Ord(pbBack))]);
   else
     DrawHint(C, R, [HintItem([Ord(pbUp), Ord(pbDown)], 'move'), HintItem([Ord(pbSelect)], 'select'),
       HintItem([Ord(pbPagePrev), Ord(pbPageNext)], 'page'), HintItem([KEY_SCROLL], 'scroll'),
-      HintItem([Ord(pbMenu)], 'menu')]);
+      HintItem([Ord(pbMenu)], 'menu', Ord(pbMenu))]);
   end;
   Box(C, RectF(0, FVirtualH - STATUS_H, FVirtualW, FVirtualH), COL_BAR);
   Status := FSteamStatus + '   |   ' + FTestSummary + '   |   ' + FRemoteStatus;
