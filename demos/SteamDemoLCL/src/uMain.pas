@@ -620,6 +620,8 @@ end;
 procedure TfrmSteamDemo.RemoteLogChanged(Sender: TObject);
 begin
   mnuRemoteLog.Caption := FRemote.MenuText;
+  // greyed while searching / connecting: the click would do nothing
+  mnuRemoteLog.Enabled := not FRemote.Busy;
 end;
 
 procedure TfrmSteamDemo.AddInfo(const AName, AValue: string);

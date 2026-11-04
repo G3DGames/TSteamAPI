@@ -49,7 +49,15 @@ may be offered with the project's releases for people without Delphi.
 
 If the connection drops, the sender keeps the lines and reconnects every 3
 seconds; LogReceiver lets the same session back in without asking again and
-appends to the same file.
+appends to the same file. That is the sender's default (`Retry = True`, used
+by SteamInputDemo and the VirtualGamepads). The SteamDemos (FMX, VCL, LCL,
+SteamDemoPad - through `demos/Shared/DemoRemoteLog.pas`) try ONCE
+(`Retry = False`): their menu item reads *Connecting...* and is greyed
+until the receiver accepts (then *Stop sending*), and a refusal, no Accept
+within 2 minutes or a failed / lost connection turns it back into *Send* -
+the log says why. `TRemoteLogSender.State` (`rlsIdle`, `rlsConnecting`,
+`rlsAccepted`, declared in RemoteLog.Protocol) tells a program which it is;
+it is set before each `OnStatus` message.
 
 ## Security
 

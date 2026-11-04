@@ -19,7 +19,8 @@ unit RemoteLog.Sender;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.SyncObjs, System.Generics.Collections;
+  System.SysUtils, System.Classes, System.SyncObjs, System.Generics.Collections,
+  RemoteLog.Protocol;
 
 type
   { One receiver found by @link(TRemoteLogSender.Discover). }
@@ -59,6 +60,10 @@ type
     FHello: string;
     { Handler of @link(OnStatus). }
     FOnStatus: TRemoteLogStatusEvent;
+    { Backing field of @link(State); written by the sending thread. }
+    FState: TRemoteLogState;
+    { Backing field of @link(Retry). }
+    FRetry: Boolean;
     { Moves every queued line into AList (called by the sending thread). }
     procedure TakeAll(AList: TStrings);
   public
@@ -89,6 +94,16 @@ type
     { True between @link(Start) and @link(Stop), unless the receiver refused
       the session or never answered. }
     function Active: Boolean;
+    { Where the session stands: @code(rlsConnecting) from @link(Start) until
+      the receiver accepts, @code(rlsAccepted) while lines are being sent,
+      @code(rlsIdle) when stopped or given up. Read it in @link(OnStatus):
+      it is set before each status message. }
+    function State: TRemoteLogState;
+    { @true (the default): a failed or lost connection is retried every 3 s
+      for good. @false: the session gives up instead (State becomes
+      @code(rlsIdle), the status message ends in "- stopped"). Set it before
+      @link(Start). }
+    property Retry: Boolean read FRetry write FRetry;
     { Status messages (connecting, accepted, refused, connection lost,
       reconnecting), delivered on the main thread. }
     property OnStatus: TRemoteLogStatusEvent read FOnStatus write FOnStatus;
@@ -137,8 +152,7 @@ implementation
 
 uses
   System.Diagnostics,
-  IdGlobal, IdStack, IdTCPClient, IdUDPClient,
-  RemoteLog.Protocol;
+  IdGlobal, IdStack, IdTCPClient, IdUDPClient;
 
 type
   { The background thread of a @link(TRemoteLogSender): connect, greet, then
@@ -198,6 +212,7 @@ begin
           Client.Host := FOwner.FHost;
           Client.Port := FOwner.FPort;
           Client.ConnectTimeout := 5000;
+          FOwner.FState := rlsConnecting;
           Status(Format('connecting to %s:%d', [FOwner.FHost, FOwner.FPort]));
           Client.Connect;
           Client.IOHandler.DefStringEncoding := IndyTextEncoding_UTF8;
@@ -215,12 +230,14 @@ begin
             Break;
           if Reply <> RL_ACCEPTED then
           begin
+            FOwner.FState := rlsIdle;
             if Reply = '' then
               Status('the receiver did not answer (no Accept within 2 minutes) - stopped')
             else
               Status('the receiver refused this session - stopped');
             Break;
           end;
+          FOwner.FState := rlsAccepted;
           Status('accepted - log lines are being sent');
           while not Terminated do
           begin
@@ -242,8 +259,18 @@ begin
         except
           on E: Exception do
             if not Terminated then
+            begin
+              if not FOwner.FRetry then
+              begin
+                FOwner.FState := rlsIdle;
+                Status(Format('connection to %s:%d failed or was lost (%s) - stopped, %d line(s) not sent',
+                  [FOwner.FHost, FOwner.FPort, E.Message, Pending.Count]));
+                Break;
+              end;
+              FOwner.FState := rlsConnecting;
               Status(Format('connection to %s:%d failed or was lost (%s) - retrying in 3 s, %d line(s) kept',
                 [FOwner.FHost, FOwner.FPort, E.Message, Pending.Count]));
+            end;
         end;
       finally
         Client.Free;
@@ -253,6 +280,7 @@ begin
         FOwner.FWake.WaitFor(3000);
     end;
   finally
+    FOwner.FState := rlsIdle;
     Pending.Free;
   end;
 end;
@@ -319,6 +347,7 @@ begin
   FLock := TCriticalSection.Create;
   FQueue := TQueue<string>.Create;
   FWake := TEvent.Create(nil, False, False, '');
+  FRetry := True;
 end;
 
 destructor TRemoteLogSender.Destroy;
@@ -353,6 +382,7 @@ begin
   PlatformText := StringReplace(PlatformText, RL_FIELD_SEPARATOR, '/', [rfReplaceAll]);
   FHello := RL_HELLO + ' ' + AApp + RL_FIELD_SEPARATOR + PlatformText + RL_FIELD_SEPARATOR
     + Machine + RL_FIELD_SEPARATOR + Session;
+  FState := rlsConnecting;
   FThread := TRemoteLogThread.Create(Self);
 end;
 
@@ -385,6 +415,7 @@ begin
   FWake.SetEvent;
   FThread.WaitFor;   // the thread only Queues, never Synchronizes: no deadlock
   FreeAndNil(FThread);
+  FState := rlsIdle;
   FLock.Enter;
   try
     FQueue.Clear;
@@ -411,6 +442,11 @@ end;
 function TRemoteLogSender.Active: Boolean;
 begin
   Result := (FThread <> nil) and not FThread.Finished;
+end;
+
+function TRemoteLogSender.State: TRemoteLogState;
+begin
+  Result := FState;
 end;
 
 procedure TRemoteLogSender.TakeAll(AList: TStrings);

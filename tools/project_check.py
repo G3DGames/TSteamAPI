@@ -9,6 +9,10 @@ For every .dproj / .groupproj under the repository:
   * the .pas units of the .dproj match the "in '...'" units of the
     .dpr / .dpk (same set, compared case-insensitively);
   * every project in a .groupproj exists;
+  * every .lpi parses and its units exist; a Free Pascal twin of a Delphi
+    project (gen_projects.py "fpc_twin", e.g. SteamConsoleFPC) has the same
+    units in its .lpi as the .dproj and the same uses list in its .lpr as
+    the .dpr (FPC's cthreads aside);
   * no demo source includes Steamworks.inc (demos have no path to lib/).
 Exit code 0 = clean, 1 = problems found.
 """
@@ -73,6 +77,73 @@ for dirpath, _, files in os.walk(ROOT):
         for u in sorted(refs - src):
             problems.append(f"{rel}: {os.path.relpath(u, ROOT)} is in the .dproj but not in {os.path.basename(main)}")
 
+# Lazarus projects: every .lpi parses and lists units that exist.
+for top in ("demos", "RemoteLogging"):
+    for dirpath, _, files in os.walk(os.path.join(ROOT, top)):
+        for f in files:
+            if not f.endswith(".lpi"):
+                continue
+            path = os.path.join(dirpath, f)
+            rel = os.path.relpath(path, ROOT)
+            try:
+                tree = ET.parse(path)
+            except ET.ParseError as e:
+                problems.append(f"{rel}: XML does not parse: {e}")
+                continue
+            for u in tree.iter("Unit"):
+                fn = u.find("Filename")
+                if fn is not None and not os.path.exists(os.path.join(dirpath, *fn.get("Value").split("/"))):
+                    problems.append(f"{rel}: unit {fn.get('Value')} does not exist")
+
+# Free Pascal twins (gen_projects.py "fpc_twin"): the same units as the
+# Delphi project, so neither drifts when a unit is added to one of them.
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import gen_projects
+
+
+def uses_names(path):
+    """Unit names of the program's uses clause (comments and {$...} removed)."""
+    text = open(path, encoding="latin-1").read()
+    text = re.sub(r"\{[^}]*\}|\(\*.*?\*\)|//[^\n]*", " ", text, flags=re.S)
+    m = re.search(r"\buses\b(.*?);", text, re.S | re.I)
+    if not m:
+        return set()
+    return {re.split(r"\s+in\s+", n.strip(), flags=re.I)[0].strip().lower()
+            for n in m.group(1).split(",") if n.strip()} - {"cthreads"}
+
+
+for p in gen_projects.PROJECTS:
+    twin = p.get("fpc_twin")
+    if not twin:
+        continue
+    base = os.path.join(ROOT, *p["dir"].split("\\"))
+    lpi_path = os.path.join(base, twin + ".lpi")
+    lpr_path = os.path.join(base, twin + ".lpr")
+    dproj_path = os.path.join(base, p["name"] + ".dproj")
+    dpr_path = os.path.join(base, p["name"] + ".dpr")
+    for f in (lpi_path, lpr_path):
+        if not os.path.exists(f):
+            problems.append(f"{os.path.relpath(f, ROOT)}: missing (Free Pascal twin of {p['name']})")
+    if not all(os.path.exists(f) for f in (lpi_path, lpr_path, dproj_path, dpr_path)):
+        continue
+    try:
+        lpi_units = {os.path.normcase(native(base, u.find("Filename").get("Value").replace("/", "\\")))
+                     for u in ET.parse(lpi_path).iter("Unit")
+                     if u.find("Filename") is not None and u.find("Filename").get("Value").endswith(".pas")}
+        dproj_units = {os.path.normcase(native(base, r.get("Include")))
+                       for r in ET.fromstring(open(dproj_path, "rb").read().decode("utf-8-sig")).iter(NS + "DCCReference")
+                       if r.get("Include").lower().endswith(".pas")}
+    except ET.ParseError:
+        continue   # reported above
+    for u in sorted(dproj_units - lpi_units):
+        problems.append(f"{os.path.relpath(lpi_path, ROOT)}: lacks {os.path.relpath(u, ROOT)} (in {p['name']}.dproj)")
+    for u in sorted(lpi_units - dproj_units):
+        problems.append(f"{os.path.relpath(lpi_path, ROOT)}: has {os.path.relpath(u, ROOT)} (not in {p['name']}.dproj)")
+    a, b = uses_names(dpr_path), uses_names(lpr_path)
+    if a != b:
+        problems.append(f"{os.path.relpath(lpr_path, ROOT)}: uses differ from {p['name']}.dpr: "
+                        f"only in .dpr {sorted(a - b)}, only in .lpr {sorted(b - a)}")
+
 # Demos have no path to lib/ (they link the packages' DCUs), so a demo
 # source that includes Steamworks.inc fails with F1026 in Delphi.
 INC = re.compile(r"\{\$I(?:NCLUDE)?\s+'?Steamworks\.inc", re.I)
@@ -90,14 +161,18 @@ for dirpath, _, files in os.walk(os.path.join(ROOT, "demos")):
 # is named after its program (it starts <name> from <name>.sh).
 MENU_DIRS = ["demos/SteamInputDemo/src", "RemoteLogging/LogReceiver/src",
              "demos/VirtualGamepad/src", "demos/SteamDemo/src"]
+# FMX programs without a menu still need the GTK / Wine fixes
+FMX_DIRS = MENU_DIRS + ["demos/SteamDemoPad/src"]
 SHARED = {
     "FmxLinuxMenu.pas": [f"{d}/FmxLinuxMenu.pas" for d in MENU_DIRS],
-    "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas" for d in MENU_DIRS],
-    "FmxWineCanvas.pas": [f"{d}/FmxWineCanvas.pas" for d in MENU_DIRS],
+    "FmxLinuxGtkGlobal.pas": [f"{d}/FmxLinuxGtkGlobal.pas" for d in FMX_DIRS],
+    "FmxWineCanvas.pas": [f"{d}/FmxWineCanvas.pas" for d in FMX_DIRS],
+    # Skia canvases under Proton: the programs with Skia enabled
+    "FmxSkiaCanvas.pas": [f"demos/{d}/src/FmxSkiaCanvas.pas" for d in ("VirtualGamepad", "SteamDemoPad")],
     # one animator source for Free Pascal (LCL) and Delphi (VCL)
     "PadAnimator.pas": [f"demos/{d}/src/PadAnimator.pas" for d in ("VirtualGamepadLCL", "VirtualGamepadVCL")],
     "ICU launcher": [f"demos/{n}/src/{n}.sh"
-                     for n in ("SteamInputDemo", "SteamDemo", "SteamConsole", "VirtualGamepad")],
+                     for n in ("SteamInputDemo", "SteamDemo", "SteamConsole", "VirtualGamepad", "SteamDemoPad")],
 }
 for unit, copies in SHARED.items():
     texts = []
@@ -194,6 +269,29 @@ for top in ("demos", "RemoteLogging", "lib", "fmx", "vcl", "lcl", "design"):
                     elif after_member and FIELD.match(stmt) and not re.match(r"^(read|write|default|stored|index|overload|override|virtual|abstract|reintroduce|static|inline|dynamic|message|cdecl|stdcall|register|deprecated|platform|final)\b", low):
                         problems.append(f"{os.path.relpath(path, ROOT)}({line}): field after a method or property "
                                         "in the same section (Delphi E2169) - move it above the methods")
+
+# A constant written in capitals and a local / field / parameter of the
+# same name in another case are ONE identifier to Pascal: the nearer one
+# wins (SteamDemoPad, 2026-11-04: constant PIC hidden by a TRectF local
+# Pic - E2015 "Operator not applicable"). Any other spelling of a constant
+# in its own unit is reported.
+CONST_DECL = re.compile(r"^\s+([A-Z][A-Z0-9_]*[A-Z0-9])\s*=", re.M)
+for top in ("demos", "RemoteLogging", "lib", "fmx", "vcl", "lcl", "design"):
+    for dirpath, _, files in os.walk(os.path.join(ROOT, top)):
+        for f in files:
+            if not f.lower().endswith(".pas"):
+                continue
+            path = os.path.join(dirpath, f)
+            text = re.sub(r"\{[^}]*\}|\(\*.*?\*\)|//[^\n]*|'[^']*'", " ",
+                          open(path, encoding="latin-1").read(), flags=re.S)
+            spellings = {}
+            for tok in set(re.findall(r"\b[A-Za-z_]\w*\b", text)):
+                spellings.setdefault(tok.lower(), set()).add(tok)
+            for c in sorted(set(CONST_DECL.findall(text))):
+                other = spellings.get(c.lower(), set()) - {c}
+                if other:
+                    problems.append(f"{os.path.relpath(path, ROOT)}: constant {c} is also spelled "
+                                    f"{', '.join(sorted(other))} - Pascal ignores case: rename one")
 
 for p in problems:
     print(p)

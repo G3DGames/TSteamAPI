@@ -101,12 +101,13 @@ parent process. This catches a variable that leaked into a shell.
   Input itself. It shuts Steam Input and the Steam API down before starting
   a child and starts them again when the child exits. TSteamAPI's Stop /
   Start in one process is tested in the demos.
-- **One action manifest for the whole AppID.** On Steam the app has one
-  Steam Input manifest, set on the partner site, shared by the launcher and
-  every child. SteamInputDemo and VirtualGamepad already use identical
-  manifests and layouts (tools/gen_input_mapping.py writes both). The
-  launcher's own actions (move, confirm, back) must go into the same
-  manifest.
+- **One action manifest for the whole AppID?** The plan assumed one Steam
+  Input manifest for the app, shared by the launcher and every child.
+  SteamInputDemo and VirtualGamepad use identical manifests and layouts
+  (tools/gen_input_mapping.py writes both), but SteamDemoPad (2026-11-04,
+  owner: "its own manifest with a different name") loads its OWN
+  manifest, steamdemopad_controllers.vdf, at run time
+  (SetInputActionManifestFilePath) - see open decision 5.
 - **Development:** without Steam launching anything, each program needs
   `steam_appid.txt` next to it (never ship it), or the Debug-build
   `SetAppIdEnvironment` the demos use.
@@ -171,3 +172,15 @@ presence and leaderboards.
    launcher through Steam (`steam://run/4108310`) instead of as a child
    process - it then leaves the launcher's AppID, Steam Input manifest
    and overlay session, and the launcher cannot wait for it to exit.
+5. **Several manifests under one AppID:** each program loads its own
+   manifest at run time (SetInputActionManifestFilePath - Valve's call for
+   configurations bundled in the depot). Works in development; UNVERIFIED
+   for players with the partner site's Steam Input settings for the app.
+   Settle on Steam (a test branch) before the launcher is built; the
+   launcher then either has its own manifest too or uses SteamDemoPad's
+   (its Pad set is exactly menu navigation).
+6. **SteamDemoPad as the default launch option:** Valve advises against
+   making Steam Deck players choose a launch option (a "launcher step");
+   SteamDemoPad - pad-driven, full screen in Big Picture - is the proposed
+   default, the desktop SteamDemo a second option. Owner checks the partner
+   site's launch-option fields.

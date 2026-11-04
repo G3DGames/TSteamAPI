@@ -24,7 +24,11 @@ unit uMain;
 interface
 
 uses
-  SysUtils, Classes, Controls, Forms, StdCtrls, ComCtrls, ExtCtrls, Graphics,
+  // Windows FIRST of all units (interface, not implementation: a unit listed
+  // later wins on a shared name - Graphics' TBitmap, SysUtils' DeleteFile -
+  // and implementation units come after all of these): SysUtils'
+  // RenameFile is inlined only with it (H2443)
+  Windows, SysUtils, Classes, Controls, Forms, StdCtrls, ComCtrls, ExtCtrls, Graphics,
   Steamworks.VCL,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.API, Steamworks.Versions, Steamworks.Callbacks,
   Steamworks.Core,
@@ -617,6 +621,8 @@ end;
 procedure TfrmSteamDemo.RemoteLogChanged(Sender: TObject);
 begin
   mnuRemoteLog.Caption := FRemote.MenuText;
+  // greyed while searching / connecting: the click would do nothing
+  mnuRemoteLog.Enabled := not FRemote.Busy;
 end;
 
 procedure TfrmSteamDemo.AddInfo(const AName, AValue: string);

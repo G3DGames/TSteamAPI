@@ -1,0 +1,85 @@
+object frmPad: TfrmPad
+  Left = 0
+  Top = 0
+  Caption = 'SteamDemoPad'
+  ClientHeight = 800
+  ClientWidth = 1280
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnClose = FormClose
+  OnDestroy = FormDestroy
+  OnKeyDown = FormKeyDown
+  DesignerMasterStyle = 0
+  object pbView: TPaintBox
+    Align = Client
+    Size.Width = 1280.000000000000000000
+    Size.Height = 800.000000000000000000
+    Size.PlatformDefault = False
+    OnMouseDown = pbViewMouseDown
+    OnMouseWheel = pbViewMouseWheel
+    OnPaint = pbViewPaint
+  end
+  object tmPoll: TTimer
+    Enabled = False
+    Interval = 16
+    OnTimer = tmPollTimer
+    Left = 40
+    Top = 40
+  end
+  object tmTests: TTimer
+    Enabled = False
+    OnTimer = tmTestsTimer
+    Left = 40
+    Top = 96
+  end
+  object tmStart: TTimer
+    Enabled = False
+    Interval = 300
+    OnTimer = tmStartTimer
+    Left = 40
+    Top = 152
+  end
+  object tmRumble: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = tmRumbleTimer
+    Left = 40
+    Top = 208
+  end
+  object SteamAPI1: TSteamAPI
+    AppID = 2275430
+    UpdateMode = sumThread
+    BigPictureWindow = bpwFullScreen
+    OnInitialized = SteamInitialized
+    OnInitFailed = SteamInitFailed
+    OnShutdown = SteamShutdown
+    OnSteamShutdown = SteamClientExit
+    OnLog = SteamLog
+    OnWarning = SteamWarning
+    Left = 160
+    Top = 40
+  end
+  object SteamFriends1: TSteamFriends
+    SteamAPI = SteamAPI1
+    OnPersonaStateChange = FriendPersonaChanged
+    OnAvatarImageLoaded = FriendAvatarLoaded
+    Left = 160
+    Top = 96
+  end
+  object SteamUserStats1: TSteamUserStats
+    SteamAPI = SteamAPI1
+    OnUserStatsReceived = StatsReceived
+    OnUserStatsStored = StatsStored
+    OnUserAchievementIconFetched = AchievementIconFetched
+    Left = 160
+    Top = 152
+  end
+  object SteamInput1: TSteamInput
+    SteamAPI = SteamAPI1
+    OnSteamInputConfigurationLoaded = InputConfigurationLoaded
+    Left = 160
+    Top = 208
+  end
+end

@@ -189,16 +189,31 @@ Achievements):
    480 (Spacewar) and never relaunches through Steam. Hold Start for the
    overlay menu.
 
-**SteamConsole** from the command line:
+**SteamConsoleFPC** - the console program (SteamConsole's Free Pascal twin:
+the same sources, plain FPC, no LCL and no package - it compiles the library
+from `lib/` itself). Open `demos/SteamConsole/SteamConsoleFPC.lpi` in Lazarus
+and build, or from a terminal:
 
 ```
 cd demos/SteamConsole
-fpc -Mdelphi -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc SteamConsole.dpr
+lazbuild SteamConsoleFPC.lpi
 ```
 
-then copy the library next to `SteamConsole(.exe)` and run
-`SteamConsole 60` (60 s of callbacks) or `SteamConsole 60 thread` (worker
-thread - see [GameEngineIntegration.md](GameEngineIntegration.md#9-testing-it-steamconsole)).
+(the executable goes to `<cpu>-<os>/`), or without Lazarus:
+
+```
+cd demos/SteamConsole
+fpc -Mdelphi -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc -Fu../Shared SteamConsoleFPC.lpr
+```
+
+then copy the library next to the executable and run `SteamConsoleFPC 60`
+(60 s of callbacks), `SteamConsoleFPC 60 thread` (worker thread - see
+[GameEngineIntegration.md](GameEngineIntegration.md#9-testing-it-steamconsole)),
+`SteamConsoleFPC --test` (the component test), `--pair` or `--server`
+(see [demos/SteamConsole/README.md](../demos/SteamConsole/README.md)).
+With the SteamworksLCL package installed, Lazarus may warn that `../../lib`
+belongs to that package - harmless here: this project does not use the
+package.
 
 ## 6. Use it in your own program
 

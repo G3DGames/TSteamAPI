@@ -133,6 +133,10 @@ redistributable_bin/        copy of sdk/redistributable_bin from the SDK
                             (git-ignored except its README.md)
 demos/
   SteamDemo/                FMX demo: SteamDemo.dproj + .dpr, form in src/ (uMain.pas / .fmx)
+  SteamDemoPad/             Big Picture / Steam Deck variant of SteamDemo (FMX): pad-driven
+                            through its own Steam Input manifest (steamdemopad_controllers.vdf,
+                            pad_controller_*.vdf - generated), screen drawn by the program,
+                            Steam starts by itself, log to a LogReceiver
   SteamDemoVCL/             VCL demo (Delphi project), form in src/ (uMain.pas / .dfm)
   SteamDemoLCL/             LCL demo (Lazarus .lpi / .lpr), form in src/ (uMain.pas / .lfm)
                             - all three: TSteamAPI, TSteamFriends, TSteamUserStats dropped on the form,
@@ -145,7 +149,10 @@ demos/
     SteamPairTest.pas       the two-user pair test (Two users tab)
     DemoRemoteLog.pas       File > Send log to receiver (RemoteLog.Sender under Delphi,
                             RemoteLog.SenderFPC under FPC; optional, see RemoteLogging/)
-  SteamConsole/             console smoke test (no framework; FPC-ready)
+  SteamConsole/             console program (no framework): smoke test, the shared
+                            component / pair tests (--test / --pair) and a dedicated
+                            game server (--server); SteamConsole.dproj for Delphi,
+                            SteamConsoleFPC.lpi / .lpr for plain Free Pascal (same src/)
   SteamInputDemo/           Steam Input test (FMX): action manifest in src/, the
                             connected controller identified at the top, live
                             digital / analog / motion values, bindings; opens
@@ -285,7 +292,9 @@ Step by step, with every alarming-looking message explained:
    **Copy Log**, **Send log to receiver** and **Exit**. **Send log to
    receiver** is optional and has nothing to do with Steam: it streams the
    log to a LogReceiver on another machine on the network
-   ([RemoteLogging/README.md](RemoteLogging/README.md) explains LogReceiver).
+   ([RemoteLogging/README.md](RemoteLogging/README.md) explains LogReceiver);
+   the item reads *Connecting...* (greyed) until the receiver accepts, then
+   *Stop sending log*, and goes back to *Send* if the connection fails.
    After **Start Steam**, **Test components** runs the base test of the
    plug-in components the demos' forms do not use (TSteamUtils,
    TSteamUser, TSteamApps, TSteamRemoteStorage, TSteamScreenshots,
@@ -859,12 +868,25 @@ Windows', normal behaviour. Each says why and what to do.
   project group (Win64 or Win32; the post-build event copies the DLL,
   the .vdf files and the models next to the executable). AppID 4108310,
   like VirtualGamepad.
-* **SteamConsole:**
+* **SteamConsoleFPC** (the Free Pascal twin of SteamConsole, plain FPC, no
+  LCL or package): open `demos/SteamConsole/SteamConsoleFPC.lpi` in Lazarus
+  and build, or from a terminal
 
 ```
 cd demos/SteamConsole
-fpc -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc SteamConsole.dpr
+lazbuild SteamConsoleFPC.lpi
 ```
+
+  or without Lazarus
+
+```
+cd demos/SteamConsole
+fpc -Mdelphi -Fu../../lib -Fu../../lib/plugins -Fi../../lib -Fusrc -Fu../Shared SteamConsoleFPC.lpr
+```
+
+  then copy the Steam library next to the executable
+  (`<cpu>-<os>/SteamConsoleFPC` from lazbuild, `SteamConsoleFPC` beside the
+  .lpr from fpc). `SteamConsoleFPC --help` lists the switches.
 
 FPC / Lazarus build output (`*.o`, `*.ppu`, `lib/<cpu>-<os>/`, `backup/`,
 `*.lps`, extensionless demo executables, ...) is ignored by `.gitignore`.
@@ -967,7 +989,10 @@ python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all four i
   `TSteamAPI.StartGameServer`) or alone (a dedicated server, `Roles =
   [srGameServer]`), with its own pipe and callback dispatcher. The demos
   test the listen server (component test + pair test); the dedicated
-  server gets its test in SteamConsole (`--server`, next).
+  server is SteamConsole's `--server` (2026-11-04, tested on Win64 with
+  the Steam client closed: logged on, VAC secure, listed in the client's
+  server browser, clean stop - see
+  [demos/SteamConsole/README.md](demos/SteamConsole/README.md)).
   ISteamController is not bound: Valve deprecated it in favour of
   ISteamInput.
 

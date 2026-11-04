@@ -5,7 +5,8 @@
   OPTIONAL, NOTHING TO DO WITH STEAM (RemoteLogging/README.md): it lets a
   second test machine - the pair test's guest, a Steam Deck - send its log
   to the developer's machine. The form creates one @link(TDemoRemoteLog),
-  calls @link(TDemoRemoteLog.Toggle) from its menu item, passes every log
+  calls @link(TDemoRemoteLog.Toggle) from its menu item (greyed while
+  @link(TDemoRemoteLog.Busy)), passes every log
   line to @link(TDemoRemoteLog.Send) and calls
   @link(TDemoRemoteLog.Shutdown) when it closes; @link(TDemoRemoteLog.OnChanged)
   tells it to update the menu text (@link(TDemoRemoteLog.MenuText)). }
@@ -19,9 +20,21 @@ interface
 
 uses
   SysUtils, Classes,
+  RemoteLog.Protocol,
   {$ifdef FPC}RemoteLog.SenderFPC{$else}RemoteLog.Sender{$endif};
 
 type
+  { Where the demo's remote log stands (@link(TDemoRemoteLog.State)). }
+  TDemoRemoteLogState = (
+    { Not sending: the menu item starts a search. }
+    drsIdle,
+    { Looking for a LogReceiver on the network. }
+    drsSearching,
+    { A receiver was found: connecting, or waiting for its Accept. }
+    drsConnecting,
+    { The receiver accepted: log lines are being sent. }
+    drsSending);
+
   { A line for the form's log. }
   TDemoRemoteLogEvent = procedure(const AText: string) of object;
 
@@ -32,7 +45,9 @@ type
     FAppName: string;
     { Platform text the receiver shows ('' = the sender's default). }
     FPlatform: string;
-    { The sender while connected / sending (@nil otherwise). }
+    { The sender from the moment a receiver is found; it stays (finished)
+      after it gave up - never freed inside its own status handler - until
+      the next @link(Toggle), @link(Shutdown) or the destructor. }
     FSender: TRemoteLogSender;
     { The running (or last) network search; never freed inside its own
       handler. }
@@ -61,6 +76,8 @@ type
     procedure Log(const S: string);
     { Raises @link(OnChanged). }
     procedure Changed;
+    { Stops and frees FSender (never from its status handler). }
+    procedure DropSender;
     { TRemoteLogDiscovery result (main thread). }
     procedure Discovered(Sender: TObject; const AFound: TRemoteLogReceiverArray; const AError: string);
     { TRemoteLogSender.OnStatus. }
@@ -71,17 +88,24 @@ type
     constructor Create(AOwner: TComponent; const AAppName, APlatform: string); reintroduce;
     { Stops sending and frees everything. }
     destructor Destroy; override;
-    { Not sending: searches the network (2.5 s, in the background, up to 3
-      times while nothing answers) and connects to the first LogReceiver that answers, sending ABacklog (the
-      log so far) first. Sending: stops. }
+    { Idle: searches the network (2.5 s, in the background, up to 3 times
+      while nothing answers) and connects to the first LogReceiver that
+      answers, sending ABacklog (the log so far) first; one try only - a
+      refusal, no Accept within 2 minutes or a failed / lost connection
+      returns to idle. Sending: stops. Searching / connecting: ignored
+      (logged). }
     procedure Toggle(ABacklog: TStrings);
-    { Sends one log line while connected (queued; never blocks); during the
-      search it joins the backlog. }
+    { Sends one log line while connecting / sending (queued; never blocks);
+      during the search it joins the backlog. }
     procedure Send(const ALine: string);
     { Stops sending (flushes up to 1 s); call when the window closes. }
     procedure Shutdown;
-    { @true while connected / sending. }
+    { The current state. }
+    function State: TDemoRemoteLogState;
+    { @true only while the receiver has accepted and lines are being sent. }
     function Sending: Boolean;
+    { @true while searching or connecting (a menu item should be greyed). }
+    function Busy: Boolean;
     { The menu text for the current state. }
     function MenuText: string;
     { "[remote log] ..." lines for the form's log. }
@@ -148,38 +172,78 @@ begin
   Log(Format('looking for LogReceiver apps on the network (%.1f s, try %d of %d)...',
     [SEARCH_MS / 1000, FTries, SEARCH_TRIES]));
   FDiscovery := TRemoteLogDiscovery.Create(SEARCH_MS, Discovered);
+  Changed;
+end;
+
+procedure TDemoRemoteLog.DropSender;
+begin
+  if FSender <> nil then
+  begin
+    FSender.Stop;
+    FreeAndNil(FSender);
+  end;
+end;
+
+function TDemoRemoteLog.State: TDemoRemoteLogState;
+begin
+  if FBusy then
+    Result := drsSearching
+  else if FSender = nil then
+    Result := drsIdle
+  else
+    case FSender.State of
+      rlsConnecting: Result := drsConnecting;
+      rlsAccepted: Result := drsSending;
+    else
+      Result := drsIdle;   // given up; freed by the next Toggle
+    end;
 end;
 
 function TDemoRemoteLog.Sending: Boolean;
 begin
-  Result := FSender <> nil;
+  Result := State = drsSending;
+end;
+
+function TDemoRemoteLog.Busy: Boolean;
+begin
+  Result := State in [drsSearching, drsConnecting];
 end;
 
 function TDemoRemoteLog.MenuText: string;
 begin
-  if FSender <> nil then
-    Result := 'Stop sending log'
+  case State of
+    drsSearching: Result := 'Looking for receiver...';
+    drsConnecting: Result := 'Connecting...';
+    drsSending: Result := 'Stop sending log';
   else
     Result := 'Send log to receiver...';
+  end;
 end;
 
 procedure TDemoRemoteLog.Toggle(ABacklog: TStrings);
 begin
   if FClosed then
     Exit;
-  if FSender <> nil then
-  begin
-    Log('stopped by the user');
-    FSender.Stop;
-    FreeAndNil(FSender);
-    Changed;
-    Exit;
+  case State of
+    drsSending:
+      begin
+        Log('stopped by the user');
+        DropSender;
+        Changed;
+        Exit;
+      end;
+    drsSearching:
+      begin
+        Log('already looking for a receiver');
+        Exit;
+      end;
+    drsConnecting:
+      begin
+        Log('already connecting - wait for the receiver''s Accept (or the time-out)');
+        Exit;
+      end;
   end;
-  if FBusy then
-  begin
-    Log('already looking for a receiver');
-    Exit;
-  end;
+  DropSender;   // a sender that gave up (not inside its handler here)
   FBacklog.Clear;
   if ABacklog <> nil then
     FBacklog.Assign(ABacklog);
@@ -200,6 +264,7 @@ begin
   if AError <> '' then
   begin
     Log('could not search the network: ' + AError);
+    Changed;
     Exit;
   end;
   if Length(AFound) = 0 then
@@ -213,9 +278,12 @@ begin
       StartSearch;   // FBusy again: log lines keep joining the backlog
     end
     else
+    begin
       Log(Format('no LogReceiver answered in %d searches of %.1f s - start LogReceiver on a machine on ' +
         'this network, click OK there, check its firewall (UDP broadcast), then try again',
         [SEARCH_TRIES, SEARCH_MS / 1000]));
+      Changed;
+    end;
     Exit;
   end;
   for I := 0 to High(AFound) do
@@ -224,29 +292,30 @@ begin
     Log(Format('%d receivers answered - using the first (%s)', [Length(AFound), AFound[0].Name]));
   FSender := TRemoteLogSender.Create;
   FSender.OnStatus := SenderStatus;
+  // one try: a failure returns the menu item to "send" instead of retrying
+  // for good behind a "Connecting..." the user cannot cancel
+  FSender.Retry := False;
   // the log so far first, so the receiver gets the whole run
   for I := 0 to FBacklog.Count - 1 do
     FSender.Send(FBacklog[I]);
   FBacklog.Clear;
   FSender.Start(AFound[0].Host, AFound[0].Port, FAppName, FPlatform);
-  Log(Format('sending to %s:%d - click Yes in LogReceiver', [AFound[0].Host, AFound[0].Port]));
+  Log(Format('connecting to %s:%d - click Yes in LogReceiver', [AFound[0].Host, AFound[0].Port]));
   Changed;
 end;
 
 procedure TDemoRemoteLog.SenderStatus(Sender: TObject; const AText: string);
 begin
   Log(AText);
-  // refused / no answer: the sender has given up - offer to start again
-  if (FSender <> nil) and not FSender.Active then
-  begin
-    FreeAndNil(FSender);
-    Changed;
-  end;
+  // the sender sets its State before each message: connecting, accepted,
+  // or idle (refused, no answer, connection failed or lost) - the menu
+  // follows; a sender that gave up is freed by the next Toggle, not here
+  Changed;
 end;
 
 procedure TDemoRemoteLog.Send(const ALine: string);
 begin
-  if FSender <> nil then
+  if (FSender <> nil) and (FSender.State <> rlsIdle) then
     FSender.Send(ALine)
   else if FBusy then
     FBacklog.Add(ALine);   // logged during the search: sent with the backlog
@@ -255,11 +324,7 @@ end;
 procedure TDemoRemoteLog.Shutdown;
 begin
   FClosed := True;
-  if FSender <> nil then
-  begin
-    FSender.Stop;
-    FreeAndNil(FSender);
-  end;
+  DropSender;
 end;
 
 end.

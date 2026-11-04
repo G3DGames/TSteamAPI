@@ -46,6 +46,18 @@ const
   { Separator of the fields in the greeting line. }
   RL_FIELD_SEPARATOR = '|';
 
+type
+  { Where a sender's session stands (TRemoteLogSender.State). }
+  TRemoteLogState = (
+    { Not started, stopped, or given up (refused, no answer, connection
+      failed with Retry off). }
+    rlsIdle,
+    { Connecting, or connected and waiting for the receiver's Accept
+      (also between retries with Retry on). }
+    rlsConnecting,
+    { Accepted by the receiver: log lines are being sent. }
+    rlsAccepted);
+
 implementation
 
 end.

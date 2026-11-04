@@ -1,0 +1,290 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"revision"		"1"
+	"title"		"SteamDemoPad - Steam Deck (r1)"
+	"description"		"Default layout for the Steam Deck (pad_controller_neptune.vdf, revision 1) - TSteamAPI Big Picture demo: menu navigation."
+	"controller_type"		"controller_neptune"
+	"major_revision"		"0"
+	"minor_revision"		"1"
+	"Timestamp"		"0"
+	"actions"
+	{
+		"Pad"
+		{
+			"title"		"#Set_Pad"
+			"StickPadGyro"
+			{
+				"PadScroll"
+				{
+					"title"		"#Action_PadScroll"
+					"input_mode"		"joystick_move"
+				}
+			}
+			"Button"
+			{
+				"PadUp"		"#Action_PadUp"
+				"PadDown"		"#Action_PadDown"
+				"PadLeft"		"#Action_PadLeft"
+				"PadRight"		"#Action_PadRight"
+				"PadSelect"		"#Action_PadSelect"
+				"PadBack"		"#Action_PadBack"
+				"PagePrev"		"#Action_PagePrev"
+				"PageNext"		"#Action_PageNext"
+				"PadMenu"		"#Action_PadMenu"
+			}
+		}
+	}
+	"localization"
+	{
+		"english"
+		{
+			"title"		"SteamDemoPad - Steam Deck (r1)"
+			"description"		"Default layout for the Steam Deck (pad_controller_neptune.vdf, revision 1) - TSteamAPI Big Picture demo: menu navigation."
+			"Set_Pad"		"Menus"
+			"Action_PadScroll"		"Scroll the list"
+			"Action_PadUp"		"Up"
+			"Action_PadDown"		"Down"
+			"Action_PadLeft"		"Left"
+			"Action_PadRight"		"Right"
+			"Action_PadSelect"		"Select"
+			"Action_PadBack"		"Back"
+			"Action_PagePrev"		"Previous page"
+			"Action_PageNext"		"Next page"
+			"Action_PadMenu"		"Menu"
+		}
+	}
+	"group"
+	{
+		"id"		"0"
+		"mode"		"switches"
+		"inputs"
+		{
+			"left_bumper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PagePrev"
+						}
+					}
+				}
+			}
+			"right_bumper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PageNext"
+						}
+					}
+				}
+			}
+			"button_escape"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadMenu"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadSelect"
+						}
+					}
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadBack"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadUp"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadDown"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadLeft"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadRight"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+		}
+		"settings"
+		{
+			"virtual_mode"		"1"
+		}
+		"gameactions"
+		{
+			"Pad"		"PadScroll"
+		}
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadUp"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadDown"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadLeft"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"game_action Pad PadRight"
+						}
+					}
+				}
+			}
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Pad"
+		"group_source_bindings"
+		{
+			"0"		"switch active"
+			"1"		"button_diamond active"
+			"2"		"joystick active"
+			"3"		"right_joystick active"
+			"4"		"dpad active"
+		}
+	}
+	"settings"
+	{
+	}
+}

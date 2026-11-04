@@ -30,6 +30,11 @@ unit uMain;
 interface
 
 uses
+  // Winapi.Windows FIRST of all units (interface, not implementation: a unit
+  // listed later wins on a shared name - FMX.Graphics' TBitmap, SysUtils'
+  // DeleteFile - and implementation units come after all of these):
+  // SysUtils' RenameFile is inlined only with it (H2443)
+  {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
   System.SysUtils, System.StrUtils, System.Types, System.UITypes, System.Classes,
   System.Generics.Collections,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
@@ -466,7 +471,11 @@ end;
 procedure TfrmMain.RemoteLogChanged(Sender: TObject);
 begin
   if mnuRemoteLog <> nil then
+  begin
     mnuRemoteLog.Text := FRemote.MenuText;
+    // greyed while searching / connecting: the click would do nothing
+    mnuRemoteLog.Enabled := not FRemote.Busy;
+  end;
 end;
 
 procedure TfrmMain.StartSteam(const AWhy: string);

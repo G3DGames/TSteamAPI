@@ -50,7 +50,8 @@ function DirectedBroadcast(const AIP, AMask: string): string;
 implementation
 
 uses
-  System.SysUtils, System.StrUtils,
+  // System.Classes: TIdStackLocalAddressList is a TCollection (Count inlined, H2443)
+  System.SysUtils, System.StrUtils, System.Classes,
   IdGlobal, IdStack;
 
 { Rank of the address range of AIP (see TNetworkChoice.Rank); -1 for
@@ -320,14 +321,13 @@ var
 begin
   Result := False;
   Size := 16 * 1024;
-  R := ERROR_BUFFER_OVERFLOW_CODE;
-  for Tries := 1 to 3 do
-  begin
+  // up to three tries: Size grows to what Windows asks for
+  Tries := 0;
+  repeat
+    Inc(Tries);
     SetLength(Buffer, Size);
     R := LR_GetAdaptersAddresses(AF_INET_FAMILY, GAA_FLAGS, nil, PAdapterAddresses(@Buffer[0]), Size);
-    if R <> ERROR_BUFFER_OVERFLOW_CODE then
-      Break;
-  end;
+  until (R <> ERROR_BUFFER_OVERFLOW_CODE) or (Tries >= 3);
   if R <> 0 then
     Exit;
   Result := True;
@@ -404,7 +404,6 @@ var
   Done: Boolean;
 begin
   Result := nil;
-  Done := False;
 {$IFDEF MSWINDOWS}
   try
     Done := AddWindowsNetworks(Result);
@@ -412,6 +411,8 @@ begin
     Result := nil;
     Done := False;
   end;
+{$ELSE}
+  Done := False;
 {$ENDIF}
   if not Done then
     AddIndyNetworks(Result);

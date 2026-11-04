@@ -193,7 +193,19 @@ file): read them case-insensitively; lower case is what we write.
 
 ### Generating layouts: tools/gen_input_mapping.py
 
-`tools/gen_input_mapping.py` writes SteamInputDemo's manifest and one
+`tools/gen_input_mapping.py` writes two PROFILES. **"input"**:
+SteamInputDemo's manifest (shared, identical, by VirtualGamepad /
+VirtualGamepadLCL / VirtualGamepadVCL) and one layout per controller type.
+**"pad"** (2026-11-04): SteamDemoPad's own manifest,
+`steamdemopad_controllers.vdf`, with ONE action set, `Pad` - PadUp / Down
+/ Left / Right on the d-pad AND the left stick (group mode `dpad`),
+PadSelect (A), PadBack (B), PagePrev / PageNext (shoulders), PadMenu
+(Start), PadScroll (right stick, analog) - and layouts named
+`pad_controller_<type>.vdf` in demos/SteamDemoPad/src only (the `pad_`
+prefix keeps them apart from `controller_*.vdf` in a shared folder). In
+pad layouts a source no action uses gets no group (an unbound gyro group
+in gyro_to_mouse mode could move the mouse pointer). The rest of this
+section describes the "input" profile, which writes the manifest and one
 layout per controller type (Xbox One / 360, PS5 / PS4, Switch Pro, Switch 2
 Pro, Joy-Con pair, Steam Deck, the 2015 and 2026 Steam Controllers, generic
 pads - many "PS4 compatible" pads report themselves as generic) from one

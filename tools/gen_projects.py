@@ -57,6 +57,13 @@ INPUT_FILES = ["src\\steam_controllers.vdf"] + [
                                          "neptune", "steamcontroller_gordon", "triton",
                                          "switch2_pro", "switch_joycon_pair", "generic")]
 
+# SteamDemoPad's OWN manifest + layouts (gen_input_mapping.py profile "pad":
+# PAD_MANIFEST_NAME, layouts pad_controller_<type>.vdf - keep in step)
+PAD_INPUT_FILES = ["src\\steamdemopad_controllers.vdf"] + [
+    f"src\\pad_controller_{t}.vdf" for t in ("xboxone", "xbox360", "ps5", "ps4", "switch_pro",
+                                             "neptune", "steamcontroller_gordon", "triton",
+                                             "switch2_pro", "switch_joycon_pair", "generic")]
+
 # The CC0 3D pad models (models/, glTF 2.0) a 3D program loads at run time
 MODEL_FILES = [f"..\\..\\models\\{m}_Animated.glb" for m in ("XBoxOne", "PS5", "SteamController")]
 
@@ -81,6 +88,30 @@ PROJECTS = [
          search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
          # ICU launcher (docs/fmx-steamos-icu-bug.md); Linux64 only
          linux_files=["src\\SteamDemo.sh"]),
+    # The Big Picture / Steam Deck variant of SteamDemo (owner 2026-11-04):
+    # pad-driven through its own Steam Input manifest, screen drawn by the
+    # program, Steam starts by itself, log to a LogReceiver. Desktop only
+    # (Steam Input). Same AppID as SteamDemo.
+    dict(name="SteamDemoPad", dir="demos\\SteamDemoPad", kind="app", framework="FMX",
+         platforms=DESKTOP_PLATFORMS, default="Win64",
+         # FmxLinuxGtkGlobal, FmxWineCanvas: same files as SteamDemo's
+         # (no menu, so no FmxLinuxMenu)
+         units=[("FmxLinuxGtkGlobal", "src\\FmxLinuxGtkGlobal.pas"),
+                ("FmxWineCanvas", "src\\FmxWineCanvas.pas"),
+                # same file as VirtualGamepad's: Skia canvases when
+                # TSAPI_FMX_CANVAS asks (Skia enabled, owner 2026-11-04)
+                ("FmxSkiaCanvas", "src\\FmxSkiaCanvas.pas"),
+                ("SteamComponentTest", "..\\Shared\\SteamComponentTest.pas"),
+                ("SteamPairTest", "..\\Shared\\SteamPairTest.pas"),
+                ("DemoRemoteLog", "..\\Shared\\DemoRemoteLog.pas")],
+         forms=[("uMain", "src\\uMain.pas", "frmPad")],
+         # ..\\..\\RemoteLogging\\src: the log sender (DemoRemoteLog)
+         search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksFMX"],
+         # data files on macOS in Contents/Resources (DataFolder in uMain)
+         files=PAD_INPUT_FILES, mac_data="Contents\\Resources\\",
+         linux_files=["src\\SteamDemoPad.sh"],
+         # Project > Enable Skia (owner 2026-11-04: "a good test case")
+         skia=True),
     # VCL twin of SteamDemo, components and UI in src/uMain.dfm (the Lazarus
     # twin, demos/SteamDemoLCL, is a .lpi project - not listed here or in
     # the group)
@@ -93,11 +124,21 @@ PROJECTS = [
          # ..\\..\\RemoteLogging\\src: the optional log sender (File menu,
          # DemoRemoteLog), as in SteamInputDemo
          search="src;..\\..\\RemoteLogging\\src", redist=True, depends=["SteamworksVCL"]),
+    # Console (no framework): smoke test, the shared component / pair tests
+    # (--test / --pair) and a dedicated game server (--server).
     dict(name="SteamConsole", dir="demos\\SteamConsole", kind="console", framework="None",
          # Android64: placeholder added by the owner 2026-10-30 (not run yet)
          platforms=ALL_PLATFORMS, default="Win64",
-         units=[("uConsoleMain", "src\\uConsoleMain.pas")],
+         units=[("SteamComponentTest", "..\\Shared\\SteamComponentTest.pas"),
+                ("SteamPairTest", "..\\Shared\\SteamPairTest.pas"),
+                ("uConsoleStop", "src\\uConsoleStop.pas"),
+                ("uConsoleMain", "src\\uConsoleMain.pas")],
          forms=[], search="src", redist=True, depends=["Steamworks"],
+         # Free Pascal twin next to the .dpr: <fpc_twin>.lpi / .lpr, the same
+         # units, plain FPC (no LCL, no package: the library is compiled from
+         # fpc_search). lpi() writes the .lpi when it is missing; the .lpr is
+         # hand-written. project_check.py keeps the twins in step.
+         fpc_twin="SteamConsoleFPC", fpc_search="src;../Shared;../../lib;../../lib/plugins",
          # ICU launcher: the Delphi RTL bug is in System's start-up, so a
          # console program dies in Steam's runtime on SteamOS too
          linux_files=["src\\SteamConsole.sh"]),
@@ -145,7 +186,9 @@ PROJECTS = [
          # to Contents/Resources (codesign treats Contents/MacOS as code and
          # rejects data there) - the program looks there on macOS
          files=INPUT_FILES + MODEL_FILES, mac_data="Contents\\Resources\\",
-         linux_files=["src\\VirtualGamepad.sh"]),
+         linux_files=["src\\VirtualGamepad.sh"],
+         # Project > Enable Skia (owner): Skia canvases under Proton (FmxSkiaCanvas)
+         skia=True),
     # 3D gamepad visualiser for the VCL (Windows) with Castle Game Engine -
     # the port of VirtualGamepadLCL (owner 2026-11-03: "to complete the
     # set"); AppID 4108310 like the FMX VirtualGamepad. Castle's units (and
@@ -244,6 +287,34 @@ def existing_guid(path):
     return "{" + str(uuid.uuid4()).upper() + "}"
 
 
+# What the IDE's Project > Enable Skia adds to a .dproj (as it wrote it into
+# VirtualGamepad.dproj): the SKIA define (Base) and Skia's library deployed
+# next to the program - from $(BDS) unless SKIADIR names a separate Skia4Delphi.
+# Projects with skia=True get them. The IDE ALSO writes
+# "GlobalUseSkia := True;" into the .dpr: never kept - FmxSkiaCanvas switches
+# Skia on only when TSAPI_FMX_CANVAS asks for it (docs/Proton.md).
+SKIA_LIBS = {"Win32": ("$(BDS)\\bin\\sk4d.dll", "sk4d.dll", "0"),
+             "Win64": ("$(BDS)\\bin64\\sk4d.dll", "sk4d.dll", "0"),
+             "Linux64": ("$(BDS)\\binlinux64\\libsk4d.so", "libsk4d.so", "1")}
+
+
+def skia_deploy(p, a):
+    """Writes the Enable Skia DeployFile entries of project p with a()."""
+    for pl, (bds_path, name, op) in SKIA_LIBS.items():
+        if pl not in p["platforms"]:
+            continue
+        for cond, local in (("==", bds_path), ("!=", f"$(SKIADIR)\\Binary\\Shared\\{pl}\\{name}")):
+            for cfg in ("Debug", "Release"):
+                a(f"""                <DeployFile Condition="'$(SKIADIR)'{cond}''" Required="true" LocalName="{local}" Configuration="{cfg}" Class="Skia">""")
+                a(f'                    <Platform Name="{pl}">')
+                a('                        <RemoteDir>.\\</RemoteDir>')
+                a(f'                        <Operation>{op}</Operation>')
+                a(f'                        <RemoteName>{name}</RemoteName>')
+                a('                        <Overwrite>true</Overwrite>')
+                a('                    </Platform>')
+                a('                </DeployFile>')
+
+
 def dproj(p):
     path = os.path.join(ROOT, *p["dir"].split("\\"), p["name"] + ".dproj")
     guid = existing_guid(path)
@@ -303,6 +374,8 @@ def dproj(p):
             a('        <DesignOnlyPackage>true</DesignOnlyPackage>')
     else:
         a('        <DCC_ExeOutput>.\\$(Platform)\\$(Config)</DCC_ExeOutput>')
+    if p.get("skia"):
+        a('        <DCC_Define>SKIA;$(DCC_Define)</DCC_Define>')
     a('        <DCC_E>false</DCC_E>')
     a('        <DCC_N>false</DCC_N>')
     a('        <DCC_S>false</DCC_S>')
@@ -405,6 +478,8 @@ def dproj(p):
         # platforms. Android would need assets\internal\ instead - not
         # supported here (no project ships files to Android yet).
         a('            <Deployment Version="5">')
+        if p.get("skia"):
+            skia_deploy(p, a)
         for pl in ("OSX64", "OSXARM64", "Linux64", "Android64"):
             if pl not in p["platforms"]:
                 continue
@@ -513,8 +588,40 @@ def groupproj():
         fh.write(b"\xef\xbb\xbf" + ("\r\n".join(L) + "\r\n").encode("utf-8"))
 
 
-def target(p, ext):
-    return os.path.join(ROOT, *p["dir"].split("\\"), p["name"] + ext)
+def lpi(p):
+    """Writes the Lazarus project of p's Free Pascal twin (p["fpc_twin"]):
+    the same units as the .dproj, plain FPC - no LCL, no package; the
+    library is compiled from source through p["fpc_search"], units go to
+    lib/<cpu>-<os>/, the program to <cpu>-<os>/ (both git-ignored)."""
+    name = p["fpc_twin"]
+    units = [f"{name}.lpr"] + [f.replace("\\", "/") for _, f in p["units"]]
+    L = ['<?xml version="1.0" encoding="UTF-8"?>', '<CONFIG>', '  <ProjectOptions>', '    <Version Value="12"/>',
+         '    <General>', '      <Flags>', '        <MainUnitHasCreateFormStatements Value="False"/>',
+         '        <MainUnitHasTitleStatement Value="False"/>', '        <MainUnitHasScaledStatement Value="False"/>',
+         '      </Flags>', '      <SessionStorage Value="InProjectDir"/>', f'      <Title Value="{name}"/>',
+         '      <UseAppBundle Value="False"/>', '      <ResourceType Value="res"/>', '    </General>',
+         '    <BuildModes>', '      <Item Name="Default" Default="True"/>', '    </BuildModes>',
+         '    <PublishOptions>', '      <Version Value="2"/>', '    </PublishOptions>',
+         '    <RunParams>', '      <FormatVersion Value="2"/>', '    </RunParams>', '    <Units>']
+    for u in units:
+        L += ['      <Unit>', f'        <Filename Value="{u}"/>', '        <IsPartOfProject Value="True"/>',
+              '      </Unit>']
+    L += ['    </Units>', '  </ProjectOptions>', '  <CompilerOptions>', '    <Version Value="11"/>',
+          '    <Target>', f'      <Filename Value="$(TargetCPU)-$(TargetOS)/{name}"/>', '    </Target>',
+          '    <SearchPaths>', '      <IncludeFiles Value="../../lib;$(ProjOutDir)"/>',
+          f'      <OtherUnitFiles Value="{p["fpc_search"]}"/>',
+          '      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>', '    </SearchPaths>',
+          '    <Parsing>', '      <SyntaxOptions>', '        <SyntaxMode Value="Delphi"/>', '      </SyntaxOptions>',
+          '    </Parsing>', '    <Linking>', '      <Debugging>', '        <DebugInfoType Value="dsDwarf3"/>',
+          '      </Debugging>', '    </Linking>', '  </CompilerOptions>', '</CONFIG>']
+    path = target(p, ".lpi", name)
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("\n".join(L) + "\n")
+    return path
+
+
+def target(p, ext, name=None):
+    return os.path.join(ROOT, *p["dir"].split("\\"), (name or p["name"]) + ext)
 
 
 if __name__ == "__main__":
@@ -525,6 +632,11 @@ if __name__ == "__main__":
             print("wrote", os.path.relpath(dproj(p), ROOT))
         else:
             print("kept (exists, use --force)", os.path.relpath(target(p, ".dproj"), ROOT))
+        if p.get("fpc_twin"):
+            if force or not os.path.exists(target(p, ".lpi", p["fpc_twin"])):
+                print("wrote", os.path.relpath(lpi(p), ROOT))
+            else:
+                print("kept (exists, use --force)", os.path.relpath(target(p, ".lpi", p["fpc_twin"]), ROOT))
         if p["kind"] in ("runtime", "design"):
             if force or not os.path.exists(target(p, ".dpk")):
                 dpk(p)

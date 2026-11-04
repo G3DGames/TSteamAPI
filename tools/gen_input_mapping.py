@@ -41,6 +41,15 @@ sensors.
 
 This is the core of the planned mapping tool (CLAUDE.md, "PROJECT AIM"):
 there the tables come from the user pressing buttons.
+
+PROFILES (2026-11-04): the tables above make the "input" profile (the
+Steam Input demos). The "pad" profile is SteamDemoPad's OWN manifest
+(owner, 2026-11-04: its own manifest with a different name) -
+PAD_MANIFEST_NAME with ONE action set, Pad (menu navigation), and layouts
+named pad_controller_<type>.vdf in demos/SteamDemoPad/src only, so a depot
+folder shared by several demos never mixes the two sets of files. In the
+pad profile an action may be bound from several sources (the D-pad AND the
+left stick move the highlight).
 """
 import os
 
@@ -256,6 +265,89 @@ CONTROLLERS = {
 }
 
 
+# --- SteamDemoPad (profile "pad") ---
+PAD_OUTS = [os.path.join(ROOT, "demos", "SteamDemoPad", "src")]
+PAD_TITLE = "SteamDemoPad default layout"
+PAD_DESCRIPTION = "Default bindings of the TSteamAPI Big Picture demo: menu navigation."
+# ONE set: the program's pages, list, menu and confirmation are all driven by it
+PAD_SETS = [
+    ("Pad", "#Set_Pad", [
+        ("stick", "PadScroll", "#Action_PadScroll", "joystick_move"),
+        ("button", "PadUp", "#Action_PadUp", None),
+        ("button", "PadDown", "#Action_PadDown", None),
+        ("button", "PadLeft", "#Action_PadLeft", None),
+        ("button", "PadRight", "#Action_PadRight", None),
+        ("button", "PadSelect", "#Action_PadSelect", None),
+        ("button", "PadBack", "#Action_PadBack", None),
+        ("button", "PagePrev", "#Action_PagePrev", None),
+        ("button", "PageNext", "#Action_PageNext", None),
+        ("button", "PadMenu", "#Action_PadMenu", None),
+    ]),
+]
+PAD_LOCALIZATION = {"english": [
+    ("Set_Pad", "Menus"),
+    ("Action_PadScroll", "Scroll the list"),
+    ("Action_PadUp", "Up"), ("Action_PadDown", "Down"),
+    ("Action_PadLeft", "Left"), ("Action_PadRight", "Right"),
+    ("Action_PadSelect", "Select"), ("Action_PadBack", "Back"),
+    ("Action_PagePrev", "Previous page"), ("Action_PageNext", "Next page"),
+    ("Action_PadMenu", "Menu"),
+]}
+PAD_BINDINGS = {
+    "Pad": [
+        ("right_joystick", None, "PadScroll"),
+        ("dpad", "dpad_north", "PadUp"),
+        ("dpad", "dpad_south", "PadDown"),
+        ("dpad", "dpad_west", "PadLeft"),
+        ("dpad", "dpad_east", "PadRight"),
+        # the left stick as a second d-pad (group mode "dpad", PAD_MODES)
+        ("joystick", "dpad_north", "PadUp"),
+        ("joystick", "dpad_south", "PadDown"),
+        ("joystick", "dpad_west", "PadLeft"),
+        ("joystick", "dpad_east", "PadRight"),
+        ("button_diamond", "button_a", "PadSelect"),
+        ("button_diamond", "button_b", "PadBack"),
+        ("switch", "left_bumper", "PagePrev"),
+        ("switch", "right_bumper", "PageNext"),
+        ("switch", "button_escape", "PadMenu"),
+    ],
+}
+# the left stick moves the highlight in steps, like the d-pad
+PAD_MODES = {"joystick": "dpad"}
+# RAISE BY ONE WHENEVER A pad_ LAYOUT'S CONTENT CHANGES (reported back in
+# SteamInputConfigurationLoaded_t, as LAYOUT_REVISION for the input profile)
+#   1 - 2026-11-04: first version
+PAD_LAYOUT_REVISION = 1
+# SteamDemoPad's manifest (its MANIFEST_FILE and gen_projects.py's
+# PAD_INPUT_FILES must match it)
+PAD_MANIFEST_NAME = "steamdemopad_controllers.vdf"
+
+
+class Profile:
+    """One manifest + its layouts: the tables and where they go."""
+    def __init__(self, outs, manifest_name, layout_prefix, title, description, program, sets,
+                 localization, bindings, optional, modes, revision, multi_source, summary,
+                 bound_sources_only=False):
+        self.outs, self.manifest_name, self.layout_prefix = outs, manifest_name, layout_prefix
+        self.title, self.description, self.program = title, description, program
+        self.sets, self.localization, self.bindings = sets, localization, bindings
+        self.optional, self.modes, self.revision = optional, modes, revision
+        self.multi_source, self.summary = multi_source, summary
+        # True: a source no action uses gets no group at all (an unbound
+        # gyro group in gyro_to_mouse mode could move the OS mouse pointer)
+        self.bound_sources_only = bound_sources_only
+
+
+PROFILES = {
+    "input": Profile(OUTS, "steam_controllers.vdf", "controller_", TITLE, DESCRIPTION, "SteamInputDemo",
+                     SETS, LOCALIZATION, BINDINGS, OPTIONAL, {}, 20, False,
+                     "TSteamAPI Steam Input test: one action per physical control."),
+    "pad": Profile(PAD_OUTS, PAD_MANIFEST_NAME, "pad_controller_", PAD_TITLE, PAD_DESCRIPTION, "SteamDemoPad",
+                   PAD_SETS, PAD_LOCALIZATION, PAD_BINDINGS, {}, PAD_MODES, PAD_LAYOUT_REVISION, True,
+                   "TSteamAPI Big Picture demo: menu navigation.", bound_sources_only=True),
+}
+
+
 class W:
     """VDF writer: tabs, "key"<tab><tab>"value", CRLF."""
     def __init__(self):
@@ -278,9 +370,9 @@ class W:
         return "\r\n".join(self.lines) + "\r\n"
 
 
-def write_actions(w):
+def write_actions(w, pr):
     w.open("actions")
-    for name, title, acts in SETS:
+    for name, title, acts in pr.sets:
         w.open(name)
         w.kv("title", title)
         for kind, block in (("stick", "StickPadGyro"), ("trigger", "AnalogTrigger"), ("button", "Button")):
@@ -301,9 +393,11 @@ def write_actions(w):
     w.close()
 
 
-def write_localization(w, title=TITLE, description=DESCRIPTION):
+def write_localization(w, pr, title=None, description=None):
+    title = pr.title if title is None else title
+    description = pr.description if description is None else description
     w.open("localization")
-    for lang, items in LOCALIZATION.items():
+    for lang, items in pr.localization.items():
         w.open(lang)
         w.kv("title", title)
         w.kv("description", description)
@@ -313,19 +407,19 @@ def write_localization(w, title=TITLE, description=DESCRIPTION):
     w.close()
 
 
-def manifest():
+def manifest(pr):
     w = W()
     w.open("Action Manifest")
     w.open("configurations")
     for ctype in CONTROLLERS:
         w.open(ctype)
         w.open("0")
-        w.kv("path", ctype + ".vdf")
+        w.kv("path", layout_file(pr, ctype))
         w.close()
         w.close()
     w.close()
-    write_actions(w)
-    write_localization(w)
+    write_actions(w, pr)
+    write_localization(w, pr)
     w.close()
     return w.text()
 
@@ -344,43 +438,53 @@ def manifest():
 #       old test used, so Steam replaces a stale stored copy (an AppID
 #       reused from an old test kept loading its old layout; owner)
 LAYOUT_REVISION = 20
+assert PROFILES["input"].revision == LAYOUT_REVISION
 
 # File name of the action manifest (the programs' MANIFEST_FILE and
 # gen_projects.py's INPUT_FILES must match it). Was steam_input_manifest.vdf
 # until 2026-11-03: renamed so Steam reads it afresh instead of an old
 # manifest of that name it kept for an AppID used by an earlier test.
 MANIFEST_NAME = "steam_controllers.vdf"
+assert PROFILES["input"].manifest_name == MANIFEST_NAME
 
 
-def layout(ctype):
+def layout_file(pr, ctype):
+    """File name of the layout of controller type ctype in profile pr
+    (controller_xboxone.vdf, pad_controller_xboxone.vdf)."""
+    return pr.layout_prefix + ctype[len("controller_"):] + ".vdf"
+
+
+def layout(pr, ctype):
     cfg = CONTROLLERS[ctype]
     sources, replace, back = cfg["sources"], cfg.get("replace", {}), cfg.get("back", 0)
-    modes = dict(MODES, **cfg.get("modes", {}))
+    # the profile's modes, then the pad's own (a pad's replaced source keeps
+    # the mode the pad needs, e.g. the 2015 controller's left trackpad as dpad)
+    modes = dict(MODES, **pr.modes)
+    modes.update(cfg.get("modes", {}))
     # Title / description are LITERAL text, not "#title" tokens: Steam
     # resolved "#title" from the MANIFEST's localization, so every official
     # layout showed the same manifest title in Steam's layout browser
     # (owner's screenshot 2026-11-01: three identical "SteamInputDemo
     # default layout" entries on a laptop, four on the ROG Ally). The
     # revision is in the title so the browser shows which copy Steam has.
-    title = f"SteamInputDemo - {CONTROLLER_NAMES[ctype]} (r{LAYOUT_REVISION})"
-    description = (f"Default layout for the {CONTROLLER_NAMES[ctype]} ({ctype}.vdf, revision "
-                   f"{LAYOUT_REVISION}) - TSteamAPI Steam Input test: one action "
-                   f"per physical control.")
+    title = f"{pr.program} - {CONTROLLER_NAMES[ctype]} (r{pr.revision})"
+    description = (f"Default layout for the {CONTROLLER_NAMES[ctype]} ({layout_file(pr, ctype)}, revision "
+                   f"{pr.revision}) - {pr.summary}")
     w = W()
     w.open("controller_mappings")
     for k, v in (("version", "3"), ("revision", "1"), ("title", title), ("description", description),
-                 ("controller_type", ctype), ("major_revision", "0"), ("minor_revision", str(LAYOUT_REVISION)),
+                 ("controller_type", ctype), ("major_revision", "0"), ("minor_revision", str(pr.revision)),
                  ("Timestamp", "0")):
         w.kv(k, v)
-    write_actions(w)
-    write_localization(w, title, description)
+    write_actions(w, pr)
+    write_localization(w, pr, title, description)
     gid = 0
     presets = []
-    for set_name, _, _ in SETS:
+    for set_name, _, _ in pr.sets:
         binds = []
-        for s, i, a in BINDINGS.get(set_name, []):
+        for s, i, a in pr.bindings.get(set_name, []):
             s = replace.get(s, s)
-            need = OPTIONAL.get(a)
+            need = pr.optional.get(a)
             if isinstance(need, str) and (need not in sources or need in replace.values()):
                 continue
             if isinstance(need, int) and back < need:
@@ -389,14 +493,20 @@ def layout(ctype):
             binds.append((s, i, a))
         # consistency: every action of the set bound once, apart from the
         # optional ones this pad does not have
-        acts = [a for _, a, _, _ in next(x[2] for x in SETS if x[0] == set_name)]
+        acts = [a for _, a, _, _ in next(x[2] for x in pr.sets if x[0] == set_name)]
         bound = [a for _, _, a in binds]
         for a in acts:
-            assert bound.count(a) <= 1, f"{ctype}: {a} bound twice"
-            assert a in bound or a in OPTIONAL, f"{ctype}: {set_name}.{a} not bound"
+            assert pr.multi_source or bound.count(a) <= 1, f"{ctype}: {a} bound twice"
+            assert a in bound or a in pr.optional, f"{ctype}: {set_name}.{a} not bound"
+        # never the same input of one source twice (a replaced source can
+        # land on one that is bound already)
+        keys = [(s, i) for s, i, _ in binds]
+        assert len(keys) == len(set(keys)), f"{ctype}: {set_name}: one input bound twice {keys}"
         psrc = []
         for src in sources:
             mine = [(i, a) for s, i, a in binds if s == src]
+            if pr.bound_sources_only and not mine:
+                continue
             w.open("group")
             w.kv("id", str(gid))
             w.kv("mode", modes[src])
@@ -442,9 +552,9 @@ def layout(ctype):
     return w.text()
 
 
-def write(name, text):
+def write(pr, name, text):
     data = text.encode("ascii")
-    for out in OUTS:
+    for out in pr.outs:
         os.makedirs(out, exist_ok=True)
         path = os.path.join(out, name)
         old = open(path, "rb").read() if os.path.exists(path) else None
@@ -456,9 +566,10 @@ def write(name, text):
 
 
 def main():
-    write(MANIFEST_NAME, manifest())
-    for ctype in CONTROLLERS:
-        write(ctype + ".vdf", layout(ctype))
+    for pr in PROFILES.values():
+        write(pr, pr.manifest_name, manifest(pr))
+        for ctype in CONTROLLERS:
+            write(pr, layout_file(pr, ctype), layout(pr, ctype))
 
 
 if __name__ == "__main__":

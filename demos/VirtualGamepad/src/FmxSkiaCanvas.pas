@@ -2,7 +2,9 @@
   raster (CPU) or Vulkan (GPU) - when TSAPI_FMX_CANVAS asks for them.)
 
   Companion of FmxWineCanvas, for programs that have Skia enabled (Project
-  > Enable Skia; VirtualGamepad). FmxWineCanvas reads TSAPI_FMX_CANVAS and,
+  > Enable Skia; VirtualGamepad, SteamDemoPad - two identical copies, one in
+  each src folder; tools/project_check.py reports any difference).
+  FmxWineCanvas reads TSAPI_FMX_CANVAS and,
   for @code(skia) or @code(vulkan), turns Direct2D off; this unit's
   initialization - which runs right after it (list it directly after
   FmxWineCanvas in the .dpr), before Application.Initialize and the first

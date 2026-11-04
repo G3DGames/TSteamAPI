@@ -7,8 +7,9 @@
         <MainSource>SteamConsole.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Linux64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>168067</TargetedPlatforms>
+        <ProjectName Condition="'$(ProjectName)'==''">SteamConsole</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -164,6 +165,9 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\Shared\SteamComponentTest.pas"/>
+        <DCCReference Include="..\Shared\SteamPairTest.pas"/>
+        <DCCReference Include="src\uConsoleStop.pas"/>
         <DCCReference Include="src\uConsoleMain.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

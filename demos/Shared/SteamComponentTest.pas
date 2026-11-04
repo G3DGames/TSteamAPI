@@ -365,6 +365,8 @@ type
     FGSPingQuery, FGSPlayersQuery, FGSRulesQuery: HServerQuery;
     { Rules the own-server query reported. }
     FGSRuleCount: Integer;
+    { Players the own-server query reported (0 expected: nobody plays). }
+    FGSPlayerCount: Integer;
     { @true when @link(TEST_GS_RULE) was among them. }
     FGSRuleSeen: Boolean;
     { The user's ticket for the game server (k_HAuthTicketInvalid = none). }
@@ -2989,6 +2991,7 @@ procedure TSteamComponentTest.ServerPlayer(Sender: TObject; AQuery: HServerQuery
 begin
   if (AQuery = FGSPlayersQuery) and (FGSPlayersQuery <> HSERVERQUERY_INVALID) then
   begin
+    Inc(FGSPlayerCount);
     AddLog(Format('TSteamMatchmakingServers.OnPlayer (own server): "%s"', [AName]));
     Exit;
   end;
@@ -3018,12 +3021,19 @@ end;
 
 procedure TSteamComponentTest.PlayersComplete(Sender: TObject; AQuery: HServerQuery);
 begin
-  AddLog(Format('TSteamMatchmakingServers.OnPlayersComplete: query %d, %d players', [AQuery, FPlayerCount]));
+  // Each query its own count: the Internet server's and the own server's
+  // answers can be in flight at the same time (2026-11-04: the own-server
+  // line showed the Internet server's 5 players)
+  if (AQuery = FGSPlayersQuery) and (FGSPlayersQuery <> HSERVERQUERY_INVALID) then
+    AddLog(Format('TSteamMatchmakingServers.OnPlayersComplete (own server): query %d, %d players',
+      [AQuery, FGSPlayerCount]))
+  else
+    AddLog(Format('TSteamMatchmakingServers.OnPlayersComplete: query %d, %d players', [AQuery, FPlayerCount]));
   if (AQuery = FGSPlayersQuery) and (FGSPlayersQuery <> HSERVERQUERY_INVALID) and
     Answered(CT_GAMESERVER, 'Players (own server)') then
   begin
     FGSPlayersQuery := HSERVERQUERY_INVALID;
-    AddNote(CT_GAMESERVER, 'own server: players query complete (0 players expected)');
+    AddNote(CT_GAMESERVER, Format('own server: players query complete, %d players (0 expected)', [FGSPlayerCount]));
     CheckTestsDone;
     Exit;
   end;
@@ -3067,7 +3077,10 @@ end;
 
 procedure TSteamComponentTest.RulesComplete(Sender: TObject; AQuery: HServerQuery);
 begin
-  AddLog(Format('TSteamMatchmakingServers.OnRulesComplete: query %d, %d rules', [AQuery, FRuleCount]));
+  if (AQuery = FGSRulesQuery) and (FGSRulesQuery <> HSERVERQUERY_INVALID) then
+    AddLog(Format('TSteamMatchmakingServers.OnRulesComplete (own server): query %d, %d rules', [AQuery, FGSRuleCount]))
+  else
+    AddLog(Format('TSteamMatchmakingServers.OnRulesComplete: query %d, %d rules', [AQuery, FRuleCount]));
   if (AQuery = FGSRulesQuery) and (FGSRulesQuery <> HSERVERQUERY_INVALID) and
     Answered(CT_GAMESERVER, 'Rules (own server)') then
   begin
@@ -3403,6 +3416,7 @@ begin
     if M.Plugin <> nil then
     begin
       FGSRuleCount := 0;
+      FGSPlayerCount := 0;
       FGSRuleSeen := False;
       FGSRulesQuery := M.StartServerRules(TEST_GS_LOCALHOST, FGSQueryPort);
       FGSPingQuery := M.StartPing(TEST_GS_LOCALHOST, FGSQueryPort);

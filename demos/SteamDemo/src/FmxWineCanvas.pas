@@ -39,8 +39,8 @@
   says what was decided and @link(FmxWineCanvasName) which canvas, for the
   program's log.
 
-  Four identical copies (demos/SteamInputDemo/src, demos/VirtualGamepad/src,
-  demos/SteamDemo/src, RemoteLogging/LogReceiver/src - projects use only
+  Five identical copies (demos/SteamInputDemo/src, demos/VirtualGamepad/src,
+  demos/SteamDemo/src, demos/SteamDemoPad/src, RemoteLogging/LogReceiver/src - projects use only
   their own sources); tools/project_check.py reports any difference. }
 unit FmxWineCanvas;
 

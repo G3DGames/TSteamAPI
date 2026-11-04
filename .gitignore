@@ -47,6 +47,9 @@ heap.trc
 # its unit output (lib/<cpu>-<os>/ - the lib/*-*/ pattern above is anchored
 # to the repository root, so it does not match here)
 /demos/SteamDemoLCL/lib/
+# the same for SteamConsoleFPC (the Free Pascal twin next to SteamConsole.dpr)
+/demos/SteamConsole/*-*/
+/demos/SteamConsole/lib/
 # the same for the Castle Game Engine visualiser (Lazarus)
 /demos/VirtualGamepadLCL/*-*/
 /demos/VirtualGamepadLCL/lib/
