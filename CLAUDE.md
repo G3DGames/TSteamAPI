@@ -3139,7 +3139,106 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   ARM64 is now done for both compilers bar the FPC remote-log listener
   and LCL SteamFormToRGB on Cocoa (File > Take Screenshot not tried yet).
 
-## Handover (2026-11-02, end of ninth session) - READ THIS FIRST
+## Handover (2026-11-04, end of tenth session) - READ THIS FIRST
+State: last verified push b0a18b2 "VirtualGamepad Steam" (checked
+2026-11-04 against the working copy, ignoring CRLF / BOM): it holds every
+zip up to and including Overlay1 (Deploy1, Lit1, Layout1, Rename1,
+Proton1-3, BigPic1/2, Canvas1/2b, Motion1, Skia1, Overlay1). Its .dproj
+files are IDE re-saves - KEEP THE OWNER'S (VirtualGamepad.dproj carries
+the IDE's Enable Skia entries: SKIA define, sk4d.dll / libsk4d.so deploy).
+Delivered since b0a18b2, in order:
+  1. VclPad1 (follows Overlay1) - NEW demos/VirtualGamepadVCL, shared
+     PadAnimator fixes, VirtualGamepad.dpr WITHOUT GlobalUseSkia := True.
+  2. GorillaDoc1 (follows VclPad1) - docs/gorilla-opengl-bug.md.
+     LinuxPad1 (shaderc deployment) was WITHDRAWN: do not apply it.
+  3. Handover8 (follows GorillaDoc1) - this CLAUDE.md.
+Nothing to delete. ====> NO PACKAGE REBUILD <==== (no package source has
+changed since BigPic2).
+NEXT SESSION FIRST: verify the push of those three zips as in "Syncing
+safely" (VirtualGamepadVCL new; PadAnimator identical in LCL + VCL;
+VirtualGamepad.dpr has no GlobalUseSkia line), run pasdoc_check.py and
+project_check.py on the clone. Reset any generated .dproj in the working
+copy to the owner's pushed one before zipping a .dproj.
+WHERE THE TENTH-SESSION NOTES ARE: the "TENTH SESSION, zip ..." entries
+directly below the ninth-session State paragraph, NEWEST FIRST.
+
+### Done this session
+1. A README.md per demo (Windows Release depot layout), each project's
+   welcome page (Deploy1).
+2. Stored values never written as literals: captions from SteamAPI1.AppID,
+   STEAMWORKS_SDK_VERSION, PlatformDescription; constants for test values
+   and callback ids (Lit1). VirtualGamepad has its own AppID 4108310.
+3. Steam Input: manifest renamed steam_controllers.vdf, LAYOUT_REVISION 20
+   (Rename1); stale layout notes (Layout1).
+4. Proton: FmxWineCanvas (4 copies) - FMX under Wine defaults to GDI+
+   (Wine's Direct2D leaves FMX white); TSAPI_FMX_CANVAS=gdi|gpu|d2d|none|
+   skia|vulkan; FmxSkiaCanvas for VirtualGamepad; docs/Proton.md.
+5. Big Picture in TSteamAPI: BigPictureWindow (default bpwMaximized),
+   InBigPicture, DisplaySize - FMX / VCL / LCL. Confirmed on the Ally.
+6. VirtualGamepad: frame-rate log, motion throttle (Motion1, confirmed),
+   overlay item "Controller Settings" (also LCL).
+7. NEW VirtualGamepadVCL (Castle Game Engine, AppID 4108310) - NOT YET
+   COMPILED; an independent review found no compile errors.
+8. Native Linux VirtualGamepad under Steam: crash found in Gorilla3D
+   (Gorilla.Linux.Glx.InitGLX, Runtime error 217 inside Steam Linux
+   Runtime 3.0; fine outside it); bug report written for its author.
+
+### Results (owner, ROG Ally / IdeaPad)
+- Proton (Ally, Win64): gdi works, 14-18 fps at 1920x1036 (8-16 with
+  motion); d2d white; gpu access violation; Game Mode works; maximised in
+  Big Picture on a 1920 x 1080 display.
+- Native Linux (IdeaPad, Ubuntu 26.04, Mesa Iris Xe): from a terminal it
+  runs fully (OpenGL 4.6, TLinuxCanvas, all files found); from Steam
+  (Runtime 3.0) it dies in InitGLX before the form. shaderc ruled out
+  (same address with and without it).
+
+### NEXT (in order)
+1. Owner: apply VclPad1 + GorillaDoc1; build VirtualGamepadVCL Win64 /
+   Win32 (Castle Game Engine for Delphi on the library path, including
+   src/compatibility/delphi-only/fcl-json). Watch: Vcl.CastleControl,
+   Container.Fps.RealFps / OnlyRenderFps, Node(..., [fnNilOnMissing]).
+2. Gorilla InitGLX: owner runs the two checks still open - the trace's
+   find library= lines for libGL / libGLX / libX11, and Select-String on
+   Gorilla.Linux.Glx.pas (InitGLX: dlopen names, raise, initialization) -
+   then update docs/gorilla-opengl-bug.md with the failing line and send
+   it to Gorilla3D's author. Try the reproduction without Steam
+   (SteamLinuxRuntime_sniper/run -- ./prog). Possible stop-gap, UNTRIED:
+   a launcher fix if InitGLX wants an unversioned library name.
+3. Proton test of TSAPI_FMX_CANVAS=vulkan (and skia) on the Ally with the
+   VclPad1 .dpr; VirtualGamepadLCL on the Ally.
+4. Later: Skia canvas on native Linux as its own test (after it starts
+   with TLinuxCanvas); the stale server-side layout for 4108310; Launcher
+   open decision 4; then the ninth-session NEXT list below (SteamConsole
+   batch with --server, full Win64 / Win32 round, end-of-project
+   platforms).
+Offers not yet answered: remote-log retries + remembered receiver;
+warning for TSAPI_ variable typos; log file fallback to
+~/.config/G3DGames/<program>/ when the program folder is read-only;
+shaderc as its own short section in the Gorilla report; VCL mouse wheel
+zoom without first clicking the view (FControl.SetFocus).
+
+### Lessons this session (follow them)
+- BoolToStr(B, 'yes', 'no') is FPC only: Delphi has no such overload
+  (E2010 in BigPic1). Use if / else.
+- The IDE's Project > Enable Skia writes GlobalUseSkia := True into the
+  .dpr, switching Skia on for EVERY platform; it must be deleted (it was
+  still in push b0a18b2).
+- A Release build started from a terminal asks Steam to relaunch it and
+  exits - that run says nothing about a Steam launch. Debug builds set
+  the AppID themselves.
+- Start-up "Runtime error 217" on Linux = an exception in a unit
+  initialization (SysUtils is finalized first, so no message). Method:
+  launch options LD_DEBUG=libs %command% > ~/vg-stderr.txt 2>&1, then
+  addr2line -f -C -e <program> 0x<address>. Delphi has no map-file option
+  for Linux.
+- A "not found" library in a loader trace is a SUSPECT, not the cause:
+  check whether the crash address changes when it is supplied (shaderc).
+- Launch-option variable names must be exact (TSAPI_FMXCANVAS typo cost a
+  test round); ask for the log line that echoes the setting.
+- Say "unverified" until a run proves it; several claims this session
+  had to be withdrawn (Game Mode, frame-rate log, AppID theory).
+
+## Handover (2026-11-02, end of ninth session)
 State: last verified push caa00b9 "All done bar server" (verified 20:28 -
 Fix14d to Fix20, 13 files, identical ignoring CRLF / BOM). Delivered since:
 NOTHING except this CLAUDE.md (zip Handover7, follows Fix20). Nothing to
