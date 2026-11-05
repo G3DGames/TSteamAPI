@@ -14,6 +14,9 @@ __recovery/
 *.stat
 *.deployproj
 *.res
+# ...except the Lazarus palette icons (tools/gen_icon_res.py), linked by
+# lcl/Steamworks.LCL.Reg.pas. The Delphi ones are .dcr files (not ignored).
+!lcl/Steamworks.LCL.Reg.res
 *.exe
 *.bpl
 *.dcp

@@ -18,6 +18,10 @@ implementation
 uses
   Classes, DesignIntf, DesignEditors, FMX.Types, Steamworks.FMX;
 
+// Palette icon of TSteamAPI: 24, 16 and 32 px bitmaps named TSTEAMAPI,
+// TSTEAMAPI16 and TSTEAMAPI32, built from design/icons by tools/gen_icon_res.py.
+{$R Steamworks.FMX.Reg.dcr}
+
 type
   // Adds the units the IDE-generated TSteamAPI event handlers need
   // (TSteamLogLevel, TSteamCallbackData, ...) to the form's uses clause.

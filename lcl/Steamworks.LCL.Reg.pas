@@ -21,6 +21,10 @@ implementation
 uses
   Classes, Steamworks.LCL, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Steamworks.Plugin.Input, Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties, Steamworks.Plugin.Music, Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface, Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets, Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils, Steamworks.Plugin.MatchmakingServers, Steamworks.Plugin.GameServer, Steamworks.Plugin.GameServerStats;
 
+// Palette icons: 24, 36 and 48 px PNGs named <CLASS>, <CLASS>_150 and
+// <CLASS>_200, built from design/icons by tools/gen_icon_res.py.
+{$R Steamworks.LCL.Reg.res}
+
 procedure Register;
 begin
   RegisterComponents('Steamworks', [TSteamAPI, TSteamUtils, TSteamUser, TSteamFriends, TSteamApps, TSteamUserStats, TSteamRemoteStorage, TSteamScreenshots, TSteamTimeline, TSteamUGC, TSteamInput, TSteamMatchmaking, TSteamParties, TSteamMusic, TSteamHTTP, TSteamHTMLSurface, TSteamInventory, TSteamVideo, TSteamParentalSettings, TSteamRemotePlay, TSteamNetworking, TSteamNetworkingSockets, TSteamNetworkingMessages, TSteamNetworkingUtils, TSteamMatchmakingServers, TSteamGameServer, TSteamGameServerStats, TSteamGameServerUtils, TSteamGameServerUGC, TSteamGameServerHTTP, TSteamGameServerInventory, TSteamGameServerNetworking, TSteamGameServerNetworkingSockets, TSteamGameServerNetworkingMessages]);

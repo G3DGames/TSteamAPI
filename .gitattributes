@@ -1,4 +1,9 @@
 *.glb binary
+# Palette icons and the resource files built from them (tools/gen_icon_res.py):
+# never touched by line-ending conversion
+*.ico binary
+*.dcr binary
+*.res binary
 # Shell scripts run on Linux: always LF, also in a Windows checkout
 # (a CRLF script fails with "/bin/sh^M: bad interpreter")
 *.sh text eol=lf

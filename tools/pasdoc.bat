@@ -12,6 +12,12 @@ rem but not compiled. Run from anywhere; the output folders are git-ignored.
 rem The four output folders are deleted first (only those: the rest of docs\
 rem is never touched), so no page of an earlier run is left behind.
 rem
+rem Dark colours: after each run, tools\pasdoc-dark.css (HTML: dark only when
+rem the browser or system asks for it) or tools\pasdoc-chm-dark.css (HTML
+rem Help: always dark, as the viewer cannot ask) is appended to the
+rem pasdoc.css that PasDoc wrote, so PasDoc's own stylesheet stays as it is
+rem and no copy of it (GPL) is kept here. Set PASDOC_DARK=0 to leave them out.
+rem
 rem Defines: PasDoc defines no platform symbols itself, so the Win64 view is
 rem chosen here. The Delphi runs leave FPC undefined (Steamworks.inc then
 rem takes its Delphi branch: anonymous-method / generic overloads included);
@@ -90,7 +96,28 @@ echo.
 echo ==== PasDoc %FMT% (%LABEL%) -^> %OUT%
 if not exist "%OUT%" mkdir "%OUT%"
 "%PASDOC%" --format %FMT% --output %OUT% %COMMON% %ARGS%
-if errorlevel 1 (echo ==== PasDoc %FMT% %LABEL% FAILED & set /a FAILED+=1)
+if errorlevel 1 (echo ==== PasDoc %FMT% %LABEL% FAILED & set /a FAILED+=1 & exit /b 0)
+call :dark %FMT% %OUT%
+exit /b 0
+
+rem ---- :dark <format> <output folder> - appends the dark colours for that
+rem      format to the pasdoc.css PasDoc wrote there
+:dark
+if "%PASDOC_DARK%"=="0" exit /b 0
+set DARKCSS=tools\pasdoc-dark.css
+if /i "%~1"=="htmlhelp" set DARKCSS=tools\pasdoc-chm-dark.css
+if not exist "%DARKCSS%" (
+  echo ==== %DARKCSS% not found - %~2 left in PasDoc's own colours
+  set /a FAILED+=1
+  exit /b 0
+)
+if not exist "%~2\pasdoc.css" (
+  echo ==== %~2\pasdoc.css not found - dark colours not added
+  set /a FAILED+=1
+  exit /b 0
+)
+(echo.& type "%DARKCSS%") >> "%~2\pasdoc.css"
+echo ==== Dark colours from %DARKCSS% added to %~2\pasdoc.css
 exit /b 0
 
 rem ---- :chm <folder> - compiles the HTML Help project PasDoc wrote there

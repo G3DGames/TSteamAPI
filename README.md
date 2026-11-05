@@ -112,17 +112,23 @@ fmx/                        FireMonkey only
   Steamworks.FMX.pas        TSteamAPI for FMX (TTimer pump on the UI thread),
                             SteamImageToBitmap, SteamFormToRGB (screenshots)
   Steamworks.FMX.Reg.pas    design-time registration of the FMX TSteamAPI
+  Steamworks.FMX.Reg.dcr    GENERATED (gen_icon_res.py): its palette icon
 vcl/                        VCL only (Delphi, Windows)
   Steamworks.VCL.pas        TSteamAPI for VCL (VCL TTimer), SteamImageToBitmap,
                             SteamFormToRGB (screenshots)
   Steamworks.VCL.Reg.pas    design-time registration of the VCL TSteamAPI
+  Steamworks.VCL.Reg.dcr    GENERATED (gen_icon_res.py): its palette icon
 lcl/                        LCL only (Lazarus / Free Pascal)
   Steamworks.LCL.pas        TSteamAPI for LCL (LCL TTimer), SteamImageToBitmap,
                             SteamFormToRGB (screenshots)
   Steamworks.LCL.Reg.pas    GENERATED (gen_steam_api.py, needs no SDK): registers the LCL
                             TSteamAPI and the plug-in components for Lazarus
+  Steamworks.LCL.Reg.res    GENERATED (gen_icon_res.py): their palette icons (PNG)
 design/
   Steamworks.Reg.pas        GENERATED: registers the plug-in components (all frameworks)
+  Steamworks.Reg.dcr        GENERATED (gen_icon_res.py): their palette icons (bitmaps)
+  icons/                    the palette icons' source: <Class>.ico (16-256 px) for all 34
+                            components, ServerBadge.ico, svg/ - see docs/ComponentIcons.md
 packages/                   Steamworks (runtime: lib + plug-ins + components, no framework),
                             dclSteamworks (design: plug-in components),
                             SteamworksFMX (runtime: FMX TSteamAPI), dclSteamworksFMX (design),
@@ -253,6 +259,9 @@ tools/
   project_check.py          .dproj BOM / XML / unit-list agreement check
   gen_projects.py           creates missing .dproj / .dpk / .groupproj (IDE-saved files win)
   gen_steam_api.py          generates SDKTypes and the plug-ins from the SDK (see below)
+  gen_icon_res.py           packages design/icons into the four palette-icon resource files
+                            (.dcr for Delphi, .res for Lazarus); standard library only
+  gen_icons.py              redraws design/icons (needs Pillow and rsvg-convert)
   verify_generated.py       checks generated layouts and signatures against the SDK headers
   LayoutProbe/              GENERATED console program (verify_generated.py --probe): prints
                             the record layout a compiler really produced (--compare checks it)
@@ -367,7 +376,7 @@ Step by step, with every alarming-looking message explained:
       TSteamGameServerStats and the seven server copies) and
       `dclSteamworksFMX` (the FMX TSteamAPI) and / or `dclSteamworksVCL`
       (the VCL TSteamAPI). They appear on the "Steamworks"
-      palette page.
+      palette page, each with its own icon (docs/ComponentIcons.md).
 
    Building a design package from the project group builds the runtime
    packages it needs first. Programs that do not use runtime packages need
@@ -656,6 +665,10 @@ python3 tools/verify_generated.py <sdk>/public/steam
 python3 tools/pasdoc_check.py
 python3 tools/project_check.py
 ```
+
+The generator also packages the palette icons (`tools/gen_icon_res.py`) and
+reports, as a NOTE, any component that has no icon in `design/icons` yet - a
+new plug-in needs one drawn (docs/ComponentIcons.md, "Rebuilding them").
 
 `verify_generated.py` compiles the SDK headers with clang (any OS; no
 platform SDKs needed) for Win64, Win32, Linux x86_64, macOS ARM64 and the
@@ -946,6 +959,7 @@ separate, shorter guide (written by hand or by `tools/gen_docs.py`).
 python3 tools/pasdoc_check.py
 python3 tools/project_check.py
 python3 tools/gen_docs.py        # regenerates docs/components/TSteam<Name>.md
+python3 tools/gen_icon_res.py    # palette icons: design/icons -> .dcr / .res (unchanged = fine)
 python3 tools/gen_input_mapping.py  # Steam Input manifest + layouts (all four input demos:
                                     # SteamInputDemo, VirtualGamepad, VirtualGamepadLCL, VirtualGamepadVCL)
 ```

@@ -19,6 +19,10 @@ implementation
 uses
   Classes, DesignIntf, DesignEditors, Steamworks.Components, Steamworks.Plugin.Utils, Steamworks.Plugin.User, Steamworks.Plugin.Friends, Steamworks.Plugin.Apps, Steamworks.Plugin.UserStats, Steamworks.Plugin.RemoteStorage, Steamworks.Plugin.Screenshots, Steamworks.Plugin.Timeline, Steamworks.Plugin.UGC, Steamworks.Plugin.Input, Steamworks.Plugin.Matchmaking, Steamworks.Plugin.Parties, Steamworks.Plugin.Music, Steamworks.Plugin.HTTP, Steamworks.Plugin.HTMLSurface, Steamworks.Plugin.Inventory, Steamworks.Plugin.Video, Steamworks.Plugin.ParentalSettings, Steamworks.Plugin.RemotePlay, Steamworks.Plugin.Networking, Steamworks.Plugin.NetworkingSockets, Steamworks.Plugin.NetworkingMessages, Steamworks.Plugin.NetworkingUtils, Steamworks.Plugin.MatchmakingServers, Steamworks.Plugin.GameServer, Steamworks.Plugin.GameServerStats;
 
+// Palette icons: 24, 16 and 32 px bitmaps named <CLASS>, <CLASS>16 and
+// <CLASS>32, built from design/icons by tools/gen_icon_res.py.
+{$R Steamworks.Reg.dcr}
+
 type
   // Adds the units the IDE-generated event handlers need (record and
   // callback types) to the form's uses clause.

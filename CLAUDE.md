@@ -84,6 +84,9 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
   - `python3 tools/project_check.py`
   - `python3 tools/gen_docs.py` (after any change to lib/plugins or
     tools/doc_extras; deliver the regenerated docs/components pages)
+  - `python3 tools/gen_icon_res.py` (after any change to design/icons or
+    to the component list; deliver the changed .dcr / .res files - they
+    are compiled into the design packages, so say REBUILD + REINSTALL)
   - when the SDK folder is at hand (generated code changed):
     `python3 tools/gen_steam_api.py <sdk>/public/steam` then
     `python3 tools/verify_generated.py <sdk>/public/steam`
@@ -1281,6 +1284,18 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
 - Every unit must be in both the `.dpr`/`.dpk` and the `.dproj`
   (project_check.py verifies this).
 - `.dproj` files are UTF-8 with BOM and CRLF and must parse as XML.
+- PALETTE ICONS (2026-11-05, docs/ComponentIcons.md): source in
+  design/icons/<Class>.ico; tools/gen_icon_res.py (stdlib only) writes
+  design/Steamworks.Reg.dcr, fmx/ and vcl/Steamworks.*.Reg.dcr and
+  lcl/Steamworks.LCL.Reg.res, each linked by `{$R}` in the Reg unit beside
+  it (Delphi and FPC both resolve that next to the unit - no package path
+  needed). Names: Delphi BITMAP <CLASS> / <CLASS>16 / <CLASS>32; Lazarus
+  RCDATA PNG <CLASS> / <CLASS>_150 / <CLASS>_200 (checked against the
+  Lazarus IDE source and its own paletteimg.res). Never hand-edit the
+  .dcr / .res. `*.res` is git-ignored: lcl/Steamworks.LCL.Reg.res has a `!`
+  exception, and .gitattributes marks .ico / .dcr / .res binary.
+  gen_steam_api.py's write_registration() writes both Reg units AND
+  packages the icons; it needs no SDK (one-liner in its docstring).
 
 ## Source rules
 - NEVER WRITE A STORED VALUE AS A LITERAL IN TEXT (owner, 2026-11-03).
@@ -3616,7 +3631,37 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
   COMPILED.
 
-## Handover (2026-11-04, end of twelfth session) - READ THIS FIRST
+## Handover (2026-11-05, thirteenth session: palette icons) - READ THIS FIRST
+Zip Icons1 follows Pad8 (the newest zip recorded below). The 34 palette
+icons, drawn this session (owner approved the preview), now ship in the
+design packages. NEW files: design/icons/ (34 <Class>.ico, ServerBadge.ico,
+svg/ with 35 .svg), design/Steamworks.Reg.dcr, fmx/Steamworks.FMX.Reg.dcr,
+vcl/Steamworks.VCL.Reg.dcr, lcl/Steamworks.LCL.Reg.res,
+tools/gen_icon_res.py, tools/gen_icons.py. CHANGED: design/Steamworks.Reg.pas
+and lcl/Steamworks.LCL.Reg.pas (regenerated: one `{$R}` each),
+fmx/Steamworks.FMX.Reg.pas, vcl/Steamworks.VCL.Reg.pas (one `{$R}` each),
+tools/gen_steam_api.py (delphi_reg_unit() + write_registration(); the
+Delphi Reg text is unchanged otherwise - diffed), .gitignore, .gitattributes,
+docs/ComponentIcons.md (now the reference, not the brief), docs/README.md,
+README.md, CLAUDE.md. Nothing to delete.
+====> REBUILD AND REINSTALL DCLSTEAMWORKS, DCLSTEAMWORKSFMX, DCLSTEAMWORKSVCL (WIN32 IDE); LAZARUS: RECOMPILE SteamworksLCL.lpk AND REBUILD THE IDE <====
+====> NO RUNTIME PACKAGE REBUILD (STEAMWORKS / STEAMWORKSFMX / STEAMWORKSVCL UNCHANGED) <====
+Checked here: all 207 images in the four resource files decoded and
+compared byte-exact with the .ico frames; the .res header layout matches
+Lazarus' own paletteimg.res field for field; pasdoc_check and
+project_check clean; a missing icon stops gen_icon_res.py with its name and
+is a NOTE in gen_steam_api.py. NOT checked (no compiler here): the IDEs
+themselves. Expected from the owner: (1) Delphi 13 Win32 IDE - every
+Steamworks palette button shows its icon, also at 150 % / 200 % scaling
+(16 / 32 px bitmaps); if an icon shows a magenta fringe or box, Delphi is
+ignoring alpha - tell me, the fix is in gen_icon_res.py only. (2) Lazarus -
+same check (24 / 36 / 48 px). (3) A form with components on it: the
+designer's non-visual component icons use the same resources.
+Lessons: Pillow reads a 32-bit BI_RGB BMP as RGB (drops alpha) - check
+such bitmaps from the raw bytes. The Lazarus wiki is behind a bot check;
+read the IDE source (sparse clone of github.com/fpc/lazarus) instead.
+
+## Handover (2026-11-04, end of twelfth session)
 State: last verified push 0f9ee4e (= Handover9). Delivered since: zip
 Console1 (follows Handover9), then Console2 (follows Console1: this
 CLAUDE.md + demos/SteamConsole/README.md - the first run, PowerShell note),
