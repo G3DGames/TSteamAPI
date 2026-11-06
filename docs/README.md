@@ -5,6 +5,7 @@
 | [Install-Delphi.md](Install-Delphi.md) | Installing and using the library with Delphi (FMX, VCL): packages, paths, getting the Steam DLL next to the executable, and everything that looks wrong but is not |
 | [Install-Lazarus-FPC.md](Install-Lazarus-FPC.md) | Using it with Free Pascal 3.2.2 / Lazarus: paths, **copying the Steam library by hand**, `cthreads`, differences from Delphi |
 | [GameEngineIntegration.md](GameEngineIntegration.md) | How callbacks are pumped - timer, worker thread or your own loop - and recipes for FMX, VCL, LCL, Castle Game Engine, Gorilla3D, Skia4Delphi and custom loops |
+| [VirtualGamepadModels.md](VirtualGamepadModels.md) | The VirtualGamepad demos: views, glow on controls in use, trackpad dots, the "in use" log lines; what a new pad model (Steam Deck, Switch) must contain |
 | [SteamInputMapping.md](SteamInputMapping.md) | Steam Input: the action manifest, shipping default layouts per controller type, development vs shipping, origins to physical buttons, which pad picture / model for which controller, troubleshooting |
 | [TestSetup.md](TestSetup.md) | Setting up the extra tests: a second Steam account for the two-user tests, Steam Cloud, Workshop and Inventory on the partner site (with the test item definitions) |
 | [components/](components/README.md) | One page per component / plug-in: every property, method, event and payload record |

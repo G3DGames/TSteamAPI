@@ -75,10 +75,23 @@ object frmGamepad: TfrmGamepad
         Text = 'Recenter motion'
         OnClick = mnuRecenterClick
       end
+      object mnuShowFront: TMenuItem
+        Locked = True
+        IsChecked = True
+        Text = 'Show front'
+        OnClick = mnuViewClick
+      end
       object mnuShowBack: TMenuItem
         Locked = True
+        Tag = 1
         Text = 'Show back'
-        OnClick = mnuShowBackClick
+        OnClick = mnuViewClick
+      end
+      object mnuShowTop: TMenuItem
+        Locked = True
+        Tag = 2
+        Text = 'Show top'
+        OnClick = mnuViewClick
       end
     end
   end

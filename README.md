@@ -174,11 +174,17 @@ demos/
                             camera; hold Start for the overlay menu (Menu
                             action set: D-pad, A, B) - with several pads a
                             controller row (D-pad left / right, A shows
-                            that pad), Return to App,
-                            Enable / Disable Motion (greyed out without
+                            that pad), Return to App, View (D-pad
+                            left / right: Front / Back / Top, A shows
+                            it), Enable / Disable Highlights, Enable /
+                            Disable Motion (greyed out without
                             motion sensors), Controller Settings (Steam's
                             binding panel - Big Picture has no window
-                            menu), Start / Stop Remote
+                            menu), Steam Hardware (greyed out unless
+                            Steam reports Steam hardware: a panel over
+                            the menu with what Steam and the program
+                            know about it, OK / A / B closes it), Start /
+                            Stop Remote
                             Logging, Exit (each choice closes it); a
                             one-line banner, the rest is the 3D view (no
                             log panel: log file + remote logging); same
@@ -261,7 +267,12 @@ tools/
   gen_steam_api.py          generates SDKTypes and the plug-ins from the SDK (see below)
   gen_icon_res.py           packages design/icons into the four palette-icon resource files
                             (.dcr for Delphi, .res for Lazarus); standard library only
-  gen_icons.py              redraws design/icons (needs Pillow and rsvg-convert)
+  gen_icons.py              redraws design/icons and the programs' task bar icons
+                            (<project>.ico / .icns beside each project; needs Pillow and
+                            rsvg-convert)
+  gen_pad_parts.py          writes PadParts.pas (where each control's part sits on the
+                            models: the glow) into the three VirtualGamepad demos; run it
+                            after a model in models/ is added or changed
   verify_generated.py       checks generated layouts and signatures against the SDK headers
   LayoutProbe/              GENERATED console program (verify_generated.py --probe): prints
                             the record layout a compiler really produced (--compare checks it)

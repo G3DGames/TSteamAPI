@@ -76,6 +76,13 @@ Copy exactly the depot files (section 2) into an empty folder and add, **for thi
 
 (Debug builds set the AppID themselves and never relaunch through Steam, so they run from anywhere without `steam_appid.txt`; they are for development, not for the depot.)
 
+## What it shows
+
+Views (front, back, top), the glow on controls in use, trackpad touches and
+the "in use" log lines are the same in all three VirtualGamepad demos: see
+[docs/VirtualGamepadModels.md](../../docs/VirtualGamepadModels.md). The part
+positions are compiled in (`src/PadParts.pas`), so no extra file is deployed.
+
 ## Check
 
 At start the log prints `Data folder: <folder>` (must be the .exe's folder) and then either `Deployment OK: manifest, 11 layouts, 3 models` or `Data not next to the program (... missing: <files>) ...`, naming exactly what is missing from the depot. Then `Frame rate: ... fps` every 5 s (Castle's own measurement).

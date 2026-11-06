@@ -16,6 +16,11 @@ uses
   FmxLinuxMenu in 'src\FmxLinuxMenu.pas',
   uMain in 'src\uMain.pas' {frmInput};
 
+// The project resource the IDE builds from the .dproj (git-ignored, rebuilt
+// on every build): its MAINICON is SteamInputDemo.ico, the program's task bar
+// icon (macOS: the .icns). Drawn by tools/gen_icons.py.
+{$R *.res}
+
 begin
 {$IFDEF DEBUG}
   // Debug builds list leaked blocks when the program ends (Windows only).

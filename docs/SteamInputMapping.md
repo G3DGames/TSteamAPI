@@ -226,7 +226,7 @@ leaves one out:
 | `LeftBumper`, `RightBumper` | shoulders | `switch`: `left_bumper`, `right_bumper` |
 | `DPadUp` / `Down` / `Left` / `Right` | d-pad | `dpad` (2015 Steam Controller: `left_trackpad` as a d-pad) |
 | `Start`, `Select` | Start / Menu / Options / +, Select / View / Create / - | `switch`: `button_escape`, `button_menu` |
-| `Gyro` *(optional)* | motion sensors, reported as MOUSE MOVEMENT (mode "absolute mouse": tilt the pad, x / y change) | `gyro`, mode `gyro_to_mouse`, always on - every pad that has one. The raw sensors (orientation quaternion, acceleration, rotation speed) are `GetMotionData`, separate from any binding |
+| `Gyro` *(optional)* | motion sensors, reported as MOUSE MOVEMENT (mode "absolute mouse": tilt the pad, x / y change) | `gyro`, mode `gyro_to_mouse`, always on (`"gyro_button" "0"` in the group's settings; without it Steam switches the gyro on only while the right trackpad - on the Deck also the right stick - is touched, and that touch then gives no `RightTrackpad` position) - every pad that has one. The raw sensors (orientation quaternion, acceleration, rotation speed) are `GetMotionData`, separate from any binding |
 | `LeftTrackpad`, `RightTrackpad` + `...Click` *(optional)* | trackpads: finger position (-1..1 like a stick, 0 when not touched) and press | `left_trackpad`, `right_trackpad`, mode `joystick_move` - Steam Deck, 2026 Steam Controller (on the 2015 one the trackpads ARE its right stick and d-pad) |
 | `CenterTrackpad` + `CenterTrackpadClick` *(optional)* | PlayStation touchpad: position and press | `center_trackpad` (confirmed on a PS5), mode `joystick_move` - PS4, PS5 |
 | `BackLeft`, `BackRight` *(optional)* | lower back paddles - L5 / R5 | `switch`: `button_back_left` / `_right` - Steam Controllers, Steam Deck |
@@ -388,7 +388,8 @@ itself, so a game can never bind them.
 `GetInputTypeForHandle(Pad)` gives each pad's type
 (`ESteamInputType`); SteamInputDemo logs it. For a game with its own pad
 art - such as the CC0 models in `models/` (Xbox One, PS5, Steam Controller;
-a Switch model is planned):
+Steam Deck and Switch models are commissioned; what a model must contain
+is in [VirtualGamepadModels.md](VirtualGamepadModels.md)):
 
 | `ESteamInputType` | Model |
 |---|---|

@@ -16,6 +16,12 @@ uses
   uNetworks in 'src\uNetworks.pas',
   uReceiver in 'src\uReceiver.pas' {frmReceiver};
 
+// The project resource the IDE builds from LogReceiver.dproj (git-ignored,
+// rebuilt on every build): its MAINICON is LogReceiver.ico - the ear that
+// tells LogReceiver apart on the task bar (owner 2026-11-05; macOS:
+// LogReceiver.icns, Icns_MainIcns). Drawn by tools/gen_icons.py.
+{$R *.res}
+
 begin
   Application.Initialize;
   Application.CreateForm(TfrmReceiver, frmReceiver);

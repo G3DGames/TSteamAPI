@@ -67,6 +67,13 @@ The Steam client must be running and logged in; AppID 480 is available to every 
 
 Files it writes: `VirtualGamepadLCL.log` **next to the .exe**: choose a folder you can write to. If it cannot be written the program still runs and says "Log file NOT written".
 
+## What it shows
+
+Views (front, back, top), the glow on controls in use, trackpad touches and
+the "in use" log lines are the same in all three VirtualGamepad demos: see
+[docs/VirtualGamepadModels.md](../../docs/VirtualGamepadModels.md). The part
+positions are compiled in (`src/PadParts.pas`), so no extra file is deployed.
+
 ## Check
 
 At start the log prints either `Deployment OK: manifest, 11 layouts, 3 models` or what is missing, naming exactly what to copy.

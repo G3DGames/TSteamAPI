@@ -36,7 +36,9 @@ right_trackpad (Steam Controller, Steam Deck), gyro.
 Every pad gets the same bindings (one InGame action per physical
 control, see SETS); layout() refuses to write a layout in which a
 non-optional action is unbound. The gyro (mode gyro_to_mouse, as Steam
-writes it; always on) is its own action, Gyro, on every pad with motion
+writes it; always on: "gyro_button" "0" - Steam's default on the Steam Deck
+and Steam Controller is "on while the right trackpad is touched", and that
+touch then gives no RightTrackpad position) is its own action, Gyro, on every pad with motion
 sensors.
 
 This is the core of the planned mapping tool (CLAUDE.md, "PROJECT AIM"):
@@ -340,7 +342,7 @@ class Profile:
 
 PROFILES = {
     "input": Profile(OUTS, "steam_controllers.vdf", "controller_", TITLE, DESCRIPTION, "SteamInputDemo",
-                     SETS, LOCALIZATION, BINDINGS, OPTIONAL, {}, 20, False,
+                     SETS, LOCALIZATION, BINDINGS, OPTIONAL, {}, 21, False,
                      "TSteamAPI Steam Input test: one action per physical control."),
     "pad": Profile(PAD_OUTS, PAD_MANIFEST_NAME, "pad_controller_", PAD_TITLE, PAD_DESCRIPTION, "SteamDemoPad",
                    PAD_SETS, PAD_LOCALIZATION, PAD_BINDINGS, {}, PAD_MODES, PAD_LAYOUT_REVISION, True,
@@ -437,7 +439,10 @@ def manifest(pr):
 #  20 - 2026-11-03: no content change - a jump well above any revision an
 #       old test used, so Steam replaces a stale stored copy (an AppID
 #       reused from an old test kept loading its old layout; owner)
-LAYOUT_REVISION = 20
+#  21 - 2026-11-06: gyro groups get "gyro_button" "0" (always on): Steam's
+#       default on the Deck / Steam Controller switched the gyro on with a
+#       right-trackpad touch, and that touch gave no RightTrackpad position
+LAYOUT_REVISION = 21
 assert PROFILES["input"].revision == LAYOUT_REVISION
 
 # File name of the action manifest (the programs' MANIFEST_FILE and
@@ -526,10 +531,23 @@ def layout(pr, ctype):
             w.close()
             whole = [a for i, a in mine if i is None]
             assert len(whole) <= 1, f"{ctype}: {src} drives two analog actions {whole}"
-            if whole:
+            # the gyro always on: without "gyro_button" Steam turns it on only
+            # while the right trackpad (Steam Controller; Deck: also the right
+            # stick) is touched - and a touch that switches the gyro on gives
+            # no RightTrackpad position (owner's Steam Deck log 2026-11-06;
+            # Steam's own text: "By default, the gyro only sends input to the
+            # game when you're touching the Right Joystick or Right
+            # Trackpad"). 0 = "Gyro Enable Button - Always On" (GyroNone, the
+            # first of Steam's gyro button choices).
+            gyro_always = src == "gyro"
+            if whole or gyro_always:
                 w.open("settings")
-                w.kv("virtual_mode", "1")
+                if whole:
+                    w.kv("virtual_mode", "1")
+                if gyro_always:
+                    w.kv("gyro_button", "0")
                 w.close()
+            if whole:
                 w.open("gameactions")
                 w.kv(set_name, whole[0])
                 w.close()

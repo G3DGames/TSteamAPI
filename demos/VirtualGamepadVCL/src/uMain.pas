@@ -54,10 +54,10 @@ uses
   X3DNodes,
   Steamworks.VCL,
   Steamworks.Types, Steamworks.SDKTypes, Steamworks.Core, Steamworks.Components,
-  Steamworks.Plugin.Input,
+  Steamworks.Plugin.Input, Steamworks.Plugin.Utils,
   // optional remote logging (RemoteLogging/src, nothing to do with Steam)
   RemoteLog.Sender,
-  PadAnimator;
+  PadAnimator, PadParts, PadActivity;
 
 type
   { The InGame actions of @link(MANIFEST_FILE): one per physical
@@ -75,7 +75,29 @@ type
 
   { The overlay menu's items, top to bottom (oiController only with more
     than one controller connected). }
-  TOverlayItem = (oiController, oiReturn, oiMotion, oiSettings, oiRemoteLog, oiExit);
+  TOverlayItem = (oiController, oiReturn, oiView, oiGlow, oiMotion,
+    oiSettings, oiHardware, oiRemoteLog, oiExit);
+
+  { The views of the model (overlay menu, View menu): where the camera looks
+    from, relative to the front view (VIEW_AZIMUTH, VIEW_INCLINATION). }
+  TPadView = (
+    { The face, as the player sees it. }
+    pvFront,
+    { The back (paddles): azimuth 180. }
+    pvBack,
+    { The top edge (bumpers, triggers) from above: azimuth 180,
+      inclination 90 (owner 2026-11-05). }
+    pvTop);
+
+  { A trackpad: the left and right pads (Steam Deck, Steam Controller),
+    the PlayStation touchpad in the middle. }
+  TTrackpadSide = (
+    { Left pad. }
+    tsLeft,
+    { Right pad. }
+    tsRight,
+    { The PlayStation touchpad. }
+    tsCenter);
 
 const
   { Posted to the form: close it after the current poll (the overlay
@@ -131,8 +153,12 @@ type
     mnuMotion: TMenuItem;
     { Takes the pad's present orientation as the model's front view. }
     mnuRecenter: TMenuItem;
-    { Turns the model round to show its back or its face again. }
+    { View > Show front (Tag 0 = pvFront). }
+    mnuShowFront: TMenuItem;
+    { View > Show back (Tag 1 = pvBack). }
     mnuShowBack: TMenuItem;
+    { View > Show top (Tag 2 = pvTop). }
+    mnuShowTop: TMenuItem;
     { Puts the camera back where it showed the whole model. }
     mnuResetView: TMenuItem;
     { The Steam root component (Active False: tmStart opens Steam). }
@@ -158,8 +184,9 @@ type
     procedure mnuMotionClick(Sender: TObject);
     { View > Recenter motion. }
     procedure mnuRecenterClick(Sender: TObject);
-    { View > Show back / Show face. }
-    procedure mnuShowBackClick(Sender: TObject);
+    { View > Show front / Show back / Show top (the item's Tag is the
+      view). }
+    procedure mnuViewClick(Sender: TObject);
     { View > Reset view. }
     procedure mnuResetViewClick(Sender: TObject);
     { SteamAPI1.OnLog: core log messages. }
@@ -214,14 +241,58 @@ type
     FLastFrame: TDateTime;
     { Turn the model with the pad's motion sensors. }
     FFollowMotion: Boolean;
+    { The controls in use glow (overlay menu: Enable / Disable Highlights;
+      on at start). Off: no glow on the model; the touch dots and the 2D
+      trackpad squares stay. }
+    FGlowOn: Boolean;
+    { "clicked but no touch position" was logged for this trackpad. }
+    FNoTouchLogged: array[TTrackpadSide] of Boolean;
     { Orientation of the pad that counts as "facing the camera". }
     FMotionZero: TPadQuat;
     { @link(FMotionZero) is set. }
     FHasMotionZero: Boolean;
     { The next motion data becomes @link(FMotionZero). }
     FRecenter: Boolean;
-    { Show the model's back instead of its face. }
-    FShowBack: Boolean;
+    { The view chosen (overlay menu or View menu). }
+    FView: TPadView;
+    { Which controls are in use: the "in use" log lines, the glow and the
+      trackpad touches (PadActivity; one index per TInputAction). }
+    FActivity: TPadActivity;
+    { A button held when the overlay menu closed: not a new press until it
+      has been let go (the A that chose an item reached the InGame set as a
+      press - owner's Steam Deck log 2026-11-05). }
+    FHeldAtClose: array[TInputAction] of Boolean;
+    { When the overlay menu closed (PadNowMs). }
+    FMenuClosedAt: UInt64;
+    { The glow spheres, one per moving part of the model (children of
+      @link(FScene), owned and freed by it). }
+    FHalos: array of TCastleSphere;
+    { The part key (PadParts Key) of each of @link(FHalos): the clips of one
+      key share a halo (a stick and its click), the D-pad has one per arm. }
+    FHaloKeys: array of string;
+    { For each of @link(FHalos): the halo of the part that mirrors it left /
+      right (Menu - View, L4 - R4, D-pad left - right; itself when none).
+      The back and top views glow that one, so the glow shows on the side
+      of the screen the player's hand is on (owner 2026-11-05). }
+    FHaloMirror: array of Integer;
+    { Index in @link(FHalos) of each action's part (-1: none). }
+    FHaloOf: array[TInputAction] of Integer;
+    { The model marks this trackpad (PadParts): glow and dot on the model. }
+    FPadMarked: array[TTrackpadSide] of Boolean;
+    { Where each marked trackpad sits on the model. }
+    FPadMarker: array[TTrackpadSide] of TPadTrackpad;
+    { The touch dot on the model, per marked trackpad (owned by the scene). }
+    FPadDot3D: array[TTrackpadSide] of TCastleSphere;
+    { The glow on the model, per marked trackpad (owned by the scene). }
+    FPadGlow3D: array[TTrackpadSide] of TCastleSphere;
+    { The 2D stand-in of each trackpad the model does not mark (bottom of
+      the view). }
+    FPadPanel: array[TTrackpadSide] of TCastleShape;
+    { The touch dot in each of @link(FPadPanel). }
+    FPadPanelDot: array[TTrackpadSide] of TCastleShape;
+    { The trackpad was used since the controller appeared: its 2D stand-in
+      is shown. }
+    FPadSeen: array[TTrackpadSide] of Boolean;
     { The pad's rotation last applied (relative to @link(FMotionZero)). }
     FLastMotion: TPadQuat;
     { The controller shown has reported real motion data. }
@@ -240,6 +311,12 @@ type
     { Pressed state of each Menu action in the last frame (True when the
       overlay opens, so a button already held must be let go first). }
     FMenuPressed: array[TMenuAction] of Boolean;
+    { When a held Menu up / down moves again (PadNowMs; 0 = not before it
+      is let go and pressed again). }
+    FMenuRepeatAt: array[TMenuAction] of UInt64;
+    { The view the overlay's view row names (left / right change it, A
+      shows it). }
+    FMenuView: TPadView;
     { Every handle is non-zero. }
     FResolved: Boolean;
     { The "handles still 0" hint was logged. }
@@ -286,6 +363,16 @@ type
     FOverlayLabels: array[TOverlayItem] of TCastleLabel;
     { The key help at the bottom of the overlay (made last). }
     FOverlayHint: TCastleLabel;
+    { The Steam hardware panel over the menu (dims the menu; nil until
+      the overlay is made). }
+    FInfo: TCastleRectangleControl;
+    { The panel's text (HardwareInfoText). }
+    FInfoText: TCastleLabel;
+    { The Steam hardware panel is shown: A or B close it. }
+    FInfoOpen: Boolean;
+    { What IsRunningOnSteamHardware reported (0: none, or not known:
+      the overlay's Steam Hardware item is greyed out). }
+    FSteamHardware: Integer;
     { Every line logged so far (sent first when remote logging starts);
       the oldest are dropped past LOG_KEEP_LINES. }
     FLogLines: TStringList;
@@ -331,7 +418,8 @@ type
     { Writes one joint's pose into Castle (FAnimator.OnApplyJoint). }
     procedure ApplyJoint(AJoint: Integer; const ATranslation: TAnimVec3;
       const ARotation: TAnimQuat);
-    { Puts the model in its front (or back) view, rotated by AQ. }
+    { Puts the model in the chosen view (@link(FView)), turned by AQ (the
+      pad's motion). }
     procedure SetModelRotation(const AQ: TPadQuat);
     { Turns the model to the pad's orientation when motion is on. }
     procedure ApplyMotion(const M: InputMotionData_t);
@@ -341,8 +429,26 @@ type
     procedure AnimateAnalog(A: TInputAction; X, Y: Single);
     { Presses or releases the clip of button action A. }
     procedure AnimateButton(A: TInputAction; APressed: Boolean);
-    { Puts every clip back to rest and forgets the analog values. }
+    { The clip to play for AClip in the view shown: in the back and top
+      views the paddles, triggers and bumpers play their left / right
+      twin, as the glow does (owner 2026-11-06); else AClip. }
+    function AnimClip(const AClip: string): string;
+    { Puts every clip back to rest and forgets the analog values; what
+      glowed fades out. }
     procedure ResetAnimState;
+    { Shows view AView (overlay menu, View menu) and frames it; AWhy names
+      what asked in the log. }
+    procedure SetView(AView: TPadView; const AWhy: string);
+    { Puts a glow sphere on every moving part of the model loaded
+      (PadParts), and a glow and a touch dot on each trackpad it marks. }
+    procedure CreateGlow;
+    { Shows how strongly each part glows, the trackpad touches and the 2D
+      trackpads (every poll). }
+    procedure UpdateGlow;
+    { Creates the 2D stand-ins of the trackpads (hidden until used). }
+    procedure CreateTrackpadPanels;
+    { Receives the "in use" lines of @link(FActivity). }
+    procedure ActivityLog(const AText: string);
     { The started ISteamInput plug-in, or @nil. }
     function Input: TSteamInputPlugin;
     { Full path of @link(MANIFEST_FILE), or '' when not found. }
@@ -372,10 +478,28 @@ type
     function OverlayItemEnabled(I: TOverlayItem): Boolean;
     { Redraws the overlay (texts, greying, highlight, layout). }
     procedure UpdateOverlay;
-    { Moves the highlight ADelta items, skipping disabled ones. }
+    { Moves the highlight ADelta items, skipping disabled ones; wraps round
+      at the ends. }
     procedure MoveOverlay(ADelta: Integer);
     { The controller row's text. }
     function PadRowText: string;
+    { The overlay's view row: the view it names, between arrows. }
+    function ViewRowText: string;
+    { Left / right on the view row: names the next or previous view
+      (wraps round); A shows it. }
+    procedure CycleView(ADelta: Integer);
+    { Creates the Steam hardware panel (hidden) in the overlay. }
+    procedure CreateInfo;
+    { Everything ISteamUtils and the program know about the hardware,
+      one "name: value" line each. }
+    function HardwareInfoText: string;
+    { Shows the Steam hardware panel over the menu. }
+    procedure OpenInfo;
+    { Hides the Steam hardware panel: back to the menu. }
+    procedure CloseInfo;
+    { Mouse press on the panel's OK button. }
+    procedure InfoOkPress(const Sender: TCastleUserInterface;
+      const Event: TInputPressRelease; var Handled: Boolean);
     { Moves the controller row ADelta pads on, wrapping. }
     procedure CyclePad(ADelta: Integer);
     { Does what the highlighted item says, then closes the overlay. }
@@ -418,7 +542,7 @@ implementation
 uses
   System.DateUtils,
   System.Math,       // before System.StrUtils, whose string IfThen must win
-  System.StrUtils, CastleUriUtils, Steamworks.API, Steamworks.Versions;
+  System.StrUtils, CastleUriUtils, CastleRenderOptions, Steamworks.API, Steamworks.Versions;
 
 const
   { Manifest file name. }
@@ -475,9 +599,79 @@ const
   MAX_POLL_ERRORS = 3;
   { The identity rotation. }
   QUAT_IDENTITY: TPadQuat = (X: 0; Y: 0; Z: 0; W: 1);
-  { Half a turn about Y: the model's back to the camera (View > Show
-    back). Castle and glTF are both Y-up, so the face needs no turn. }
-  QUAT_HALF_TURN_Y: TPadQuat = (X: 0; Y: 1; Z: 0; W: 0);
+  { Camera azimuth of each view in degrees, relative to the front view: a
+    turn about the vertical axis - the numbers VirtualGamepad gives its
+    orbit camera (Sprite3DCamera.Azimuth). Castle turns the MODEL the other
+    way instead (ViewQuat). Castle and glTF are both Y-up, so the front
+    view needs no turn. }
+  VIEW_AZIMUTH: array[TPadView] of Single = (0, 180, 180);
+  { Camera inclination of each view in degrees above the front view's
+    level (Sprite3DCamera.PolarAngle; 90 = straight down from above). }
+  VIEW_INCLINATION: array[TPadView] of Single = (0, 0, 90);
+  { Name of each view (log, overlay menu). }
+  VIEW_NAMES: array[TPadView] of string = ('Front', 'Back', 'Top');
+  { Glow colour, red part 0..1: cyan, seen on black and on white plastic. }
+  GLOW_RED = 0.25;
+  { Glow colour, green part. }
+  GLOW_GREEN = 0.85;
+  { Glow colour, blue part. }
+  GLOW_BLUE = 1.0;
+  { Opacity of a glow sphere at full glow. }
+  GLOW_ALPHA = 0.25;
+  { A glow sphere's radius as a multiple of its part's (PadParts): it covers
+    the part however far it moves. }
+  GLOW_SCALE = 1.15;
+  { Smallest glow radius, model units (the Steam Controller's View button
+    is 0.006). }
+  GLOW_MIN_RADIUS = 0.03;
+  { Milliseconds after the overlay menu closed in which a button still
+    counts as held from the menu (the InGame set needs a few polls to
+    report it held). }
+  HELD_GRACE_MS = 250;
+  { Size of a 2D trackpad stand-in, UI units. }
+  PAD_PANEL_SIZE = 140;
+  { Size of the touch dot in a 2D stand-in, UI units. }
+  PAD_DOT_SIZE = 18;
+  { Each trackpad's touch (position) action. }
+  TrackpadTouch: array[TTrackpadSide] of TInputAction =
+    (iaLeftTrackpad, iaRightTrackpad, iaCenterTrackpad);
+  { Each trackpad's click action. }
+  TrackpadClick: array[TTrackpadSide] of TInputAction =
+    (iaLeftTrackpadClick, iaRightTrackpadClick, iaCenterTrackpadClick);
+  { Each trackpad's marker name in a model (PadParts, node Trackpad_<side>). }
+  TrackpadSideNames: array[TTrackpadSide] of string = ('Left', 'Right', 'Center');
+  { The trackpad on the other side: seen from the back or the top, a
+    marked trackpad shows the other one's click and touch (as the
+    halos, FHaloMirror). }
+  TrackpadMirror: array[TTrackpadSide] of TTrackpadSide = (tsRight, tsLeft, tsCenter);
+  { Menu up / down held: moves again every this many milliseconds (as
+    SteamDemoPad's menu). }
+  MENU_REPEAT_MS = 500;
+  { Size of the Steam hardware panel. }
+  INFO_WIDTH = 640;
+  { See @link(INFO_WIDTH). }
+  INFO_HEIGHT = 470;
+  { How far of the way to its peak the Steam Controller model's DPad_Up
+    clip goes: at its full 5 degrees the up arm sinks into the body
+    (measured: from about 0.5 on, more of the arm is hidden behind the
+    body than at rest). }
+  DPAD_UP_PEAK = 0.5;
+  { Clips swapped with their twin in the back and top views (AnimClip):
+    pairs, left then right. }
+  MIRRORED_CLIPS: array[0..7] of string = ('Shoulder_Left_Press', 'Shoulder_Right_Press',
+    'Trigger_Left_Press_Full', 'Trigger_Right_Press_Full', 'L4_Press', 'R4_Press',
+    'L5_Press', 'R5_Press');
+  { Caption of each 2D trackpad stand-in. }
+  TrackpadCaptions: array[TTrackpadSide] of string = ('Left trackpad', 'Right trackpad', 'Touchpad');
+  { Name of each analog action in the "in use" lines ("Left stick:
+    horizontal motion"); the buttons use ActionNames. }
+  AnalogCaptions: array[TInputAction] of string =
+    ('Left stick', 'Right stick', 'Gyro',
+     'Left trackpad', 'Right trackpad', 'Touchpad', 'Left trigger', 'Right trigger',
+     '', '', '', '', '', '',
+     '', '', '', '', '', '',
+     '', '', '', '', '', '',
+     '', '', '');
   { Overlay item height and gap, in Castle UI units. }
   ITEM_HEIGHT = 48;
   { See @link(ITEM_HEIGHT). }
@@ -592,6 +786,74 @@ begin
   end;
 end;
 
+{ The clip whose part glows when action A is used (PadParts).
+  @param(A The action.)
+  @param(APlayStation The model uses the PlayStation clip names.)
+  @returns(Clip name, or '' when nothing on the model glows for it - the
+    gyro, and the trackpads, which are drawn on their own.) }
+function PartClip(A: TInputAction; APlayStation: Boolean): string;
+begin
+  case A of
+    iaLeftStick:    Result := 'Stick_Left_Up';
+    iaRightStick:   Result := 'Stick_Right_Up';
+    iaLeftTrigger:  Result := 'Trigger_Left_Press_Full';
+    iaRightTrigger: Result := 'Trigger_Right_Press_Full';
+  else
+    Result := ButtonClip(A, APlayStation);
+  end;
+end;
+
+{ What kind of control action A is for PadActivity.
+  @param(A The action.)
+  @returns(Its kind.) }
+function ActivityKind(A: TInputAction): TPadControlKind;
+begin
+  case A of
+    iaLeftStick, iaRightStick:                          Result := pckStick;
+    iaGyro:                                             Result := pckGyro;
+    iaLeftTrackpad, iaRightTrackpad, iaCenterTrackpad:  Result := pckTrackpad;
+    iaLeftTrigger, iaRightTrigger:                      Result := pckTrigger;
+  else
+    Result := pckButton;
+  end;
+end;
+
+{ Steam's name for a Steam hardware type (ISteamUtils
+  IsRunningOnSteamHardware, SDK 1.65).
+  @param(AType The ordinal Steam returned.)
+  @returns(Its name; "unknown (n)" for one newer than this program.) }
+function SteamHardwareName(AType: Integer): string;
+begin
+  case AType of
+    0: Result := 'none (not Steam hardware)';
+    1: Result := 'Steam Deck';
+    2: Result := 'Steam Machine';
+    3: Result := 'Steam Frame';
+  else
+    Result := Format('unknown (%d)', [AType]);
+  end;
+end;
+
+{ Steam's name for a default-config value (ISteamUtils
+  GetSteamHardwareDefaultConfig, SDK 1.65).
+  @param(AConfig The ordinal Steam returned.)
+  @returns(Its name; "unknown (n)" for one newer than this program.) }
+function SteamHardwareConfigName(AConfig: Integer): string;
+begin
+  case AConfig of
+    0: Result := 'none';
+    1: Result := 'low';
+    2: Result := 'medium';
+    3: Result := 'high';
+    4: Result := 'max';
+    5: Result := 'Steam Deck';
+    6: Result := 'Steam Machine';
+    7: Result := 'Steam Frame';
+  else
+    Result := Format('unknown (%d)', [AConfig]);
+  end;
+end;
+
 { Quaternion product A * B (B applied first).
   @param(A Left factor.)
   @param(B Right factor.)
@@ -613,6 +875,45 @@ begin
   Result.Y := -Q.Y;
   Result.Z := -Q.Z;
   Result.W := Q.W;
+end;
+
+{ A turn of ADegrees about the axis (AX, AY, AZ) (a unit vector).
+  @returns(The rotation.) }
+function QuatAxis(AX, AY, AZ, ADegrees: Single): TPadQuat;
+var
+  S: Single;
+begin
+  S := Sin(DegToRad(ADegrees) / 2);
+  Result.X := AX * S;
+  Result.Y := AY * S;
+  Result.Z := AZ * S;
+  Result.W := Cos(DegToRad(ADegrees) / 2);
+end;
+
+{ The turn of the MODEL that shows view V to a camera that stays at the
+  front: the inverse of moving the camera by VIEW_AZIMUTH (about the
+  vertical axis) and VIEW_INCLINATION (over the top) - Rx(inclination) *
+  Ry(-azimuth). Top (180, 90) then shows the top edge from above with the
+  face towards the top of the screen, as VirtualGamepad's camera does.
+  @param(V The view.)
+  @returns(The model's turn.) }
+function ViewQuat(V: TPadView): TPadQuat;
+begin
+  Result := QuatMul(QuatAxis(1, 0, 0, VIEW_INCLINATION[V]), QuatAxis(0, 1, 0, -VIEW_AZIMUTH[V]));
+end;
+
+{ The glow colour at strength ALevel (0..1).
+  @returns(Cyan, its opacity GLOW_ALPHA * ALevel.) }
+function GlowColor(ALevel: Single): TCastleColor;
+begin
+  Result := Vector4(GLOW_RED, GLOW_GREEN, GLOW_BLUE, GLOW_ALPHA * ALevel);
+end;
+
+{ The touch dot's colour.
+  @returns(Opaque yellow.) }
+function DotColor: TCastleColor;
+begin
+  Result := Vector4(1, 0.83, 0, 1);
 end;
 
 { A pad rotation as the animator's quaternion type.
@@ -662,6 +963,7 @@ end;
 procedure TfrmGamepadVCL.FormCreate(Sender: TObject);
 var
   LogFileError: string;
+  A: TInputAction;
 begin
   LogFileError := '';
   FLogLines := TStringList.Create;
@@ -700,6 +1002,14 @@ begin
   FStickSign := 1;
   FAnimator := TPadAnimator.Create;
   FAnimator.OnApplyJoint := ApplyJoint;
+  FView := pvFront;
+  FGlowOn := True;
+  // which controls are in use: log lines, glow, trackpad touches
+  FActivity := TPadActivity.Create(Ord(High(TInputAction)) + 1);
+  FActivity.OnLog := ActivityLog;
+  for A := Low(TInputAction) to High(TInputAction) do
+    FActivity.Define(Ord(A), ActivityKind(A), IfThen(AnalogCaptions[A] <> '', AnalogCaptions[A],
+      ActionNames[A]));
   ResetState;
   AddLog('Virtual Gamepad (VCL / Castle Game Engine), AppID ' + IntToStr(SteamAPI1.AppID));
   if FLogFile <> '' then
@@ -717,7 +1027,7 @@ begin
     on E: Exception do
       AddLog('Overlay menu could not be created: ' + E.ClassName + ': ' + E.Message);
   end;
-  AddLog(Format('Hold Start for %d ms for the overlay menu (motion, controller settings, remote logging, controller, exit). '
+  AddLog(Format('Hold Start for %d ms for the overlay menu (views, highlights, motion, controller settings, remote logging, controller, exit). '
     + 'Drag on the 3D view to turn it, wheel to zoom. Steam is opened automatically.',
     [LONG_PRESS_MS]));
 end;
@@ -729,6 +1039,7 @@ begin
   FreeAndNil(FSender);
   inherited;
   FreeAndNil(FAnimator);
+  FreeAndNil(FActivity);
   FreeAndNil(FLogLines);
 end;
 
@@ -814,6 +1125,8 @@ begin
   FViewport.Camera.Add(FLight);
   FNavigation := TCastleExamineNavigation.Create(Self);
   FViewport.InsertFront(FNavigation);
+  // the 2D trackpads before the overlay menu, which must stay in front
+  CreateTrackpadPanels;
   AddLog('3D scene created: Castle Game Engine control, viewport, examine navigation, '
     + 'directional light on the camera');
   FFpsTimer := TTimer.Create(Self);
@@ -835,6 +1148,9 @@ begin
 end;
 
 procedure TfrmGamepadVCL.RemoveModel;
+var
+  A: TInputAction;
+  S: TTrackpadSide;
 begin
   if FScene <> nil then
   begin
@@ -843,6 +1159,17 @@ begin
     AddLog('Model removed: ' + FModelFile);
   end;
   FJointNodes := nil;
+  // the glow spheres and dots were the scene's (owned by it): gone with it
+  FHalos := nil;
+  FHaloKeys := nil;
+  for A := Low(TInputAction) to High(TInputAction) do
+    FHaloOf[A] := -1;
+  for S := Low(TTrackpadSide) to High(TTrackpadSide) do
+  begin
+    FPadMarked[S] := False;
+    FPadDot3D[S] := nil;
+    FPadGlow3D[S] := nil;
+  end;
   if FAnimator <> nil then
     FAnimator.StopAll;
   FModelFile := '';
@@ -893,13 +1220,19 @@ begin
       FStickSign := -1
     else
       FStickSign := 1;
+    // the Steam Controller model's D-pad tilts into the body at the
+    // top edge at DPad_Up's full peak (owner 2026-11-06): it stops part
+    // of the way (DPAD_UP_PEAK)
+    if FileName = MODEL_STEAM then
+      FAnimator.LimitPeak('DPad_Up', DPAD_UP_PEAK);
     AddLog(Format('Animator: %d moving clips of %d, %d joints moved, %s clip names%s',
       [FAnimator.ClipCount, FAnimator.FileClipCount, FAnimator.JointCount,
        IfThen(FPlayStation, 'PlayStation', 'Xbox / Steam'),
        IfThen(Missing = '', '', '; NO Castle node for:' + Missing)]));
     ResetAnimState;
-    // turns about the model's middle
+    // turns about the model's middle (before the glow spheres are added)
     FScene.Center := FScene.LocalBoundingBox.Center;
+    CreateGlow;
     FHasMotionZero := False;
     FLastMotion := QUAT_IDENTITY;
     SetModelRotation(QUAT_IDENTITY);
@@ -935,10 +1268,9 @@ begin
   FLastMotion := AQ;
   if FScene = nil then
     Exit;
-  if FShowBack then
-    Q := QuatMul(AQ, QUAT_HALF_TURN_Y)
-  else
-    Q := AQ;
+  // the view outermost: the pad's motion turns the model, the view decides
+  // the side the camera sees it from (as VirtualGamepad's camera does)
+  Q := QuatMul(ViewQuat(FView), AQ);
   // Steam's motion axes against Castle's: NOT YET SEEN on screen
   FScene.Rotation := QuatToCastleRotation(ToAnimQuat(Q));
 end;
@@ -1042,6 +1374,7 @@ begin
   begin
     FActionHandles[A] := 0;
     FPressed[A] := False;
+    FHeldAtClose[A] := False;
   end;
   FStartDownAt := 0;
   FStartUsed := False;
@@ -1205,15 +1538,46 @@ begin
   AddLog('Recenter: the pad''s next orientation becomes the front view');
 end;
 
-procedure TfrmGamepadVCL.mnuShowBackClick(Sender: TObject);
+procedure TfrmGamepadVCL.mnuViewClick(Sender: TObject);
 begin
-  FShowBack := not FShowBack;
-  if FShowBack then
-    mnuShowBack.Caption := 'Show face'
-  else
-    mnuShowBack.Caption := 'Show back';
+  SetView(TPadView((Sender as TMenuItem).Tag), 'View menu');
+end;
+
+procedure TfrmGamepadVCL.SetView(AView: TPadView; const AWhy: string);
+var
+  A: TInputAction;
+  WasSwapped: Boolean;
+begin
+  WasSwapped := FView <> pvFront;
+  FView := AView;
+  // front <-> back / top: the paddles, triggers and bumpers change clips
+  // (AnimClip), so everything goes to rest and what is held is pressed
+  // again on its new clip; the analog controls follow from the next poll
+  if (WasSwapped <> (AView <> pvFront)) and (FAnimator <> nil) and (FScene <> nil) then
+  begin
+    FAnimator.StopAll;
+    for A := Low(TInputAction) to High(TInputAction) do
+    begin
+      FAnimX[A] := 0;
+      FAnimY[A] := 0;
+      if FPressed[A] and not ActionAnalog[A] then
+        AnimateButton(A, True);
+    end;
+  end;
+  mnuShowFront.Checked := AView = pvFront;
+  mnuShowBack.Checked := AView = pvBack;
+  mnuShowTop.Checked := AView = pvTop;
   SetModelRotation(FLastMotion);
-  AddLog('Model shows its ' + IfThen(FShowBack, 'back', 'face'));
+  // frame the model as it now faces the camera (hidden glow spheres do not
+  // count: a transform that does not exist has no bounding box)
+  if FScene <> nil then
+  begin
+    FNavigation.ModelBox := FScene.BoundingBox;
+    FViewport.AssignDefaultCamera;
+  end;
+  AddLog(Format('View: %s (%s; camera azimuth %s, inclination %s from the front view)',
+    [VIEW_NAMES[AView], AWhy, F2(VIEW_AZIMUTH[AView]), F2(VIEW_INCLINATION[AView])]));
+  UpdateOverlay;
 end;
 
 procedure TfrmGamepadVCL.mnuResetViewClick(Sender: TObject);
@@ -1242,10 +1606,31 @@ end;
 
 procedure TfrmGamepadVCL.SteamInitialized(Sender: TObject);
 var
+  U: TSteamUtilsPlugin;
   P: TSteamInputPlugin;
   Path: string;
 begin
   AddLog('OnInitialized: Steam is running');
+  // which Steam hardware this runs on (SDK 1.65 replaced
+  // IsRunningOnSteamDeck with IsRunningOnSteamHardware; Valve: for
+  // diagnostics, not for gameplay decisions)
+  U := TSteamUtilsPlugin(SteamAPI1.Steam.FindPlugin(TSteamUtilsPlugin));
+  if U = nil then
+    AddLog('Steam hardware: the ISteamUtils plug-in is not active')
+  else if not Assigned(U.Flat.IsRunningOnSteamHardware) then
+    AddLog('Steam hardware: not reported (steam_api older than SDK 1.65)')
+  else
+  try
+    FSteamHardware := Ord(U.IsRunningOnSteamHardware);
+    AddLog('Steam hardware: ' + SteamHardwareName(FSteamHardware)
+      + IfThen(Assigned(U.Flat.GetSteamHardwareDefaultConfig), ', default config '
+        + SteamHardwareConfigName(Ord(U.GetSteamHardwareDefaultConfig)), '')
+      + IfThen(Assigned(U.Flat.IsRunningUnderProton), ', under Proton: '
+        + BoolToStr(U.IsRunningUnderProton, True), ''));
+  except
+    on E: Exception do
+      AddLog('Steam hardware: ' + E.ClassName + ': ' + E.Message);
+  end;
   ResetState;
   P := SteamInput1.Plugin;
   if P = nil then
@@ -1404,6 +1789,7 @@ var
   List: TSteamInputHandleArray;
   First: InputHandle_t;
   A: TInputAction;
+  S: TTrackpadSide;
   I: Integer;
 begin
   List := P.ConnectedControllers;
@@ -1425,8 +1811,15 @@ begin
     Exit;
   FActive := First;
   for A := Low(TInputAction) to High(TInputAction) do
+  begin
     FPressed[A] := False;
+    FHeldAtClose[A] := False;
+  end;
   ResetAnimState;
+  // another pad: nothing in use, no 2D trackpads until this one uses them
+  FActivity.Reset;
+  for S := Low(TTrackpadSide) to High(TTrackpadSide) do
+    FPadSeen[S] := False;
   FMotionLogged := False;
   FHasMotionZero := False;
   FHasMotion := False;
@@ -1497,6 +1890,8 @@ begin
   end;
   if FAnimator <> nil then
     FAnimator.StopAll;
+  if FActivity <> nil then
+    FActivity.ReleaseAll(PadNowMs);
 end;
 
 procedure TfrmGamepadVCL.AnimateButton(A: TInputAction; APressed: Boolean);
@@ -1505,7 +1900,7 @@ var
 begin
   if FScene = nil then
     Exit;
-  Clip := ButtonClip(A, FPlayStation);
+  Clip := AnimClip(ButtonClip(A, FPlayStation));
   if Clip = '' then
     Exit;
   // a clip the model lacks returns False (the Xbox model has no paddles)
@@ -1513,6 +1908,18 @@ begin
     FAnimator.Press(Clip)
   else
     FAnimator.Release(Clip);
+end;
+
+function TfrmGamepadVCL.AnimClip(const AClip: string): string;
+var
+  I: Integer;
+begin
+  Result := AClip;
+  if FView = pvFront then
+    Exit;
+  for I := 0 to High(MIRRORED_CLIPS) do
+    if MIRRORED_CLIPS[I] = AClip then
+      Exit(MIRRORED_CLIPS[I xor 1]);
 end;
 
 procedure TfrmGamepadVCL.AnimateAnalog(A: TInputAction; X, Y: Single);
@@ -1536,20 +1943,24 @@ begin
         FAnimator.SetAxis('Stick_Right_Down', 'Stick_Right_Up', FStickSign * Y);
       end;
     iaLeftTrigger:
-      FAnimator.SetValue('Trigger_Left_Press_Full', X);
+      FAnimator.SetValue(AnimClip('Trigger_Left_Press_Full'), X);
     iaRightTrigger:
-      FAnimator.SetValue('Trigger_Right_Press_Full', X);
+      FAnimator.SetValue(AnimClip('Trigger_Right_Press_Full'), X);
   end;
 end;
 
 procedure TfrmGamepadVCL.ReadActions(P: TSteamInputPlugin);
 var
   A: TInputAction;
+  S: TTrackpadSide;
+  X, Y: Single;
   D: InputDigitalActionData_t;
   An: InputAnalogActionData_t;
   OpenMenu: Boolean;
+  NowMs: UInt64;
 begin
   OpenMenu := False;
+  NowMs := PadNowMs;
   for A := Low(TInputAction) to High(TInputAction) do
   begin
     if FActionHandles[A] = 0 then
@@ -1558,15 +1969,41 @@ begin
     begin
       An := P.GetAnalogActionData(FActive, FActionHandles[A]);
       AnimateAnalog(A, An.x, An.y);
+      // in use or not: logged without values, drives the glow and the
+      // trackpad dot
+      FActivity.SetAnalog(Ord(A), An.x, An.y, NowMs);
     end
     else
     begin
       D := P.GetDigitalActionData(FActive, FActionHandles[A]);
+      // held since the overlay menu closed (the A that chose the item): not
+      // a new press until it has been let go after HELD_GRACE_MS
+      if FHeldAtClose[A] then
+      begin
+        if D.bState or (NowMs - FMenuClosedAt < HELD_GRACE_MS) then
+          Continue;
+        FHeldAtClose[A] := False;
+      end;
       if D.bState <> FPressed[A] then
       begin
         FPressed[A] := D.bState;
+        FActivity.SetButton(Ord(A), D.bState, NowMs);
         AnimateButton(A, D.bState);
         AddLog(ActionNames[A] + IfThen(D.bState, ' pressed', ' released'));
+        // a trackpad click while Steam reports no touch on that pad: the
+        // layout Steam loaded uses the touch for something else (before
+        // layout r21: the gyro's "on while the right pad is touched",
+        // owner's Steam Deck log 2026-11-06); once per pad
+        if D.bState then
+          for S := Low(TTrackpadSide) to High(TTrackpadSide) do
+            if (A = TrackpadClick[S]) and not FNoTouchLogged[S]
+              and not FActivity.Touched(Ord(TrackpadTouch[S]), X, Y) then
+            begin
+              FNoTouchLogged[S] := True;
+              AddLog(TrackpadCaptions[S] + ': clicked, but Steam reports no touch position '
+                + '(0, 0) - the layout Steam loaded uses the touch for something else, '
+                + 'for example to switch the gyro on (our layouts before r21)');
+            end;
       end;
       // a LONG press of Start opens the overlay menu (once per hold)
       if A = iaStart then
@@ -1608,6 +2045,235 @@ begin
       [F2(M.rotQuatX), F2(M.rotQuatY), F2(M.rotQuatZ), F2(M.rotQuatW)]));
   end;
   ApplyMotion(M);
+end;
+
+procedure TfrmGamepadVCL.ActivityLog(const AText: string);
+begin
+  AddLog(AText);
+end;
+
+procedure TfrmGamepadVCL.CreateGlow;
+var
+  A: TInputAction;
+  S: TTrackpadSide;
+  Part, Twin: TPadPart;
+  Clip, Marked: string;
+  Twins: array of string;
+  I, J: Integer;
+  R: Single;
+
+  // a sphere in model space (the scene's own coordinates), hidden
+  function NewSphere(X, Y, Z, ARadius: Single; const AColor: TCastleColor): TCastleSphere;
+  begin
+    // owned by the scene: freed with it (RemoveModel)
+    Result := TCastleSphere.Create(FScene);
+    Result.Radius := ARadius;
+    Result.Material := pmUnlit;
+    Result.Color := AColor;
+    Result.Translation := Vector3(X, Y, Z);
+    Result.Pickable := False;
+    Result.Collides := False;
+    Result.Exists := False;
+    FScene.Add(Result);
+  end;
+
+begin
+  FHalos := nil;
+  FHaloKeys := nil;
+  FHaloMirror := nil;
+  Twins := nil;
+  for A := Low(TInputAction) to High(TInputAction) do
+    FHaloOf[A] := -1;
+  if FScene = nil then
+    Exit;
+  case PadModelCheck(FModelFile, PadFileSize(ModelPath(FModelFile))) of
+    0:
+      begin
+        AddLog('Glow: ' + FModelFile + ' is not in PadParts - nothing glows on this model (run '
+          + 'tools/gen_pad_parts.py after adding a model)');
+        Exit;
+      end;
+    -1:
+      AddLog('Glow: ' + FModelFile + ' is not the file PadParts was made from - the glow may sit '
+        + 'off its parts (run tools/gen_pad_parts.py)');
+  end;
+  for A := Low(TInputAction) to High(TInputAction) do
+  begin
+    Clip := PartClip(A, FPlayStation);
+    if (Clip = '') or not FindPadPart(FModelFile, Clip, Part) then
+      Continue;
+    // clips of one part share its sphere (a stick and its click); the
+    // D-pad's arms are four parts (owner 2026-11-05)
+    I := -1;
+    for J := 0 to High(FHaloKeys) do
+      if FHaloKeys[J] = Part.Key then
+        I := J;
+    if I < 0 then
+    begin
+      I := Length(FHalos);
+      SetLength(FHalos, I + 1);
+      SetLength(FHaloKeys, I + 1);
+      SetLength(Twins, I + 1);
+      FHalos[I] := NewSphere(Part.X, Part.Y, Part.Z, Max(Part.Radius * GLOW_SCALE, GLOW_MIN_RADIUS),
+        GlowColor(0));
+      FHaloKeys[I] := Part.Key;
+      Twins[I] := '';
+    end;
+    if Twins[I] = '' then
+      Twins[I] := Part.Mirror;
+    FHaloOf[A] := I;
+  end;
+  // each halo's mirror twin (the halo of the part its Mirror clip moves)
+  SetLength(FHaloMirror, Length(FHalos));
+  for I := 0 to High(FHalos) do
+  begin
+    FHaloMirror[I] := I;
+    if (Twins[I] <> '') and FindPadPart(FModelFile, Twins[I], Twin) then
+      for J := 0 to High(FHaloKeys) do
+        if FHaloKeys[J] = Twin.Key then
+          FHaloMirror[I] := J;
+  end;
+  Marked := '';
+  for S := Low(TTrackpadSide) to High(TTrackpadSide) do
+  begin
+    FPadMarked[S] := FindPadTrackpad(FModelFile, TrackpadSideNames[S], FPadMarker[S]);
+    if not FPadMarked[S] then
+      Continue;
+    with FPadMarker[S] do
+    begin
+      R := Max(Sqrt(UX * UX + UY * UY + UZ * UZ), Sqrt(VX * VX + VY * VY + VZ * VZ));
+      FPadGlow3D[S] := NewSphere(OX, OY, OZ, R * GLOW_SCALE, GlowColor(0));
+      FPadDot3D[S] := NewSphere(OX, OY, OZ, Max(R * 0.08, 0.006), DotColor);
+    end;
+    Marked := Marked + ' ' + TrackpadSideNames[S];
+  end;
+  AddLog(Format('Glow: %d parts of %s glow while used and fade out after%s', [Length(FHalos), FModelFile,
+    IfThen(Marked = '', '; the model marks no trackpad (touches show at the bottom of the view)',
+      '; trackpads on the model:' + Marked)]));
+end;
+
+procedure TfrmGamepadVCL.UpdateGlow;
+var
+  NowMs: UInt64;
+  Level: array of Single;
+  A: TInputAction;
+  S, Src: TTrackpadSide;
+  I, J: Integer;
+  G, X, Y, Lift: Single;
+  Touch: Boolean;
+begin
+  if FActivity = nil then
+    Exit;
+  NowMs := PadNowMs;
+  // a part glows as strongly as the strongest of its actions
+  SetLength(Level, Length(FHalos));
+  for I := 0 to High(Level) do
+    Level[I] := 0;
+  for A := Low(TInputAction) to High(TInputAction) do
+    if FGlowOn and (FHaloOf[A] >= 0) then
+    begin
+      // seen from the back or the top, the pad's left is on the screen's
+      // right: the glow goes to the mirrored part, on the side of the
+      // player's hand (owner 2026-11-05; the front view is right as it is)
+      J := FHaloOf[A];
+      if FView <> pvFront then
+        J := FHaloMirror[J];
+      Level[J] := Max(Level[J], FActivity.Glow(Ord(A), NowMs));
+    end;
+  for I := 0 to High(FHalos) do
+  begin
+    FHalos[I].Exists := Level[I] > 0.01;
+    if FHalos[I].Exists then
+      FHalos[I].Color := GlowColor(Level[I]);
+  end;
+  for S := Low(TTrackpadSide) to High(TTrackpadSide) do
+  begin
+    // glow on a click, the dot where the pad is touched
+    // a trackpad on the model shows the other side's in the back and top
+    // views, as the halos; the 2D squares are always as in the front view
+    Src := S;
+    if FPadMarked[S] and (FView <> pvFront) then
+      Src := TrackpadMirror[S];
+    G := FActivity.Glow(Ord(TrackpadClick[Src]), NowMs);
+    Touch := FActivity.Touched(Ord(TrackpadTouch[Src]), X, Y);
+    if Src <> S then
+      X := -X;   // the surface is seen from the other side
+    if FPadMarked[S] then
+    begin
+      FPadGlow3D[S].Exists := FGlowOn and (G > 0.01);
+      if FPadGlow3D[S].Exists then
+        FPadGlow3D[S].Color := GlowColor(G);
+      FPadDot3D[S].Exists := Touch;
+      if Touch then
+        with FPadMarker[S] do
+        begin
+          // on the surface: half the dot out along the pad's normal
+          Lift := FPadDot3D[S].Radius * 0.5;
+          FPadDot3D[S].Translation := Vector3(OX + X * UX + Y * VX + Lift * NX,
+            OY + X * UY + Y * VY + Lift * NY, OZ + X * UZ + Y * VZ + Lift * NZ);
+        end;
+    end
+    else if FPadPanel[S] <> nil then
+    begin
+      if (G > 0) or Touch then
+        FPadSeen[S] := True;
+      FPadPanel[S].Exists := FPadSeen[S] and (FActive <> 0);
+      // dark grey, turning to the glow colour on a click
+      FPadPanel[S].Color := Vector4(0.10 + (GLOW_RED - 0.10) * G, 0.12 + (GLOW_GREEN - 0.12) * G,
+        0.14 + (GLOW_BLUE - 0.14) * G, 0.6 + 0.3 * G);
+      FPadPanelDot[S].Exists := Touch;
+      if Touch then
+      begin
+        // Steam's y is positive up, as Castle's UI
+        FPadPanelDot[S].Anchor(hpMiddle, X * (PAD_PANEL_SIZE - PAD_DOT_SIZE) / 2);
+        FPadPanelDot[S].Anchor(vpMiddle, Y * (PAD_PANEL_SIZE - PAD_DOT_SIZE) / 2);
+      end;
+    end;
+  end;
+end;
+
+procedure TfrmGamepadVCL.CreateTrackpadPanels;
+var
+  S: TTrackpadSide;
+  L: TCastleLabel;
+begin
+  for S := Low(TTrackpadSide) to High(TTrackpadSide) do
+  begin
+    FPadPanel[S] := TCastleShape.Create(Self);
+    FPadPanel[S].ShapeType := stRectangle;
+    FPadPanel[S].Width := PAD_PANEL_SIZE;
+    FPadPanel[S].Height := PAD_PANEL_SIZE;
+    FPadPanel[S].Color := Vector4(0.10, 0.12, 0.14, 0.6);
+    FPadPanel[S].Outline := True;
+    FPadPanel[S].OutlineColor := UiColor($8A, $90, $99);
+    FPadPanel[S].OutlineWidth := 2;
+    FPadPanel[S].OutlineThick := True;
+    case S of
+      tsLeft:  FPadPanel[S].Anchor(hpLeft, 24);
+      tsRight: FPadPanel[S].Anchor(hpRight, -24);
+    else
+      FPadPanel[S].Anchor(hpMiddle);
+    end;
+    FPadPanel[S].Anchor(vpBottom, 24);
+    FPadPanel[S].Exists := False;
+    FControl.Container.Controls.InsertFront(FPadPanel[S]);
+    L := TCastleLabel.Create(Self);
+    L.Caption := TrackpadCaptions[S];
+    L.FontSize := 12;
+    L.Color := UiColor($B0, $B6, $BD);
+    L.Anchor(hpMiddle);
+    L.Anchor(vpBottom, 4);
+    FPadPanel[S].InsertFront(L);
+    FPadPanelDot[S] := TCastleShape.Create(Self);
+    FPadPanelDot[S].ShapeType := stCircle;
+    FPadPanelDot[S].Width := PAD_DOT_SIZE;
+    FPadPanelDot[S].Height := PAD_DOT_SIZE;
+    FPadPanelDot[S].Color := DotColor;
+    FPadPanelDot[S].Anchor(hpMiddle);
+    FPadPanelDot[S].Anchor(vpMiddle);
+    FPadPanelDot[S].Exists := False;
+    FPadPanel[S].InsertFront(FPadPanelDot[S]);
+  end;
 end;
 
 procedure TfrmGamepadVCL.CreateOverlay;
@@ -1659,6 +2325,7 @@ begin
   L.Anchor(vpBottom, 12);
   FOverlayPanel.InsertFront(L);
   FOverlayHint := L;
+  CreateInfo;
   UpdateOverlay;
   AddLog('Overlay menu created (hidden; Castle UI, drawn above the 3D view)');
 end;
@@ -1668,6 +2335,7 @@ begin
   case I of
     oiController: Result := Length(FMenuPads) > 1;
     oiMotion:     Result := FHasMotion;
+    oiHardware:  Result := FSteamHardware > 0;   // greyed without Steam hardware
     oiSettings:   Result := (Input <> nil) and (FActive <> 0);   // a pad to show the layout of
     oiRemoteLog:  Result := not FRemoteBusy;
   else
@@ -1706,6 +2374,154 @@ begin
   UpdateOverlay;
 end;
 
+function TfrmGamepadVCL.ViewRowText: string;
+begin
+  Result := '<   View: ' + VIEW_NAMES[FMenuView] + IfThen(FMenuView = FView, ' - shown', '')
+    + '   >';
+end;
+
+procedure TfrmGamepadVCL.CycleView(ADelta: Integer);
+const
+  N = Ord(High(TPadView)) + 1;
+begin
+  FMenuView := TPadView(((Ord(FMenuView) + ADelta) mod N + N) mod N);
+  AddLog('Overlay menu: view row now names ' + VIEW_NAMES[FMenuView]);
+  UpdateOverlay;
+end;
+
+function TfrmGamepadVCL.HardwareInfoText: string;
+var
+  U: TSteamUtilsPlugin;
+  P: TSteamInputPlugin;
+  L: TStringList;
+  B: Integer;
+
+  procedure Add(const AName, AValue: string);
+  begin
+    L.Add(AName + ': ' + AValue);
+  end;
+
+  function YesNo(AValue: Boolean): string;
+  begin
+    Result := IfThen(AValue, 'yes', 'no');
+  end;
+
+begin
+  L := TStringList.Create;
+  try
+    U := TSteamUtilsPlugin(SteamAPI1.Steam.FindPlugin(TSteamUtilsPlugin));
+    Add('Steam hardware', SteamHardwareName(FSteamHardware));
+    if U <> nil then
+    try
+      if Assigned(U.Flat.GetSteamHardwareDefaultConfig) then
+        Add('Default settings for', SteamHardwareConfigName(Ord(U.GetSteamHardwareDefaultConfig)));
+      if Assigned(U.Flat.IsRunningUnderProton) then
+        Add('Running under Proton', YesNo(U.IsRunningUnderProton));
+      Add('Big Picture / Game Mode', YesNo(U.IsSteamInBigPictureMode));
+      Add('Steam in VR', YesNo(U.IsSteamRunningInVR));
+      B := U.GetCurrentBatteryPower;
+      if B = 255 then
+        Add('Battery', 'on mains power (or none)')
+      else
+        Add('Battery', IntToStr(B) + ' %');
+      Add('Steam language', U.GetSteamUILanguage);
+      Add('Country (from the IP address)', U.GetIPCountry);
+    except
+      on E: Exception do
+        Add('ISteamUtils', E.ClassName + ': ' + E.Message);
+    end;
+    P := Input;
+    if (P <> nil) and (FActive <> 0) then
+      Add('Controller shown', InputTypeName(P.GetInputTypeForHandle(FActive)));
+    Add('Model', FModelFile);
+    Add('Platform', TSteamLib.PlatformDescription);
+    Result := TrimRight(L.Text);
+  finally
+    L.Free;
+  end;
+end;
+
+procedure TfrmGamepadVCL.OpenInfo;
+begin
+  if FInfo = nil then
+    Exit;
+  FInfoText.Caption := HardwareInfoText;
+  FInfoOpen := True;
+  FInfo.Exists := True;
+  AddLog('Steam hardware panel open (A or B: OK)');
+end;
+
+procedure TfrmGamepadVCL.CloseInfo;
+begin
+  if not FInfoOpen then
+    Exit;
+  FInfoOpen := False;
+  if FInfo <> nil then
+    FInfo.Exists := False;
+  AddLog('Steam hardware panel closed: back to the menu');
+end;
+
+procedure TfrmGamepadVCL.CreateInfo;
+var
+  Panel, Ok: TCastleRectangleControl;
+  L: TCastleLabel;
+begin
+  // over the menu panel, inside the overlay: the menu stays visible,
+  // dimmed, round it; presses outside the panel are swallowed
+  FInfo := TCastleRectangleControl.Create(Self);
+  FInfo.FullSize := True;
+  FInfo.Color := Vector4(0, 0, 0, 0.5);
+  FInfo.OnPress := OverlaySwallowPress;
+  FInfo.Exists := False;
+  FOverlay.InsertFront(FInfo);
+  Panel := TCastleRectangleControl.Create(Self);
+  Panel.Width := INFO_WIDTH;
+  Panel.Height := INFO_HEIGHT;
+  Panel.Anchor(hpMiddle);
+  Panel.Anchor(vpMiddle);
+  Panel.Color := UiColor($30, $35, $3B);
+  FInfo.InsertFront(Panel);
+  L := TCastleLabel.Create(Self);
+  L.Caption := 'Steam Hardware';
+  L.FontSize := 24;
+  L.Color := UiColor($FF, $FF, $FF);
+  L.Anchor(hpMiddle);
+  L.Anchor(vpTop, -16);
+  Panel.InsertFront(L);
+  FInfoText := TCastleLabel.Create(Self);
+  FInfoText.FontSize := 16;
+  FInfoText.Color := UiColor($FF, $FF, $FF);
+  FInfoText.MaxWidth := INFO_WIDTH - 40;
+  FInfoText.Alignment := hpLeft;
+  FInfoText.Anchor(hpLeft, 20);
+  FInfoText.Anchor(vpTop, -70);
+  Panel.InsertFront(FInfoText);
+  Ok := TCastleRectangleControl.Create(Self);
+  Ok.Width := 200;
+  Ok.Height := 48;
+  Ok.Anchor(hpMiddle);
+  Ok.Anchor(vpBottom, 16);
+  Ok.Color := UiColor($3A, $6E, $A5);
+  Ok.OnPress := InfoOkPress;
+  Panel.InsertFront(Ok);
+  L := TCastleLabel.Create(Self);
+  L.Caption := 'OK  (A / B)';
+  L.FontSize := 20;
+  L.Color := UiColor($FF, $FF, $FF);
+  L.Anchor(hpMiddle);
+  L.Anchor(vpMiddle);
+  Ok.InsertFront(L);
+end;
+
+procedure TfrmGamepadVCL.InfoOkPress(const Sender: TCastleUserInterface;
+  const Event: TInputPressRelease; var Handled: Boolean);
+begin
+  if not Event.IsMouseButton(buttonLeft) then
+    Exit;
+  Handled := True;
+  CloseInfo;
+end;
+
 procedure TfrmGamepadVCL.UpdateOverlay;
 var
   I: TOverlayItem;
@@ -1730,17 +2546,18 @@ begin
       Inc(Shown);
     end;
   FOverlayPanel.Height := 16 + 44 + Shown * (ITEM_HEIGHT + ITEM_GAP) + 32 + 16;
-  if FOverlayItems[oiController].Exists then
-    FOverlayHint.Caption := 'D-pad: move, left / right: controller     A: choose     B: back'
-  else
-    FOverlayHint.Caption := 'D-pad: move     A: choose     B: back';
+  // left / right change the view row (and the controller row, when shown)
+  FOverlayHint.Caption := 'D-pad: move, left / right: change     A: choose     B: back';
   for I := Low(TOverlayItem) to High(TOverlayItem) do
   begin
     case I of
       oiController: T := PadRowText;
       oiReturn:     T := 'Return to App';
+      oiView: T := ViewRowText;
+      oiGlow:       T := IfThen(FGlowOn, 'Disable Highlights', 'Enable Highlights');
       oiMotion:     T := IfThen(FFollowMotion, 'Disable Motion', 'Enable Motion');
       oiSettings:   T := 'Controller Settings';
+      oiHardware: T := 'Steam Hardware';
       oiRemoteLog:
         if FSender <> nil then
           T := 'Stop Remote Logging'
@@ -1782,7 +2599,10 @@ begin
     FPressed[A] := False;
   ResetAnimState;
   for M := Low(TMenuAction) to High(TMenuAction) do
+  begin
     FMenuPressed[M] := True;
+    FMenuRepeatAt[M] := 0;
+  end;
   // does the layout Steam loaded bind the Menu set? (an older copy of our
   // layout has no MenuUp / Down / Left / Right)
   Unbound := '';
@@ -1807,6 +2627,8 @@ begin
       + SET_NAME + ' set instead');
   FMenuOpen := True;
   FMenuItem := oiReturn;
+  FMenuView := FView;
+  FInfoOpen := False;
   FOverlay.Exists := True;
   // no turning the view by dragging over the menu
   if FNavigation <> nil then
@@ -1823,29 +2645,39 @@ var
 begin
   if not FMenuOpen then
     Exit;
+  // the hardware panel goes with the menu
+  FInfoOpen := False;
+  if FInfo <> nil then
+    FInfo.Exists := False;
   FMenuOpen := False;
   FMenuPads := nil;
   if FOverlay <> nil then
     FOverlay.Exists := False;
   if FNavigation <> nil then
     FNavigation.Exists := True;
-  // buttons still held count as new presses in the InGame set (Start
-  // cannot reopen the overlay before it is let go: FStartUsed)
+  // a button still held (the A that chose the item) is no new press in the
+  // InGame set until it has been let go (ReadActions, FHeldAtClose); Start
+  // cannot reopen the overlay before it is let go either (FStartUsed)
+  FMenuClosedAt := PadNowMs;
   for A := Low(TInputAction) to High(TInputAction) do
+  begin
     FPressed[A] := False;
+    FHeldAtClose[A] := not ActionAnalog[A];
+  end;
   AddLog('Overlay menu closed: action set ' + SET_NAME + ' again');
 end;
 
 procedure TfrmGamepadVCL.MoveOverlay(ADelta: Integer);
 var
-  I: Integer;
+  I, N: Integer;
 begin
+  // wraps round at the top and the bottom (owner 2026-11-05), past the
+  // items that are off (Return is never off, so this ends)
+  N := Ord(High(TOverlayItem)) + 1;
   I := Ord(FMenuItem);
   repeat
-    Inc(I, ADelta);
-    if (I < Ord(Low(TOverlayItem))) or (I > Ord(High(TOverlayItem))) then
-      Exit;   // at the end: stay
-  until OverlayItemEnabled(TOverlayItem(I));
+    I := ((I + ADelta) mod N + N) mod N;
+  until OverlayItemEnabled(TOverlayItem(I)) or (I = Ord(FMenuItem));
   FMenuItem := TOverlayItem(I);
   UpdateOverlay;
 end;
@@ -1858,6 +2690,13 @@ begin
   if not OverlayItemEnabled(Item) then
     Exit;
   AddLog('Overlay menu: ' + FOverlayLabels[Item].Caption);
+  // the hardware panel opens OVER the menu, which stays open (the only
+  // item that does not close it)
+  if Item = oiHardware then
+  begin
+    OpenInfo;
+    Exit;
+  end;
   // A on the controller row: show that pad (before CloseOverlay, which
   // forgets the list)
   if (Item = oiController) and (FMenuPadIndex <= High(FMenuPads))
@@ -1869,6 +2708,13 @@ begin
   // every choice closes the overlay
   CloseOverlay;
   case Item of
+    oiView:
+      SetView(FMenuView, 'overlay menu');
+    oiGlow:
+      begin
+        FGlowOn := not FGlowOn;
+        AddLog('Highlights ' + IfThen(FGlowOn, 'on', 'off') + ' (overlay menu)');
+      end;
     oiMotion:
       SetFollowMotion(not FFollowMotion);
     oiSettings:
@@ -1916,6 +2762,10 @@ begin
   if not OverlayItemEnabled(I) then
     Exit;
   FMenuItem := I;
+  // a click on the view row shows the next view (there are no arrows to
+  // click)
+  if I = oiView then
+    CycleView(1);
   UpdateOverlay;
   ChooseOverlayItem;
 end;
@@ -1924,8 +2774,9 @@ procedure TfrmGamepadVCL.ReadMenuActions(P: TSteamInputPlugin);
 var
   M: TMenuAction;
   D: InputDigitalActionData_t;
-  H: UInt64;
+  H, NowMs: UInt64;
 begin
+  NowMs := PadNowMs;
   for M := Low(TMenuAction) to High(TMenuAction) do
   begin
     if FMenuUsesInGame then
@@ -1936,16 +2787,46 @@ begin
       Continue;
     D := P.GetDigitalActionData(FActive, H);
     if D.bState = FMenuPressed[M] then
+    begin
+      // up / down held: move again every MENU_REPEAT_MS (as SteamDemoPad)
+      if D.bState and not FInfoOpen and (M in [maUp, maDown]) and (FMenuRepeatAt[M] <> 0)
+        and (NowMs >= FMenuRepeatAt[M]) then
+      begin
+        FMenuRepeatAt[M] := NowMs + MENU_REPEAT_MS;
+        if M = maUp then
+          MoveOverlay(-1)
+        else
+          MoveOverlay(1);
+      end;
       Continue;
+    end;
     FMenuPressed[M] := D.bState;
     if not D.bState then
       Continue;
+    FMenuRepeatAt[M] := NowMs + MENU_REPEAT_MS;
     AddLog(IfThen(FMenuUsesInGame, ActionNames[MenuFallback[M]], MenuActionNames[M]) + ' pressed');
+    // the hardware panel is open: A or B close it, the rest does nothing
+    if FInfoOpen then
+    begin
+      if M in [maConfirm, maBack] then
+        CloseInfo;
+      Continue;
+    end;
     case M of
       maUp:      MoveOverlay(-1);
       maDown:    MoveOverlay(1);
-      maLeft:    if FMenuItem = oiController then CyclePad(-1);
-      maRight:   if FMenuItem = oiController then CyclePad(1);
+      // left / right only change the controller and view rows (no
+      // switch until A)
+      maLeft:
+        if FMenuItem = oiController then
+          CyclePad(-1)
+        else if FMenuItem = oiView then
+          CycleView(-1);
+      maRight:
+        if FMenuItem = oiController then
+          CyclePad(1)
+        else if FMenuItem = oiView then
+          CycleView(1);
       maConfirm: ChooseOverlayItem;
       maBack:    CloseOverlay;
     end;
@@ -1993,6 +2874,7 @@ begin
       else if Dt > 0.1 then
         Dt := 0.1;
       FAnimator.Update(Dt);
+      UpdateGlow;
     except
       on E: Exception do
       begin

@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - Steam Deck (r20)"
-	"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 20) - TSteamAPI Steam Input test: one action per physical control."
+	"title"		"SteamInputDemo - Steam Deck (r21)"
+	"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_neptune"
 	"major_revision"		"0"
-	"minor_revision"		"20"
+	"minor_revision"		"21"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - Steam Deck (r20)"
-			"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 20) - TSteamAPI Steam Input test: one action per physical control."
+			"title"		"SteamInputDemo - Steam Deck (r21)"
+			"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -467,6 +467,7 @@
 		"settings"
 		{
 			"virtual_mode"		"1"
+			"gyro_button"		"0"
 		}
 		"gameactions"
 		{
@@ -671,6 +672,10 @@
 		"mode"		"gyro_to_mouse"
 		"inputs"
 		{
+		}
+		"settings"
+		{
+			"gyro_button"		"0"
 		}
 	}
 	"group"

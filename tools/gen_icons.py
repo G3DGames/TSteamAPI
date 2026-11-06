@@ -5,8 +5,11 @@
 
 Writes design/icons/<Class>.ico (16, 24, 32, 36, 48, 64 and 256 px, 32-bit
 with alpha) and its source design/icons/svg/<Class>.svg, plus the server badge
-alone (ServerBadge.ico / .svg). Run it only to REDRAW the icons; packaging them
-for the IDEs is tools/gen_icon_res.py, which needs no third-party module.
+alone (ServerBadge.ico / .svg), and the programs' application icons (task
+bar / dock): <project>.ico, and <project>.icns for the FMX projects, next to
+each project file (APP_ICONS). Run it only to REDRAW the icons; packaging
+the palette icons for the IDEs is tools/gen_icon_res.py, which needs no
+third-party module.
 This one needs Pillow (pip install pillow) and rsvg-convert (librsvg).
 --preview also writes a contact sheet: every icon at 16 / 24 / 48 px on a
 light and a dark palette, plus 16 px at 4x, read back from the .ico files.
@@ -350,6 +353,143 @@ def render(svg_path, size, png_path):
     subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(size), "-o", png_path, svg_path], check=True)
 
 
+# ---- application icons: the task bar / dock icon of each program -----------
+# Same style as the palette icons (a rounded tile, one white symbol), one
+# colour per program family; the twins of a program share its icon. Each
+# drawing takes "small": the 16 px frame gets a simpler one where the full
+# drawing would turn to mush at that size. Owner 2026-11-05: LogReceiver an
+# ear; then the demos, the three VirtualGamepads, SteamDemoPad and
+# SteamInputDemo.
+APP_ICO_SIZES = [16, 24, 32, 48, 64, 256]
+
+
+def app_tile(top, bottom):
+    return (f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{top}"/>'
+            f'<stop offset="1" stop-color="{bottom}"/></linearGradient></defs>'
+            '<rect x="0" y="0" width="24" height="24" rx="5" fill="url(#g)"/>')
+
+
+def app_wheel(cx, cy, r, stroke=2.3):
+    """The valve handwheel (TSteamAPI's palette motif): the library's hub."""
+    spokes = "".join(
+        f'<line x1="{cx + 0.36 * r * math.cos(a):.2f}" y1="{cy + 0.36 * r * math.sin(a):.2f}" '
+        f'x2="{cx + r * math.cos(a):.2f}" y2="{cy + r * math.sin(a):.2f}" stroke="{W}" '
+        f'stroke-width="{stroke * 0.85:.2f}" stroke-linecap="round"/>'
+        for a in (math.radians(d) for d in (45, 135, 225, 315)))
+    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{W}" stroke-width="{stroke}"/>' + spokes
+            + f'<circle cx="{cx}" cy="{cy}" r="{0.38 * r:.2f}" fill="{GOLD}"/>')
+
+
+def app_pad(tx, ty, scale, fill, cut):
+    """A gamepad (the TSteamInput palette symbol), cut-outs in colour cut."""
+    return (f'<g transform="translate({tx} {ty}) scale({scale})">'
+            f'<path fill="{fill}" d="M7.3 7.6 H16.7 C19.4 7.6 21.2 10.3 21.4 13.8 C21.6 17 20.4 18.9 18.5 18.9 '
+            'C16.9 18.9 16.1 17.4 15.1 16 H8.9 C7.9 17.4 7.1 18.9 5.5 18.9 C3.6 18.9 2.4 17 2.6 13.8 '
+            'C2.8 10.3 4.6 7.6 7.3 7.6 Z"/>'
+            f'<path d="M5.6 12.4 H10 M7.8 10.2 V14.6" stroke="{cut}" stroke-width="1.7" stroke-linecap="round"/>'
+            f'<circle cx="17.4" cy="10.9" r="1.2" fill="{cut}"/><circle cx="15.2" cy="13.2" r="1.2" fill="{cut}"/></g>')
+
+
+def app_svg(body):
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">' + body + "</svg>\n"
+
+
+APP_NAVY = ("#3A5A8C", "#1E3157")
+
+
+def ear_svg(small):
+    """LogReceiver: a right ear seen from the side - the rim round the top and
+    back down to the lobe, the fold inside, the opening facing left, where two
+    yellow sound waves come in. At 16 px no waves, the ear centred (with them
+    it read as a "3")."""
+    waves = not small
+    tile = ('<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+            '<stop offset="0" stop-color="#7B5CE6"/><stop offset="1" stop-color="#5636C9"/></linearGradient></defs>'
+            '<rect x="0" y="0" width="24" height="24" rx="5" fill="url(#g)"/>')
+    shift = '' if waves else ' transform="translate(-2.6 0.4)"'
+    ear = (f'<g{shift} fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">'
+           '<path stroke-width="2.3" d="M9.6 9.6 C9.6 6.3 12 4.3 14.6 4.3 C17.6 4.3 19.6 6.6 19.6 9.6 '
+           'C19.6 12.4 17.9 13.5 16.9 14.6 C15.9 15.7 16.1 17.2 15.2 18.6 C14.2 20.1 11.9 20.4 10.7 18.9"/>'
+           '<path stroke-width="1.9" d="M12.6 10 C12.6 8.5 13.6 7.6 14.7 7.6 C15.9 7.6 16.7 8.6 16.7 9.7 '
+           'C16.7 11.1 15.4 11.6 14.8 12.6 C14.4 13.3 14.6 14.3 13.7 14.6"/></g>')
+    sound = ('<g fill="none" stroke="#FFD43B" stroke-linecap="round" stroke-width="1.7">'
+             '<path d="M6.4 9.4 A3.6 3.6 0 0 1 6.4 14.6"/><path d="M3.6 7.4 A6.6 6.6 0 0 1 3.6 16.6"/></g>'
+             if waves else '')
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">'
+            + tile + sound + ear + '</svg>\n')
+
+
+def steamdemo_svg(small):
+    """SteamDemo (FMX, VCL, LCL): the valve handwheel on navy."""
+    return app_svg(app_tile(*APP_NAVY) + app_wheel(12, 12, 7.2 if small else 6.8))
+
+
+def steamdemopad_svg(small):
+    """SteamDemoPad: SteamDemo driven by a pad - the handwheel with a green
+    gamepad badge; at 16 px only the gamepad, on SteamDemo's navy."""
+    if small:
+        return app_svg(app_tile(*APP_NAVY) + app_pad(0, 0, 1.0, W, APP_NAVY[1]))
+    badge = ('<rect x="10.6" y="12.2" width="12.4" height="10.6" rx="3" fill="#2E9E5B" stroke="#FFFFFF" '
+             'stroke-width="1.1"/>' + app_pad(10.7, 10.4, 0.52, W, "#2E9E5B"))
+    return app_svg(app_tile(*APP_NAVY) + app_wheel(9.4, 9.4, 5.6, stroke=2.1) + badge)
+
+
+def steaminputdemo_svg(small):
+    """SteamInputDemo: Steam Input's actions - a D-pad and the four face
+    buttons, on orange."""
+    face = "".join(f'<circle cx="{x}" cy="{y}" r="{1.9 if small else 1.75}" fill="{W}"/>'
+                   for x, y in ((17, 8.4), (20.2, 12), (17, 15.6), (13.8, 12)))
+    cross = '<path fill="#FFFFFF" d="M5.4 7.2 H8.6 V10.4 H11.8 V13.6 H8.6 V16.8 H5.4 V13.6 H2.2 V10.4 H5.4 Z"/>'
+    return app_svg(app_tile("#F08A2C", "#C25E0E") + cross + face)
+
+
+def virtualgamepad_svg(small):
+    """The three VirtualGamepads: a gamepad on teal with one button glowing
+    (the demos' glow); no glow at 16 px."""
+    teal = ("#17A3A8", "#0B6A70")
+    glow = ('' if small else '<g transform="translate(0 -1.0)"><circle cx="17.4" cy="10.9" r="3.2" '
+            'fill="#7FF3FF" fill-opacity="0.55"/><circle cx="17.4" cy="10.9" r="1.35" fill="#7FF3FF"/></g>')
+    return app_svg(app_tile(*teal) + app_pad(0, -0.8 if small else -1.0, 1.0, W, teal[1]) + glow)
+
+
+# drawing -> the programs that use it: (folder, file name without extension,
+# also an .icns for macOS - the FMX projects, which build for macOS).
+# The Delphi .dproj names <name>.ico (Icon_MainIcon) and <name>.icns
+# (Icns_MainIcns); a Lazarus .lpi takes <name>.ico by its own convention
+# (<Icon Value="0"/>).
+APP_ICONS = [
+    (ear_svg, [("RemoteLogging/LogReceiver", "LogReceiver", True)]),
+    (steamdemo_svg, [("demos/SteamDemo", "SteamDemo", True), ("demos/SteamDemoVCL", "SteamDemoVCL", False),
+                     ("demos/SteamDemoLCL", "SteamDemoLCL", False)]),
+    (steamdemopad_svg, [("demos/SteamDemoPad", "SteamDemoPad", True)]),
+    (steaminputdemo_svg, [("demos/SteamInputDemo", "SteamInputDemo", True)]),
+    (virtualgamepad_svg, [("demos/VirtualGamepad", "VirtualGamepad", True),
+                          ("demos/VirtualGamepadVCL", "VirtualGamepadVCL", False),
+                          ("demos/VirtualGamepadLCL", "VirtualGamepadLCL", False)]),
+]
+
+
+def build_app_icons():
+    """Every program's .ico (and .icns where it builds for macOS)."""
+    for draw, targets in APP_ICONS:
+        with tempfile.TemporaryDirectory() as tmp:
+            frames = {}
+            for size in APP_ICO_SIZES + [128, 512, 1024]:
+                svg_path = os.path.join(tmp, f"app{size}.svg")
+                with open(svg_path, "w", newline="\n") as f:
+                    f.write(draw(size <= 16))
+                png = os.path.join(tmp, f"app{size}.png")
+                render(svg_path, size, png)
+                frames[size] = Image.open(png).convert("RGBA")
+            for folder, name, icns in targets:
+                out = os.path.join(ROOT, *folder.split("/"))
+                write_ico(os.path.join(out, name + ".ico"), [frames[s] for s in APP_ICO_SIZES])
+                if icns:
+                    # Pillow makes every .icns size from the largest image
+                    frames[1024].save(os.path.join(out, name + ".icns"), format="ICNS")
+                print("wrote", f"{folder}/{name}.ico" + (" and .icns" if icns else ""))
+
+
 def ico_frame(path, size):
     im = Image.open(path)
     im.size = (size, size)  # selects the frame of that size
@@ -413,6 +553,7 @@ def main():
                 frames.append(Image.open(png).convert("RGBA"))
             write_ico(os.path.join(icodir, name + ".ico"), frames)
     print("wrote", len(ORDER), "icons + ServerBadge to design/icons")
+    build_app_icons()
     if "--preview" in sys.argv:
         preview(icodir, sys.argv[sys.argv.index("--preview") + 1])
 

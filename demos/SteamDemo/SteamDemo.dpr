@@ -28,6 +28,11 @@ uses
   DemoRemoteLog in '..\Shared\DemoRemoteLog.pas',
   uMain in 'src\uMain.pas' {frmMain};
 
+// The project resource the IDE builds from the .dproj (git-ignored, rebuilt
+// on every build): its MAINICON is SteamDemo.ico, the program's task bar
+// icon (macOS: the .icns). Drawn by tools/gen_icons.py.
+{$R *.res}
+
 begin
 {$IFDEF DEBUG}
   // Debug builds list leaked blocks when the program ends. Effective with

@@ -83,9 +83,20 @@ object frmGamepadVCL: TfrmGamepadVCL
         Caption = 'Recenter motion'
         OnClick = mnuRecenterClick
       end
+      object mnuShowFront: TMenuItem
+        Caption = 'Show front'
+        Checked = True
+        OnClick = mnuViewClick
+      end
       object mnuShowBack: TMenuItem
+        Tag = 1
         Caption = 'Show back'
-        OnClick = mnuShowBackClick
+        OnClick = mnuViewClick
+      end
+      object mnuShowTop: TMenuItem
+        Tag = 2
+        Caption = 'Show top'
+        OnClick = mnuViewClick
       end
       object mnuResetView: TMenuItem
         Caption = 'Reset view'

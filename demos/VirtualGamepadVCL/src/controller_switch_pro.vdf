@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - Switch Pro (r20)"
-	"description"		"Default layout for the Switch Pro (controller_switch_pro.vdf, revision 20) - TSteamAPI Steam Input test: one action per physical control."
+	"title"		"SteamInputDemo - Switch Pro (r21)"
+	"description"		"Default layout for the Switch Pro (controller_switch_pro.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_switch_pro"
 	"major_revision"		"0"
-	"minor_revision"		"20"
+	"minor_revision"		"21"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - Switch Pro (r20)"
-			"description"		"Default layout for the Switch Pro (controller_switch_pro.vdf, revision 20) - TSteamAPI Steam Input test: one action per physical control."
+			"title"		"SteamInputDemo - Switch Pro (r21)"
+			"description"		"Default layout for the Switch Pro (controller_switch_pro.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -415,6 +415,7 @@
 		"settings"
 		{
 			"virtual_mode"		"1"
+			"gyro_button"		"0"
 		}
 		"gameactions"
 		{
@@ -561,6 +562,10 @@
 		"mode"		"gyro_to_mouse"
 		"inputs"
 		{
+		}
+		"settings"
+		{
+			"gyro_button"		"0"
 		}
 	}
 	"preset"

@@ -33,7 +33,9 @@ may be offered with the project's releases for people without Delphi.
    and remembers the choice for next time. The first time, allow it
    through the firewall on **private** networks. **File -> Clear Log**
    empties the lines shown (the session's log file keeps them);
-   **File -> Exit** closes it.
+   **File -> Exit** closes it. Its icon is an ear (purple tile), to find
+   it on the task bar (`LogReceiver.ico` / `.icns`, drawn by
+   `tools/gen_icons.py`).
 2. In the program on the device, choose **File -> Send log to receiver**
    - in SteamInputDemo also **DPadUp + Y + LeftBumper held together** on
    the controller, in VirtualGamepad **Start Remote Logging** in the

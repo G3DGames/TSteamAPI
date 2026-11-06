@@ -182,6 +182,11 @@ type
     { Drives two clips from one axis value: ANeg for AValue < 0, APos for
       AValue > 0 (each at the size of the value), the other at rest. }
     procedure SetAxis(const ANeg, APos: string; AValue: Single);
+    { Lowers clip AName's peak to AFraction (0..1) of the way: Press then
+      stops there and SetValue(1) shows it (for a part that would sink
+      into the model at its full peak).
+      @returns(@false when the model has no such moving clip.) }
+    function LimitPeak(const AName: string; AFraction: Single): Boolean;
     { Puts every clip back to rest (the next @link(Update) applies it). }
     procedure StopAll;
     { Advances pressed / released clips by ASeconds and hands every
@@ -775,6 +780,16 @@ begin
     FClips[I].Mode := cmValue;
     FClips[I].Time := AValue * FClips[I].PeakTime;
   end;
+end;
+
+function TPadAnimator.LimitPeak(const AName: string; AFraction: Single): Boolean;
+var
+  I: Integer;
+begin
+  I := FindClip(AName);
+  Result := I >= 0;
+  if Result then
+    FClips[I].PeakTime := FClips[I].PeakTime * ClampF(AFraction, 0, 1);
 end;
 
 procedure TPadAnimator.SetAxis(const ANeg, APos: string; AValue: Single);
