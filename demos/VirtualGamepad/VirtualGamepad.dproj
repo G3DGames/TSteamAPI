@@ -6,7 +6,7 @@
         <AppType>Application</AppType>
         <MainSource>VirtualGamepad.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>135299</TargetedPlatforms>
         <ProjectName Condition="'$(ProjectName)'==''">VirtualGamepad</ProjectName>
@@ -419,6 +419,762 @@
                         <RemoteDir>.\</RemoteDir>
                         <Operation>0</Operation>
                         <RemoteName>sk4d.dll</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\px.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\px.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\px.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\py.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\py.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\py.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Grid\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Grid\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\px.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\px.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\px.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\py.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\py.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\py.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Sky\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Sky\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nx.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nx.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nx.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\ny.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\ny.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>ny.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\nz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>nz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\px.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\px.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\px.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\px.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>px.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\py.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\py.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\py.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\py.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>py.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\pz.png" Configuration="Debug" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="Linux64">
+                        <RemoteDir>.\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSX64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\skyboxes\Stars\pz.png" Configuration="Release" Class="File">
+                    <Platform Name="OSXARM64">
+                        <RemoteDir>Contents\Resources\images\skyboxes\Stars\</RemoteDir>
+                        <RemoteName>pz.png</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

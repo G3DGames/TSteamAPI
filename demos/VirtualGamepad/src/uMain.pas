@@ -84,7 +84,7 @@ type
 
   { The overlay menu's items, top to bottom (oiController only with more
     than one controller connected). }
-  TOverlayItem = (oiController, oiReturn, oiView, oiGlow, oiMotion,
+  TOverlayItem = (oiController, oiReturn, oiView, oiSky, oiGlow, oiMotion, oiMove,
     oiSettings, oiHardware, oiRemoteLog, oiExit);
 
   { The views of the model (overlay menu, View menu): where the orbit
@@ -96,7 +96,12 @@ type
     pvBack,
     { The top edge (bumpers, triggers) from above: azimuth 180,
       inclination 90 (owner 2026-11-05). }
-    pvTop);
+    pvTop,
+    { Motion's view (owner 2026-11-07): the player's, at the origin with the
+      pad in the hands - the top view turned round (azimuth 180 from it),
+      then inclination 180 more (owner 04:24: azimuth 360, inclination
+      270). Not in the View row's cycle: Motion chooses it. }
+    pvMotion);
 
   { A trackpad: the left and right pads (Steam Deck, Steam Controller),
     the PlayStation touchpad in the middle. }
@@ -262,6 +267,45 @@ type
       on at start). Off: no glow on the model; the touch dots and the 2D
       trackpad squares stay. }
     FGlowOn: Boolean;
+    { The pad's movement from its accelerometer (Motion). }
+    FMotion: TPadMotion;
+    { Motion is on: the model also moves with the pad and the skybox turns
+      the other way (owner 2026-11-07; needs the gyro, FFollowMotion). }
+    FMoveMotion: Boolean;
+    { "The pad has an accelerometer" was logged. }
+    FAccelLogged: Boolean;
+    { Which accelerometer axes were logged as reacting (Motion on). }
+    FAxisLogged: array[0..2] of Boolean;
+    { The skyboxes found (folder names below images/skyboxes; index 0 is
+      "None"). }
+    FSkyNames: array of string;
+    { The skybox shown (index into FSkyNames) and the one the overlay's
+      skybox row names. }
+    FSky, FMenuSky: Integer;
+    { The sensors' "up" in Steam's orientation frame: a slow average of
+      the accelerometer turned by the orientation (Motion). }
+    FUp: TPadVec3;
+    { FUp has a first value. }
+    FUpSet: Boolean;
+    { The up axis was logged since Motion was switched on. }
+    FUpLogged: Boolean;
+    { Polls since Motion was switched on (the up axis is logged after a
+      second). }
+    FUpPolls: Integer;
+    { Motion: the turn about "up" since the front view, radians - the
+      player turning (a chair), shown by the skybox, not the model. }
+    FMotionYaw: Single;
+    { Motion: the turn about the player's right since the front view
+      (tilting the whole pad up / down), radians - the skybox's
+      inclination. }
+    FMotionPitch: Single;
+    { The view before Motion chose its own (back to it when Motion ends). }
+    FViewBeforeMotion: TPadView;
+    { The skybox: an empty Gorilla model (its TransformMatrix turns it, as
+      the pad model's) holding six planes; nil = no skybox. }
+    FSkyRoot: TGorillaModel;
+    { Where PlaceModel put the pivot (Motion moves the model from there). }
+    FPivotBase: TPoint3D;
     { "clicked but no touch position" was logged for this trackpad. }
     FNoTouchLogged: array[TTrackpadSide] of Boolean;
     { Orientation of the pad that counts as "facing the camera". }
@@ -597,6 +641,32 @@ type
     { Left / right on the view row: names the next or previous view
       (wraps round); A shows it. }
     procedure CycleView(ADelta: Integer);
+    { The overlay's skybox row: the skybox it names, between arrows. }
+    function SkyRowText: string;
+    { Left / right on the skybox row (wraps round); A shows it. }
+    procedure CycleSky(ADelta: Integer);
+    { Folder with the skybox folders: the data folder's images\skyboxes,
+      or (run from the IDE) the repository's; '' when neither. }
+    function SkyFolder: string;
+    { Lists the skyboxes (FSkyNames). }
+    procedure FindSkies;
+    { Shows skybox AIndex of FSkyNames (0: none). }
+    procedure SetSky(AIndex: Integer);
+    { Motion on / off (switching it on also switches the gyro on). }
+    procedure SetMoveMotion(AOn: Boolean);
+    { The model's offset from Motion, in the model's axes (x right, y up,
+      z towards the viewer), -1..1; 0 when Motion is off. }
+    function MotionOffset: TPadVec3;
+    { Writes the model's Motion offset and the skybox's turn for the pad
+      turn AQ (since the front view). }
+    procedure ApplyMoveAndSky(const AQ: TPadQuat);
+    { Logs which accelerometer axis reacts to a push (to map the axes). }
+    procedure LogMotionAxes;
+    { The pad's turn since the front view for orientation Q. With Motion
+      on, the turn about "up" (the player turning round, on a chair)
+      is taken out and kept in FMotionYaw for the skybox: only tilting
+      and twisting the pad turn the model (owner 2026-11-07). }
+    function MotionRelative(const Q: TPadQuat; const M: InputMotionData_t): TPadQuat;
     { Creates the Steam hardware panel (hidden) in the overlay. }
     procedure CreateInfo;
     { Everything ISteamUtils and the program know about the hardware,
@@ -734,12 +804,12 @@ const
   { Orbit camera azimuth of each view in degrees (Sprite3DCamera.Azimuth;
     0 = the front view). The Castle twins turn the model the other way
     instead and show the same pictures. }
-  VIEW_AZIMUTH: array[TPadView] of Single = (0, 180, 180);
+  VIEW_AZIMUTH: array[TPadView] of Single = (0, 180, 180, 360);
   { Orbit camera inclination of each view in degrees
     (Sprite3DCamera.PolarAngle; 90 = straight down from above). }
-  VIEW_INCLINATION: array[TPadView] of Single = (0, 0, 90);
+  VIEW_INCLINATION: array[TPadView] of Single = (0, 0, 90, 270);
   { Name of each view (log, overlay menu). }
-  VIEW_NAMES: array[TPadView] of string = ('Front', 'Back', 'Top');
+  VIEW_NAMES: array[TPadView] of string = ('Front', 'Back', 'Top', 'Motion');
   { Glow colour: cyan, seen on black and on white plastic alike. }
   GLOW_COLOR: TAlphaColor = $FF40D9FF;
   { Opacity of a glow sphere at full glow. }
@@ -777,6 +847,37 @@ const
   { Menu up / down held: moves again every this many milliseconds (as
     SteamDemoPad's menu). }
   MENU_REPEAT_MS = 500;
+  { How far Motion moves the model at most, as a part of its size (it stays
+    in view). }
+  MOTION_RANGE = 0.35;
+  { The skybox turn per turn of the player: -1 = the other way (the room
+    seems to stay while the view turns). NOT YET SEEN: 1 if it turns the
+    wrong way. }
+  SKY_YAW_SIGN = -1;
+  { The skybox's inclination per tilt of the whole pad: -1 = the other way.
+    NOT YET SEEN: 1 if it tilts the wrong way. }
+  SKY_PITCH_SIGN = -1;
+  { True: tilting the whole pad up / down tilts ONLY the skybox (the
+    model stays level); False (owner 04:24): the model tilts too. }
+  MOTION_PITCH_SKY_ONLY = False;
+  { The skybox shown at start (if it exists; owner 2026-11-07). }
+  SKY_DEFAULT = 'Sky';
+  { The skybox's extra tilt in the Motion view, degrees about the screen's
+    horizontal (owner 04:34: the Motion view looked straight up into the
+    sky - the horizon must be in front of the player). NOT YET SEEN: -90
+    if it now looks at the ground. }
+  SKY_MOTION_TILT = 90;
+  { Motion: which accelerometer axis (0 = X, 1 = Y, 2 = Z) moves the model
+    right, up and towards the viewer, and the sign of each. NOT YET SEEN
+    ON A PAD: the log names the axis that reacts to a push (LogMotionAxes);
+    change these to match. }
+  MOTION_SRC: array[0..2] of Integer = (0, 1, 2);
+  { See @link(MOTION_SRC). }
+  MOTION_SIGN: array[0..2] of Single = (1, 1, 1);
+  { The six faces of a skybox (files <face>.png). }
+  SKY_FACES: array[0..5] of string = ('px', 'nx', 'py', 'ny', 'pz', 'nz');
+  { Half the size of the skybox cube, scene units. }
+  SKY_HALF = 6 * MODEL_SIZE;
   { Size of the Steam hardware panel. }
   INFO_WIDTH = 640;
   { See @link(INFO_WIDTH). }
@@ -1027,6 +1128,28 @@ begin
   Result.W := Q.W;
 end;
 
+{ Whether the left / right of the pad appear swapped in view V (seen from
+  behind or from above-behind: back and top).
+  @param(V The view.) @returns(True for the back and top views.) }
+function ViewSwapped(V: TPadView): Boolean;
+begin
+  Result := V in [pvBack, pvTop];
+end;
+
+{ The vector (X, Y, Z) turned by the unit quaternion Q.
+  @param(Q The turn.) @param(X X.) @param(Y Y.) @param(Z Z.)
+  @returns(The turned vector in X, Y, Z (W unused).) }
+function QuatRotate(const Q: TPadQuat; X, Y, Z: Single): TPadQuat;
+var
+  V: TPadQuat;
+begin
+  V.X := X;
+  V.Y := Y;
+  V.Z := Z;
+  V.W := 0;
+  Result := QuatMul(QuatMul(Q, V), QuatConj(Q));
+end;
+
 { Scales Q to length 1 (identity when it is all zeros - no motion data).
   @param(Q The quaternion.)
   @returns(Unit quaternion.) }
@@ -1156,6 +1279,8 @@ begin
   FGlowOn := True;
   // which controls are in use: log lines, glow, trackpad touches
   FActivity := TPadActivity.Create(Ord(High(TInputAction)) + 1);
+  FMotion := TPadMotion.Create;
+  FindSkies;
   FActivity.OnLog := ActivityLog;
   for A := Low(TInputAction) to High(TInputAction) do
     FActivity.Define(Ord(A), ActivityKind(A), IfThen(AnalogCaptions[A] <> '', AnalogCaptions[A],
@@ -1205,6 +1330,7 @@ end;
 destructor TfrmGamepad.Destroy;
 begin
   FreeAndNil(FActivity);
+  FreeAndNil(FMotion);
   FreeAndNil(FLogLines);
   inherited;
 end;
@@ -1291,6 +1417,9 @@ begin
   FPivot.Parent := FViewport;
   FAnimator := TGorillaParallelAnimator.Create(Self);
   AddLog('3D scene created: Gorilla3D viewport, Sprite3D orbit camera, point light, parallel animator');
+  // the skybox chosen at start (FindSkies; owner: one by default)
+  if FSky > 0 then
+    SetSky(FSky);
   CreateTrackpadPanels;
   // Frame-rate log (compares FMX canvases under Proton - FmxWineCanvas)
   FFpsTimer := TTimer.Create(Self);
@@ -1441,6 +1570,7 @@ begin
   FTransformWritten := False;
   if FPivot <> nil then
     FPivot.Position.Point := TPoint3D.Zero;
+  FPivotBase := TPoint3D.Zero;
 end;
 
 procedure TfrmGamepad.ShowModelFor(T: ESteamInputType);
@@ -1526,6 +1656,7 @@ begin
   FModel.RotationAngle.X := 180;
   B := FModel.GetAbsoluteBoundingBox;
   FPivot.Position.Point := -B.CenterPoint;
+  FPivotBase := -B.CenterPoint;
   AddLog(Format('Model placed: largest side %s -> scale %s, centre %s %s %s moved to the origin',
     [F2(Size), F2(FModelScale), F2(B.CenterPoint.X), F2(B.CenterPoint.Y), F2(B.CenterPoint.Z)]));
 end;
@@ -1579,6 +1710,7 @@ begin
     if FRecenter then
       AddLog(Format('Motion recentered at quat %s %s %s %s', [F2(Q.X), F2(Q.Y), F2(Q.Z), F2(Q.W)]));
     FRecenter := False;
+    FMotion.Reset;   // the movement starts from the middle
   end;
   if not FFollowMotion then
     Exit;
@@ -1587,11 +1719,12 @@ begin
   // repaint, and writing on every 16 ms poll while a frame takes longer
   // (GDI+ under Proton: ~55 ms) stopped drawing altogether (ROG Ally,
   // 2026-11-03, every controller). The newest reading always wins.
-  FPendingMotion := QuatMul(QuatConj(FMotionZero), Q);
+  FPendingMotion := MotionRelative(Q, M);
   if TThread.GetTickCount64 - FMotionWrittenAt >= UInt64(Max(FFrameTimeMs, MOTION_MIN_MS)) then
   begin
     FMotionWrittenAt := TThread.GetTickCount64;
     SetModelRotation(FPendingMotion);
+    ApplyMoveAndSky(FPendingMotion);
   end;
 end;
 
@@ -1813,15 +1946,24 @@ begin
   FFollowMotion := AOn;
   if AOn then
   begin
-    mnuMotion.Text := 'Follow pad motion: on';
+    mnuMotion.Text := 'Gyro (the model turns with the pad): on';
     // the pad's orientation NOW becomes the front view: the model does not
     // jump when motion is switched on
     FRecenter := True;
   end
   else
   begin
-    mnuMotion.Text := 'Follow pad motion: off';
+    mnuMotion.Text := 'Gyro (the model turns with the pad): off';
     SetModelRotation(QUAT_IDENTITY);
+    // Motion needs the gyro: off with it, model and skybox back
+    if FMoveMotion then
+    begin
+      FMoveMotion := False;
+      AddLog('Motion off (with the gyro)');
+      if FView = pvMotion then
+        SetView(FViewBeforeMotion, 'Motion off');
+    end;
+    ApplyMoveAndSky(QUAT_IDENTITY);
   end;
   AddLog(Format('Follow pad motion: %s (the model follows at most every %d ms - the measured frame ' +
     'time, or %d ms before one is measured)', [BoolToStr(AOn, True), Max(FFrameTimeMs, MOTION_MIN_MS), MOTION_MIN_MS]));
@@ -1965,7 +2107,7 @@ begin
       // right: the glow goes to the mirrored part, on the side of the
       // player's hand (owner 2026-11-05; the front view is right as it is)
       J := FHaloOf[A];
-      if FView <> pvFront then
+      if ViewSwapped(FView) then
         J := FHaloMirror[J];
       Level[J] := Max(Level[J], FActivity.Glow(Ord(A), NowMs));
     end;
@@ -1983,7 +2125,7 @@ begin
     // a trackpad on the model shows the other side's in the back and top
     // views, as the halos; the 2D squares are always as in the front view
     Src := S;
-    if FPadMarked[S] and (FView <> pvFront) then
+    if FPadMarked[S] and (ViewSwapped(FView)) then
       Src := TrackpadMirror[S];
     G := FActivity.Glow(Ord(TrackpadClick[Src]), NowMs);
     Touch := FActivity.Touched(Ord(TrackpadTouch[Src]), X, Y);
@@ -2096,8 +2238,8 @@ end;
 
 procedure TfrmGamepad.CreateOverlay;
 const
-  ITEM_HEIGHT = 48;
-  ITEM_GAP = 8;
+  ITEM_HEIGHT = 40;
+  ITEM_GAP = 6;
 
   procedure StyleLabel(L: TLabel; ASize: Single; AColor: TAlphaColor);
   begin
@@ -2177,6 +2319,8 @@ begin
   case I of
     oiController: Result := Length(FMenuPads) > 1;
     oiMotion:    Result := FHasMotion;
+    // Motion: only a pad with an accelerometer (owner 2026-11-07)
+    oiMove:    Result := FHasMotion and (FMotion <> nil) and FMotion.HasAccel;
     oiHardware:  Result := FSteamHardware > 0;   // greyed without Steam hardware
     oiSettings:  Result := (Input <> nil) and (FActive <> 0);   // a pad to show the layout of
     oiRemoteLog: Result := not FRemoteBusy;
@@ -2225,11 +2369,331 @@ end;
 
 procedure TfrmGamepad.CycleView(ADelta: Integer);
 const
-  N = Ord(High(TPadView)) + 1;
+  N = Ord(pvTop) + 1;   // Front, Back, Top (Motion chooses its own)
 begin
   FMenuView := TPadView(((Ord(FMenuView) + ADelta) mod N + N) mod N);
   AddLog('Overlay menu: view row now names ' + VIEW_NAMES[FMenuView]);
   UpdateOverlay;
+end;
+
+function TfrmGamepad.SkyRowText: string;
+begin
+  Result := #$25C0 + '   Skybox: ' + FSkyNames[FMenuSky] + IfThen(FMenuSky = FSky, ' - shown', '')
+    + '   ' + #$25B6;
+end;
+
+procedure TfrmGamepad.CycleSky(ADelta: Integer);
+var
+  N: Integer;
+begin
+  N := Length(FSkyNames);
+  FMenuSky := ((FMenuSky + ADelta) mod N + N) mod N;
+  AddLog('Overlay menu: skybox row now names ' + FSkyNames[FMenuSky]);
+  UpdateOverlay;
+end;
+
+function TfrmGamepad.SkyFolder: string;
+begin
+  Result := DataFolder + 'images' + PathDelim + 'skyboxes' + PathDelim;
+  if TDirectory.Exists(Result) then
+    Exit;
+  // <repo>\demos\VirtualGamepad\<platform>\<config>\ -> <repo>\images\skyboxes\
+  Result := ExpandFileName(ExtractFilePath(ExpandFileName(ParamStr(0))) + '..' + PathDelim + '..'
+    + PathDelim + '..' + PathDelim + '..' + PathDelim + 'images' + PathDelim + 'skyboxes' + PathDelim);
+  if not TDirectory.Exists(Result) then
+    Result := '';
+end;
+
+procedure TfrmGamepad.FindSkies;
+var
+  Dir, D: string;
+  Names: TStringList;
+  I: Integer;
+begin
+  Names := TStringList.Create;
+  try
+  Dir := SkyFolder;
+  if Dir <> '' then
+    for D in TDirectory.GetDirectories(Dir) do
+      if TFile.Exists(TPath.Combine(D, 'pz.png')) then
+        Names.Add(ExtractFileName(D));
+    Names.Sort;
+    SetLength(FSkyNames, Names.Count + 1);
+    FSkyNames[0] := 'None';
+    for I := 0 to Names.Count - 1 do
+      FSkyNames[I + 1] := Names[I];
+  finally
+    Names.Free;
+  end;
+  FSky := 0;
+  for I := 1 to High(FSkyNames) do
+    if SameText(FSkyNames[I], SKY_DEFAULT) then
+      FSky := I;
+  if (FSky = 0) and (Length(FSkyNames) > 1) then
+    FSky := 1;
+  FMenuSky := FSky;
+  AddLog(Format('Skyboxes: %d found (%s) - the overlay menu''s Skybox row shows one',
+    [Length(FSkyNames) - 1, IfThen(SkyFolder = '', 'no images\skyboxes folder', SkyFolder)]));
+end;
+
+procedure TfrmGamepad.SetSky(AIndex: Integer);
+var
+  Dir: string;
+  F: Integer;
+  Mat: TTextureMaterialSource;
+  Plane: TPlane;
+begin
+  if (AIndex < 0) or (AIndex > High(FSkyNames)) then
+    Exit;
+  FSky := AIndex;
+  FreeAndNil(FSkyRoot);
+  if (FSky = 0) or (FViewport = nil) then
+  begin
+    AddLog('Skybox: none');
+    UpdateOverlay;
+    Exit;
+  end;
+  Dir := SkyFolder + FSkyNames[FSky] + PathDelim;
+  // an empty Gorilla model as the holder: its TransformMatrix turns the
+  // whole box (Motion), as the pad model's does
+  FSkyRoot := TGorillaModel.Create(FViewport);
+  FSkyRoot.Parent := FViewport;
+  FSkyRoot.HitTest := False;
+  for F := 0 to High(SKY_FACES) do
+  begin
+    Mat := TTextureMaterialSource.Create(FSkyRoot);
+    try
+      Mat.Texture.LoadFromFile(Dir + SKY_FACES[F] + '.png');
+    except
+      on E: Exception do
+        AddLog('Skybox ' + FSkyNames[FSky] + ': ' + SKY_FACES[F] + '.png not loaded: ' + E.Message);
+    end;
+    Plane := TPlane.Create(FSkyRoot);
+    Plane.Parent := FSkyRoot;
+    Plane.Width := 2 * SKY_HALF;
+    Plane.Height := 2 * SKY_HALF;
+    Plane.TwoSide := True;
+    Plane.HitTest := False;
+    Plane.MaterialSource := Mat;
+    // FMX: X right, Y DOWN, the camera looks along +Z (the front face is
+    // behind the model); a plane lies in X / Y facing -Z
+    case F of
+      0: begin Plane.Position.Point := Point3D(SKY_HALF, 0, 0); Plane.RotationAngle.Y := -90; end;
+      1: begin Plane.Position.Point := Point3D(-SKY_HALF, 0, 0); Plane.RotationAngle.Y := 90; end;
+      2: begin Plane.Position.Point := Point3D(0, -SKY_HALF, 0); Plane.RotationAngle.X := -90; end;
+      3: begin Plane.Position.Point := Point3D(0, SKY_HALF, 0); Plane.RotationAngle.X := 90; end;
+      4: Plane.Position.Point := Point3D(0, 0, SKY_HALF);
+    else
+      begin Plane.Position.Point := Point3D(0, 0, -SKY_HALF); Plane.RotationAngle.Y := 180; end;
+    end;
+  end;
+  FSkyRoot.SendToBack;
+  ApplyMoveAndSky(FLastMotion);
+  AddLog('Skybox: ' + FSkyNames[FSky] + ' (' + Dir + ')');
+  UpdateOverlay;
+end;
+
+procedure TfrmGamepad.SetMoveMotion(AOn: Boolean);
+var
+  I: Integer;
+begin
+  if AOn and not FFollowMotion then
+    SetFollowMotion(True);   // Motion turns the model as well
+  if AOn and not FMoveMotion then
+  begin
+    FViewBeforeMotion := FView;
+    SetView(pvMotion, 'Motion on');
+  end
+  else if not AOn and FMoveMotion and (FView = pvMotion) then
+    SetView(FViewBeforeMotion, 'Motion off');
+  FMoveMotion := AOn;
+  FMotion.Reset;
+  FUpSet := False;
+  FUpLogged := False;
+  FUpPolls := 0;
+  FMotionYaw := 0;
+  FMotionPitch := 0;
+  for I := 0 to 2 do
+    FAxisLogged[I] := False;
+  if AOn then
+    AddLog('Motion on: the model moves with the pad (back to the middle when the pad is '
+      + 'still), the skybox turns the other way. Push the pad right, up and towards you: the '
+      + 'log names the accelerometer axis that reacts')
+  else
+    AddLog('Motion off (the gyro stays as it is)');
+  ApplyMoveAndSky(FLastMotion);
+  UpdateOverlay;
+end;
+
+function TfrmGamepad.MotionOffset: TPadVec3;
+var
+  P: TPadVec3;
+  A: array[0..2] of Single;
+begin
+  Result := Default(TPadVec3);
+  if not FMoveMotion or (FMotion = nil) then
+    Exit;
+  P := FMotion.Offset;
+  A[0] := P.X;
+  A[1] := P.Y;
+  A[2] := P.Z;
+  Result.X := MOTION_SIGN[0] * A[MOTION_SRC[0]];
+  Result.Y := MOTION_SIGN[1] * A[MOTION_SRC[1]];
+  Result.Z := MOTION_SIGN[2] * A[MOTION_SRC[2]];
+end;
+
+procedure TfrmGamepad.ApplyMoveAndSky(const AQ: TPadQuat);
+var
+  O: TPadVec3;
+  S: Single;
+  Pos: TPoint3D;
+  Tilt: TMatrix3D;
+begin
+  O := MotionOffset;
+  S := MOTION_RANGE * MODEL_SIZE;
+  // the model frame's x right, y up, z to the viewer -> FMX: y down, z away
+  if FPivot <> nil then
+  begin
+    Pos := FPivotBase + Point3D(O.X * S, -O.Y * S, -O.Z * S);
+    if not (Pos = FPivot.Position.Point) then
+      FPivot.Position.Point := Pos;
+  end;
+  if FSkyRoot <> nil then
+  begin
+    // the Motion view looks along the vertical: the box is turned so the
+    // horizon is in front of the player (SKY_MOTION_TILT)
+    if FView = pvMotion then
+      Tilt := TMatrix3D.CreateRotationX(DegToRad(SKY_MOTION_TILT))
+    else
+      Tilt := TMatrix3D.Identity;
+    if FMoveMotion then
+      // the player's turn (MotionRelative): about the scene's vertical
+      FSkyRoot.TransformMatrix := TMatrix3D.CreateRotationX(SKY_PITCH_SIGN * FMotionPitch)
+        * TMatrix3D.CreateRotationY(SKY_YAW_SIGN * FMotionYaw) * Tilt
+    else
+      FSkyRoot.TransformMatrix := Tilt;
+  end;
+end;
+
+procedure TfrmGamepad.LogMotionAxes;
+const
+  AXIS_NAMES: array[0..2] of string = ('X', 'Y', 'Z');
+var
+  Lin: TPadVec3;
+  A: array[0..2] of Single;
+  I: Integer;
+begin
+  Lin := FMotion.Linear;
+  A[0] := Lin.X;
+  A[1] := Lin.Y;
+  A[2] := Lin.Z;
+  for I := 0 to 2 do
+    if not FAxisLogged[I] and (Abs(A[I]) > 0.35) then
+    begin
+      FAxisLogged[I] := True;
+      AddLog(Format('Motion: accelerometer axis %s reacted (%s g) - map it with MOTION_SRC / '
+        + 'MOTION_SIGN if the model moves the wrong way', [AXIS_NAMES[I], F2(A[I])]));
+    end;
+end;
+
+function TfrmGamepad.MotionRelative(const Q: TPadQuat; const M: InputMotionData_t): TPadQuat;
+
+  // the turn of D about the unit axis (AX, AY, AZ) (swing-twist), and its angle
+  function TwistAbout(const D: TPadQuat; AX, AY, AZ: Single; out AAngle: Single): TPadQuat;
+  var
+    Dot, S: Single;
+  begin
+    Dot := D.X * AX + D.Y * AY + D.Z * AZ;
+    Result.X := Dot * AX;
+    Result.Y := Dot * AY;
+    Result.Z := Dot * AZ;
+    Result.W := D.W;
+    S := Sqrt(Sqr(Result.X) + Sqr(Result.Y) + Sqr(Result.Z) + Sqr(Result.W));
+    AAngle := 0;
+    if S < 1E-6 then
+    begin
+      Result := QUAT_IDENTITY;
+      Exit;
+    end;
+    Result.X := Result.X / S;
+    Result.Y := Result.Y / S;
+    Result.Z := Result.Z / S;
+    Result.W := Result.W / S;
+    AAngle := 2 * ArcTan2(Dot, D.W);
+  end;
+
+var
+  A, D, Tw, Pt, R: TPadQuat;
+  N, K, RN, Dot: Single;
+  U: TPadVec3;
+begin
+  FMotionYaw := 0;
+  FMotionPitch := 0;
+  Result := QuatMul(QuatConj(FMotionZero), Q);
+  if not FMoveMotion then
+    Exit;
+  // "up" in Steam's frame: the accelerometer (gravity, at rest) turned by
+  // the orientation, averaged over about a second
+  A := QuatRotate(Q, M.posAccelX, M.posAccelY, M.posAccelZ);
+  N := Sqrt(Sqr(A.X) + Sqr(A.Y) + Sqr(A.Z));
+  if N > 1E-6 then
+  begin
+    if not FUpSet then
+    begin
+      FUp.X := A.X / N;
+      FUp.Y := A.Y / N;
+      FUp.Z := A.Z / N;
+      FUpSet := True;
+    end
+    else
+    begin
+      K := 0.02;
+      FUp.X := FUp.X + (A.X / N - FUp.X) * K;
+      FUp.Y := FUp.Y + (A.Y / N - FUp.Y) * K;
+      FUp.Z := FUp.Z + (A.Z / N - FUp.Z) * K;
+    end;
+  end;
+  if not FUpSet then
+    Exit;
+  N := Sqrt(Sqr(FUp.X) + Sqr(FUp.Y) + Sqr(FUp.Z));
+  if N < 1E-6 then
+    Exit;
+  U.X := FUp.X / N;
+  U.Y := FUp.Y / N;
+  U.Z := FUp.Z / N;
+  Inc(FUpPolls);
+  if not FUpLogged and (FUpPolls > 60) then
+  begin
+    FUpLogged := True;
+    AddLog(Format('Motion: the sensors'' up axis is %s %s %s (should stay put while the pad is '
+      + 'tilted; if it follows the pad, turning round is not told apart from turning the pad)',
+      [F2(U.X), F2(U.Y), F2(U.Z)]));
+  end;
+  // the turn since the front view in Steam's frame, D = Q * conj(Q0), taken
+  // apart: about up (the player turning round) -> the skybox's heading;
+  // then about the player's right (the whole pad tilted up / down) -> the
+  // skybox's inclination (and the model's, MOTION_PITCH_SKY_ONLY)
+  D := QuatMul(Q, QuatConj(FMotionZero));
+  Tw := TwistAbout(D, U.X, U.Y, U.Z, FMotionYaw);
+  D := QuatMul(QuatConj(Tw), D);
+  // the player's right: the pad's right at the front view, made level
+  R := QuatRotate(FMotionZero, 1, 0, 0);
+  Dot := R.X * U.X + R.Y * U.Y + R.Z * U.Z;
+  R.X := R.X - Dot * U.X;
+  R.Y := R.Y - Dot * U.Y;
+  R.Z := R.Z - Dot * U.Z;
+  RN := Sqrt(Sqr(R.X) + Sqr(R.Y) + Sqr(R.Z));
+  if RN > 0.1 then
+  begin
+    Pt := TwistAbout(D, R.X / RN, R.Y / RN, R.Z / RN, FMotionPitch);
+    // the tilt tilts the skybox; it stays on the model as well unless
+    // MOTION_PITCH_SKY_ONLY (owner 04:24: Glow18's model, plus the tilt
+    // on the skybox)
+    if MOTION_PITCH_SKY_ONLY then
+      D := QuatMul(QuatConj(Pt), D);
+  end;
+  // the model: what is left, back in the pad's frame at the front view
+  Result := QuatMul(QuatMul(QuatConj(FMotionZero), D), FMotionZero);
 end;
 
 function TfrmGamepad.HardwareInfoText: string;
@@ -2385,8 +2849,8 @@ end;
 
 procedure TfrmGamepad.UpdateOverlay;
 const
-  ITEM_HEIGHT = 48;
-  ITEM_GAP = 8;
+  ITEM_HEIGHT = 40;
+  ITEM_GAP = 6;
 var
   I: TOverlayItem;
   T: string;
@@ -2413,7 +2877,9 @@ begin
       oiReturn: T := 'Return to App';
       oiView: T := ViewRowText;
       oiGlow: T := IfThen(FGlowOn, 'Disable Highlights', 'Enable Highlights');
-      oiMotion: T := IfThen(FFollowMotion, 'Disable Motion', 'Enable Motion');
+      oiSky: T := SkyRowText;
+      oiMotion: T := IfThen(FFollowMotion, 'Disable Gyro', 'Enable Gyro');
+      oiMove: T := IfThen(FMoveMotion, 'Disable Motion', 'Enable Motion');
       oiSettings: T := 'Controller Settings';
       oiHardware: T := 'Steam Hardware';
       oiRemoteLog:
@@ -2490,6 +2956,7 @@ begin
   FMenuOpen := True;
   FMenuItem := oiReturn;
   FMenuView := FView;
+  FMenuSky := FSky;
   FInfoOpen := False;
   UpdateOverlay;
   FOverlay.Visible := True;
@@ -2577,6 +3044,10 @@ begin
       end;
     oiMotion:
       SetFollowMotion(not FFollowMotion);
+    oiMove:
+      SetMoveMotion(not FMoveMotion);
+    oiSky:
+      SetSky(FMenuSky);
     oiSettings:
       // Steam's binding panel, as File > View Controller Settings (Big
       // Picture / Game Mode has no window menu); after this poll, with the
@@ -2615,6 +3086,8 @@ begin
   // click)
   if I = oiView then
     CycleView(1);
+  if I = oiSky then
+    CycleSky(1);
   UpdateOverlay;
   ChooseOverlayItem;
 end;
@@ -2670,12 +3143,16 @@ begin
         if FMenuItem = oiController then
           CyclePad(-1)
         else if FMenuItem = oiView then
-          CycleView(-1);
+          CycleView(-1)
+        else if FMenuItem = oiSky then
+          CycleSky(-1);
       maRight:
         if FMenuItem = oiController then
           CyclePad(1)
         else if FMenuItem = oiView then
-          CycleView(1);
+          CycleView(1)
+        else if FMenuItem = oiSky then
+          CycleSky(1);
       maConfirm: ChooseOverlayItem;
       maBack:    CloseOverlay;
     end;
@@ -2697,12 +3174,12 @@ var
   A: TInputAction;
   WasSwapped: Boolean;
 begin
-  WasSwapped := FView <> pvFront;
+  WasSwapped := ViewSwapped(FView);
   FView := AView;
   // front <-> back / top: the paddles, triggers and bumpers change clips
   // (AnimClip), so everything goes to rest and what is held is pressed
   // again on its new clip; the analog controls follow from the next poll
-  if (WasSwapped <> (AView <> pvFront)) and (FAnimator <> nil) and (FAnimator.Model <> nil) then
+  if (WasSwapped <> ViewSwapped(AView)) and (FAnimator <> nil) and (FAnimator.Model <> nil) then
   begin
     FAnimator.StopAll;
     for A := Low(TInputAction) to High(TInputAction) do
@@ -3177,7 +3654,7 @@ var
   I: Integer;
 begin
   Result := AClip;
-  if FView = pvFront then
+  if not ViewSwapped(FView) then
     Exit;
   for I := 0 to High(MIRRORED_CLIPS) do
     if MIRRORED_CLIPS[I] = AClip then
@@ -3309,12 +3786,24 @@ var
   M: InputMotionData_t;
 begin
   M := P.GetMotionData(FActive);
+  // the accelerometer (Motion): fed always, so the menu item knows
+  // whether the pad has one
+  FMotion.Feed(M.posAccelX, M.posAccelY, M.posAccelZ, PadNowMs);
+  if FMotion.HasAccel and not FAccelLogged then
+  begin
+    FAccelLogged := True;
+    AddLog('The pad has an accelerometer: Motion (the model also moves with the pad, the '
+      + 'skybox turns) can be chosen in the overlay menu');
+    UpdateOverlay;
+  end;
+  if FMoveMotion then
+    LogMotionAxes;
   if not FMotionLogged and ((M.rotQuatX <> 0) or (M.rotQuatY <> 0) or (M.rotQuatZ <> 0)
     or ((M.rotQuatW <> 0) and (M.rotQuatW <> 1))) then
   begin
     FMotionLogged := True;
     AddLog(Format('First motion data: quat %s %s %s %s - the pad has motion sensors (Enable '
-      + 'Motion in the overlay menu, or View > Follow pad motion; the orientation then is the '
+      + 'Gyro in the overlay menu, or View > Gyro; the orientation then is the '
       + 'front view, View > Recenter motion changes it)',
       [F2(M.rotQuatX), F2(M.rotQuatY), F2(M.rotQuatZ), F2(M.rotQuatW)]));
   end;

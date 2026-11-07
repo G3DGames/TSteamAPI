@@ -32,6 +32,40 @@ goes back to the chosen view. The Castle twins turn the model the other way
 instead, which gives the same picture, and View > Reset view goes back to it.
 The model never turns by itself.
 
+### Gyro, Motion and skyboxes
+
+The overlay menu has three rows for this (owner 2026-11-07):
+
+* **Enable / Disable Gyro** - the model turns as the pad turns (the pad's
+  orientation when it is switched on is the front view; View > Recenter
+  motion takes the current one). Pads with motion sensors only.
+* **Enable / Disable Motion** - the gyro, and the model also MOVES with the
+  pad: lift it and the model goes up, push it right and it goes right. Only
+  for pads with an accelerometer (the row is greyed otherwise). An
+  accelerometer measures changes of speed, not a position, so this is a
+  feel of the movement, not tracking: the model moves while the pad is
+  pushed and drifts back to the middle when it is still, and never further
+  than about a third of its size (it stays in view). Gravity is taken out
+  by a slow average, so a slow tilt does not move it. With Motion on the
+  Motion shows its own view, "Motion" (the top view turned round by
+  azimuth 180, then inclination 180 more; back to the view before when
+  Motion ends). Turning ROUND (on a chair, the pad held still in the
+  hands) does not turn the model: the turn about "up" goes to the skybox,
+  which turns the other way, as the room seems to. Tilting the whole pad
+  up / down tilts the skybox (its inclination) and the model; twisting the
+  pad turns the model. "Up" comes from the accelerometer (gravity) turned by the
+  orientation; the log shows the axis found ("Motion: the sensors' up axis
+  is ..."). The cost: twisting the pad flat (about up) also counts as
+  turning round. With only the Gyro on, the model follows every turn. Which accelerometer axis is "right", "up" and "towards
+  you" differs between pads: the log names the axis that reacts to a push
+  ("Motion: accelerometer axis X reacted"), and MOTION_SRC / MOTION_SIGN
+  in the three uMain.pas map them.
+* **Skybox: None / Grid / Sky / Stars** - left / right choose, A shows it.
+  Sky is shown at start (if it is there).
+  The skyboxes are folders in `images/skyboxes/` (six faces each, see its
+  README); the Grid, Sky and Stars ones are generated test images
+  (`tools/gen_skyboxes.py`). A new folder there is a new skybox.
+
 ### Glow
 
 Every control that is in use glows: a faint translucent cyan sphere (25 %
