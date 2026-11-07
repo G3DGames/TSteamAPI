@@ -47,7 +47,7 @@ demos\SteamConsole\Win64\Release\SteamConsole.exe
 demos\SteamConsole\Win32\Release\SteamConsole.exe
 ```
 
-The post-build event copies the Steam library into the same folder and fails the build if a copy fails. So after a successful Release build that folder holds every file the depot needs - plus a few it must not contain (section 3).
+The build copies the Steam library into the same folder and fails the build if a copy fails (the post-build event is one line, `call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)`; `deploy.bat` in the project folder does the copying and names a missing file). `deploy.bat` also works on its own: double-click it (Win64 Release) or run `deploy.bat Win32 Debug`. So after a successful Release build that folder holds every file the depot needs - plus a few it must not contain (section 3).
 
 ### 2. What goes in the depot
 

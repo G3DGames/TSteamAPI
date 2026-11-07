@@ -3108,9 +3108,10 @@ begin
         AnimateButton(A, D.bState);
         AddLog(ActionNames[A] + IfThen(D.bState, ' pressed', ' released'));
         // a trackpad click while Steam reports no touch on that pad: the
-        // layout Steam loaded uses the touch for something else (before
-        // layout r21: the gyro's "on while the right pad is touched",
-        // owner's Steam Deck log 2026-11-06); once per pad
+        // positions stopped after the overlay menu (layouts before r23), the
+        // touch fell in the dead zone (before r22, owner's PS4 log
+        // 2026-11-07) or switched the gyro on (before r21, Steam Deck log
+        // 2026-11-06); once per pad
         if D.bState then
           for S := Low(TTrackpadSide) to High(TTrackpadSide) do
             if (A = TrackpadClick[S]) and not FNoTouchLogged[S]
@@ -3118,8 +3119,10 @@ begin
             begin
               FNoTouchLogged[S] := True;
               AddLog(TrackpadCaptions[S] + ': clicked, but Steam reports no touch position '
-                + '(0, 0) - the layout Steam loaded uses the touch for something else, '
-                + 'for example to switch the gyro on (our layouts before r21)');
+                + '(0, 0) - with our layouts before r23 the positions stopped once the '
+                + 'overlay menu had been open; before r22 a touch near the middle fell in '
+                + 'Steam''s dead zone; before r21 a right-pad touch could switch the gyro '
+                + 'on instead');
             end;
       end;
       // a LONG press of Start opens the overlay menu (once per hold)

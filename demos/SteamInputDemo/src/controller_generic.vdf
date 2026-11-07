@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - generic gamepad (r21)"
-	"description"		"Default layout for the generic gamepad (controller_generic.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+	"title"		"SteamInputDemo - generic gamepad (r23)"
+	"description"		"Default layout for the generic gamepad (controller_generic.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_generic"
 	"major_revision"		"0"
-	"minor_revision"		"21"
+	"minor_revision"		"23"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - generic gamepad (r21)"
-			"description"		"Default layout for the generic gamepad (controller_generic.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+			"title"		"SteamInputDemo - generic gamepad (r23)"
+			"description"		"Default layout for the generic gamepad (controller_generic.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -408,14 +408,6 @@
 	"group"
 	{
 		"id"		"7"
-		"mode"		"switches"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"8"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -449,39 +441,7 @@
 	}
 	"group"
 	{
-		"id"		"9"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"10"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"11"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"12"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"13"
+		"id"		"8"
 		"mode"		"dpad"
 		"inputs"
 		{
@@ -560,13 +520,8 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"7"		"switch active"
-			"8"		"button_diamond active"
-			"9"		"left_trigger active"
-			"10"		"right_trigger active"
-			"11"		"joystick active"
-			"12"		"right_joystick active"
-			"13"		"dpad active"
+			"7"		"button_diamond active"
+			"8"		"dpad active"
 		}
 	}
 	"settings"

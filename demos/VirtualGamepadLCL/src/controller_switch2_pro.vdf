@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - Switch 2 Pro (r21)"
-	"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+	"title"		"SteamInputDemo - Switch 2 Pro (r23)"
+	"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_switch2_pro"
 	"major_revision"		"0"
-	"minor_revision"		"21"
+	"minor_revision"		"23"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - Switch 2 Pro (r21)"
-			"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+			"title"		"SteamInputDemo - Switch 2 Pro (r23)"
+			"description"		"Default layout for the Switch 2 Pro (controller_switch2_pro.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -425,14 +425,6 @@
 	"group"
 	{
 		"id"		"8"
-		"mode"		"switches"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"9"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -466,39 +458,7 @@
 	}
 	"group"
 	{
-		"id"		"10"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"11"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"12"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"13"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"14"
+		"id"		"9"
 		"mode"		"dpad"
 		"inputs"
 		{
@@ -556,18 +516,6 @@
 			}
 		}
 	}
-	"group"
-	{
-		"id"		"15"
-		"mode"		"gyro_to_mouse"
-		"inputs"
-		{
-		}
-		"settings"
-		{
-			"gyro_button"		"0"
-		}
-	}
 	"preset"
 	{
 		"id"		"0"
@@ -590,14 +538,8 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"8"		"switch active"
-			"9"		"button_diamond active"
-			"10"		"left_trigger active"
-			"11"		"right_trigger active"
-			"12"		"joystick active"
-			"13"		"right_joystick active"
-			"14"		"dpad active"
-			"15"		"gyro active"
+			"8"		"button_diamond active"
+			"9"		"dpad active"
 		}
 	}
 	"settings"

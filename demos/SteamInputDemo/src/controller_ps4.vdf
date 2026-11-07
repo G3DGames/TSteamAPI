@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - PlayStation 4 (r21)"
-	"description"		"Default layout for the PlayStation 4 (controller_ps4.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+	"title"		"SteamInputDemo - PlayStation 4 (r23)"
+	"description"		"Default layout for the PlayStation 4 (controller_ps4.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_ps4"
 	"major_revision"		"0"
-	"minor_revision"		"21"
+	"minor_revision"		"23"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - PlayStation 4 (r21)"
-			"description"		"Default layout for the PlayStation 4 (controller_ps4.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+			"title"		"SteamInputDemo - PlayStation 4 (r23)"
+			"description"		"Default layout for the PlayStation 4 (controller_ps4.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -445,6 +445,7 @@
 		"settings"
 		{
 			"virtual_mode"		"1"
+			"deadzone_inner_radius"		"0"
 		}
 		"gameactions"
 		{
@@ -454,14 +455,6 @@
 	"group"
 	{
 		"id"		"9"
-		"mode"		"switches"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"10"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -495,39 +488,7 @@
 	}
 	"group"
 	{
-		"id"		"11"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"12"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"13"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"14"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"15"
+		"id"		"10"
 		"mode"		"dpad"
 		"inputs"
 		{
@@ -585,26 +546,6 @@
 			}
 		}
 	}
-	"group"
-	{
-		"id"		"16"
-		"mode"		"gyro_to_mouse"
-		"inputs"
-		{
-		}
-		"settings"
-		{
-			"gyro_button"		"0"
-		}
-	}
-	"group"
-	{
-		"id"		"17"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
 	"preset"
 	{
 		"id"		"0"
@@ -628,15 +569,8 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"9"		"switch active"
-			"10"		"button_diamond active"
-			"11"		"left_trigger active"
-			"12"		"right_trigger active"
-			"13"		"joystick active"
-			"14"		"right_joystick active"
-			"15"		"dpad active"
-			"16"		"gyro active"
-			"17"		"center_trackpad active"
+			"9"		"button_diamond active"
+			"10"		"dpad active"
 		}
 	}
 	"settings"

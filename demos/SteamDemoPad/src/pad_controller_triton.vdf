@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamDemoPad - Steam Controller (2026) (r1)"
-	"description"		"Default layout for the Steam Controller (2026) (pad_controller_triton.vdf, revision 1) - TSteamAPI Big Picture demo: menu navigation."
+	"title"		"SteamDemoPad - Steam Controller (2026) (r2)"
+	"description"		"Default layout for the Steam Controller (2026) (pad_controller_triton.vdf, revision 2) - TSteamAPI Big Picture demo: menu navigation."
 	"controller_type"		"controller_triton"
 	"major_revision"		"0"
-	"minor_revision"		"1"
+	"minor_revision"		"2"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -39,8 +39,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamDemoPad - Steam Controller (2026) (r1)"
-			"description"		"Default layout for the Steam Controller (2026) (pad_controller_triton.vdf, revision 1) - TSteamAPI Big Picture demo: menu navigation."
+			"title"		"SteamDemoPad - Steam Controller (2026) (r2)"
+			"description"		"Default layout for the Steam Controller (2026) (pad_controller_triton.vdf, revision 2) - TSteamAPI Big Picture demo: menu navigation."
 			"Set_Pad"		"Menus"
 			"Action_PadScroll"		"Scroll the list"
 			"Action_PadUp"		"Up"

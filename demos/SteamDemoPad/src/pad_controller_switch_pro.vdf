@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamDemoPad - Switch Pro (r1)"
-	"description"		"Default layout for the Switch Pro (pad_controller_switch_pro.vdf, revision 1) - TSteamAPI Big Picture demo: menu navigation."
+	"title"		"SteamDemoPad - Switch Pro (r2)"
+	"description"		"Default layout for the Switch Pro (pad_controller_switch_pro.vdf, revision 2) - TSteamAPI Big Picture demo: menu navigation."
 	"controller_type"		"controller_switch_pro"
 	"major_revision"		"0"
-	"minor_revision"		"1"
+	"minor_revision"		"2"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -39,8 +39,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamDemoPad - Switch Pro (r1)"
-			"description"		"Default layout for the Switch Pro (pad_controller_switch_pro.vdf, revision 1) - TSteamAPI Big Picture demo: menu navigation."
+			"title"		"SteamDemoPad - Switch Pro (r2)"
+			"description"		"Default layout for the Switch Pro (pad_controller_switch_pro.vdf, revision 2) - TSteamAPI Big Picture demo: menu navigation."
 			"Set_Pad"		"Menus"
 			"Action_PadScroll"		"Scroll the list"
 			"Action_PadUp"		"Up"

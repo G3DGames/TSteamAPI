@@ -29,7 +29,7 @@ demos\SteamDemoPad\Win64\Release\SteamDemoPad.exe
 demos\SteamDemoPad\Win32\Release\SteamDemoPad.exe
 ```
 
-The post-build event copies the Steam library, the action manifest and the eleven controller layouts into the same folder and fails the build if a copy fails.
+The build copies the Steam library, the action manifest and the eleven controller layouts into the same folder and fails the build if a copy fails (the post-build event is one line, `call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)`; `deploy.bat` in the project folder does the copying and names a missing file). `deploy.bat` also works on its own: double-click it (Win64 Release) or run `deploy.bat Win32 Debug`.
 
 ## 2. What goes in the depot
 

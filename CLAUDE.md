@@ -3652,7 +3652,136 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
   COMPILED.
 
-## Handover (2026-11-06, thirteenth session, part 7) - READ THIS FIRST
+## Handover (2026-11-07, fourteenth session, part 6) - READ THIS FIRST
+WINDOWS DEPLOYMENT, FINAL FORM (Glow13; supersedes parts 3 and 5 below):
+the owner's Project Options > Build Events (Release Win64) showed our
+post-build commands with every line after the first starting "&copy" -
+the IDE's round trip of the multi-line event (CDATA in Base_Win64 + its own
+"&&"-joined per-config copy) had broken it, and the build ran none of it,
+silently. NOW: every Windows PostBuildEvent (Base_Win32 / Base_Win64 CDATA
+and the IDE's four per-config groups) is the single line
+    call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)
+(gen_projects.py POST_BUILD / set_post_build, surgical on the IDE-saved
+dprojs; new dprojs get it from dproj()). deploy.bat (write_deploy_bat) in
+each of the 7 project folders copies the Steam dll + data files to
+<Platform>\<Config>, reports MISSING, exits 1 (fails the build: Cancel On
+Error). REMOVED again: <Project>.deploy.targets + its Import, the Required
+Deployment entries (the dprojs in Glow13 are the owner's e8ba55f files with
+only the PostBuildEvent text changed). If the IDE still shows no
+"copied ..." lines: the owner can double-click deploy.bat. NOTE for later:
+after unzipping .dproj changes the owner must reopen the project (the IDE
+keeps it in memory and may save its old copy back).
+
+## Handover (2026-11-07, fourteenth session, part 5)
+OWNER 01:52 (Glow10 applied, VirtualGamepad Release Win64 Build): still no
+.vdf / .glb / steam_api64.dll copies, and the Build output shows neither
+the post-build event nor the "TSteamAPI deploy:" message - the Delphi 13
+IDE build runs neither PostBuildEvent nor targets imported into the dproj
+(they would only run with msbuild on the command line). sk4d.dll DOES
+arrive: a Deployment entry Required="true" for Win64. TAKE 2 (Glow12):
+gen_projects.py ensure_win_deploy adds DeployFile entries (Class File,
+Required="true", RemoteDir .\, Debug + Release, Win32 + Win64) for the
+Steam dll and every data file to the 7 Windows app / console dprojs
+(VCL ones had an empty <Deployment Version="5"/>, now filled), and
+write_deploy_bat writes deploy.bat into each project folder: a sure
+fallback (no IDE feature) - "deploy.bat [Win64|Win32] [Release|Debug]",
+copies, reports MISSING files, pauses when double-clicked. UNKNOWN
+whether the IDE copies Required deployment files on Build (sk4d.dll
+suggests so) or only on Project > Deploy - ask the owner which; then
+drop what does not work. Zip Glow12 = against the latest push e8ba55f
+(Glow11 not pushed yet: it contains Glow11 too).
+
+## Handover (2026-11-07, fourteenth session, part 4)
+ZIP RULE (owner 01:49: ".gitattributes keeps coming although unchanged - no
+file in the zip may be identical to the last version"): a zip holds ONLY
+files that differ from the owner's LATEST PUSH (git fetch origin first),
+compared with line endings ignored, plus new files - never a cumulative
+list since an older commit. Before building a zip: fetch, take the push as
+the base, carry this session's changes onto it, and check the owner's own
+edits are kept (e8ba55f "Final tweaks": his only edit over Glow7 was
+VirtualGamepad.dproj default Config Release - kept). Zip Glow11 = Glow8 +
+Glow9 + Glow10 work against e8ba55f (88 files): layouts r23 (input) and
+pad layouts r2 (PAD_LAYOUT_REVISION 1 -> 2: their Steam Controller layout
+got the trackpad "deadzone_inner_radius" "0" too), deploy.targets, the
+PadParts hint fix, log texts, docs. Glow10 is superseded (it was built
+against 53fd7d1 and would have reset the Release default).
+
+## Handover (2026-11-07, fourteenth session, part 3)
+Zip Glow10 follows Glow9 and contains it. OWNER (01:40): Win64\Release held
+only the .exe and the dlls; wants every deployment file next to the exe.
+His Build output (01:45, Delphi 13 / 37.0, VirtualGamepad Release Win64)
+shows brcc32 + dcc64 and "Success" - NO post-build event line at all: the
+IDE did not run the PostBuildEvent (present in Base_Win64 and in the
+IDE's own per-config groups at the end of the dproj). Cause not known.
+FIX, independent of build events: gen_projects.py writes
+<Project>.deploy.targets next to every app / console .dproj that has a
+redistributable or data files (SteamDemo, SteamDemoPad, SteamDemoVCL,
+SteamConsole, SteamInputDemo, VirtualGamepad, VirtualGamepadVCL): MSBuild
+target TSteamAPIDeploy, AfterTargets="Build;Make", Win32 / Win64 only,
+Error per missing file, Copy to $(DCC_ExeOutput), Message (high) "TSteamAPI
+deploy: n files copied to ...". The IDE-saved .dproj files only get ONE
+line, an <Import> of it right after the .deployproj import
+(ensure_deploy_import; gen_projects.py now always does this, idempotent;
+new dprojs get it from dproj()). The old post-build events are left in
+place (harmless if they ever run: the same copies). EXPECTED in the next
+Build output: the "TSteamAPI deploy:" line; if it is missing too, the IDE
+dropped or ignores the import - next step a deploy.bat. sk4d.dll still
+comes from Delphi (Skia). Lazarus (.lpi) projects: no copy step yet.
+Also: PadParts' FindPadTrackpad has no loop while no model marks a
+trackpad (the build's hints H2135 / H2164); gen_pad_parts.py.
+CHANGED over Glow9: tools/gen_projects.py, tools/gen_pad_parts.py, the
+three PadParts.pas, 7 .dproj (one Import line), 7 new .deploy.targets,
+README.md, 7 demo READMEs, CLAUDE.md.
+====> REBUILD (Project > Build) VirtualGamepad, VirtualGamepadVCL, SteamInputDemo, SteamDemoPad, SteamDemo, SteamDemoVCL, SteamConsole (DELPHI); VirtualGamepadLCL (LAZARUS, PadParts) <====
+
+## Handover (2026-11-07, fourteenth session, part 2)
+Zip Glow9 follows Glow8 and contains it. OWNER (01:35, PS4 log 01:34, r22
+deployed): "Touchpad: clicked, but no touch position" appears once the view
+is switched to Top. Read in the logs: it is the OVERLAY MENU, not the view -
+touches reported until the first overlay (this log 01:34:10-17, PS4 log
+01:09-01:11:29, Deck log right pad 00:29:59), none after it (on the Deck the
+left pad still worked). The input profile wrote a group for EVERY source in
+the Menu set as well, the unused ones empty (joystick_move without
+gameactions = Steam drives the virtual pad's stick from it); after Menu ->
+InGame Steam gave the trackpad no position any more. Also, since r21, the
+Menu set's empty gyro group had "gyro_button" "0" - always on, and an unbound
+gyro_to_mouse group can move the mouse pointer (the reason the pad profile
+has bound_sources_only). FIX: the input profile also uses
+bound_sources_only=True (Menu set: button_diamond + dpad only; InGame
+unchanged, every source bound there); LAYOUT_REVISION 22 -> 23, 44 layouts
+regenerated. CAUSE NOT PROVEN - expected: touches reported after the overlay
+menu; if not, next suspect is Steam itself (ActivateActionSet back to
+InGame), then try re-activating InGame a second time / a touch release.
+The Deck right-pad problem (Glow6's gyro theory) may be this one too.
+CHANGED over Glow8: tools/gen_input_mapping.py, the 44 controller_*.vdf,
+the three uMain.pas (log text), docs/SteamInputMapping.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL, SteamInputDemo (DELPHI), VirtualGamepadLCL (LAZARUS); copy the .vdf to the game folder; RESTART STEAM (r23) <====
+
+## Handover (2026-11-07, fourteenth session)
+Zip Glow8 follows Glow7 and contains it (and Glow6 .. Glow1). OWNER now
+has a PS4 controller; log 01:09-01:13 (Windows 11, VirtualGamepad FMX,
+D2D 60 fps): type 5 PS4Controller -> PS5_Animated.glb; every button,
+stick, trigger, bumper, the touchpad touch and click, gyro, the view row
+(Front / Back / Top) all logged as expected; "Steam hardware: none" (the
+overlay item greyed). ONE FINDING: 01:12:33 "Touchpad: clicked, but Steam
+reports no touch position" - a click in the MIDDLE of the touchpad. Cause:
+the touchpad is a joystick_move whole-source group, and Steam's default
+inner dead zone turns a touch near the centre into (0, 0) = no touch.
+FIX: gen_input_mapping.py writes "deadzone_inner_radius" "0" (key as in
+Steam's own controller_neptune_* templates, 0..32767) into whole-trackpad
+groups (left / right / center_trackpad; sticks keep Steam's dead zone);
+LAYOUT_REVISION 21 -> 22, all 44 input layouts regenerated. The log line's
+text now names both causes (dead zone before r22, gyro before r21).
+"Gyro: motion" at the same moment as "Touchpad: touched" on the PS4 is the
+pad moving under the finger, not the Deck's gyro-activation problem (the
+touches were reported).
+CHANGED over Glow7: tools/gen_input_mapping.py, the 44 controller_*.vdf,
+the three uMain.pas, docs/SteamInputMapping.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL, SteamInputDemo (DELPHI), VirtualGamepadLCL (LAZARUS); RESTART STEAM so it loads the r22 layouts <====
+NOT COMPILED here. Expected: a click in the middle of the PS4 touchpad
+shows the dot there, and no "no touch position" line.
+
+## Handover (2026-11-06, thirteenth session, part 7)
 Zip Glow7 follows Glow6 and contains it (and Glow5 .. Glow1). OWNER (00:54):
 an overlay menu item for the Steam hardware - greyed out when none is
 detected; otherwise it opens a panel ON TOP of the menu with everything

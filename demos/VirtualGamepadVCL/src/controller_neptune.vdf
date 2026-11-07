@@ -2,11 +2,11 @@
 {
 	"version"		"3"
 	"revision"		"1"
-	"title"		"SteamInputDemo - Steam Deck (r21)"
-	"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+	"title"		"SteamInputDemo - Steam Deck (r23)"
+	"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 	"controller_type"		"controller_neptune"
 	"major_revision"		"0"
-	"minor_revision"		"21"
+	"minor_revision"		"23"
 	"Timestamp"		"0"
 	"actions"
 	{
@@ -94,8 +94,8 @@
 	{
 		"english"
 		{
-			"title"		"SteamInputDemo - Steam Deck (r21)"
-			"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 21) - TSteamAPI Steam Input test: one action per physical control."
+			"title"		"SteamInputDemo - Steam Deck (r23)"
+			"description"		"Default layout for the Steam Deck (controller_neptune.vdf, revision 23) - TSteamAPI Steam Input test: one action per physical control."
 			"Set_InGame"		"Every control"
 			"Set_Menu"		"Menu"
 			"Action_LeftStick"		"Left stick"
@@ -497,6 +497,7 @@
 		"settings"
 		{
 			"virtual_mode"		"1"
+			"deadzone_inner_radius"		"0"
 		}
 		"gameactions"
 		{
@@ -526,6 +527,7 @@
 		"settings"
 		{
 			"virtual_mode"		"1"
+			"deadzone_inner_radius"		"0"
 		}
 		"gameactions"
 		{
@@ -535,14 +537,6 @@
 	"group"
 	{
 		"id"		"10"
-		"mode"		"switches"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"11"
 		"mode"		"four_buttons"
 		"inputs"
 		{
@@ -576,39 +570,7 @@
 	}
 	"group"
 	{
-		"id"		"12"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"13"
-		"mode"		"trigger"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"14"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"15"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"16"
+		"id"		"11"
 		"mode"		"dpad"
 		"inputs"
 		{
@@ -666,34 +628,6 @@
 			}
 		}
 	}
-	"group"
-	{
-		"id"		"17"
-		"mode"		"gyro_to_mouse"
-		"inputs"
-		{
-		}
-		"settings"
-		{
-			"gyro_button"		"0"
-		}
-	}
-	"group"
-	{
-		"id"		"18"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
-	"group"
-	{
-		"id"		"19"
-		"mode"		"joystick_move"
-		"inputs"
-		{
-		}
-	}
 	"preset"
 	{
 		"id"		"0"
@@ -718,16 +652,8 @@
 		"name"		"Menu"
 		"group_source_bindings"
 		{
-			"10"		"switch active"
-			"11"		"button_diamond active"
-			"12"		"left_trigger active"
-			"13"		"right_trigger active"
-			"14"		"joystick active"
-			"15"		"right_joystick active"
-			"16"		"dpad active"
-			"17"		"gyro active"
-			"18"		"left_trackpad active"
-			"19"		"right_trackpad active"
+			"10"		"button_diamond active"
+			"11"		"dpad active"
 		}
 	}
 	"settings"

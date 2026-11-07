@@ -299,7 +299,7 @@ Step by step, with every alarming-looking message explained:
 3. Build and run **SteamDemo** (or **SteamConsole**; `SteamConsole 60` pumps
    callbacks for 60 s instead of 3) with the Steam client
    running and logged in. Debug builds export `SteamAppId=2275430`, so no
-   `steam_appid.txt` is needed. On Windows the post-build event copies the DLL
+   `steam_appid.txt` is needed. On Windows the post-build event (`deploy.bat` in the project folder) copies the DLL
    next to the executable and fails the build if it is missing; on macOS / Linux it is deployed with the app.
    SteamDemo's buttons are enabled only when they make sense (**Start
    Steam** while Steam is stopped; **Show info**, **Stop Steam** and **Test
@@ -889,7 +889,7 @@ Windows', normal behaviour. Each says why and what to do.
   `src\compatibility\delphi-only\fcl-json` folder (`PadAnimator` uses
   `fpjson` from there; the demo's own README.md says the same). Then
   build `demos/VirtualGamepadVCL/VirtualGamepadVCL.dproj` from the
-  project group (Win64 or Win32; the post-build event copies the DLL,
+  project group (Win64 or Win32; the build copies the DLL,
   the .vdf files and the models next to the executable). AppID 4108310,
   like VirtualGamepad.
 * **SteamConsoleFPC** (the Free Pascal twin of SteamConsole, plain FPC, no

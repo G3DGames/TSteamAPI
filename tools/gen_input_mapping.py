@@ -319,7 +319,9 @@ PAD_MODES = {"joystick": "dpad"}
 # RAISE BY ONE WHENEVER A pad_ LAYOUT'S CONTENT CHANGES (reported back in
 # SteamInputConfigurationLoaded_t, as LAYOUT_REVISION for the input profile)
 #   1 - 2026-11-04: first version
-PAD_LAYOUT_REVISION = 1
+#   2 - 2026-11-07: whole-trackpad groups get "deadzone_inner_radius" "0" (as
+#       the input profile's r22; only the Steam Controller layout binds one)
+PAD_LAYOUT_REVISION = 2
 # SteamDemoPad's manifest (its MANIFEST_FILE and gen_projects.py's
 # PAD_INPUT_FILES must match it)
 PAD_MANIFEST_NAME = "steamdemopad_controllers.vdf"
@@ -342,8 +344,17 @@ class Profile:
 
 PROFILES = {
     "input": Profile(OUTS, "steam_controllers.vdf", "controller_", TITLE, DESCRIPTION, "SteamInputDemo",
-                     SETS, LOCALIZATION, BINDINGS, OPTIONAL, {}, 21, False,
-                     "TSteamAPI Steam Input test: one action per physical control."),
+                     SETS, LOCALIZATION, BINDINGS, OPTIONAL, {}, 23, False,
+                     "TSteamAPI Steam Input test: one action per physical control.",
+                     # r23: the Menu set gets no groups for the sources it does
+                     # not use (sticks, triggers, trackpads, gyro). With empty
+                     # groups, a trackpad reported no touch position any more
+                     # once the overlay menu had switched to the Menu set and
+                     # back (owner's PS4 log 2026-11-07 and the Steam Deck log
+                     # 2026-11-06: positions until the first overlay, none
+                     # after), and since r21 the Menu set's always-on gyro
+                     # group could move the mouse pointer
+                     bound_sources_only=True),
     "pad": Profile(PAD_OUTS, PAD_MANIFEST_NAME, "pad_controller_", PAD_TITLE, PAD_DESCRIPTION, "SteamDemoPad",
                    PAD_SETS, PAD_LOCALIZATION, PAD_BINDINGS, {}, PAD_MODES, PAD_LAYOUT_REVISION, True,
                    "TSteamAPI Big Picture demo: menu navigation.", bound_sources_only=True),
@@ -442,7 +453,12 @@ def manifest(pr):
 #  21 - 2026-11-06: gyro groups get "gyro_button" "0" (always on): Steam's
 #       default on the Deck / Steam Controller switched the gyro on with a
 #       right-trackpad touch, and that touch gave no RightTrackpad position
-LAYOUT_REVISION = 21
+#  22 - 2026-11-07: whole-trackpad groups get "deadzone_inner_radius" "0": a
+#       touch near the middle of a pad read as (0, 0), i.e. no touch
+#  23 - 2026-11-07: the Menu set leaves out the sources it does not use (no
+#       empty trackpad / stick / gyro groups): trackpad positions stopped
+#       after the overlay menu had used the Menu set
+LAYOUT_REVISION = 23
 assert PROFILES["input"].revision == LAYOUT_REVISION
 
 # File name of the action manifest (the programs' MANIFEST_FILE and
@@ -540,10 +556,17 @@ def layout(pr, ctype):
             # Trackpad"). 0 = "Gyro Enable Button - Always On" (GyroNone, the
             # first of Steam's gyro button choices).
             gyro_always = src == "gyro"
+            # a trackpad as a position: no inner dead zone. Steam's default
+            # one turns a touch near the middle into (0, 0), the same as no
+            # touch (owner's PS4 log 2026-11-07: a touchpad click in the
+            # middle came with no touch; it is where a pad is pressed most)
+            pad_position = whole and src.endswith("_trackpad")
             if whole or gyro_always:
                 w.open("settings")
                 if whole:
                     w.kv("virtual_mode", "1")
+                if pad_position:
+                    w.kv("deadzone_inner_radius", "0")
                 if gyro_always:
                     w.kv("gyro_button", "0")
                 w.close()

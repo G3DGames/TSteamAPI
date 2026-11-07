@@ -13,7 +13,7 @@ demos\VirtualGamepad\Win64\Release\VirtualGamepad.exe
 demos\VirtualGamepad\Win32\Release\VirtualGamepad.exe
 ```
 
-The post-build event copies the Steam library, the action manifest, the eleven controller layouts and the three models into the same folder and fails the build if a copy fails. The IDE's Deployment adds `sk4d.dll` (section 2). So after a successful Release build that folder holds every file the depot needs - plus a few it must not contain (section 3).
+The build copies the Steam library, the action manifest, the eleven controller layouts and the three models into the same folder and fails the build if a copy fails (the post-build event is one line, `call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)`; `deploy.bat` in the project folder does the copying and names a missing file). `deploy.bat` also works on its own: double-click it (Win64 Release) or run `deploy.bat Win32 Debug`. The IDE's Deployment adds `sk4d.dll` (section 2). So after a successful Release build that folder holds every file the depot needs - plus a few it must not contain (section 3).
 
 ## 2. What goes in the depot
 

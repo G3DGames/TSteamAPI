@@ -131,14 +131,12 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <PostBuildEvent><![CDATA[echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)
-copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll" "$(OUTPUTDIR)" || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py & exit /b 1)]]></PostBuildEvent>
+        <PostBuildEvent><![CDATA[call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <PostBuildEvent><![CDATA[echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)
-copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPUTDIR)" || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py & exit /b 1)]]></PostBuildEvent>
+        <PostBuildEvent><![CDATA[call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
@@ -1248,7 +1246,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>call &quot;$(PROJECTDIR)\deploy.bat&quot; $(Platform) $(Config)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
@@ -1256,7 +1254,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>call &quot;$(PROJECTDIR)\deploy.bat&quot; $(Platform) $(Config)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win32'">
@@ -1264,7 +1262,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\steam_api.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api.dll from redistributable_bin\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>call &quot;$(PROJECTDIR)\deploy.bat&quot; $(Platform) $(Config)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
@@ -1272,7 +1270,7 @@ copy /Y "$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll" "$(OUTPU
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>echo Steamworks post-build: $(Platform) $(Config), copying steam_api64.dll to $(OUTPUTDIR)&amp;&amp;copy /Y &quot;$(PROJECTDIR)\..\..\redistributable_bin\win64\steam_api64.dll&quot; &quot;$(OUTPUTDIR)&quot; || (echo ERROR: could not copy steam_api64.dll from redistributable_bin\win64\ - if it is missing, copy redistributable_bin from the Steamworks SDK 1.65 into the repository root, then run tools\check_redist.py &amp; exit /b 1)</PostBuildEvent>
+        <PostBuildEvent>call &quot;$(PROJECTDIR)\deploy.bat&quot; $(Platform) $(Config)</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
 </Project>

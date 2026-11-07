@@ -363,15 +363,9 @@ begin
 end;
 
 function FindPadTrackpad(const AModel, ASide: string; out APad: TPadTrackpad): Boolean;
-var
-  I: Integer;
 begin
-  for I := 0 to PAD_TRACKPAD_COUNT - 1 do
-    if SameText(PAD_TRACKPADS[I].Model, AModel) and SameText(PAD_TRACKPADS[I].Side, ASide) then
-    begin
-      APad := PAD_TRACKPADS[I];
-      Exit(True);
-    end;
+  // no model marks a trackpad yet (PAD_TRACKPAD_COUNT = 0)
+  APad := PAD_TRACKPADS[0];
   Result := False;
 end;
 
