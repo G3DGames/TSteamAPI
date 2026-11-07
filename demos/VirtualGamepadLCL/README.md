@@ -17,7 +17,7 @@ Unlike the Delphi demos the Lazarus project has **no post-build copy**: copy the
 
 ## 2. What goes in the program folder
 
-Everything sits **next to the .exe** - no subfolders (the models too: not in a `models\` subfolder).
+The .exe, the Steam library and the action manifest sit **next to each other**; the controller layouts in a `controllers\` subfolder (the manifest names them `controllers/...`), the models in `models\` - the same layout as the Delphi builds.
 
 | File | Taken from |
 |------|------------|
@@ -25,7 +25,7 @@ Everything sits **next to the .exe** - no subfolders (the models too: not in a `
 | `steam_api64.dll` - x86_64-win64 build only | `redistributable_bin\win64\steam_api64.dll` |
 | `steam_api.dll` - i386-win32 build only | `redistributable_bin\steam_api.dll` |
 | `steam_controllers.vdf` | `demos\VirtualGamepadLCL\src\` |
-| `controller_*.vdf` - 11 files, listed below | `demos\VirtualGamepadLCL\src\` |
+| `controller_*.vdf` - 11 files, listed below | `demos\VirtualGamepadLCL\src\controllers\` |
 | `XBoxOne_Animated.glb` | `models\` (repository root) |
 | `PS5_Animated.glb` | `models\` (repository root) |
 | `SteamController_Animated.glb` | `models\` (repository root) |
@@ -35,20 +35,22 @@ Everything sits **next to the .exe** - no subfolders (the models too: not in a `
     VirtualGamepadLCL.exe
     steam_api64.dll        (64-bit)   - or -   steam_api.dll   (32-bit)
     steam_controllers.vdf
-    controller_generic.vdf
-    controller_neptune.vdf
-    controller_ps4.vdf
-    controller_ps5.vdf
-    controller_steamcontroller_gordon.vdf
-    controller_switch2_pro.vdf
-    controller_switch_joycon_pair.vdf
-    controller_switch_pro.vdf
-    controller_triton.vdf
-    controller_xbox360.vdf
-    controller_xboxone.vdf
-    XBoxOne_Animated.glb
-    PS5_Animated.glb
-    SteamController_Animated.glb
+    controllers\
+        controller_generic.vdf
+        controller_neptune.vdf
+        controller_ps4.vdf
+        controller_ps5.vdf
+        controller_steamcontroller_gordon.vdf
+        controller_switch2_pro.vdf
+        controller_switch_joycon_pair.vdf
+        controller_switch_pro.vdf
+        controller_triton.vdf
+        controller_xbox360.vdf
+        controller_xboxone.vdf
+    models\
+        XBoxOne_Animated.glb
+        PS5_Animated.glb
+        SteamController_Animated.glb
 ```
 
 * The DLL must match the build: a 64-bit .exe cannot load `steam_api.dll`, a 32-bit .exe cannot load `steam_api64.dll`.

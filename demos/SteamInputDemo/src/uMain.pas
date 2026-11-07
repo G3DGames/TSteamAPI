@@ -17,7 +17,7 @@
   whatever the update mode.
 
   The controller being read is shown prominently at the top: its type, the
-  layout file Steam looks for (controller_<type>.vdf - ours when it is next
+  layout file Steam looks for (controllers/controller_<type>.vdf - ours when it is next
   to the manifest), the matching 3D model in models/ and whether it has
   motion sensors. Each change is logged ("Controller identified").
 
@@ -342,6 +342,9 @@ end;
 const
   { Manifest file name, next to the executable. }
   MANIFEST_FILE = 'steam_controllers.vdf';   // tools/gen_input_mapping.py MANIFEST_NAME
+  { Subfolder of the manifest's folder with our layouts (the manifest names
+    "controllers/..."; tools/gen_input_mapping.py LAYOUT_DIR). }
+  LAYOUT_DIR = 'controllers';
   { How long a LogReceiver search listens for answers (ms). }
   REMOTE_SEARCH_MS = 2500;
   { Pause between attempts to resolve the action handles (ms). }
@@ -1261,7 +1264,7 @@ begin
     FileName := LayoutTypeName(P.GetInputTypeForHandle(AData.m_ulDeviceHandle));
     if (FileName <> '') and (ExtractFilePath(ManifestPath) <> '') then
     begin
-      FileName := TPath.Combine(ExtractFilePath(ManifestPath), FileName + '.vdf');
+      FileName := TPath.Combine(TPath.Combine(ExtractFilePath(ManifestPath), LAYOUT_DIR), FileName + '.vdf');
       FileRev := LayoutFileRevision(FileName);
       SteamRev := Format('%d.%d', [AData.m_unMajorRevision, AData.m_unMinorRevision]);
       // NOT a check: the owner chose the "(r2)" layout in Steam's browser
@@ -1380,7 +1383,7 @@ begin
     else
     begin
       Dir := ExtractFilePath(ManifestPath);
-      if (Dir <> '') and TFile.Exists(TPath.Combine(Dir, Layout + '.vdf')) then
+      if (Dir <> '') and TFile.Exists(TPath.Combine(TPath.Combine(Dir, LAYOUT_DIR), Layout + '.vdf')) then
       begin
         Layout := 'layout ' + Layout + '.vdf (ours)';
         Ours := True;

@@ -33,7 +33,7 @@ The build copies the Steam library, the action manifest and the eleven controlle
 
 ## 2. What goes in the depot
 
-Everything sits **in the depot's root folder, next to the .exe** - no subfolders.
+The .exe, the Steam library and the action manifest sit **in the depot's root folder**; the controller layouts in a `controllers\` subfolder (the manifest names them `controllers/...`) - the folder the build fills (`deploy.bat`) is exactly this.
 
 | File | Taken from |
 |------|------------|
@@ -42,7 +42,7 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 | `steam_api.dll` - Win32 build only | `redistributable_bin\steam_api.dll` |
 | `steamdemopad_controllers.vdf` | `demos\SteamDemoPad\src\` |
 | `sk4d.dll` (Skia; the Win64 or Win32 one) | the IDE deploys it next to the .exe (Enable Skia) |
-| `pad_controller_*.vdf` - 11 files: xboxone, xbox360, ps5, ps4, switch_pro, neptune, steamcontroller_gordon, triton, switch2_pro, switch_joycon_pair, generic | `demos\SteamDemoPad\src\` |
+| `pad_controller_*.vdf` - 11 files: xboxone, xbox360, ps5, ps4, switch_pro, neptune, steamcontroller_gordon, triton, switch2_pro, switch_joycon_pair, generic | `demos\SteamDemoPad\src\controllers\` |
 
 The `pad_` names never clash with SteamInputDemo's `controller_*.vdf`, so both programs can share one depot folder.
 

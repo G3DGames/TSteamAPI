@@ -424,126 +424,126 @@
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\models\</RemoteDir>
                         <RemoteName>PS5_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>PS5_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>PS5_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\models\</RemoteDir>
                         <RemoteName>PS5_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>PS5_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\PS5_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>PS5_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\models\</RemoteDir>
                         <RemoteName>SteamController_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>SteamController_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>SteamController_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\models\</RemoteDir>
                         <RemoteName>SteamController_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>SteamController_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\SteamController_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>SteamController_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\models\</RemoteDir>
                         <RemoteName>XBoxOne_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>XBoxOne_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>XBoxOne_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\models\</RemoteDir>
                         <RemoteName>XBoxOne_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>XBoxOne_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\models\XBoxOne_Animated.glb" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\models\</RemoteDir>
                         <RemoteName>XBoxOne_Animated.glb</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -639,464 +639,464 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_generic.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_generic.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_generic.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_generic.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_generic.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_generic.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_generic.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_generic.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_generic.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_generic.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_generic.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_generic.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_generic.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_neptune.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_neptune.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_neptune.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_neptune.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_neptune.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_neptune.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_neptune.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_neptune.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps4.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps4.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps4.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps4.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps4.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps4.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps4.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps4.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps5.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps5.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps5.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps5.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps5.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_ps5.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_ps5.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_ps5.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_steamcontroller_gordon.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_steamcontroller_gordon.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_steamcontroller_gordon.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch2_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch2_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch2_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch2_pro.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch2_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch2_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_joycon_pair.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_joycon_pair.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_joycon_pair.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_pro.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_switch_pro.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_switch_pro.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_switch_pro.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_triton.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_triton.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_triton.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_triton.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_triton.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_triton.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_triton.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_triton.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_triton.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_triton.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_triton.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_triton.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_triton.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xbox360.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xbox360.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xbox360.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xbox360.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xbox360.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xbox360.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xbox360.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xbox360.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xboxone.vdf" Configuration="Debug" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xboxone.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Debug" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xboxone.vdf" Configuration="Debug" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xboxone.vdf" Configuration="Release" Class="File">
                     <Platform Name="Linux64">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteDir>.\controllers\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xboxone.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSX64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="src\controller_xboxone.vdf" Configuration="Release" Class="File">
+                <DeployFile LocalName="src\controllers\controller_xboxone.vdf" Configuration="Release" Class="File">
                     <Platform Name="OSXARM64">
-                        <RemoteDir>Contents\Resources\</RemoteDir>
+                        <RemoteDir>Contents\Resources\controllers\</RemoteDir>
                         <RemoteName>controller_xboxone.vdf</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>

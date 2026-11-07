@@ -17,7 +17,7 @@ The build copies the Steam library, the action manifest, the eleven controller l
 
 ## 2. What goes in the depot
 
-Everything sits **in the depot's root folder, next to the .exe** - no subfolders (the models too: not in a `models\` subfolder).
+The .exe, the Steam library and the action manifest sit **in the depot's root folder**; the controller layouts in a `controllers\` subfolder (the manifest names them `controllers/...`), the models in `models\` - the folder the build fills (`deploy.bat`) is exactly this.
 
 | File | Taken from |
 |------|------------|
@@ -25,7 +25,7 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
 | `steam_api64.dll` - Win64 build only | `redistributable_bin\win64\steam_api64.dll` |
 | `steam_api.dll` - Win32 build only | `redistributable_bin\steam_api.dll` |
 | `steam_controllers.vdf` | `demos\VirtualGamepadVCL\src\` |
-| `controller_*.vdf` - 11 files, listed below | `demos\VirtualGamepadVCL\src\` |
+| `controller_*.vdf` - 11 files, listed below | `demos\VirtualGamepadVCL\src\controllers\` |
 | `XBoxOne_Animated.glb` | `models\` (repository root) |
 | `PS5_Animated.glb` | `models\` (repository root) |
 | `SteamController_Animated.glb` | `models\` (repository root) |
@@ -35,25 +35,27 @@ Everything sits **in the depot's root folder, next to the .exe** - no subfolders
     VirtualGamepadVCL.exe
     steam_api64.dll        (Win64 build)   - or -   steam_api.dll   (Win32 build)
     steam_controllers.vdf
-    controller_generic.vdf
-    controller_neptune.vdf
-    controller_ps4.vdf
-    controller_ps5.vdf
-    controller_steamcontroller_gordon.vdf
-    controller_switch2_pro.vdf
-    controller_switch_joycon_pair.vdf
-    controller_switch_pro.vdf
-    controller_triton.vdf
-    controller_xbox360.vdf
-    controller_xboxone.vdf
-    XBoxOne_Animated.glb
-    PS5_Animated.glb
-    SteamController_Animated.glb
+    controllers\
+        controller_generic.vdf
+        controller_neptune.vdf
+        controller_ps4.vdf
+        controller_ps5.vdf
+        controller_steamcontroller_gordon.vdf
+        controller_switch2_pro.vdf
+        controller_switch_joycon_pair.vdf
+        controller_switch_pro.vdf
+        controller_triton.vdf
+        controller_xbox360.vdf
+        controller_xboxone.vdf
+    models\
+        XBoxOne_Animated.glb
+        PS5_Animated.glb
+        SteamController_Animated.glb
 ```
 
 * The DLL must match the build: a Win64 .exe cannot load `steam_api.dll`, a Win32 .exe cannot load `steam_api64.dll`. Shipping both bitnesses means two folders (or depots), each with its own .exe and DLL.
 * The DLL is loaded from the .exe's own folder: it must sit right next to it, not in a subfolder.
-* The program reads the manifest from its own folder (in Release builds too - it calls `SetInputActionManifestFilePath` with that path) and the layouts from the manifest's folder: keep them together, next to the .exe. The fallback to the repository's `src\` and `models\` folders only works inside the repository, never in an installed copy.
+* The program reads the manifest from its own folder (in Release builds too - it calls `SetInputActionManifestFilePath` with that path) and the layouts from the `controllers\` subfolder of the manifest's folder, the models from `models\`. The fallback to the repository's `src\` and `models\` folders only works inside the repository, never in an installed copy.
 * The .vdf files are GENERATED (tools/gen_input_mapping.py); ship the ones from `src\`, never hand-edited copies.
 * Nothing else as far as this demo goes: the VCL, Castle Game Engine, the library and the plug-ins are compiled into the .exe (no .bpl runtime packages). The demo plays no sound and loads no font files, so it should need none of Castle Game Engine's optional Windows DLLs; should a run report one missing, take it from Castle Game Engine's `tools\build-tool\data\external_libraries\x86_64-win64\` (or `i386-win32\`) and put it next to the .exe. (NOT YET CONFIRMED on a clean PC.)
 

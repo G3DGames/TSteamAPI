@@ -14,10 +14,10 @@ set "OUT=%PLAT%\%CFG%"
 if not exist "%OUT%\" (echo %OUT% does not exist - build %PLAT% %CFG% first & set ERR=1 & goto done)
 set ERR=0
 if /i "%PLAT%"=="Win32" (
-  call :put "..\..\redistributable_bin\steam_api.dll"
+  call :put "..\..\redistributable_bin\steam_api.dll" ""
 )
 if /i "%PLAT%"=="Win64" (
-  call :put "..\..\redistributable_bin\win64\steam_api64.dll"
+  call :put "..\..\redistributable_bin\win64\steam_api64.dll" ""
 )
 echo.
 if "%ERR%"=="0" (echo Done: everything is in %OUT%) else (echo FAILED - see above)
@@ -26,6 +26,10 @@ if "%~1"=="" pause
 exit /b %ERR%
 
 :put
+rem %1 = source file, %2 = subfolder of the output folder ("" = the folder itself)
 if not exist %1 (echo MISSING %~1 & set ERR=1 & exit /b)
-copy /Y %1 "%OUT%\" >nul && echo copied %~nx1 || (echo COULD NOT COPY %~1 & set ERR=1)
+if not exist "%OUT%\%~2" mkdir "%OUT%\%~2"
+rem a copy left at the top by an older build (before the subfolders) goes
+if not "%~2"=="" if exist "%OUT%\%~nx1" del "%OUT%\%~nx1"
+copy /Y %1 "%OUT%\%~2" >nul && echo copied %~2%~nx1 || (echo COULD NOT COPY %~1 & set ERR=1)
 exit /b

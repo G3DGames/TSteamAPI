@@ -427,7 +427,7 @@ def manifest(pr):
     for ctype in CONTROLLERS:
         w.open(ctype)
         w.open("0")
-        w.kv("path", layout_file(pr, ctype))
+        w.kv("path", LAYOUT_DIR + "/" + layout_file(pr, ctype))
         w.close()
         w.close()
     w.close()
@@ -466,6 +466,11 @@ assert PROFILES["input"].revision == LAYOUT_REVISION
 # until 2026-11-03: renamed so Steam reads it afresh instead of an old
 # manifest of that name it kept for an AppID used by an earlier test.
 MANIFEST_NAME = "steam_controllers.vdf"
+# The layouts sit in this subfolder next to the manifest (owner 2026-11-07:
+# a tidier deployment - manifest at the top, layouts in controllers/, models
+# in models/, images in images/). Steam reads a configuration's "path"
+# relative to the manifest's folder.
+LAYOUT_DIR = "controllers"
 assert PROFILES["input"].manifest_name == MANIFEST_NAME
 
 
@@ -598,6 +603,7 @@ def write(pr, name, text):
     for out in pr.outs:
         os.makedirs(out, exist_ok=True)
         path = os.path.join(out, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         old = open(path, "rb").read() if os.path.exists(path) else None
         if old != data:
             open(path, "wb").write(data)
@@ -610,7 +616,14 @@ def main():
     for pr in PROFILES.values():
         write(pr, pr.manifest_name, manifest(pr))
         for ctype in CONTROLLERS:
-            write(pr, layout_file(pr, ctype), layout(pr, ctype))
+            write(pr, os.path.join(LAYOUT_DIR, layout_file(pr, ctype)), layout(pr, ctype))
+            # the copy in the old place (next to the manifest, before
+            # 2026-11-07) would only confuse: removed
+            for out in pr.outs:
+                old = os.path.join(out, layout_file(pr, ctype))
+                if os.path.exists(old):
+                    os.remove(old)
+                    print("removed (now in " + LAYOUT_DIR + "/)", os.path.relpath(old, ROOT))
 
 
 if __name__ == "__main__":

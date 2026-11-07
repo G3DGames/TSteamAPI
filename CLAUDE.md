@@ -3652,7 +3652,80 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
   COMPILED.
 
-## Handover (2026-11-07, fourteenth session, part 6) - READ THIS FIRST
+## Handover (2026-11-07, fourteenth session, part 9) - READ THIS FIRST
+OWNER 02:49: Glow15's poll fix confirmed (pad switched on after start is
+picked up). 02:46: the "layout failed to load" (pad found, inputs dead
+until the game's default layout is chosen again in Steam's layout screen)
+has been seen before too, with everything in one folder - he believes it
+happens after a layout REVISION change; not the controllers\ subfolder.
+02:52 ASKED FOR, done in the three VirtualGamepads (Glow16):
+CheckBindings, BIND_CHECK_MS 5000 after the handles are resolved (and
+again after every new layout, which resolves again), then every
+BIND_RECHECK_MS 5000 while nothing is bound: counts the InGame digital
+actions with origins (DigitalActionOrigins). None: log line, the orange
+warning line FUnboundNote under the pad name (TEXT ONLY - with no working
+layout the pad cannot press anything, and in Big Picture there may be no
+mouse; owner), and ONCE per pad (FBindPanelTried) ShowBindingPanel. The
+text says what to do: layout screen open -> choose the default there;
+otherwise Big Picture / Steam hardware (InBigPicture) -> Steam / PS /
+Guide button > Controller settings; desktop -> Library > game >
+Controller settings or File > View Controller Settings. When a layout
+binds something again: warning removed, logged. NOT COMPILED.
+
+## Handover (2026-11-07, fourteenth session, part 8)
+OWNER 02:38 (Glow14 deployed, PS4 over Bluetooth, Windows):
+(1) Started with the pad OFF: "Poll failed: EAccessViolation ... Read of
+address 0" x3, "Polling stopped after 3 errors" - the pad switched on
+later was never seen. CAUSE: UpdateGlow runs every poll; before any model
+is loaded FHaloOf[] is still all 0 (fields start at 0; -1 only once a
+model was loaded or removed) and FHalos empty -> Level[0] on a nil array.
+Always there, hidden while a pad was connected at start (the model loads
+in the first poll). FIX (all three twins): the halo loop checks FHaloOf[A]
+< Length(FHalos) and < Length(FHaloMirror); FHaloMirror is cleared with
+FHalos on model removal.
+(2) Restarted: pad found, but its inputs were dead until he chose the
+layout in Steam's layout screen ("the layout had failed to load"); then
+"Steam loaded the game's default layout" and everything worked, the
+touchpad also after a view change (r23 fix confirmed). READING: Steam CAN
+load the layouts from controllers/ (proved by that line and the working
+input); the failure is most likely Steam's remembered choice from before
+the move - the game default at the OLD path (top level), which deploy.bat
+deletes. Expected to be a one-off per pad type; if it happens again on a
+fresh start, rethink (e.g. manifest + layouts together in controllers\).
+(3) "Model PS5_Animated.glb is not in the data folder - using the
+repository's copy" was wrong (it was in data\models\): the FMX check now
+compares with DataFolder + MODEL_DIR.
+CHANGED over Glow14: the three VirtualGamepad uMain.pas, CLAUDE.md.
+
+## Handover (2026-11-07, fourteenth session, part 7)
+OWNER 02:15: Windows deployment WORKS ("At last - success") with the
+one-line post-build + deploy.bat (Glow13 = his push 3c779bb).
+GENERAL DEPLOYMENT RULE (owner 02:15-02:18, for every project, now and new
+ones): the executable, the Steam library and the action manifest(s) sit
+at the top of the deployed folder; data files go in subfolders by kind -
+controller layouts in controllers\, models in models\, images in
+images\ (a project without models / images simply has no such folder).
+Implemented: gen_input_mapping.py LAYOUT_DIR = "controllers" - layouts
+are GENERATED into src\controllers\ (both profiles; the old copies in
+src\ are deleted by the generator) and the manifests name
+"controllers/<file>" (Steam: "path" is relative to the manifest's folder;
+a subfolder is not shown in Valve's examples - FIRST RUN MUST CONFIRM
+Steam loads them: log "Steam loaded the game's default layout"). Layout
+revisions unchanged (contents unchanged). gen_projects.py
+deploy_subdir(): *.vdf under \controllers\ -> controllers\, *.glb/*.gltf ->
+models\, IMAGE_EXTS -> images\; deploy.bat copies into those subfolders
+(mkdir as needed); update_data_deploy moved the macOS / Linux Deployment
+entries of the IDE-saved dprojs (LocalName src\controllers\..., RemoteDir
++ subfolder). Programs: VirtualGamepad (all three) LAYOUT_DIR / MODEL_DIR
+in CheckDeployment and ModelPath (the repository fallback to models\ is
+unchanged); SteamInputDemo LAYOUT_DIR where it looks for our layout file.
+SteamDemoPad only opens its manifest (Steam follows the paths). No
+images are deployed by any project yet. The owner must DELETE the old
+src\controller_*.vdf / src\pad_controller_*.vdf (a zip cannot delete;
+git rm); deploy.bat removes old top-level copies in the output folder itself.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL, SteamInputDemo, SteamDemoPad (DELPHI), VirtualGamepadLCL (LAZARUS); the other projects only need deploy.bat refreshed (no rebuild needed, but a build runs it) <====
+
+## Handover (2026-11-07, fourteenth session, part 6)
 WINDOWS DEPLOYMENT, FINAL FORM (Glow13; supersedes parts 3 and 5 below):
 the owner's Project Options > Build Events (Release Win64) showed our
 post-build commands with every line after the first starting "&copy" -

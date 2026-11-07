@@ -336,6 +336,15 @@ type
     FResolved: Boolean;
     { The "handles still 0" hint was logged. }
     FResolveWarned: Boolean;
+    { When to check whether Steam's layout binds anything (0 = no check
+      due; set when the handles are resolved, CheckBindings). }
+    FBindCheckAt: TDateTime;
+    { Steam's layout for the pad shown binds no button of the InGame set. }
+    FUnbound: Boolean;
+    { Steam's layout screen was opened for that already (once per pad). }
+    FBindPanelTried: Boolean;
+    { The warning line below the pad name (hidden when all is well). }
+    FUnboundNote: TLabel;
     { When the handles were last looked up. }
     FLastResolve: TDateTime;
     { The controller shown (0 = none): the first one Steam lists. }
@@ -518,6 +527,18 @@ type
     procedure SetModelRotation(const AQ: TPadQuat);
     { The started ISteamInput plug-in, or @nil. }
     function Input: TSteamInputPlugin;
+    { Whether Steam's layout for the pad shown binds any InGame button; if
+      none: logs it, shows the warning line and (once per pad) opens
+      Steam's layout screen; looks again every BIND_RECHECK_MS until a
+      layout binds something (owner 2026-11-07: after a layout revision
+      change Steam sometimes loads nothing until the default layout is
+      chosen again). }
+    procedure CheckBindings(P: TSteamInputPlugin);
+    { Shows AText in the warning line; '' hides it. }
+    procedure SetUnboundNote(const AText: string);
+    { Steam runs in Big Picture / on Steam hardware (no mouse menu to
+      point the player to). }
+    function InBigPicture: Boolean;
     { Full path of @link(MANIFEST_FILE), or '' when not found. }
     function ManifestPath: string;
     { Full path of the model file AFileName: in @link(DataFolder), or - run
@@ -616,6 +637,12 @@ const
   { Default layouts expected next to the manifest (keep in step with
     CONTROLLERS in tools/gen_input_mapping.py). }
   EXPECTED_LAYOUTS = 11;
+  { Subfolder of @link(DataFolder) with the layouts (the manifest names
+    "controllers/..."; tools/gen_input_mapping.py LAYOUT_DIR). }
+  LAYOUT_DIR = 'controllers';
+  { Subfolder of @link(DataFolder) with the models (tools/gen_projects.py
+    deploy_subdir). }
+  MODEL_DIR = 'models';
   { The models, in @link(DataFolder) (keep in step with MODEL_FILES in
     tools/gen_projects.py). }
   MODEL_XBOX = 'XBoxOne_Animated.glb';
@@ -629,6 +656,11 @@ const
   REMOTE_SEARCH_MS = 2500;
   { Pause between attempts to resolve the action handles (ms). }
   RESOLVE_RETRY_MS = 1000;
+  { First look at the layout's bindings this long after the handles are
+    resolved (CheckBindings; Steam needs a moment for a new pad). }
+  BIND_CHECK_MS = 5000;
+  { While nothing is bound: look again this often. }
+  BIND_RECHECK_MS = 5000;
   { Size of the model's largest side in scene units (as in Gorilla3D's
     ParallelAnimation sample; the camera frames it whatever its size). }
   MODEL_SIZE = 8.0;
@@ -1100,6 +1132,22 @@ begin
   lblPadName.StyledSettings := lblPadName.StyledSettings - [TStyledSetting.Size, TStyledSetting.Style];
   lblPadName.TextSettings.Font.Size := 24;
   lblPadName.TextSettings.Font.Style := [TFontStyle.fsBold];
+  // the warning line under the pad name (CheckBindings): text only - with
+  // no working layout the pad cannot press anything here
+  FUnboundNote := TLabel.Create(Self);
+  FUnboundNote.Parent := Self;
+  FUnboundNote.Align := TAlignLayout.Top;
+  FUnboundNote.Position.Y := pnlPad.Position.Y + pnlPad.Height + 1;
+  FUnboundNote.Height := 56;
+  FUnboundNote.Margins.Left := 8;
+  FUnboundNote.Margins.Right := 8;
+  FUnboundNote.StyledSettings := FUnboundNote.StyledSettings - [TStyledSetting.Size,
+    TStyledSetting.FontColor, TStyledSetting.Style];
+  FUnboundNote.TextSettings.Font.Size := 16;
+  FUnboundNote.TextSettings.Font.Style := [TFontStyle.fsBold];
+  FUnboundNote.TextSettings.FontColor := $FFFF9800;
+  FUnboundNote.TextSettings.WordWrap := True;
+  FUnboundNote.Visible := False;
   // motion off at start (owner 2026-11-01): the overlay menu (long press
   // of Start) or View > Follow pad motion switches it on
   FFollowMotion := False;
@@ -1198,13 +1246,13 @@ begin
   Dir := DataFolder;
   AddLog('Data folder: ' + Dir);
   Layouts := nil;
-  if TDirectory.Exists(Dir) then
-    Layouts := TDirectory.GetFiles(Dir, 'controller_*.vdf');
+  if TDirectory.Exists(Dir + LAYOUT_DIR) then
+    Layouts := TDirectory.GetFiles(Dir + LAYOUT_DIR, 'controller_*.vdf');
   Missing := '';
   if not TFile.Exists(Dir + MANIFEST_FILE) then
     Missing := Missing + ' ' + MANIFEST_FILE;
   for I := Low(MODEL_FILES) to High(MODEL_FILES) do
-    if not TFile.Exists(Dir + MODEL_FILES[I]) then
+    if not TFile.Exists(Dir + MODEL_DIR + PathDelim + MODEL_FILES[I]) then
       Missing := Missing + ' ' + MODEL_FILES[I];
   if (Missing = '') and (Length(Layouts) = EXPECTED_LAYOUTS) then
     AddLog(Format('Deployment OK: manifest, %d layouts, %d models', [Length(Layouts), Length(MODEL_FILES)]))
@@ -1376,6 +1424,7 @@ begin
     // the glow spheres and dots are the model's (owned by it): gone with it
     FHalos := nil;
     FHaloKeys := nil;
+    FHaloMirror := nil;
     for A := Low(TInputAction) to High(TInputAction) do
       FHaloOf[A] := -1;
     for S := Low(TTrackpadSide) to High(TTrackpadSide) do
@@ -1412,7 +1461,7 @@ begin
       + ' nor in the repository''s models folder (deployment - see the check at start)');
     Exit;
   end;
-  if not SameFileName(ExtractFilePath(Path), DataFolder) then
+  if not SameFileName(ExtractFilePath(Path), DataFolder + MODEL_DIR + PathDelim) then
     AddLog('Model ' + FileName + ' is not in the data folder - using the repository''s copy '
       + '(run from the IDE without the post-build copy; a deployed build needs it beside the program)');
   try
@@ -1571,7 +1620,7 @@ end;
 
 function TfrmGamepad.ModelPath(const AFileName: string): string;
 begin
-  Result := DataFolder + AFileName;
+  Result := DataFolder + MODEL_DIR + PathDelim + AFileName;
   if TFile.Exists(Result) then
     Exit;
   // <repo>\demos\VirtualGamepad\<platform>\<config>\ -> <repo>\models\
@@ -1603,6 +1652,7 @@ begin
   UpdateOverlay;
   ResetAnimState;
   FResolved := False;
+  FBindCheckAt := 0;
   FResolveWarned := False;
   FLastResolve := 0;
   FActive := 0;
@@ -1613,6 +1663,10 @@ begin
   FChosenPad := 0;
   FMotionLogged := False;
   FPollErrors := 0;
+  // a new pad gets its own check and its own one automatic layout screen
+  FUnbound := False;
+  FBindPanelTried := False;
+  SetUnboundNote('');
 end;
 
 procedure TfrmGamepad.mnuLayoutClick(Sender: TObject);
@@ -1900,7 +1954,12 @@ begin
   for I := 0 to High(Level) do
     Level[I] := 0;
   for A := Low(TInputAction) to High(TInputAction) do
-    if FGlowOn and (FHaloOf[A] >= 0) then
+    // FHaloOf is only valid once CreateGlow has run for a model: before
+    // that (no controller yet) FHalos is empty and FHaloOf still all 0 -
+    // which made Level[0] an access violation and stopped the polling, so
+    // a pad switched on later was never seen (owner 2026-11-07 02:28)
+    if FGlowOn and (FHaloOf[A] >= 0) and (FHaloOf[A] < Length(FHalos))
+      and (FHaloOf[A] < Length(FHaloMirror)) then
     begin
       // seen from the back or the top, the pad's left is on the screen's
       // right: the glow goes to the mirrored part, on the side of the
@@ -2829,7 +2888,90 @@ begin
   for M := Low(TMenuAction) to High(TMenuAction) do
     FMenuHandles[M] := 0;
   FResolved := False;
+  FBindCheckAt := 0;
   FLastResolve := 0;
+end;
+
+procedure TfrmGamepad.SetUnboundNote(const AText: string);
+begin
+  if FUnboundNote = nil then
+    Exit;
+  FUnboundNote.Text := AText;
+  FUnboundNote.Visible := AText <> '';
+end;
+
+function TfrmGamepad.InBigPicture: Boolean;
+var
+  U: TSteamUtilsPlugin;
+begin
+  Result := FSteamHardware > 0;
+  U := TSteamUtilsPlugin(SteamAPI1.Steam.FindPlugin(TSteamUtilsPlugin));
+  if U <> nil then
+  try
+    Result := Result or U.IsSteamInBigPictureMode;
+  except
+    // keep what the hardware says
+  end;
+end;
+
+procedure TfrmGamepad.CheckBindings(P: TSteamInputPlugin);
+const
+  NO_LAYOUT = 'Steam has no working layout for this controller (it can happen after a '
+    + 'layout update). ';
+var
+  A: TInputAction;
+  Bound: Integer;
+  Opened: Boolean;
+begin
+  FBindCheckAt := 0;
+  Bound := 0;
+  for A := Low(TInputAction) to High(TInputAction) do
+    if not ActionAnalog[A] and (FActionHandles[A] <> 0)
+      and (Length(P.DigitalActionOrigins(FActive, FSetHandle, FActionHandles[A])) > 0) then
+      Inc(Bound);
+  if Bound > 0 then
+  begin
+    if FUnbound then
+    begin
+      FUnbound := False;
+      SetUnboundNote('');
+      AddLog(Format('Steam''s layout for this pad binds %d buttons now - warning removed', [Bound]));
+    end;
+    Exit;
+  end;
+  // still nothing bound: look again in a while (the player may fix it)
+  FBindCheckAt := IncMilliSecond(Now, BIND_RECHECK_MS);
+  if FUnbound then
+    Exit;
+  FUnbound := True;
+  AddLog('Steam''s layout for this pad binds NO button of the ' + SET_NAME + ' set: Steam did '
+    + 'not load a working layout (seen after a layout revision change) - the game''s default '
+    + 'layout must be chosen again in Steam''s layout screen');
+  Opened := False;
+  if not FBindPanelTried then
+  begin
+    // once per pad: Steam's layout screen, if the overlay can show it
+    FBindPanelTried := True;
+    try
+      Opened := P.ShowBindingPanel(FActive);
+    except
+      on E: Exception do
+        AddLog('ShowBindingPanel failed: ' + E.Message);
+    end;
+    AddLog('ShowBindingPanel (automatic): ' + IfThen(Opened, 'True - Steam''s layout screen is open',
+      'False - no Steam overlay here: the player has to open Steam''s layout screen'));
+  end;
+  // text only, no buttons: with no working layout the pad cannot press
+  // anything here (and in Big Picture there may be no mouse either)
+  if Opened then
+    SetUnboundNote(NO_LAYOUT + 'In Steam''s layout screen (now open), choose this game''s '
+      + 'default layout.')
+  else if InBigPicture then
+    SetUnboundNote(NO_LAYOUT + 'Open Steam''s menu (the Steam / PS / Guide button) > '
+      + 'Controller settings and choose this game''s default layout.')
+  else
+    SetUnboundNote(NO_LAYOUT + 'In Steam: Library > this game > Controller settings (or File > '
+      + 'View Controller Settings here) - choose this game''s default layout.');
 end;
 
 procedure TfrmGamepad.ResolveHandles(P: TSteamInputPlugin);
@@ -2873,6 +3015,8 @@ begin
       [SET_NAME, UIntToStr(FSetHandle), Ord(High(TInputAction)) + 1,
        MENU_SET_NAME, UIntToStr(FMenuSetHandle), Ord(High(TMenuAction)) + 1]));
     FResolveWarned := False;
+    // the layout Steam loaded: does it bind anything? (CheckBindings)
+    FBindCheckAt := IncMilliSecond(Now, BIND_CHECK_MS);
   end
   else if not FResolveWarned then
   begin
@@ -2916,6 +3060,15 @@ begin
   ResetAnimState;
   // another pad: nothing in use, no 2D trackpads until this one uses them
   FActivity.Reset;
+  // another pad: its own layout check (and its own one automatic layout
+  // screen); the handles stay resolved, so the check is scheduled here
+  FUnbound := False;
+  FBindPanelTried := False;
+  SetUnboundNote('');
+  if FActive <> 0 then
+    FBindCheckAt := IncMilliSecond(Now, BIND_CHECK_MS)
+  else
+    FBindCheckAt := 0;
   for S := Low(TTrackpadSide) to High(TTrackpadSide) do
     FPadSeen[S] := False;
   FMotionLogged := False;
@@ -3192,6 +3345,8 @@ begin
           P.ActivateActionSet(FActive, FMenuSetHandle)
         else if FSetHandle <> 0 then
           P.ActivateActionSet(FActive, FSetHandle);
+        if FResolved and (FBindCheckAt > 0) and (Now >= FBindCheckAt) then
+          CheckBindings(P);
         if FMenuOpen then
           ReadMenuActions(P)
         else
