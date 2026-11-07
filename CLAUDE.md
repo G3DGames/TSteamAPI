@@ -7,10 +7,14 @@ do not assume it.**
 Read README.md first, then this file. Keep both up to date with every change.
 
 ## Starting a new session (read this first)
-- Repository: https://github.com/G3DGames/TSteamAPI (branch `main`, public;
-  renamed from `steamworks` - old links redirect, use the new name).
-  Clone it fresh:
-  `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 5 https://github.com/G3DGames/TSteamAPI`
+- Repository: https://github.com/G3DGames/TSteamAPI (public; renamed from
+  `steamworks` - old links redirect, use the new name). WORK BRANCH since
+  2026-11-07: `skybox` (the owner made it for the skybox / Motion work;
+  `main` is the state before it, "PreSkybox"). Ask which branch to build on
+  if unsure. Clone it fresh WITH ALL BRANCHES (a --depth clone fetches only
+  the default branch, and `skybox` then looks missing):
+  `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 5 --no-single-branch https://github.com/G3DGames/TSteamAPI`
+  then `git checkout skybox`.
   The owner's local working copy may be ahead of GitHub:
   build on files the owner attaches or pastes.
 - The cloud workspace has NO Steamworks SDK (partner download, unreachable)
@@ -75,9 +79,12 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
 - Do not commit or push; the owner applies the zip and pushes. When the stop
   hook asks to commit and push, answer in one line that changes stay
   uncommitted on purpose.
-- Each zip holds ONLY the files changed since the previous zip (owner,
-  2026-10-30 - no longer cumulative); say which zip it follows and list any
-  file to delete (a zip cannot delete). Leave out files whose only change is
+- Each zip holds ONLY the files that differ from the owner's LATEST PUSH
+  (owner 2026-11-07: "no file in the zip may be identical to the last
+  version"): fetch first, compare with line endings ignored, include new
+  files; say which push it is based on and list any file to delete (a zip
+  cannot delete; the owner uses git rm). Until the owner pushes, each new
+  zip replaces the previous one and contains it. Leave out files whose only change is
   line endings (git stores LF; the IDE and the generator write CRLF).
 - Before delivering run, and fix everything reported by:
   - `python3 tools/pasdoc_check.py`
@@ -3652,7 +3659,67 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
   COMPILED.
 
-## Handover (2026-11-07, fourteenth session, part 13) - READ THIS FIRST
+## Handover (2026-11-07, end of the fourteenth session) - READ THIS FIRST
+WHERE THINGS STAND: the owner's push 80f8851 "Skybox" on branch `skybox`
+equals the last delivery (Glow21), apart from VirtualGamepad.dproj, which
+his IDE re-saved (order changed, default Config back to Debug - left as he
+has it; all 216 skybox DeployFile entries and the six one-line post-build
+events survived). Nothing is undelivered. Work on `skybox`.
+
+DONE THIS SESSION (details in the parts below, newest first):
+* VirtualGamepad (all three twins, FMX / LCL / VCL kept in step):
+  overlay menu = Controller, Return, View (Front / Back / Top cycle),
+  Skybox (None / Grid / Sky / Stars), Highlights on / off, Gyro, Motion,
+  Controller Settings, Steam Hardware (panel over the menu; greyed without
+  Steam hardware), Remote Logging, Exit; menu wraps, up / down repeat
+  500 ms; mirrored glow + animation (paddles, triggers, bumpers) in the
+  back / top views; D-pad glows per arm; Steam Controller DPad_Up stops
+  half way; glow 25 %; poll no longer dies without a pad (FHaloOf guard);
+  layout check (CheckBindings: orange warning + Steam's layout screen once
+  when Steam's layout binds nothing - happens after a layout REVISION
+  change; not yet seen with the check in place).
+* Gyro = model turns with the pad. Motion (accelerometer pads only) =
+  gyro + the model moves (TPadMotion in PadActivity.pas: high-passed
+  acceleration, damped, spring back, -1..1 x MOTION_RANGE), the camera goes
+  to the Motion view (pvMotion: azimuth 360, inclination 270 - owner: model
+  now correct), turning round (yaw about "up" from gravity) turns only the
+  skybox, tilting the pad up / down tilts the skybox (and the model,
+  MOTION_PITCH_SKY_ONLY False), skybox turned SKY_MOTION_TILT 90 in the
+  Motion view (owner 04:43: "much better"). Skybox default Sky.
+* Steam Input layouts: r23 (gyro always on, trackpads no inner dead zone,
+  Menu set only binds what it uses - trackpad positions survived the
+  overlay); pad_ layouts r2; layouts in <src>\controllers\, manifests name
+  "controllers/<file>" (Steam loads them - confirmed).
+* Deployment: ONE-LINE post-build `call "$(PROJECTDIR)\deploy.bat"
+  $(Platform) $(Config)` in all Windows dproj groups (the IDE broke the
+  multi-line event; .deploy.targets and Required deployment entries did NOT
+  run in the IDE - do not try them again). deploy.bat (gen_projects.py)
+  copies into <Platform>\<Config>: exe dir = dll + manifest, controllers\,
+  models\, images\<same subfolders>. GENERAL RULE (owner): layouts in
+  controllers\, models in models\, images in images\ - for every project.
+* Steam hardware log line + panel (IsRunningOnSteamHardware etc.); icons
+  for all programs; PS4 pad tested on Windows (all controls fine).
+
+OPEN / TO CHECK NEXT (all NOT YET SEEN unless the owner reports):
+* Motion: MOTION_SRC / MOTION_SIGN axis mapping (log "Motion: accelerometer
+  axis X reacted"), SKY_YAW_SIGN / SKY_PITCH_SIGN directions, the "sensors'
+  up axis" log line staying put while tilting, skybox face orientation /
+  mirroring (Grid shows each face), FMX SKY_HALF vs the camera's far plane
+  (box visible - owner saw it, so fine on Windows).
+* The unbound-layout warning (CheckBindings) - wait for it to happen; owner
+  does not want a test switch.
+* Steam Deck: re-test the right trackpad after r23 (the Menu-set fix is
+  the likely cure), Motion on the Deck, GDI+ ~19 fps vs Skia ~52 fps under
+  Proton (recommend TSAPI_FMX_CANVAS=skia; default unchanged - owner's
+  decision).
+* Lazarus projects have no deploy step (data found via repository
+  fallbacks); macOS / Linux Delphi deployment of the new subfolders NOT
+  YET RUN.
+* Real skybox art from the owner later (a folder in images/skyboxes with
+  px / nx / py / ny / pz / nz .png; run tools/gen_projects.py afterwards so
+  deploy.bat and the Deployment entries list it).
+
+## Handover (2026-11-07, fourteenth session, part 13)
 OWNER 04:34: model in the Motion view now right, but the skybox looked straight up: SKY_MOTION_TILT 90 (degrees about the screen horizontal, Motion view only; FMX matrix * Tilt last, Castle ViewQuat * Tilt * yaw * pitch; sign NOT YET SEEN). OWNER 04:25: default skybox Sky (SKY_DEFAULT). OWNER 04:24 on Glow19: "last time (Glow18) was closer - go back to that,
 but make tilt of the pad affect the skybox inclination; the controller
 model needs 180 inclination relative to current". READ: his 04:04 "no
