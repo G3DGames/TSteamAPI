@@ -237,6 +237,13 @@ Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
 - `Steamworks.groupproj` at the root lists every project.
 - `tools/` - Python helpers.
 - `docs/` - user documentation, Markdown (owner's request 2026-10-30):
+  UserManual.md (2026-11-11, hand-written: "User Manual (Provisional)" -
+  every component in DEPENDENCY order (a chapter only uses what earlier
+  chapters describe), most-used Steam features first, each component
+  chapter opens with its palette icon (<img> of design/icons/svg/<Class>.svg,
+  no copies), extensive examples on AppID 480 (Spacewar) that follow the
+  Source rules: AppID read back from SteamAPI1.AppID, Spacewar names as
+  named constants (1.2), no machine paths; keep in step by hand),
   Install-Delphi.md, Install-Lazarus-FPC.md, GameEngineIntegration.md,
   SteamInputMapping.md (2026-10-31: manifest, default layouts, origins ->
   physical positions, type -> model), components/README.md +
@@ -3659,7 +3666,23 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
   COMPILED.
 
-## Handover (2026-11-07, end of the fourteenth session) - READ THIS FIRST
+## Handover (2026-11-11, fifteenth session) - READ THIS FIRST
+`skybox` is merged into `main` (push 69bc11b, PR #1); work on `main`
+unless the owner says otherwise. OWNER asked for docs/UserManual.md, a
+user manual of every component (see the docs/ entry under Layout rules
+for its rules: dependency order, popular features first, icon per
+component, AppID 480 examples). Zip UserManual1 (based on 69bc11b):
+docs/UserManual.md (new), docs/README.md (row), README.md (Documentation
+line), CLAUDE.md. Docs only - NO PACKAGE REBUILD. Examples NOT COMPILED;
+Spacewar names (stats NumGames / NumWins / NumLosses / FeetTraveled /
+MaxFeetTraveled / AverageSpeed, achievements ACH_WIN_ONE_GAME /
+ACH_WIN_100_GAMES / ACH_TRAVEL_FAR_*, leaderboards "Quickest Win" /
+"Feet Traveled", drop generator 10, server mod dir "spacewar") are from
+Valve's Spacewar sample from memory - NOT YET CHECKED against the SDK /
+a run (the manual's 8.2 and 18.2 list them at run time). The fourteenth
+session's open points below still stand.
+
+## Handover (2026-11-07, end of the fourteenth session)
 WHERE THINGS STAND: the owner's push 80f8851 "Skybox" on branch `skybox`
 equals the last delivery (Glow21), apart from VirtualGamepad.dproj, which
 his IDE re-saved (order changed, default Config back to Debug - left as he

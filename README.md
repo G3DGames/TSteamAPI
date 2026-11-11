@@ -31,6 +31,8 @@ one per Steam interface, so a game links only what it uses.
   its `TSteamAPI.AppID` (form file), and shows it from there.
 
 **Documentation:** [docs/](docs/README.md) -
+[User Manual (Provisional)](docs/UserManual.md) (every component, with
+examples for AppID 480),
 [Install (Delphi)](docs/Install-Delphi.md),
 [Install (Lazarus / FPC)](docs/Install-Lazarus-FPC.md),
 [Game engine integration](docs/GameEngineIntegration.md) (timer, worker

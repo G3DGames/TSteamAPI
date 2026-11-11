@@ -2,6 +2,7 @@
 
 | Document | For |
 |----------|-----|
+| [UserManual.md](UserManual.md) | **User Manual (Provisional)**: every component in dependency order, most-used Steam features first, with extensive examples using Spacewar (AppID 480) |
 | [Install-Delphi.md](Install-Delphi.md) | Installing and using the library with Delphi (FMX, VCL): packages, paths, getting the Steam DLL next to the executable, and everything that looks wrong but is not |
 | [Install-Lazarus-FPC.md](Install-Lazarus-FPC.md) | Using it with Free Pascal 3.2.2 / Lazarus: paths, **copying the Steam library by hand**, `cthreads`, differences from Delphi |
 | [GameEngineIntegration.md](GameEngineIntegration.md) | How callbacks are pumped - timer, worker thread or your own loop - and recipes for FMX, VCL, LCL, Castle Game Engine, Gorilla3D, Skia4Delphi and custom loops |
