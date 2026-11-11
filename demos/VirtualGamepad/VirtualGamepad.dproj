@@ -6,7 +6,7 @@
         <AppType>Application</AppType>
         <MainSource>VirtualGamepad.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>135299</TargetedPlatforms>
         <ProjectName Condition="'$(ProjectName)'==''">VirtualGamepad</ProjectName>
@@ -1372,6 +1372,12 @@
                 <DeployFile LocalName="OSXARM64\Release\VirtualGamepad" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="OSXARM64">
                         <RemoteName>VirtualGamepad</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="VirtualGamepad.icns" Configuration="Release" Class="ProjectOSXResource">
+                    <Platform Name="OSXARM64">
+                        <RemoteName>VirtualGamepad.icns</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
