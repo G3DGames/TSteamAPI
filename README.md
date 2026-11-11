@@ -176,9 +176,14 @@ demos/
                             controller row (D-pad left / right, A shows
                             that pad), Return to App, View (D-pad
                             left / right: Front / Back / Top, A shows
-                            it), Enable / Disable Highlights, Enable /
-                            Disable Motion (greyed out without
-                            motion sensors), Controller Settings (Steam's
+                            it), Skybox (left / right: None / Grid /
+                            Sky / Stars, A shows it), Enable / Disable
+                            Highlights, Enable / Disable Gyro (the model
+                            turns with the pad), Enable / Disable Motion
+                            (pads with an accelerometer: the model also
+                            moves, the skybox turns; Gyro and Motion are
+                            greyed out without the sensors), Controller
+                            Settings (Steam's
                             binding panel - Big Picture has no window
                             menu), Steam Hardware (greyed out unless
                             Steam reports Steam hardware: a panel over

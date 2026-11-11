@@ -23,7 +23,10 @@
   )
   Buttons are not logged here: the programs log presses and releases
   themselves. A control glows fully while in use and fades out over
-  @link(GLOW_FADE_MS) after, so a short tap still shows on the model. *)
+  @link(GLOW_FADE_MS) after, so a short tap still shows on the model.
+
+  @link(TPadMotion) turns the accelerometer into a movement of the model
+  (the overlay menu's Motion option). *)
 unit PadActivity;
 
 {$IFDEF FPC}{$mode delphi}{$H+}{$ENDIF}
@@ -128,6 +131,69 @@ const
   TOUCH_END_MS = 150;
   { Milliseconds a glow takes to fade out once the control is let go. }
   GLOW_FADE_MS = 700;
+
+type
+  { A 3D vector of @link(TPadMotion). }
+  TPadVec3 = record
+    { Components. }
+    X, Y, Z: Single;
+  end;
+
+  { The pad's MOVEMENT from its accelerometer (owner 2026-11-07: the
+    "Motion" option - the gyro turns the model, Motion also moves it).
+
+    An accelerometer cannot tell a position, only changes of speed, and
+    adding those up drifts within a second. So this is a "feel" of the
+    movement, not tracking: gravity is taken out with a slow average of
+    the readings (@link(GRAVITY_TAU)); what is left (the hand's push, in g)
+    drives a speed that dies down (@link(MOTION_VEL_DAMP)) and an offset
+    that is pulled back to the middle (@link(MOTION_SPRING)) and never
+    leaves -1..1. Lift the pad and the offset goes up for a moment, then
+    comes back. Axes are the pad's sensor axes as Steam reports them
+    (posAccelX / Y / Z); the program maps them to the screen. }
+  TPadMotion = class
+  private
+    { Slow average of the readings: gravity (sensor units). }
+    FGravity: TPadVec3;
+    { Speed and offset, -1..1 = the full range. }
+    FVel, FPos: TPadVec3;
+    { The last reading minus gravity, in g. }
+    FLinear: TPadVec3;
+    { Time of the last reading (PadNowMs). }
+    FLastMs: UInt64;
+    { A first reading was taken. }
+    FStarted: Boolean;
+    { Readings other than all zero were seen: the pad has an accelerometer. }
+    FHasAccel: Boolean;
+  public
+    { Forgets the movement (offset back to the middle; gravity is
+      measured again). }
+    procedure Reset;
+    { Hands over one accelerometer reading (Steam's posAccelX / Y / Z).
+      @param(AX X reading.) @param(AY Y reading.) @param(AZ Z reading.)
+      @param(ANowMs Time of the reading, PadNowMs.) }
+    procedure Feed(AX, AY, AZ: Single; ANowMs: UInt64);
+    { Where the pad is pushed to, each axis -1..1 (0 = the middle). }
+    property Offset: TPadVec3 read FPos;
+    { The last reading's push without gravity, in g. }
+    property Linear: TPadVec3 read FLinear;
+    { Readings other than all zero arrived (an accelerometer is there). }
+    property HasAccel: Boolean read FHasAccel;
+  end;
+
+const
+  { Gravity average time constant, seconds: longer = less of a slow tilt
+    shows as movement, shorter = a long push fades sooner. }
+  GRAVITY_TAU = 0.5;
+  { Pushes under this (g) count as none (the hand's tremor). }
+  MOTION_DEAD_G = 0.03;
+  { Offset per g and second squared: 1 g for a quarter second moves the
+    model the full range (about a quarter metre of hand movement). }
+  MOTION_GAIN = 39.2;
+  { How fast the speed dies down, per second. }
+  MOTION_VEL_DAMP = 3.0;
+  { How fast the offset goes back to the middle, per second. }
+  MOTION_SPRING = 1.2;
 
 { Milliseconds since an unspecified start (Free Pascal's GetTickCount64,
   Delphi's TThread.GetTickCount64); for the times of @link(TPadActivity). }
@@ -371,6 +437,83 @@ begin
     AX := 0;
     AY := 0;
   end;
+end;
+
+
+{ TPadMotion }
+
+procedure TPadMotion.Reset;
+begin
+  FStarted := False;
+  FVel := Default(TPadVec3);
+  FPos := Default(TPadVec3);
+  FLinear := Default(TPadVec3);
+end;
+
+procedure TPadMotion.Feed(AX, AY, AZ: Single; ANowMs: UInt64);
+
+  function Clamp1(V: Single): Single;
+  begin
+    if V > 1 then
+      Result := 1
+    else if V < -1 then
+      Result := -1
+    else
+      Result := V;
+  end;
+
+  function Dead(V: Single): Single;
+  begin
+    if Abs(V) < MOTION_DEAD_G then
+      Result := 0
+    else
+      Result := V;
+  end;
+
+var
+  Dt, Alpha, G, Damp, Pull: Single;
+begin
+  if (AX = 0) and (AY = 0) and (AZ = 0) then
+    Exit;   // no accelerometer (Steam reports zeros)
+  FHasAccel := True;
+  if not FStarted then
+  begin
+    FGravity.X := AX;
+    FGravity.Y := AY;
+    FGravity.Z := AZ;
+    FLastMs := ANowMs;
+    FStarted := True;
+    Exit;
+  end;
+  Dt := (ANowMs - FLastMs) / 1000;
+  FLastMs := ANowMs;
+  if Dt <= 0 then
+    Exit;
+  if Dt > 0.1 then
+    Dt := 0.1;   // a long gap (a slow frame) is not a long push
+  Alpha := Dt / (GRAVITY_TAU + Dt);
+  FGravity.X := FGravity.X + (AX - FGravity.X) * Alpha;
+  FGravity.Y := FGravity.Y + (AY - FGravity.Y) * Alpha;
+  FGravity.Z := FGravity.Z + (AZ - FGravity.Z) * Alpha;
+  // the units differ between pads: gravity's own size is 1 g
+  G := Sqrt(Sqr(FGravity.X) + Sqr(FGravity.Y) + Sqr(FGravity.Z));
+  if G < 1E-6 then
+    Exit;
+  FLinear.X := Dead((AX - FGravity.X) / G);
+  FLinear.Y := Dead((AY - FGravity.Y) / G);
+  FLinear.Z := Dead((AZ - FGravity.Z) / G);
+  Damp := 1 - Dt * MOTION_VEL_DAMP;
+  if Damp < 0 then
+    Damp := 0;
+  Pull := 1 - Dt * MOTION_SPRING;
+  if Pull < 0 then
+    Pull := 0;
+  FVel.X := FVel.X * Damp + FLinear.X * MOTION_GAIN * Dt;
+  FVel.Y := FVel.Y * Damp + FLinear.Y * MOTION_GAIN * Dt;
+  FVel.Z := FVel.Z * Damp + FLinear.Z * MOTION_GAIN * Dt;
+  FPos.X := Clamp1((FPos.X + FVel.X * Dt) * Pull);
+  FPos.Y := Clamp1((FPos.Y + FVel.Y * Dt) * Pull);
+  FPos.Z := Clamp1((FPos.Z + FVel.Z * Dt) * Pull);
 end;
 
 end.
