@@ -850,10 +850,10 @@ const
   { How far Motion moves the model at most, as a part of its size (it stays
     in view). }
   MOTION_RANGE = 0.35;
-  { The skybox turn per turn of the player: -1 = the other way (the room
-    seems to stay while the view turns). NOT YET SEEN: 1 if it turns the
-    wrong way. }
-  SKY_YAW_SIGN = -1;
+  { The skybox turn per turn of the player, horizontally: 1 = the same
+    way as the turn, -1 = the other way. Owner 2026-11-13 (VirtualGamepad,
+    Motion on): -1 turned the skybox the wrong way horizontally, so 1. }
+  SKY_YAW_SIGN = 1;
   { The skybox's inclination per tilt of the whole pad: -1 = the other way.
     NOT YET SEEN: 1 if it tilts the wrong way. }
   SKY_PITCH_SIGN = -1;

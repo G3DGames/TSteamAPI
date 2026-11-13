@@ -3666,7 +3666,15 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
   COMPILED.
 
-## Handover (2026-11-11, fifteenth session) - READ THIS FIRST
+## Handover (2026-11-13, fifteenth session, part 2) - READ THIS FIRST
+OWNER 14:39 (VirtualGamepad, Motion on): the skybox's HORIZONTAL direction
+needs reversing. SKY_YAW_SIGN -1 -> 1 in all three uMain.pas (FMX, LCL,
+VCL kept in step; the FMX one is what the owner SAW - the Castle twins
+NOT YET SEEN). SKY_PITCH_SIGN (vertical) unchanged at -1, NOT YET SEEN.
+Zip Sky1 based on push 45b03e2 ("docs" = UserManual1, applied as
+delivered). Demos only: NO PACKAGE REBUILD, recompile the three demos.
+
+## Handover (2026-11-11, fifteenth session)
 `skybox` is merged into `main` (push 69bc11b, PR #1); work on `main`
 unless the owner says otherwise. OWNER asked for docs/UserManual.md, a
 user manual of every component (see the docs/ entry under Layout rules
