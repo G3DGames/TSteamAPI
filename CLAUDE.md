@@ -3689,6 +3689,14 @@ replaces TSteamAPI-FreeType1 (not pushed yet) and contains it:
   overlay menu unit (VirtualGamepad's, made reusable) in fmx/.
 RUNTIME RECOMPILE: STEAMWORKSFMX (ALL PLATFORMS), THEN DCLSTEAMWORKSFMX.
 
+Zip Screen2 (on top of push d11be14 = Screen1): Win32 compile failed -
+TMonitorInfoEx, MonitorFromWindow, GetMonitorInfo, MONITOR_DEFAULTTONEAREST
+are in Winapi.MultiMon, not Winapi.Windows (added to the uses); szDevice
+passed as PChar(@MI.szDevice[0]). Push d11be14 checked: = Screen1 (7b3b041
+before it had 121 files deleted; d11be14 restored them).
+Then: TDisplay undeclared - it is in FMX.Types (added to the
+implementation uses), not FMX.Forms.
+
 ## Handover (2026-11-13, fifteenth session, part 2)
 OWNER 14:39 (VirtualGamepad, Motion on): the skybox's HORIZONTAL direction
 needs reversing. SKY_YAW_SIGN -1 -> 1 in all three uMain.pas (FMX, LCL,

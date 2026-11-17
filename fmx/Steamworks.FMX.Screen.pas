@@ -174,9 +174,9 @@ function SteamScreenSourceName(ASource: TSteamScreenSizeSource): string;
 implementation
 
 uses
-  System.Math,
+  System.Math, FMX.Types,   // TDisplay (Screen.DisplayFromForm)
   {$IF Defined(MSWINDOWS)}
-  Winapi.Windows, System.Win.Registry, FMX.Platform.Win,
+  Winapi.Windows, Winapi.MultiMon, System.Win.Registry, FMX.Platform.Win,
   {$ELSEIF Defined(MACOS) and not Defined(IOS)}
   Posix.Dlfcn,
   {$ELSEIF Defined(LINUX) and not Defined(ANDROID)}
@@ -354,7 +354,8 @@ const
   EDD_GET_DEVICE_INTERFACE_NAME = $00000001;
   { DISPLAY_DEVICE: the monitor is on. }
   DISPLAY_DEVICE_ACTIVE_FLAG = $00000001;
-  { Where Windows keeps a monitor's EDID (then model\instance\...). }
+  { Where Windows keeps a monitor's EDID (then model\instance\...). The
+    monitor functions and TMonitorInfoEx are in Winapi.MultiMon. }
   EDID_KEY = '\SYSTEM\CurrentControlSet\Enum\DISPLAY\';
 
 { The physical size in an EDID block: the first detailed timing
@@ -403,7 +404,7 @@ begin
     DD.cb := SizeOf(DD);
   end;
   // '\\?\DISPLAY#GSM5B09#5&2a3b4c&0&UID4352#{e6f07b5f-...}'
-  Parts := string(DD.DeviceID).Split(['#']);
+  Parts := string(PChar(@DD.DeviceID[0])).Split(['#']);
   if Length(Parts) < 3 then
   begin
     ANote := 'no monitor device for ' + ADevice;
@@ -447,7 +448,7 @@ begin
   if not GetMonitorInfo(Mon, PMonitorInfo(@MI)) then
     Exit;
   // the monitor's own record of its size
-  if EdidSize(ReadEdid(MI.szDevice, AInfo.SizeNote), W, H) then
+  if EdidSize(ReadEdid(string(PChar(@MI.szDevice[0])), AInfo.SizeNote), W, H) then
   begin
     CheckSize(W, H, AInfo.PixelWidth, AInfo.PixelHeight, AInfo.Scale, False, AInfo.SizeNote);
     if W > 0 then
@@ -459,7 +460,7 @@ begin
     end;
   end;
   // what the display driver says (made up from the dpi on some systems)
-  DC := CreateDC(nil, MI.szDevice, nil, nil);
+  DC := CreateDC(nil, PChar(@MI.szDevice[0]), nil, nil);
   if DC = 0 then
     Exit;
   try
