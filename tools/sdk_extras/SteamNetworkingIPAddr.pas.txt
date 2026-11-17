@@ -1,0 +1,27 @@
+  { The IPv4 form of @link(SteamNetworkingIPAddr): an IPv6 address with the
+    IPv4-mapped prefix ::ffff:0:0/96. C type: SteamNetworkingIPAddr::IPv4MappedAddress. }
+  SteamNetworkingIPAddr_IPv4MappedAddress = packed record
+    { Always 0. }
+    m_8zeros: UInt64;
+    { Always 0. }
+    m_0000: UInt16;
+    { Always $FFFF. }
+    m_ffff: UInt16;
+    { The IPv4 address, network byte order (most significant byte first). }
+    m_ip: array[0..3] of UInt8;
+  end;
+  { Steam struct SteamNetworkingIPAddr: an IPv6 or IPv4 address and a port
+    (steamnetworkingtypes.h, pack(1)). In C the address is a union of
+    m_ipv6 and m_ipv4 followed by m_port; a Pascal variant part must come
+    last, so m_port is declared in the m_ipv6 variant - it is at offset 16
+    either way. Hand-written (tools/sdk_extras/SteamNetworkingIPAddr.pas.txt).
+    C type: SteamNetworkingIPAddr. }
+  SteamNetworkingIPAddr = packed record
+    case Integer of
+      { IPv6 address bytes, network byte order; then the port. }
+      0: (m_ipv6: array[0..15] of UInt8;
+          { Port, HOST byte order. }
+          m_port: UInt16);
+      { The same 16 bytes as an IPv4-mapped address. }
+      1: (m_ipv4: SteamNetworkingIPAddr_IPv4MappedAddress);
+  end;

@@ -1,0 +1,63 @@
+// Hand-written parts of Steamworks.Plugin.GameServer (merged by
+// tools/gen_steam_api.py; see Input.pas.txt for the section markers).
+//
+// THE BY-VALUE SHIM. GetPublicIP returns SteamIPAddress_t BY VALUE (pack(1),
+// 20 bytes), which the generator refuses. 20 bytes is above every
+// register-return limit, so C returns it through a hidden pointer on every
+// target - the same classes as ISteamInput GetMotionData (40 bytes, see
+// Input.pas.txt): Windows (Win32 / Win64) and x64 Unix take the hidden
+// pointer as the FIRST argument (Win32: the caller pops it, as cdecl does);
+// ARM64 passes it in X8, which only the compiler's own record return
+// provides; Linux32 (i386 System V: the callee pops it) also uses the
+// compiler's record return (UNVERIFIED, as for Input).
+//@types
+{$if defined(STEAMWORKS_WINDOWS) or not (defined(STEAMWORKS_CPUARM64) or defined(STEAMWORKS_CPU386))}
+  { @code(SteamAPI_ISteamGameServer_GetPublicIP) on Windows and x64 Unix:
+    hidden result pointer first. }
+  TSteamGameServerPublicIPFn = procedure(AResult: PSteamIPAddress_t; AIntf: Pointer); cdecl;
+{$else}
+  { @code(SteamAPI_ISteamGameServer_GetPublicIP) on ARM64 (hidden pointer in
+    X8) and Linux32: the compiler's record return. }
+  TSteamGameServerPublicIPFn = function(AIntf: Pointer): SteamIPAddress_t; cdecl;
+{$endif}
+
+//@private
+    { Bound @code(SteamAPI_ISteamGameServer_GetPublicIP) (by-value shim). }
+    F_GetPublicIP: TSteamGameServerPublicIPFn;
+//@public
+    { The server's public IP address as Steam sees it (after log-on; type
+      k_ESteamIPTypeIPv4 with m_unIPv4 in HOST order, or IPv6). Behind NAT
+      this is the router's address. }
+    function GetPublicIP: SteamIPAddress_t;
+    { @link(GetPublicIP) as an IPv4 address in HOST order (what the server
+      browser's StartPing / StartPlayerDetails / StartServerRules take), or
+      0 when Steam reports none or an IPv6 address. }
+    function PublicIPv4: UInt32;
+//@initialize
+  F_GetPublicIP := nil;
+  Bind(F_GetPublicIP, PFX + 'GetPublicIP', False);
+//@finalize
+  F_GetPublicIP := nil;
+//@implementation
+function TSteamGameServerPlugin.GetPublicIP: SteamIPAddress_t;
+begin
+  Need(Assigned(F_GetPublicIP), 'GetPublicIP');
+  // same test as the TSteamGameServerPublicIPFn declarations
+{$if defined(STEAMWORKS_WINDOWS) or not (defined(STEAMWORKS_CPUARM64) or defined(STEAMWORKS_CPU386))}
+  FillChar(Result, SizeOf(Result), 0);
+  F_GetPublicIP(@Result, FIntf);
+{$else}
+  Result := F_GetPublicIP(FIntf);
+{$endif}
+end;
+
+function TSteamGameServerPlugin.PublicIPv4: UInt32;
+var
+  A: SteamIPAddress_t;
+begin
+  A := GetPublicIP;
+  if A.m_eType = k_ESteamIPTypeIPv4 then
+    Result := A.m_unIPv4
+  else
+    Result := 0;
+end;

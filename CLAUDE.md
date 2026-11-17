@@ -1,0 +1,5716 @@
+# CLAUDE.md - working rules for this repository
+
+**OWNER'S IDE (2026-11-02): the 32-bit Delphi 13 IDE. Design-time packages
+(dcl...) are built and installed for Win32. The 64-bit IDE is for later -
+do not assume it.**
+
+Read README.md first, then this file. Keep both up to date with every change.
+
+## Starting a new session (read this first)
+- Repository: https://github.com/G3DGames/TSteamAPI (public; renamed from
+  `steamworks` - old links redirect, use the new name). WORK BRANCH since
+  2026-11-07: `skybox` (the owner made it for the skybox / Motion work;
+  `main` is the state before it, "PreSkybox"). Ask which branch to build on
+  if unsure. Clone it fresh WITH ALL BRANCHES (a --depth clone fetches only
+  the default branch, and `skybox` then looks missing):
+  `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 5 --no-single-branch https://github.com/G3DGames/TSteamAPI`
+  then `git checkout skybox`.
+  The owner's local working copy may be ahead of GitHub:
+  build on files the owner attaches or pastes.
+- The cloud workspace has NO Steamworks SDK (partner download, unreachable)
+  and no Delphi / FPC compiler (apt is blocked, so FPC cannot be installed).
+  Never claim to have the SDK. For SDK facts or to regenerate the binding ask
+  the owner to attach a zip of the SDK's whole `public/steam` folder; unpack
+  it OUTSIDE the repository (scratchpad) - it is never committed and does not
+  survive the session. For compile/run results rely on the owner's logs.
+  clang IS available: tools/verify_generated.py uses it to check layouts.
+- Owner's setup: Delphi 13 (Studio 37.0), the 32-BIT IDE (see the top of this
+  file; design packages Win32 / dcc32); SDK 1.65 copied into
+  `redistributable_bin/` (all seven libraries, verified by check_redist.py).
+- Read the newest "Handover" section (marked READ THIS FIRST) for where work stopped.
+
+## To do at the END of the project (owner, 2026-11-01)
+- Front-end LAUNCHER for the demos under one AppID - plan, rules and open
+  decisions in docs/Launcher.md (also listed in README "Status / next
+  steps"). Do NOT start it before the other work is finished; keep the
+  plan up to date if a demo changes in a way it depends on (manifest,
+  RestartIfNecessary, deployment layout).
+
+## Syncing safely
+- When the owner says a push is done: clone or fetch into a SEPARATE scratch
+  folder, compare every file delivered since the last push (ignore CRLF and
+  BOM differences), report, and only then reset the working copy to
+  `origin/main`. Never `git stash` + `reset` + `stash drop` over undelivered
+  work (this lost a working copy once; it was restored from the last zip).
+- The IDE re-saves .dproj / .groupproj files (see Project files); differences
+  there after a push are normal - check the important parts survived
+  (post-build events, DeployFile entries, search paths) rather than expecting
+  byte equality.
+  The owner switches target OS often, so a changed default <Platform> in a
+  .dproj (e.g. Linux64) and reordered entries are expected - never
+  "restore" those. The one IDE change to undo is Steamworks.groupproj
+  losing its <Dependencies> (it happened three times): restore it.
+
+## Project
+Pascal binding of the Steamworks SDK 1.65. Core + plug-ins.
+Target order: FMX, then VCL, then Free Pascal. Delphi 13 is the reference
+compiler; Windows is the main development platform, macOS (PAServer) and
+Linux64 are also tested. Supported: every platform Valve ships a
+redistributable for - Win32, Win64, macOS (x64/ARM64), Linux64, Android64
+(Delphi + FPC) and Linux32, LinuxARM64 (FPC only; Linux32 may be dropped).
+Project AppID: 2275430. VirtualGamepad: its OWN AppID 4108310 (owner,
+2026-11-03; on SteamAPI1 in its uMain.fmx). VirtualGamepadLCL: 480.
+
+## Delivery
+- Deliver whole changed files in a zip with paths from the repository root.
+  Never send patches.
+- Fold follow-up requests into the same delivery.
+- VITAL NOTICES (owner, 2026-11-03): anything the owner must not miss -
+  above all a package rebuild - is written IN CAPITALS and wrapped in
+  ====> ... <==== on a line of its own, e.g.
+  ====> RUNTIME RECOMPILE REQUIRED: STEAMWORKS, STEAMWORKSFMX ... <====
+  and the same when NO rebuild is needed (====> NO PACKAGE REBUILD <====).
+- PACKAGE REBUILDS (owner, 2026-11-02): whenever a delivery changes
+  anything a runtime or design-time package compiles (lib/, lib/plugins/,
+  fmx/, vcl/, lcl/, design/, packages/), say so IN CAPITALS in the
+  delivery message, naming the packages - e.g. "REBUILD RUNTIME PACKAGE
+  STEAMWORKS (ALL PLATFORMS) AND REINSTALL DCLSTEAMWORKS". Also say so
+  when nothing needs rebuilding.
+- Do not commit or push; the owner applies the zip and pushes. When the stop
+  hook asks to commit and push, answer in one line that changes stay
+  uncommitted on purpose.
+- Each zip holds ONLY the files that differ from the owner's LATEST PUSH
+  (owner 2026-11-07: "no file in the zip may be identical to the last
+  version"): fetch first, compare with line endings ignored, include new
+  files; say which push it is based on and list any file to delete (a zip
+  cannot delete; the owner uses git rm). Until the owner pushes, each new
+  zip replaces the previous one and contains it. Leave out files whose only change is
+  line endings (git stores LF; the IDE and the generator write CRLF).
+- Before delivering run, and fix everything reported by:
+  - `python3 tools/pasdoc_check.py`
+  - `python3 tools/project_check.py`
+  - `python3 tools/gen_docs.py` (after any change to lib/plugins or
+    tools/doc_extras; deliver the regenerated docs/components pages)
+  - `python3 tools/gen_icon_res.py` (after any change to design/icons or
+    to the component list; deliver the changed .dcr / .res files - they
+    are compiled into the design packages, so say REBUILD + REINSTALL)
+  - `python3 tools/gen_pad_parts.py` (after a model in models/ is added or
+    changed; deliver the three identical demos/VirtualGamepad*/src/PadParts.pas)
+  - when the SDK folder is at hand (generated code changed):
+    `python3 tools/gen_steam_api.py <sdk>/public/steam` then
+    `python3 tools/verify_generated.py <sdk>/public/steam`
+
+## Layout rules
+- GENERATED, never edit by hand: `lib/Steamworks.SDKTypes.pas`,
+  `design/Steamworks.Reg.pas` and every `lib/plugins/Steamworks.Plugin.*.pas`
+  that says "GENERATED by tools/gen_steam_api.py". Change the generator or
+  `tools/plugin_extras/<Name>.pas.txt` and regenerate.
+  Also GENERATED: demos/SteamDemoPad/src/steamdemopad_controllers.vdf +
+  pad_controller_*.vdf (gen_input_mapping.py profile "pad", SteamDemoPad's
+  OWN manifest - owner 2026-11-04), and steam_controllers.vdf (the action manifest; named
+  steam_input_manifest.vdf before 2026-11-03) and controller_*.vdf in
+  demos/SteamInputDemo/src, demos/VirtualGamepad/src AND
+  demos/VirtualGamepadLCL/src AND demos/VirtualGamepadVCL/src (identical copies, owner 2026-10-31) - by tools/gen_input_mapping.py (one table of sets,
+  actions, bindings; its CONTROLLERS list and gen_projects.py's "files"
+  list for SteamInputDemo must stay in step). Steam Input files: NO //
+  comments (a manifest that started with comments did not work).
+- Component naming (owner's decision 2026-10-30): every framework's root
+  component is called `TSteamAPI` (fmx/Steamworks.FMX now; vcl/Steamworks.VCL
+  and lcl/Steamworks.LCL later), all descending from the framework-free
+  `TCustomSteamAPI` (lib/Steamworks.Components.pas), which holds the whole
+  lifecycle; a framework unit only adds PumpStart / PumpStop (its TTimer),
+  ShowHandlerException and TerminateApplication, and publishes the
+  properties. Plug-in components are generated, framework-free and shared:
+  `TSteam<Name>` (TSteamFriends, ...) next to `TSteam<Name>Plugin` in each
+  plug-in unit, linked to the root through `SteamAPI` ("dropped and linked":
+  only what is dropped is linked in). The core flat-export class formerly
+  called TSteamAPI is `TSteamLib` (lib/Steamworks.API.pas).
+- Owner's decision 2026-10-30: pitfalls every user will hit (no manifest ->
+  unthemed / DPI-stretched VCL demo, Steam caching achievement icons until
+  a client restart, ...) are NOT hidden in the demos; they are explained in
+  README "Known issues (that are not really issues)". Add new ones there.
+- Owner's direction 2026-10-30: iron out Windows first (largest target) and
+  add plug-ins as we go; other platforms are re-tested later in one round.
+- Runtime packages (Steamworks, SteamworksFMX) write their DCUs to
+  $(BDSCOMMONDIR)\Dcp (Win32) / $(BDSCOMMONDIR)\Dcp\$(Platform) (others),
+  i.e. next to their .dcp on the IDE's default Library path, so projects
+  using the library need no paths (owner's request; gen_projects.py does
+  the same). Debug and Release builds share that folder (last one wins).
+- Packages: `Steamworks` (runtime, rtl only: lib + plug-ins + components),
+  `dclSteamworks` (design: registers the plug-in components once, no class
+  group, so they show for FMX and VCL), `SteamworksFMX` (runtime: only
+  Steamworks.FMX, requires Steamworks), `dclSteamworksFMX` (design: registers
+  the FMX TSteamAPI after `GroupDescendentsWith(TSteamAPI, TFmxObject)`, so a
+  VCL TSteamAPI of the same name can be registered later, like TButton).
+- `lib/` - framework-free units only. No FMX, VCL or LCL here, ever.
+  Must compile with Delphi and with FPC 3.2+ (`{$mode delphi}` via Steamworks.inc).
+  Compiler targets (owner, 2026-10-30):
+  * FPC 3.2.2 exactly - it is what Castle Game Engine
+    (github.com/castle-engine/castle-engine) builds with, a specific target.
+    Use nothing newer (no trunk / 3.3.1 features outside the
+    anonymous-methods define); check FPC facts against the 3.2.2 RTL.
+  * Delphi 13 is RECOMMENDED (the reference; the only version tested).
+    Earlier versions (11.0+) are tested later, with no guarantee for now.
+    Still avoid needless breakage: no Delphi 12+ language features
+    (multi-line ''' strings), no Delphi 13 ones (ternary if-expressions,
+    `is not` / `not in`, NameOf) and no newer RTL / platform ids without a
+    {$if CompilerVersion} guard. If 11.0 turns out to need something newer,
+    the minimum becomes 13. The .dproj files are Delphi 13 format
+    (ProjectVersion 20.5).
+- `lib/plugins/` - one unit per Steam interface (`Steamworks.Plugin.<Name>.pas`).
+- Never create a folder with a '-' in its name under any `lib/`: `.gitignore`
+  ignores `lib/*-*/` (Lazarus unit output such as `lib/x86_64-linux/`).
+- `fmx/`, `vcl/`, `lcl/` - framework-specific units: each declares
+  TSteamAPI (TCustomSteamAPI + its timer) and SteamImageToBitmap for its
+  bitmap type. vcl/ and fmx/ are Delphi-only; lcl/ is FPC/Lazarus.
+- GUI demos use components on their forms (owner, 2026-10-30, replacing the
+  shared code-built VCL / LCL unit): SteamDemo src/uMain.fmx, SteamDemoVCL
+  src/uMain.dfm, SteamDemoLCL src/uMain.lfm each hold TSteamAPI1-style
+  SteamAPI1, SteamFriends1, SteamUserStats1 with events wired in the form
+  file, plus the whole UI. Only Debug-only settings (SetAppIdEnvironment /
+  RestartIfNecessary) are made in FormCreate; Active stays False (Start
+  button). Update mode is a form setting (no command-line switch).
+  SteamDemo (FMX only, 2026-11-02) also holds the other seven plug-in
+  components (SteamUtils1, SteamUser1, SteamApps1, SteamRemoteStorage1,
+  SteamScreenshots1, SteamTimeline1, SteamUGC1) for the component base
+  test (Test components button, Components tab); VCL / LCL do not.
+  SteamDemo (FMX only, owner 11:40) also has a File menu (Auto Start
+  Steam: on / off, Copy Log, Exit - the Copy log button is gone), buttons
+  enabled by state (UpdateControls) and a per-user settings file
+  (SettingsFolder + SteamDemo.ini, TMemIniFile) - the first demo setting
+  that is saved; VCL / LCL twins not done. The VCL
+  and LCL units are near-twins - keep them in step. Demo sources must not
+  include Steamworks.inc. The Lazarus designer needs the Lazarus package
+  installed (below) to open SteamDemoLCL's form; without it, Cancel its
+  offer to remove the Steam classes.
+- Lazarus package packages/SteamworksLCL.lpk (2026-10-30, hand-written, not
+  yet compiled): RunAndDesignTime, requires LCL, contains lib, lib/plugins,
+  lcl and lcl/Steamworks.LCL.Reg.pas (GENERATED by gen_steam_api.py's
+  lcl_reg_unit - needs no SDK; HasRegisterProc in the .lpk). Units go to
+  packages/lib/<cpu>-<os>/; Lazarus regenerates packages/SteamworksLCL.pas
+  (both git-ignored). Add a new plug-in unit to the .lpk by hand.
+- Lazarus projects (.lpi/.lpr) are not in the project group. Since the
+  twelfth session project_check.py parses every .lpi and checks its units
+  exist, and gen_projects.py knows ONE Lazarus project: SteamConsoleFPC,
+  the Free Pascal twin of SteamConsole (key "fpc_twin" on the SteamConsole
+  entry; lpi() writes the .lpi only when missing, the .lpr is
+  hand-written). project_check.py keeps a twin in step: the same .pas units
+  in .lpi and .dproj, the same uses list in .lpr and .dpr (cthreads aside).
+  The other .lpi files (SteamDemoLCL, VirtualGamepadLCL) stay hand-made.
+  SteamDemoLCL REQUIRES the SteamworksLCL package (owner's
+  build, 2026-10-30 22:30: with the package installed, its old lib / lcl
+  search paths gave Lazarus' warning "unit path ... contains ...\lib, which
+  belongs to package SteamworksLCL"); its only own path is src.
+  SteamConsoleFPC uses NO package (plain FPC, no LCL): it compiles the
+  library from ../../lib and ../../lib/plugins (that warning may appear for
+  it when the package is installed - harmless).
+- `design/` - framework-independent design-time units (generated Reg unit).
+- `redistributable_bin/` - each developer copies `sdk/redistributable_bin`
+  from the Steamworks SDK 1.65 here. Only its README.md is tracked; never
+  commit SDK binaries (partner licence). `tools/check_redist.py` validates it;
+  projects copy / deploy from it (paths set in `tools/gen_projects.py`).
+- `demos/<Name>/` - `<Name>.dpr` + `<Name>.dproj` in the folder, all other
+  sources in `demos/<Name>/src/`. Demos list and search ONLY their own
+  sources: the library comes from the runtime packages' DCUs in Delphi's
+  Dcp folder, exactly as for a user's project (owner's decision 2026-10-30).
+  So packages build before demos, and library changes need a package
+  rebuild before a demo sees them. Group layout (owner, 2026-10-30): the
+  Projects window lists applications first, then runtime packages, then
+  design (dcl) packages; build order comes from each entry's Dependencies
+  (IDE) and the Build / Clean / Make targets (MSBuild: runtime, design,
+  apps) - gen_projects.py writes both. The IDE dropped the group's
+  Dependencies once already, and may rewrite the target lists in display
+  order when it re-saves - check both after it does.
+- `RemoteLogging/` (owner, 2026-10-31) - OPTIONAL, NOTHING TO DO WITH
+  STEAM: LogReceiver (FMX app in the group, gen_projects entry, no
+  dependencies) + src/RemoteLog.Protocol.pas + src/RemoteLog.Sender.pas
+  (Indy; Delphi only) + src/RemoteLog.SenderFPC.pas (the same classes for
+  FPC 3.2.2 on its Sockets unit). No Steam unit may use it and lib/ /
+  packages never reference it. EXCEPTION to "demos search only their own
+  sources": SteamInputDemo, VirtualGamepad, VirtualGamepadVCL, SteamDemo,
+  SteamDemoVCL (..\..\RemoteLogging\src) and VirtualGamepadLCL, SteamDemoLCL
+  (../../RemoteLogging/src in the .lpi) have it on their search path for
+  File > Send log to receiver (the three SteamDemos through
+  demos/Shared/DemoRemoteLog.pas). Its README must keep saying it is 100%
+  optional. pasdoc_check.py scans it too.
+- `packages/` - runtime and design-time packages.
+- `Steamworks.groupproj` at the root lists every project.
+- `tools/` - Python helpers.
+- `docs/` - user documentation, Markdown (owner's request 2026-10-30):
+  UserManual.md (2026-11-11, hand-written: "User Manual (Provisional)" -
+  every component in DEPENDENCY order (a chapter only uses what earlier
+  chapters describe), most-used Steam features first, each component
+  chapter opens with its palette icon (<img> of design/icons/svg/<Class>.svg,
+  no copies), extensive examples on AppID 480 (Spacewar) that follow the
+  Source rules: AppID read back from SteamAPI1.AppID, Spacewar names as
+  named constants (1.2), no machine paths; keep in step by hand),
+  Install-Delphi.md, Install-Lazarus-FPC.md, GameEngineIntegration.md,
+  SteamInputMapping.md (2026-10-31: manifest, default layouts, origins ->
+  physical positions, type -> model), components/README.md +
+  components/TSteamAPI.md (hand-written) and components/TSteam<Name>.md - GENERATED by tools/gen_docs.py from the
+  plug-in units + tools/doc_extras/<Name>.md (never edit the generated
+  pages). Keep docs in step with code changes, like README. HTML / CHM API
+  docs come from PasDoc: tools/pasdoc.bat (owner, 2026-11-02), FOUR runs -
+  docs/html/delphi + docs/chm/delphi (fmx/Steamworks.FMX + vcl/Steamworks.VCL
+  + lib, defines MSWINDOWS CPUX64, FPC undefined) and docs/html/fpc +
+  docs/chm/fpc (lcl/Steamworks.LCL + lib, defines FPC MSWINDOWS CPU64
+  CPUX86_64); include path lib; .Reg units left out. The output folders
+  are git-ignored by the owner's docs/.gitignore (2026-11-02; the root
+  .gitignore still has the older docs/html/ line). .bat files are CRLF
+  (.gitattributes). The script first deletes ONLY those four output
+  folders (owner, 11:20); a folder it cannot delete (file open) counts as
+  a failed step.
+  FIRST RUN (owner, 11:24, PasDoc 1.0.5 snapshot / FPC 3.2.2 Win64): all
+  four runs OK, 21 / 20 units, both .chm compiled by hhc 4.74 (1.33 / 1.32
+  MB, ~4,600 topics). The ONLY warnings: 40 x "Cannot evaluate ...
+  FPC_FULLVERSION >= 30301, assuming true" (FPC runs) - which put the
+  anonymous-method overloads into the FPC 3.2.2 docs. Zip Doc3: the test in
+  lib/Steamworks.inc sits inside {$ifndef PASDOC} (no compiler defines
+  PASDOC: compiled code unchanged, no rebuild) and pasdoc.bat passes
+  --define PASDOC. No warnings for the compound {$if} conditions or the
+  three same-named TSteamAPI classes.
+  SECOND RUN (owner, 12:01, Doc3 build): ZERO warnings; the clean step
+  deleted all four folders; 21 / 20 units; both .chm compiled. The FPC
+  .chm shrank from 1,324,350 to 1,311,262 bytes (the Delphi one: 1,334,006
+  -> 1,334,008) = the anonymous-method overloads are gone from the FPC
+  view, as intended. PASDOC DOCS COMPLETE (Windows).
+  Zip Doc4 (owner, 11:29): tools/pasdoc.sh for Linux / macOS - FPC HTML
+  only (docs/html/fpc; no .chm, hhc is Windows-only), POSIX sh, LF
+  (.gitattributes), run as "sh tools/pasdoc.sh" (no executable bit needed:
+  the owner's zips come from Windows). SAME defines as the .bat's FPC runs
+  (Win64 view) so docs/html/fpc is identical whichever OS made it. Both
+  scripts first check pasdoc is installed (PASDOC = full path, or on the
+  PATH; .bat: if exist / where) and otherwise point to
+  https://github.com/pasdoc/pasdoc/releases/ and exit 1. pasdoc.sh tested
+  here with no pasdoc (message, exit 1) and a stand-in pasdoc (47
+  arguments, title as one); the .bat could not be run here.
+- OWNER'S BUILD 11:33: SteamDemo E2003 SteamFormToRGB undeclared - the
+  SteamworksFMX package had not been rebuilt for Win64 after Shot1 (the
+  demo links Steamworks.FMX.dcu from the Dcp folder). Not a code error.
+- OWNER (11:40): SteamDemo buttons let you stop Steam that is not
+  running. Zip Menu3 (follows Doc4):
+  * UpdateControls: Start enabled only while Steam is NOT running; Show
+    info, Stop, Test components only while it is. Called from FormCreate,
+    StartSteam (Start disabled during Open, restored after), Stop,
+    OnInitialized, OnInitFailed, OnShutdown (covers Steam client exit;
+    the core sets FState before raising OnShutdown, so IsRunning is
+    already False there).
+  * TMainMenu File: "Auto Start Steam: on/off" (state in the TEXT, the
+    project's convention for toggles, shows on every platform's menu),
+    Copy Log (was the button), separator, Exit. tmAutoStart (100 ms, off
+    in the form) starts Steam once after FormCreate when the setting is
+    on. Toggling saves at once and logs where.
+  * Settings: SettingsFolder - Windows TPath.GetHomePath (roaming
+    AppData)\G3DGames\SteamDemo, macOS ~/Library/Application Support/
+    G3DGames/SteamDemo, Linux $XDG_CONFIG_HOME (default ~/.config)/
+    G3DGames/SteamDemo, Android the documents folder; file SteamDemo.ini,
+    [Steam] AutoStart. Never next to the exe (read-only for a Steam
+    install / the Linux runtime - the LinuxRT3 "LATER" note).
+  * Linux FMX fixes: SteamDemo now has a menu, so FmxLinuxMenu (FOURTH
+    identical copy; MENU_DIRS in project_check.py, which now also covers
+    FmxLinuxGtkGlobal for SteamDemo) in .dpr / .dproj / gen_projects.py,
+    and SteamInputDemo's FormCreate order: log file, "FormCreate
+    started", ReplaceMainMenu, "Main menu ready". FmxLinuxGtkGlobal, the
+    ICU launcher and the stderr markers were already there. The
+    StartupTrace / ReadState hooks (crash diagnostics, not fixes) were
+    not copied.
+  * Docs: README step 3 (buttons, File menu, settings paths), README
+    Known issues menu entry and docs/fmx-menu-bug-fix.md list SteamDemo.
+  NO PACKAGE REBUILD. NOT YET COMPILED.
+- OWNER (11:45): README section "Generating the API reference (PasDoc)"
+  (before "Checks before delivery") + a link from the Documentation line
+  at the top: install from github.com/pasdoc/pasdoc/releases (tested
+  1.0.5), pasdoc.bat / pasdoc.sh and their folders, the Delphi vs FPC
+  views, the .chm needing hhc.exe (HHC), pasdoc_check.py for new
+  comments. In zip Menu3.
+  Independent review of Menu3 (no compiler): no compile errors, no
+  likely bugs. Fixed from its minor points: FormClose turns tmAutoStart
+  off (a close within 100 ms could have reopened Steam); FmxLinuxMenu's
+  header named two copies - now lists all four, changed in ALL FOUR
+  (comment only; still byte-identical). Confirmed by it: the swap
+  re-points mnuAutoStart to the copy; IsRunning is False in OnShutdown and
+  True in OnInitialized; TPath.GetHomePath = roaming AppData (Windows),
+  home (macOS / Linux).
+- OWNER (12:24): a screenshot on every component-test run would fill the
+  user's Steam screenshot page. Zip Menu4 (follows Menu3): File > Take
+  Screenshot (enabled only while Steam runs - UpdateControls) writes the
+  window with WriteFormScreenshot (SteamFormToRGB + WriteScreenshot, no
+  overlay needed); OnScreenshotReady tags any screenshot (SetLocation
+  "SteamDemo"); OnScreenshotRequested answers only while hooked (the demo
+  never leaves them hooked). The Screenshots component test now writes NO
+  picture and requests no callback: HookScreenshots(True) / (False) with
+  IsScreenshotsHooked checked after each (PASS = attached, calls OK, the
+  state followed; answers 0 of 0). The cleanup's HookScreenshots(False)
+  (and its misleading log line) is gone. README step 3 updated.
+  NO PACKAGE REBUILD. NOT YET COMPILED. Still open: TriggerScreenshot with
+  the overlay present (a run started from Steam) - no longer part of any
+  test; the README Known issues entry stays.
+- PUSH 9125bd3 "Testing untested components" (12:29, two commits on top
+  of 6175ace: c8a83bf "Before pasdoc" + 9125bd3) VERIFIED against a
+  separate clone: all 21 files delivered in CompTest1-3, Shot1, Doc1-4,
+  Menu3, Menu4 present and identical (line endings / BOM aside) except
+  SteamDemo.dproj = IDE re-save (default Config / Platform, ProjectName;
+  FmxLinuxMenu reference, 8 post-build events, 22 DeployFile entries
+  kept). Also pushed, not delivered: the owner's docs/.gitignore (html/,
+  chm/), IDE re-saves of SteamInputDemo.dproj (default platform,
+  ProjectName), LogReceiver.dproj (OSX64 / OSXARM64 config groups) and
+  VirtualGamepad.dproj (deploy entries reordered; still 8 post-build, 101
+  DeployFile) - accepted; group Dependencies kept (12). pasdoc_check /
+  project_check 0 problems on the clone; gen_docs.py and
+  gen_input_mapping.py reproduce every committed file (CRLF only).
+  PROBLEM: pasdoc.log (UTF-16, PowerShell redirect of pasdoc.bat) was
+  committed at the root - a build log with 4 local paths
+  (c:\src\Steamworks\docs\chm\...), against the "no paths from anyone's
+  computers in a tracked file" rule. Zip Sync1: .gitignore ignores
+  /pasdoc.log; the owner removes the tracked copy
+  (git rm --cached pasdoc.log). Working copy reset to origin/main.
+- PUSH 4cf2471 (12:31) VERIFIED: Sync1's .gitignore and CLAUDE.md
+  identical, pasdoc.log deleted from the tree (it stays in the history of
+  9125bd3 - only c:\src\Steamworks paths, not worth a history rewrite),
+  checks 0 problems, group Dependencies kept (12). Working copy reset.
+  Nothing delivered since (this note goes out with the next zip).
+- MENU4 WIN64 RUN (owner, 12:33): FormCreate started -> Main menu ready
+  first; settings READ from <roaming AppData>\G3DGames\SteamDemo\
+  SteamDemo.ini (Auto Start off; the file already existed); component
+  test 7 OF 7 PASS - Screenshots "answers 0 of 0; hook on / off OK", NO
+  picture written; File > Auto Start Steam on -> saved to the same file.
+  Not yet in a log: Auto Start on the next start, File > Take Screenshot,
+  Copy Log, Exit (and the button states are visual only).
+- MENU4 SECOND RUN (owner, 12:34-12:37): Auto Start read as ON ->
+  "starting Steam" -> Open OK; owner's picture shows Start disabled, the
+  other three enabled. File > Take Screenshot: window captured 720x500
+  (1,080,000 bytes RGB = 720 x 500 x 3), handle 9, OnScreenshotReady OK,
+  SetLocation True - captured the visible tab (Output). Show info x2, Test
+  components 7 OF 7 PASS (no picture), Stop: worker stopped, shut down,
+  OnShutdown. Copy Log worked (the pasted log is it; its own "copied" line
+  is written after the copy). Open questions: 720x500 = the form's
+  LOGICAL size - right at 100 % display scaling, too small above that
+  (asked the owner); auto start fired 4.1 s after FormCreate (100 ms
+  timer - probably the debugger's start-up; check outside the IDE). Not
+  yet seen: buttons after Stop, File > Exit.
+- MENU4 THIRD RUN (owner, 12:39, SteamDemo.log file): buttons after Stop
+  as expected (owner) - BUTTON STATES CONFIRMED. Auto start again 3.8 s
+  after FormCreate; FormClose with Steam running False (Exit or the
+  window's close button - not distinguishable). Zip Menu5 (follows
+  Sync1): File > Exit logs "File > Exit"; the auto-start line says how
+  many ms after FormCreate it fired (FCreateTicks) and the timer's
+  interval, to find what holds up the first message loop (asked whether
+  that run was outside the IDE). NO PACKAGE REBUILD.
+- MENU5 RUN (owner, 12:42): File > Exit logged, then FormClose (Steam
+  running True) and a clean shutdown - EXIT CONFIRMED; Menu4 / Menu5
+  checklist COMPLETE on Win64. Auto start "3813 ms after FormCreate; the
+  timer is 100 ms". Owner (12:44): the window frame appears at once, its
+  CONTENTS ~4 s later = FMX's first paint (canvas / style / controls)
+  blocks the message loop; FormCreate itself takes ~20 ms. Not our code;
+  Auto Start fires as soon as the contents are up. Open (optional): is a
+  blank FMX form as slow on that machine (then GPU driver / environment).
+- ALL CURRENT COMPONENTS BASE-TESTED ON WIN64 (owner 12:46): TSteamAPI x3
+  frameworks, Friends / UserStats (SteamDemo x3), Input (input demos, all
+  owner's pads), the other seven (Test components, 7 / 7 three times).
+  More pads are on order - nothing to test until they arrive.
+- OWNER'S PLAN (12:48): write the REMAINING components, then a complete
+  Win64 test, then a full macOS ARM64 test, finally Linux / SteamOS.
+  Remaining interfaces (SDK 1.65 has 28; done: Utils, User, Friends, Apps,
+  UserStats, RemoteStorage, Screenshots, Timeline, UGC, Input; Client is
+  the core):
+  * Batch 2a (generator only): HTTP, Inventory, Matchmaking, Parties,
+    Music, RemotePlay, Video, ParentalSettings, HTMLSurface.
+  * Batch 2b: NetworkingSockets, NetworkingMessages, NetworkingUtils,
+    Networking (old P2P) - the generator must emit VARIANT RECORDS for C
+    unions (SteamNetworkingIdentity, SteamNetworkingIPAddr,
+    SteamNetworkingConfigValue_t, ...; 8 more structs embed them) and
+    exercises Steamworks.AlignNatural.inc for the first time.
+  * Batch 2c: MatchmakingServers - response objects
+    (ISteamMatchmakingServerListResponse, ...PingResponse,
+    ...PlayersResponse, ...RulesResponse) are C++ vtable objects: a
+    hand-written shim like Input's.
+  * DECIDED (owner): ISteamController SKIPPED (deprecated by Valve,
+    ISteamInput replaces it - document it); GameServer / GameServerStats
+    LATER (separate SteamGameServer_Init path + core work + a server
+    demo), AFTER the full Win64 round.
+  Each batch gets a SteamDemo test like Test components. BLOCKED ON: the
+  SDK's public/steam folder (zip from the owner; unpack in the scratchpad,
+  never commit).
+- SDK HEADERS SUPPLIED (owner, 13:06, AllSteamHeaders.zip = public/steam
+  with steam_api.json and lib/). Baseline: regeneration reproduced every
+  committed generated file (CRLF only); verify_generated.py 836 layouts /
+  459 flat signatures / 24 by-value lowerings identical.
+- BATCH 2A (zip Batch2a, follows Menu5):
+  * gen_steam_api.py PLUGINS + Matchmaking, Parties, Music, HTTP,
+    HTMLSurface, Inventory, Video, ParentalSettings, RemotePlay (189
+    methods). One method NOT generated: ISteamParties.
+    GetBeaconLocationData (SteamPartyBeaconLocation_t BY VALUE - needs a
+    per-platform shim like Input's; documented). Raw-pointer methods left
+    as they are (Inventory 14, HTTP 4, Matchmaking 3, ...).
+  * FLAG_ENUMS (new): EHTMLKeyModifiers (0/1/2/4) and
+    ESteamInputConfigurationEnableType (0/1/2/4/8, Valve: bitmask) are
+    Integer types + constants now - the heuristic (len > 3 and max > 8)
+    missed them; the Input one was a latent batch-1 bug (unused as a
+    parameter type, so nothing breaks). Check new SDKs for more.
+  * Callback ownership: header AND id range (k_iSteam<Name>Callbacks bases
+    from steam_api_internal.h; CALLBACK_BASE_ALIAS Input -> Controller,
+    whose 2800 base Input's callbacks use). Before it, Matchmaking and
+    Parties (both in isteammatchmaking.h) each got all 17 lobby + party
+    events. The ten existing plug-ins regenerate UNCHANGED.
+  * verify_generated.py strips C++ scope prefixes
+    (ISteamHTMLSurface::EHTMLMouseButton). Now 836 layouts, 647 flat
+    signatures (188 new), 24 by-value lowerings - all identical.
+  * Packages: Steamworks.dpk / .dproj, SteamworksLCL.lpk, gen_projects.py
+    PLUGINS; design/Steamworks.Reg.pas and lcl/Steamworks.LCL.Reg.pas
+    regenerated (19 components). Component icons: 20 needed now.
+  * Docs: tools/doc_extras/<Name>.md for the nine (every identifier
+    checked against the units), generated docs/components pages, the
+    components index, README (layout, install list, component list,
+    status: Controller not bound - deprecated; game servers later).
+  * SteamDemo Test components 7 -> 16 components: answers requested from
+    Matchmaking (RequestLobbyList, max 1 -> 510), HTTP (GET
+    api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/ -> 2101, body
+    start logged, request released), HTMLSurface (Init + CreateBrowser
+    -> 4501, browser removed at once, Shutdown at the end), Inventory
+    (GetAllItems -> 4700, item count, result destroyed), Video
+    (GetOPFSettings -> 4624); reads only for Parties, Music,
+    ParentalSettings, RemotePlay (nothing harmless to ask for).
+  REBUILD BOTH RUNTIME PACKAGES (Steamworks: new units; SteamworksFMX
+  depends on it) AND REINSTALL dclSteamworks (new components).
+  NOT YET COMPILED.
+  Independent review (no compiler): ONE CERTAIN COMPILE ERROR fixed -
+  RemotePlay.GetInput had `var pInput: RemotePlayInput_t`, a C-union
+  struct the generator skips (undeclared): Param() now keeps a single
+  out-pointer to a SKIPPED struct a raw Pointer. Also fixed: Valve spells
+  one base k_ISteamParentalSettingsCallbacks (capital I) - regex
+  k_[iI]Steam. Confirmed by it: the id-range rule is right for all 19
+  interfaces; old units unchanged; SteamDemo names / cleanup correct.
+  FOR LATER BATCHES (exceptions table needed): GameServer would lose
+  GSPolicyResponse_t (115, in User's range), GameServerStats
+  GSStatsUnloaded_t (1108, UserStats' range), NetworkingSockets
+  SteamNetworkingFakeIPResult_t (1223, declared in steamnetworkingfakeip.h -
+  header rule misses it). Minor, left: Inventory GetResultItemProperty /
+  GetItemDefinitionProperty cannot pass NULL for the property name (the
+  "list names" form - use Flat); HTMLSurface LoadURL post data '' instead
+  of NULL (probably fine); Parties GetAvailableBeaconLocations takes the
+  array as one var record (pass the first element). Video test:
+  GetOPFSettings may not answer for a non-video app (reviewer ~40 %) - the
+  log says so if it times out.
+- BATCH 2A FIRST BUILD + RUN (owner, 13:44, Win64 Debug, 32-bit IDE with
+  Win32 design packages): ALL NINE NEW UNITS COMPILED FIRST TIME (no
+  errors). 18 plug-in classes linked (Input not in SteamDemo). Test
+  components 16 OF 16 PASS: HTTP 200, 71 bytes of JSON
+  ({"servertime":...}), request released; HTMLSurface Init True, browser
+  ready (4501) in 156 ms and removed, Shutdown True - NO overlay needed;
+  Matchmaking 0 lobbies; Inventory GetAllItems -> result 1 Fail (no
+  inventory service for the app), a second unrelated result (handle 0,
+  OK) correctly ignored, 4702 definition update seen; Video
+  GetOPFSettings ANSWERS (InvalidParam) - the review's doubt settled;
+  Music enabled, status 3, volume 1.00; Parties / ParentalSettings /
+  RemotePlay reads sane. FINDING: OnLobbyMatchList fired TWICE for one
+  request - 510 as call result and as plain callback (Steam posts both);
+  the component passes on both. Documented in doc_extras/Matchmaking.md
+  (use RequestLobbyListAsync or ignore the repeat). Other call results
+  may do the same - watch for it.
+- Push 93a9cba "Batch2a" (= Menu5, Batch2a, Doc5) verified 2026-11-02
+  13:50 against the clone.
+- BATCH 2B (zip Batch2b, follows Doc5; owner "proceed"):
+  * C UNIONS: hand-written Pascal variant records in
+    tools/sdk_extras/<Struct>.pas.txt (first line "C type: <name>" marker
+    in the PasDoc text): SteamNetworkingIPAddr (+ IPv4MappedAddress),
+    SteamNetworkingIdentity, SteamNetworkingConfigValue_t (+ _Value),
+    SteamInputActionEvent_t (+ Analog/DigitalAction_t), RemotePlayInput_t.
+    The generator (TypesUnit.union_extras) copies them into
+    Steamworks.SDKTypes at the right place (struct_order takes their
+    dependencies from the text) with a P-pointer; structs that embed them
+    (SteamNetConnectionInfo_t, SteamNetworkingMessage_t,
+    SteamNetConnectionStatusChangedCallback_t, FakeIPResult,
+    MessagesSessionRequest / Failed, ...) are generated normally now.
+    steam_api.json lists ONE member per union, so the positional layout
+    check cannot cover them: verify_generated.py parses `case ... of`
+    variants (PascalLayout.record with variant layout = each variant from
+    the end of the fixed part) and checks every field BY NAME with clang
+    __builtin_offsetof (check_named, "C type:" markers). Deliberate breaks
+    were caught. Delphi rule: the variant part must be last.
+  * PLUGINS + Networking, NetworkingSockets, NetworkingMessages,
+    NetworkingUtils. CALLBACK_EXTRA {NetworkingSockets:
+    SteamNetworkingFakeIPResult_t} (declared in steamnetworkingfakeip.h).
+    NOT bound: ISteamNetworking CreateListenSocket / CreateConnectionSocket
+    (deprecated SteamIPAddress_t BY VALUE).
+  * tools/plugin_extras/NetworkingSockets.pas.txt / NetworkingMessages:
+    ReleaseMessage (binds SteamAPI_SteamNetworkingMessage_t_Release),
+    ReceiveMessages(conn / channel, var array of PSteamNetworkingMessage_t),
+    Sockets also ReceiveMessagesOnGroup.
+  * Param fixes: COUNT_NAME also matches nListSz (n...Sz), (u|un|n)Max...,
+    ...BufferSize; ARRAY_AFTER_COUNT {pLanes} (count BEFORE the array). So
+    RemotePlay.GetInput, Parties.GetAvailableBeaconLocations (the "minor,
+    left" item above), NetworkingUtils.GetPOPList and
+    NetworkingSockets.GetConnectionRealTimeStatus(pLanes) take a Pointer
+    now. Parties.pas is the only changed old unit (that one line).
+    verify_generated: "intptr_t" size "P".
+  * Result: 860 layouts (215 structs x 4), 36 named (9 records x 4, 40
+    fields), 761 flat signatures, 24 by-value - all identical.
+  * Packages / Reg units (23 components) / gen_projects.py; doc_extras for
+    the four + Input.md (EnableActionEventCallbacks - record now declared)
+    and RemotePlay.md (GetInput) updated; components index; README.
+  * SteamDemo Test components 16 -> 20: NetworkingSockets GetIdentity
+    (type 16 + SteamID64 = SteamUser GetSteamID: proves the union record),
+    CreateSocketPair (no loopback), one reliable message 1 -> 2,
+    ReceiveMessages, data compared, ReleaseMessage, CloseConnection(1)
+    -> waits for 1221 ClosedByPeer on connection 2, then closes it
+    (cleanup closes leftovers); NetworkingUtils GetLocalTimestamp x2,
+    InitRelayNetworkAccess, GetRelayNetworkStatus (1281 logged, not
+    waited for); Networking IsP2PPacketAvailable / GetP2PSessionState and
+    NetworkingMessages ReceiveMessages(0): reads only.
+  REBUILD BOTH RUNTIME PACKAGES AND REINSTALL dclSteamworks (Win32).
+  NOT YET COMPILED.
+  Independent review (no compiler): no compile, crash or layout findings
+  in the demo, the helpers or the variant records (declaration order
+  checked). One fixed: F_MessageRelease was bound as REQUIRED and
+  ReleaseMessage silently did nothing without it (every message would
+  leak) - now optional like the other exports, and ReleaseMessage raises
+  ESteamworksError when it is missing.
+- OWNER (14:11) "as this involves networking how is fpc affected", then
+  (14:13) "make everything fpc friendly I'll test that after the fmx
+  test", (14:14/14:15) "update steamdemovcl + lcl as well". Same zip
+  (Batch2b, re-delivered):
+  * verify_generated.py TARGETS + i686-unknown-linux-gnu (Linux32) and
+    aarch64-unknown-linux-gnu (LinuxARM64), both FPC-only, default record
+    alignment 4 as Steamworks.inc sets. NATURAL_CAP {i686-linux: 4}:
+    i386 System V aligns int64 / double to 4 inside structs and FPC's
+    {$packrecords C} follows that (FPC maxCrecordalign 4 on i386-linux -
+    from memory, UNVERIFIED by an FPC build). Without the cap
+    SteamNetworkingMessage_t differs (C 200 bytes, align 4) - so the check
+    is sensitive. Now 1290 layouts (215 x 6) and 54 named (9 x 6), all
+    identical. The FPC SIDE of Linux32 / LinuxARM64 is still unbuilt.
+  * demos/Shared/SteamComponentTest.pas (NEW): the 20-component test as a
+    framework-free class (TSteamComponentTest; Delphi + FPC, no generics,
+    no TEncoding / UnixToDateTime / TThread.GetTickCount - own helpers),
+    a port of the FMX SteamDemo's test code. It CREATES its 20 components
+    (owned by it, events wired in code, SteamAPI set last); the form calls
+    Start / Tick (1 s timer) / Finish (before Steam closes) and shows
+    OnRowChanged. DemoSettingsFolder (APPDATA / ~/Library/Application
+    Support / XDG) - same SteamDemo.ini as the FMX demo. The FMX demo is
+    UNCHANGED (keeps its own copy; keep the two in step).
+  * SteamDemoVCL and SteamDemoLCL brought up to the FMX demo: buttons
+    enabled by state, Copy log button -> File menu (Auto Start Steam as a
+    checked item, Take Screenshot, Copy Log, Exit), tmAutoStart (100 ms),
+    tmTests, Components tab (TListView), Stop / FormClose / OnShutdown
+    finish the test first. Projects: .dpr/.dproj (VCL), .lpr/.lpi (LCL,
+    OtherUnitFiles src;../Shared).
+  * vcl/Steamworks.VCL + lcl/Steamworks.LCL: SteamBitmapToRGB and
+    SteamFormToRGB (GetFormImage; LCL via TLazIntfImage) - Forms moved to
+    the interface uses. UNTESTED.
+  REBUILD ALL RUNTIME PACKAGES: STEAMWORKS, STEAMWORKSFMX, STEAMWORKSVCL
+  (vcl/ changed), AND THE LAZARUS PACKAGE STEAMWORKSLCL (lcl/ changed);
+  REINSTALL DCLSTEAMWORKS. NOT YET COMPILED.
+  Independent review (no compiler, Delphi 13 + FPC 3.2.2): no findings in
+  the shared unit (30 event signatures checked by script, pending-list
+  logic equal to the FMX TDictionary version), the VCL / LCL forms (every
+  field / object / handler matches), the VCL / LCL screenshot helpers
+  (GetFormImage result freed by the caller - correct) or the projects.
+  Risk noted: LCL GetFormImage relies on PaintTo, which Cocoa / GTK2 may
+  support poorly - check the screenshot on the first macOS / Linux run.
+- BATCH 2B FMX RUN (owner, 14:40, Win64 Debug, Auto Start on): ALL FOUR
+  NETWORKING UNITS COMPILED FIRST TIME; 22 plug-in classes linked. TEST
+  COMPONENTS 20 OF 20 PASS. Union records proven on Win64: GetIdentity
+  type 16 + SteamID64 = the logged-on user; payload size checks passed
+  for 1221 (712 bytes, SteamNetConnectionStatusChangedCallback_t with
+  identity + IP address unions) and 1281 (272). Socket pair: 26 bytes
+  sent, received identical, message number 1; remote identity type 1
+  (IP address / localhost). FINDINGS: (1) closing connection 1 ALSO gives
+  a 1221 for connection 1 itself (3 -> 0 None) besides conn 2's 3 -> 4
+  ClosedByPeer, and conn 2 posts 4 -> 0 after its own close - the test
+  only acts on conn 2 / ClosedByPeer, so correct; (2) the relay network
+  starts by itself when the plug-ins initialise (1281 at start-up,
+  "Attempt #1 to fetch config"), reached availability 100 ("Relays: 25
+  valid") about 6 s after start; (3) two GetLocalTimestamp calls in a row
+  can return the same value (test accepts equal); (4) connection handles
+  were logged as negative numbers (UInt32 through %d) - zip Fix6 logs
+  them with %u (FMX uMain + Shared/SteamComponentTest). Inventory again
+  4700 for an unrelated result 0 (OK), ours Fail - as before.
+  SECOND RUN (14:43, Fix6 applied): 20 OF 20 PASS again; handles now
+  unsigned (648385029 / 3910509187). Not shipped yet: this note (next zip).
+- SteamDemoVCL RUN (owner, 14:44, Win64 Debug, Auto Start on): COMPILED
+  FIRST TIME (shared SteamComponentTest unit, new form, menu, settings);
+  same SteamDemo.ini read as the FMX demo. TEST COMPONENTS 20 OF 20 PASS
+  with the components created at run time by SteamComponentTest (all
+  attached). Auto Start fired 125 ms after FormCreate (timer 100 ms) -
+  CONFIRMS the ~4 s in the FMX demo is FMX's first paint, not our code.
+  Plug-in init order differs (Friends / UserStats last: unit
+  initialisation order) - harmless. Same run, later (log file): Copy Log
+  OK; File > Take Screenshot: VCL SteamFormToRGB captured 944x601 (client
+  area, no menu bar - the menu is non-client), WriteScreenshot handle 10
+  -> 2301 OK -> SetLocation True. Owner's picture of it in the Steam
+  library (14:46, 176 KB) is the Components tab exactly as on screen,
+  correct colours: VCL SteamFormToRGB WORKS (Win64). File > Exit: clean
+  (FormClose, worker stopped, SteamAPI shut down, OnShutdown). Cosmetic:
+  the longest Components row (RemoteStorage) is cut at the window edge.
+  Next: SteamDemoLCL (FPC).
+- OWNER'S FPC BUILD of SteamworksLCL.lpk (14:49, Batch2b, Lazarus 4.8 /
+  FPC 3.2.2 Win64): SDKTypes (the variant records), Matchmaking, Parties
+  compiled; then "Fatal: Internal error 2009112505" at Music.pas 295 =
+  FOnVolumeHasChanged(Self, Ev) - an FPC CODE-GENERATOR BUG calling a
+  method pointer with a const record that is ONE Single (VolumeHasChanged_t,
+  4 bytes, all-float). Zip Fix7 (follows Fix6): gen_steam_api.py
+  FPC_CONSTREF_EVENTS - those event types take the record by
+  {$ifdef FPC}constref{$else}const{$endif} (Delphi unchanged);
+  RemoteStoragePublishFileProgress_t (Double + Boolean, 16 bytes) added
+  as a precaution. Regenerated Music.pas and RemoteStorage.pas (only
+  those lines). Lazarus handlers for these two events get constref (the
+  IDE writes it). UNCONFIRMED that constref avoids the bug - the next
+  build shows; the units after Music are still unbuilt by FPC.
+- FIX7 WORKED: SteamworksLCL.lpk and SteamDemoLCL built; Test components
+  ran. Then (14:56) TSteamNetworkingSockets' PayloadOK stopped callback
+  1221: "Steam delivered 712 bytes, the Pascal record has 720" (FPC only;
+  Delphi 712 = right). ALIGNMENT: the only arithmetic that gives 720 is
+  SteamNetworkingIPAddr (packed, 18 bytes) aligned to 8 inside
+  SteamNetConnectionInfo_t (offset 148 -> 152, everything after +4, record
+  704, callback 8 + 704 + 4 -> 720). So FPC 3.2.2 gives a PACKED record
+  WITH A VARIANT PART an alignment above 1 (evidently the variant part is
+  laid out with the current $packrecords, 8 on Windows). The verifier
+  models Delphi's rules, so it could not see this. Zip Fix8 (follows
+  Fix7): the generator declares the all-packed hand-written records
+  (SteamNetworkingIPAddr + IPv4MappedAddress, SteamNetworkingIdentity,
+  SteamInputActionEvent_t + helpers) under {$ifdef FPC}{$packrecords
+  1}{$endif}, then restores the region's packing with the usual include.
+  Delphi unchanged (verify_generated: all identical). Also affected
+  before the fix: SteamNetworkingFakeIPResult_t (identity at offset 4).
+  UNCONFIRMED until the next FPC run - PayloadOK will tell again.
+  Lesson: the layout check does not cover FPC's own record rules; the
+  runtime payload-size check is what catches them.
+- FIX8 DID NOT HELP (owner, 15:08): the same 712 / 720 under FPC
+  (whether the package was recompiled with Fix8 is unconfirmed). Stop
+  guessing - MEASURE: zip Probe2 (follows Fix8): verify_generated.py
+  --probe writes tools/LayoutProbe/LayoutProbe.dpr (GENERATED console
+  program, Delphi + FPC, no SysUtils: prints SizeOf + every field offset
+  of 210 SDKTypes records - generated ones matched positionally with the
+  JSON field names, the union records by name) and --compare <output>
+  <triple> checks that output against clang for the same target (sanity:
+  a Delphi-model output gives 0 differences; one changed offset is
+  reported with the field name). .gitignore keeps only the .dpr in
+  tools/LayoutProbe. README "checks" section + layout line. Asked the
+  owner to build it with FPC 3.2.2 Win64 (command in README) and send the
+  output; then the FPC rule is known instead of inferred.
+- PROBE RESULT (owner, FPC 3.2.2 Win64, Probe2 build): 25 of 210 records
+  differ from C. FIX8 WAS WRONG (removed): the variant part was not the
+  cause. MEASURED FPC RULE: FPC aligns a RECORD-TYPED FIELD by the
+  record's SIZE (rounded up to a power of two, capped by the packing),
+  not by the record's own alignment - a packed TSteamID (8 bytes, align
+  1) lands on 8, a packed SteamNetworkingIPAddr (18) on 8 too; arrays use
+  the element's rule. It holds in {$packrecords n} AND {$packrecords C}
+  (gameserveritem_t, natural region: m_steamID 368, C 364), so changing
+  Steamworks.inc cannot fix it. A Python model of that rule reproduced
+  the probe output exactly. LATENT SINCE THE FIRST LCL RUNS:
+  UserStatsReceived_t (m_steamIDUser 16, C 12), GSStats*, Friends
+  follower callbacks, P2PSessionConnectFail_t, ValidateAuthTicketResponse_t,
+  AvatarImageLoaded_t etc. were all wrong under FPC; most passed only
+  because the payload size happened to match or the field was unused.
+- Zip Fix9 (follows Probe2): EXPLICIT FPC PADDING. Under FPC every
+  generated non-pack1 record is `{$ifdef FPC}packed{$endif} record` and
+  gets `_fpcpadN: array[0..K-1] of Byte` fields where C has padding
+  (N = index of the field it precedes; tail pad = field count), inside
+  {$ifdef FPC}{$if <class>}...{$elseif...}{$endif}{$endif}. Classes
+  (gen_steam_api.py FPC_CLASSES / FPC_CLASS_LAYOUT, (pointer, default
+  packing, natural cap)): w64 (8,8,8) Win64, w32 (4,8,8) Win32, u64
+  (8,4,8) Linux64 / LinuxARM64 / macOS ARM64, u32 (4,4,4) Linux32. The
+  pad sizes come from the Delphi layout model (verify_generated
+  PascalLayout = C, checked), in a second generator pass
+  (fpc_padding). Delphi sees no change (parse_unit skips {$ifdef FPC}
+  blocks; packed-under-FPC records are flagged fpc_packed, not packed).
+  Not padded: pack1 records (already packed), records with variant parts
+  and the hand-written natural ones (CallbackMsg_t, SteamAPICallCompleted_t,
+  SteamNetworkingConfigValue_t, RemotePlayInput_t) - all matched in the
+  probe. CHECK: an FPC-view simulation (pads of one class kept, packed
+  records contiguous) compared with clang for all six targets: 0
+  differences. UNCONFIRMED until the owner rebuilds SteamworksLCL and
+  re-runs the probe (expect "0 different") and SteamDemoLCL.
+  gen_docs.py record_fields accepts the new header and drops the
+  {$ifdef FPC} pad blocks (pages unchanged).
+- FIX9 WORKS (owner, 15:30, SteamDemoLCL, FPC 3.2.2 Win64): 20 of 20
+  PASS; callback 1221 now 712 bytes and raised (state 3 -> 0 / 3 -> 4 ->
+  0, "component test done"); File > Take Screenshot (LCL
+  SteamFormToRGB, 1416x902) -> OnScreenshotReady OK; File > Exit clean.
+  FPC probe re-run not sent (the payload checks confirm it in practice).
+  Next: owner re-tests Delphi (FMX / VCL) with the Fix9 SDKTypes.
+- VCL WITH FIX9 (owner, 15:36, Win64 Debug): 20 of 20 PASS, callback
+  1221 712 bytes as before - Delphi unaffected by the FPC padding.
+  NetworkingUtils read availability 3 ("Performing ping measurement";
+  test pressed 5 s after start) - a PASS by design (reads only), 100
+  arrived 0.1 s later.
+- FMX WITH FIX9 (owner, 15:37, Win64 Debug): 20 of 20 PASS, 1221 = 712
+  bytes. BATCH 2b + FIX9 DONE ON ALL THREE (FMX, VCL, LCL/FPC Win64).
+  Side note: FMX Auto Start fired 3922 ms after FormCreate (timer 100 ms;
+  VCL 140, LCL 109) - the FMX form takes that long to show in a debug
+  run; harmless, watch it. Next: FPC probe on Win32 / Linux, batch 2c
+  (MatchmakingServers).
+- Notes9 pushed (owner, 15:40: "pushed - continue").
+- BATCH 2C (zip Batch2c, follows Notes9): ISteamMatchmakingServers, the
+  server browser. Its answers come through C++ RESPONSE OBJECTS, not
+  callbacks:
+  * gen_steam_api.py: PLUGINS + MatchmakingServers; NO_CALLBACKS (no
+    k_iSteamMatchmakingServersCallbacks base, so the header rule gave it
+    all 17 lobby / party callbacks); new component extras sections
+    //@comptypes //@compprivate //@comppublic //@comppublished
+    //@compimplementation; an extras //@types section may open with
+    `const` (then it re-opens `type` itself). The 22 other plug-ins
+    regenerate UNCHANGED.
+  * lib/Steamworks.Callbacks.pas: TSteamCallbackDispatcher.Post(id,
+    data, size) - a payload from outside Steam's queue (any thread) kept
+    in FPosted; Pump delivers it right after RunFrame (no handler inside
+    Steam's frame), PumpToQueue queues it ahead of the frame's callbacks
+    (counted, so sdMainThread schedules a delivery), ClearQueue drops it.
+    Negative ids only; SteamCallbackGroupName names them 'response
+    object'.
+  * tools/plugin_extras/MatchmakingServers.pas.txt: TSteamServerResponse
+    records (VTable first) with four vtables of Pascal routines (cdecl,
+    object first) - on Win32 (MSVC THISCALL) asm thunks pop/push ECX/jmp
+    to stdcall routines (Delphi BASM + FPC {$asmmode intel}
+    nostackframe). The routines run on the pumping thread, copy the answer
+    (GetServerDetails inside ServerResponded, strings as UTF-8 bytes) and
+    Post it (id -4100); the plug-in's own subscription hands it to the
+    request's TSteamServerEventHandler. Plug-in API: StartServerList(kind,
+    app, filter keys, values, handler) / StopServerList, StartPing /
+    StartPlayerDetails / StartServerRules / StopServerQuery, StopOwner,
+    ActiveCount. Lifetime: an object lives while Steam may call it and
+    while posted events refer to it (Pending); ended / stopped ones are
+    freed 5 s later (sweep on the next request); CloseResponses (DoFinalize:
+    pump stopped, Steam still up) releases / cancels the rest, frees all.
+    A handler owner that is a TComponent gets a free notification
+    (TSteamServerOwnerWatch) that stops its requests. Steam is never
+    called with the lock held. ServerFriends not wrapped (undocumented).
+    ASSUMPTION, UNVERIFIED: Steam calls the response objects from inside
+    SteamAPI_ManualDispatch_RunFrame (manual dispatch) - the test shows it.
+  * Component TSteamMatchmakingServers: Start... / Stop... methods and 11
+    published events (OnServerResponded, OnServerFailedToRespond,
+    OnServerListComplete, OnPingResponded, OnPingFailed, OnPlayer,
+    OnPlayersFailed, OnPlayersComplete, OnRule, OnRulesFailed,
+    OnRulesComplete).
+  * Packages (Steamworks.dpk / .dproj, SteamworksLCL.lpk), gen_projects.py,
+    Reg units (24 components), doc_extras/MatchmakingServers.md, generated
+    docs page, components index, README.
+  * Test 20 -> 21 components (FMX SteamDemo on the form; shared
+    SteamComponentTest for VCL / LCL): LAN list for the app (ends by
+    itself), Internet list of AppID 730 (CS2, many public servers;
+    filters hasplayers + secure) released after 5 servers, then ping,
+    players and rules of the first server. PASS = every list / query
+    ended (failed-to-respond counts as an answer).
+  verify_generated: 779 flat signatures (18 new) identical.
+  REBUILD RUNTIME PACKAGE STEAMWORKS (+ the others that depend on it),
+  REINSTALL DCLSTEAMWORKS, REBUILD LAZARUS PACKAGE STEAMWORKSLCL.
+  NOT YET COMPILED. Win32 (the thunks) needs its own run.
+  Independent review (no compiler): no certain compile errors; ABI right
+  on every target (Win32 stack balances: thunk adds this, stdcall pops
+  it + the args). Fixed from it: Delphi Debug {$W+} could give the
+  thunks a stack frame -> {$W-} around them (restored after, $IFOPT);
+  posted events carry the object's Serial (a later object at the same
+  address never gets a stale event); StopServerList / StopServerQuery
+  never release / cancel a handle twice and prefer the RUNNING query
+  when Steam reuses a number; an answer delivered (sdPumpThread) before
+  StartPing & co. stored the query handle is re-posted to the next pump
+  (up to 200 times); test filters hasplayers / secure with value '1' as
+  in Valve's SpaceWar sample. Left: posts dropped by ClearQueue / a
+  raising handler keep their object until Steam stops (small, bounded).
+- BATCH 2C LCL RUN (owner, 16:22, FPC 3.2.2 Win64): COMPILED FIRST TIME,
+  23 plug-ins, 21 OF 21 PASS. RESPONSE OBJECTS WORK: Steam calls them
+  inside ManualDispatch_RunFrame (the assumption holds), posted as
+  callback -4100 (448 bytes), delivered on the main thread
+  (sumThread + sdMainThread). Internet list AppID 730: 5 ServerResponded
+  in 0.9 s with full details (names, maps, players, ping 6-15 ms) -
+  GetServerDetails inside the response works; StopServerList dropped the
+  ~17 answers already posted for it (logged as -4100 callbacks, no
+  events - as designed); LAN list: RefreshComplete
+  eNoServersListedOnMasterServer after 2 s. Ping / players / rules all
+  FAILED within 0.3 s: every listed server had a 169.254.x.x address =
+  Steam relay FAKE IPs (SDR), which A2S queries cannot reach (Steam also
+  warned "Rules query back from steam, without rules_data" three times).
+  So the failure paths of all three query objects are proven, not the
+  success paths. Zip Fix10 (follows Batch2c): the test queries the first
+  server WITHOUT a fake IP (TEST_SERVER_LIMIT 50 servers at most; the
+  note counts fake-IP servers); README. Screenshot + Exit clean.
+- FIX10 LCL RUN (owner, 16:27, FPC Win64): 21 OF 21 PASS. Server 27 of
+  27 answered was the first with a direct address (26 relay fake IPs).
+  SUCCESS PATHS PROVEN: PingResponded (gameserveritem_t & -> pointer,
+  6 ms), AddPlayerToList x7 with UTF-8 names, score and the FLOAT
+  time played (1127 s etc. - the Win64 XMM argument is right),
+  PlayersRefreshComplete; names with U+2022 come through intact. Rules:
+  RulesFailedToRespond after 2 s - CS2 servers do not answer rules
+  queries (assumed; Steam's earlier "without rules_data" warning fits),
+  so RulesResponded is the one virtual method not yet seen called.
+  Remaining for batch 2c: FMX / VCL Win64, and Win32 (the thunks).
+- FIX10 FMX RUN (owner, 16:30, Delphi 13 Win64 Debug): COMPILED, 21 OF
+  21 PASS. Queried a community server (direct IP, 8/32 players listed):
+  ping 7 ms, players query COMPLETE with 0 players (the server hides its
+  player list - common), rules failed after 2 s again. Delphi Win64
+  response objects work as under FPC. Remaining: VCL Win64, Win32.
+- FIX10 VCL RUN (owner, 16:32, Delphi 13 Win64 Debug): 21 OF 21 PASS
+  (same RETAKE server: ping 7 ms, 7 players with names / scores / times,
+  rules failed). ONE DEMO BUG: U+2022 in server names showed as U+FFFD in
+  the VCL log FILE - its TextFile wrote the ANSI code page (cp1252 0x95),
+  read back as UTF-8. Zip Fix11 (follows Fix10): SetTextCodePage(F,
+  65001) after Append in SteamDemoVCL's AddLog (FMX: TFile.AppendAllText
+  UTF-8; LCL: FPC strings are UTF-8 already). Remaining: Win32.
+- FIX11 VCL RUN (owner, 16:35): 21 OF 21 PASS, U+2022 now right in the
+  VCL log file. Seen there: the UGC row lost "EULA status" when the
+  EULA answer came BEFORE the query (the query handler assigned Note
+  instead of appending) - zip Fix12 (follows Fix11) appends, in the
+  shared unit and the FMX demo. Remaining for batch 2c: Win32.
+- VCL RUN 16:36 (Win64, Fix12 presumably): 21 OF 21 PASS; UGC row has
+  both notes - but the query answered FIRST this time, so the reordered
+  case is not proven yet (harmless either way). Still: Win32.
+- Owner sent a Win32 VCL log (16:39) that is OLD: written 15:34, 22
+  plug-ins, 20 components = a Batch2b / Fix9 build, before Batch2c. Still
+  useful: WIN32 (WOW64) VCL 20 OF 20 PASS with the Fix9 SDKTypes (1221 =
+  712 bytes on Win32 too), screenshot 944x601 OK, Exit clean. The Win32
+  run of batch 2c (thunks) is still to come - needs Steamworks rebuilt
+  for Win32 first.
+- WIN32 THUNKS PROVEN (owner, 16:40, SteamDemoVCL Win32 Debug under
+  WOW64, Delphi 13 - so {$W+} Debug stack frames did not break them):
+  23 plug-ins, 21 OF 21 PASS. Posted payload 432 bytes (448 on Win64:
+  smaller pointers). Through the MSVC-thiscall -> stdcall thunks:
+  ServerResponded (request + index; GetServerDetails inside it),
+  RefreshComplete (enum argument, LAN: no servers listed), ping
+  ServerResponded (gameserveritem_t pointer, 7 ms), AddPlayerToList x7
+  (name, score, FLOAT time 418 s on the stack), PlayersRefreshComplete,
+  RulesFailedToRespond. BATCH 2C COMPLETE on Win64 (FMX, VCL, LCL/FPC)
+  and Win32 (VCL). Only RulesResponded has never been called (no CS2
+  server answers rules). FPC Win32 (its own asm path) not run.
+- FMX WIN32 (owner, 16:43, SteamDemo Win32 Debug, WOW64): 21 OF 21 PASS,
+  432-byte posts, ping 7 ms, 7 players (times 557-558 s), rules failed,
+  LAN list complete; Exit clean. Auto Start fired 828 ms after FormCreate
+  (Win64 FMX: ~3900 ms) - the slow first paint is a Win64 FMX matter.
+  BATCH 2C: all four Delphi builds (FMX / VCL x Win64 / Win32) + LCL Win64.
+- OWNER (16:45): FPC Win32 is for the END, with macOS and Linux (the
+  thunks' FPC asm path and the FPC Win32 probe wait until then).
+- PLAN for the game-server batch (owner asked 16:47): its demo should
+  close the last server-browser gap - run our own game server (own query
+  port, NOT STEAMGAMESERVER_QUERY_PORT_SHARED, so Steam answers A2S
+  itself), SetKeyValue a few rules, then the client side StartServerRules
+  / StartPlayerDetails / StartPing at 127.0.0.1 (or the LAN address) and
+  the query port -> RulesResponded finally fires; the LAN list should
+  then list the server too (LAN ServerResponded). A listen server
+  (SteamAPI_Init + SteamGameServer_Init in one process) is allowed by
+  Valve - check the core's one-instance assumptions when writing it.
+- PUSH 8f5e38b "Batch2c" (16:48) VERIFIED: all 21 files delivered since
+  Notes9 (Batch2c, Fix10-12, Notes12-13) identical ignoring CRLF / BOM,
+  except packages/Steamworks.dproj (IDE re-save: default platform Win32 -
+  accepted; MatchmakingServers reference kept). Also pushed: IDE
+  default-platform re-saves of 11 other .dproj files - accepted. Group
+  Dependencies intact (10); pasdoc / project checks 0 problems. Working
+  copy reset to origin/main (this note and the game-server plan above go
+  out with the next zip).
+- OWNER (16:53): the Win64 round must also cover what needs a SECOND
+  USER (he has one) and Workshop / Inventory / Cloud enablement.
+  Decisions (16:55): two-user tests in a new TAB of SteamDemo (FMX /
+  VCL / LCL), the copies PAIR THROUGH A LOBBY, and I write a partner-site
+  CHECKLIST he applies. Zip Setup1 (follows Notes13): docs/TestSetup.md
+  (second user; Steam Cloud quota + developers-only + publish; Workshop
+  ISteamUGC file transfer + visibility; Inventory Service + upload +
+  enable; facts from partner.steamgames.com docs, the exact checkbox
+  labels unverified), docs/test-setup/itemdefs_2275430.json (100 promo
+  "manual" Test Token, 101 Test Gem, 10 playtimegenerator -> 101; none
+  tradable) + test_item.png / test_gem.png (200x200, made here; the JSON
+  uses their raw GitHub URLs, so PUSH BEFORE UPLOADING), docs/README.md
+  row. Next: the two-user test unit, then the opt-in Cloud / Workshop /
+  Inventory tests.
+- Zip Pair1 (follows Setup1): TWO-USER PAIR TEST + EXTENDED TESTS.
+  * demos/Shared/SteamPairTest.pas (Delphi + FPC, framework-free,
+    TSteamPairTest creates its own User / Friends / Matchmaking /
+    Networking / NetworkingSockets / NetworkingMessages components):
+    pairing = RequestLobbyList (string filter tsteamapi_pair = 1,
+    worldwide), else CreateLobby(public, 2) + lobby data; a rescan every
+    5 s while waiting, tie-break: the copy with the HIGHER SteamID joins
+    the other. Rows: Lobby (data + member data), Chat (HELLO both ways),
+    Friends (persona + rich presence "status"), Auth (ticket for the
+    peer's identity, sent as hex after 163, peer BeginAuthSession -> 143),
+    Messages (ping / pong), Sockets (host listens P2P port 0, guest
+    ConnectP2P, hello / reply), P2P (old SendP2PPacket ping / answer).
+    Lobby chat lines "TSAPI|CMD|arg": HELLO, AUTH, LISTEN, DONE. A copy
+    closes only when it AND the peer have sent DONE (or 60 s after its own
+    DONE) - closing first would cancel the peer's auth validation / rich
+    presence. Session requests that arrive before pairing are kept and
+    accepted in Paired. Rich presence is set before HELLO and re-requested
+    every 5 s (non-friends get one answer per request). Lobby search
+    results without the pair tag are ignored (the FMX component test's
+    RequestLobbyList answers the same 510).
+  * Wiring: SteamDemoVCL / SteamDemoLCL (btnPair, tsPair + lvPair,
+    tmTests drives Tick) and SteamDemo FMX (btnPair, tiPair + lbPair,
+    tmPair); .dpr / .dproj / .lpr / .lpi / gen_projects.py; README.
+  * EXTENDED single-user tests (shared SteamComponentTest AND the FMX
+    copy, kept in step), detection-based - nothing changes until the
+    partner site is set up: Inventory - when GetAllItems answers OK:
+    GenerateItems(101) -> ConsumeItem(that instance), AddPromoItem(100),
+    TriggerItemDrop(10), every result's items logged then destroyed;
+    UGC - when GetWorkshopEULAStatus answers OK: CreateItem(Community) ->
+    StartItemUpdate / SetItemTitle / SetItemVisibility(private) /
+    SetItemContent(<settings folder>/WorkshopTest, one readme.txt) ->
+    SubmitItemUpdate -> DeleteItem; cleanup deletes a leftover item and
+    the folder. UNVERIFIED: that the EULA status turns OK once the
+    Workshop is set up (otherwise the gate never opens - change it to
+    "always CreateItem"). Cloud needed no new code (the RemoteStorage row
+    reports cloud for app on / off).
+  NO PACKAGE REBUILD. NOT YET COMPILED. Independent review of the pair
+  test (no compiler): no compile errors; its four protocol findings are
+  the fixes above (DONE, rich presence, early requests, lobby tag) plus
+  the documented identity for GetAuthSessionTicket. Second review (the
+  extended tests + those fixes, no compiler): no compile errors; fixed
+  from it - a CreateItem answer arriving after the test ended deletes
+  its item (it would have stayed for good), a 4700 for a handle whose
+  result is still Pending is ignored (Steam reusing a destroyed number),
+  the content folder is removed even when Steam has gone, the EULA note
+  is added only once, a missing settings folder is a note (not "calls
+  FAILED"); pair test: a repeated 163 / AUTH no longer fails the Auth
+  row (DuplicateRequest), and a peer that LEAVES the lobby before both
+  DONEs ends the test at once. TestSetup.md: GenerateItems is for
+  partner-group accounts only (Fail for the second user - expected), a
+  repeated AddPromoItem answers OK with 0 items; promo "manual" for the
+  client's AddPromoItem unverified.
+- PAIR1 COMPILES (owner, 17:21; which demos / platforms not said). The
+  pair test and the extended tests wait for the second user / the
+  partner-site set-up - not run yet.
+- PAIR1 FMX SOLO RUN (owner, 17:24-17:29, Win64): Test components 21 OF
+  21 PASS; Inventory row "item test skipped (Inventory Service off?)",
+  UGC row "Workshop item test skipped" (EULA InvalidParam) - the gates
+  stay shut as intended. Pair test (pressed while the component test was
+  still finishing - no interference): no pair lobby -> lobby created
+  (HOST), rescan every 5 s for 5 min (each sees 1 lobby = our own,
+  skipped; 510 twice + 703 per rescan), stopped "the other copy did not
+  join within 300 s", 0 of 7 (all "not finished"), lobby left. The
+  cleanup line claimed "closed: connection, listen socket, sessions,
+  auth, rich presence, lobby" although only the lobby was open - zip
+  Pair2 (follows Pair1): it names only what was open ("closed: lobby
+  <id>" here, "nothing was open" when nothing was). Two-user run still to
+  come (owner: a second account on a second machine; it must own the app
+  - key or partner group).
+  PAIR2 SOLO RUN (owner, 17:46-17:51, FMX Win64): same as above, 21 of
+  21 PASS, and the cleanup line now reads "closed: lobby <id>" - CONFIRMED.
+- GAME-SERVER BATCH DECISIONS (owner, 17:58): BOTH a listen server
+  (client + server in one process) AND a dedicated server-only path
+  (no SteamAPI_Init) NOW; ALL server copies of the interfaces
+  (SteamGameServer, ...Stats, ...Utils, ...Networking,
+  ...NetworkingSockets_SteamAPI, ...NetworkingMessages_SteamAPI, ...HTTP,
+  ...UGC, ...Inventory - accessor versions equal the client ones in 1.65).
+  Second account is in the partner group (full access) - owner wants
+  SteamDemo* complete before copying them to the other machine.
+  DESIGN (draft): core keeps the server apart - its own pipe / HSteamUser
+  (SteamGameServer_GetHSteamPipe / _GetHSteamUser) and its own
+  TSteamCallbackDispatcher (callback ids repeat across pipes: 101-103,
+  143 arrive on both), pumped by the same pump; plug-in classes say
+  IsGameServer (server plug-ins init / finalise with the server);
+  server copies are generated SUBCLASSES (TSteamGameServerUtilsPlugin =
+  class(TSteamUtilsPlugin), IsGameServer True, accessor "SteamGameServer"
+  + base without "Steam") + components; the root gets Roles [srClient,
+  srGameServer] + server settings (IP, game / query port, mode, version)
+  and StartGameServer / StopGameServer for a listen server started at run
+  time. LATENT BUG to fix: AcquireGameServerInterface passed the CLIENT
+  HSteamUser to SteamInternal_FindOrCreateGameServerInterface.
+- Zip GS1 (follows Pair2): THE GAME-SERVER BATCH.
+  * lib/Steamworks.API.pas: optional exports SteamInternal_GameServer_Init_V2
+    (1.59+) / _Init (older, signature from old headers, unverified),
+    SteamGameServer_Shutdown / _GetHSteamPipe / _GetHSteamUser.
+  * lib/Steamworks.Core.pas: TSteamRole / TSteamRoles; FClientUp / FServerUp
+    (State swsRunning = either; IsRunning = CLIENT; IsGameServerRunning);
+    second dispatcher ServerDispatcher (server pipe; DispatcherFor);
+    StartGameServer (listen next to the client, or dedicated alone; stops
+    the worker around it, ManualDispatch_Init once per session) /
+    StopGameServer (from a handler: deferred, FServerStopPending; on the
+    sdPumpThread worker stopped in place under the lock, no worker
+    restart) / Shutdown stops the server first; PumpAll / DeliverAllQueued;
+    plug-ins with IsGameServer are created / freed with the server;
+    TSteamPlugin.Dispatcher (the side's dispatcher) and
+    AcquireUserInterface maps a server copy's accessor (SteamUtils ->
+    SteamGameServerUtils); FindPlugin / Plugin<T>: exact class first, then a
+    descendant OF THE SAME SIDE (server copies descend from client
+    classes). GameServer* settings (IP, game 27015 / query 27016, mode,
+    version). LATENT BUG FIXED: AcquireGameServerInterface passed the
+    client's HSteamUser. Failed starts roll back without Stopped / Shutdown
+    events (FRollingBack). Initialize refuses to run from a handler while a
+    server runs; a failing client next to a dedicated server leaves the
+    server up.
+  * lib/Steamworks.Components.pas + fmx/vcl/lcl: Roles (default
+    [srClient]), GameServerIP / GamePort / QueryPort / Mode
+    (TSteamServerMode - EServerMode has explicit values, no RTTI) /
+    Version, StartGameServer / StopGameServer, IsGameServerRunning,
+    OnGameServerStarted / Stopped / Failed; TSteamPluginComponent
+    .IsGameServer (attach with the server, subscribe on its dispatcher).
+  * Generator: PLUGINS + GameServer, GameServerStats (SERVER_PLUGINS);
+    SERVER_COPIES Utils, Networking, NetworkingSockets, NetworkingMessages,
+    HTTP, UGC, Inventory -> TSteamGameServer<Name>Plugin + component
+    subclasses in the client units; components' virtual class function
+    PluginClass; Async methods use Dispatcher.AwaitCallResult;
+    CALLBACK_EXTRA GameServer 101/102/103/115/143, GameServerStats 1108
+    (extras now bypass the id-range rule); accessor_base takes the
+    GameServer accessor for server plug-ins. tools/plugin_extras/
+    GameServer.pas.txt: GetPublicIP by-value shim (20-byte SteamIPAddress_t,
+    hidden pointer everywhere like GetMotionData) + PublicIPv4;
+    verify_generated BYVALUE + GetPublicIP: 1290 layouts, 54 named, 829
+    flat signatures, 32 by-value (4 x 8) - ALL IDENTICAL. Reg units list
+    33 plug-in components (+ TSteamAPI in the LCL one). Note: event types of 101-103 / 143 are declared in
+    both User and GameServer units (compatible, cosmetic).
+  * Docs: doc_extras GameServer.md / GameServerStats.md + generated pages,
+    components index, TSteamAPI.md (properties, events, methods, "Game
+    servers"), README, TestSetup.md (pair ports 27215 / 27216).
+  * Demos: shared SteamComponentTest 21 -> 30 rows (listen server on
+    27115 / 27116, anonymous log-on, own-server rules / ping / players at
+    127.0.0.1 - RulesResponded finally exercised -, server validates the
+    user's ticket, server stats / HTTP / UGC / reads of the copies; stops
+    the server it started). SteamPairTest + PT_SERVER: host starts a
+    listen server, sends SERVER|id,ip,port; guest's ticket for the
+    server identity -> GSAUTH -> server BeginAuthSession -> 143 ->
+    GSAUTHRESULT; guest's rules query of the public address informational.
+    FMX SteamDemo now uses the shared test (uMain.pas 3523 -> ~1170 lines;
+    21 test components off its form; File > Take Screenshot via
+    FTest.Screenshots).
+  REBUILD ALL RUNTIME PACKAGES (STEAMWORKS, STEAMWORKSFMX, STEAMWORKSVCL),
+  REINSTALL DCLSTEAMWORKS (+ DCLSTEAMWORKSFMX / VCL: published properties
+  changed), REBUILD THE LAZARUS PACKAGE STEAMWORKSLCL. NOT YET COMPILED.
+  Independent review of the core (no compiler): fixed from it - worker
+  stopping the server restarted itself (race with Shutdown, thread leak),
+  Initialize from a handler, client exception killing a dedicated server,
+  queued callbacks left undelivered after a worker restart
+  (StartPumpThread schedules a delivery), Assigned(Dispatcher) on a
+  method, Plugin<T> side check, rollback events.
+  Second review (the demo tests, no compiler): no compile errors; fixed -
+  the pair HOST could never start its server (Paired runs inside a
+  callback handler and StartGameServer refuses that: now started on the
+  next Tick); TestGameServer runs LAST (an already logged-on server
+  answered before the stats / sockets / UGC rows had registered their
+  'log-on' wait); the component test's 143 handler checks it is OUR user
+  (the pair guest's validation may share the server); DemoGameServerUsers
+  (SteamComponentTest interface, used by SteamPairTest) counts the tests
+  using the one server - the LAST stops it, a borrowed server only gets
+  the test's own rule and no second LogOnAnonymous; server-query handles
+  are forgotten once answered (Steam reuses numbers); a refused own-server
+  query fails the row; the test ports are restored on TSteamAPI after the
+  start; TSteamAPI.StartGameServer on a running client pushes only the
+  GameServer* settings (PushServerSettings). Known, not changed: Steam's
+  LAN server list only probes query ports 27015-27020 (from memory), so the
+  test servers (27116 / 27216) do not show in the LAN list.
+- FIRST TWO-PLAYER RUN (owner, 18:31, a Pair1 / Pair2 build - not GS1;
+  host = SteamDemoVCL Win64 on the main PC, guest = SteamDemo FMX Debug on a
+  second PC, second account in the partner group, the two accounts NOT
+  friends): host 6 OF 7 PASS - lobby (guest joined, member data read),
+  chat both ways, auth ticket (guest's ticket validated, response 0),
+  NetworkingMessages ping / pong, NetworkingSockets P2P (listen, accept,
+  hello / reply), old P2P packets. FAIL: Friends - the guest's rich
+  presence not read after 5 s (re-requested once), because the guest sent
+  DONE at 18:31:25.84 and LEFT THE LOBBY 66 ms later without the host's
+  DONE (host: "the other copy left the lobby before both were done"). The
+  guest's normal close waits 3 s after BOTH DONEs, so its test was ended
+  some other way (an exception in Tick -> "stopped: error ...", Stop,
+  window close) - unknown: NO GUEST LOG (the FMX demo rewrote its log next
+  to the exe at every start). Open: whether Steam gives a non-friend's
+  rich presence at all (repeat as friends to compare). Harmless at the
+  end: "[S_API WARN] CancelAuthTicket called on nonexistent ticket".
+- Zip RLog1 (follows GS1; owner: "add remote logging to SteamDemo*"):
+  demos/Shared/DemoRemoteLog.pas (TDemoRemoteLog: Toggle / Send / Shutdown,
+  auto-discovery of LogReceiver, backlog first, lines logged during the
+  2.5 s search join the backlog; RemoteLog.Sender under Delphi,
+  RemoteLog.SenderFPC under FPC) wired into SteamDemo FMX, SteamDemoVCL,
+  SteamDemoLCL as File > Send log to receiver (after Copy Log); projects
+  search ..\..\RemoteLogging\src (.dproj Base; LCL .lpi OtherUnitFiles);
+  gen_projects.py; README. All three demos now keep the previous run's log
+  as SteamDemo.previous.log instead of wiping it at start. NO PACKAGE
+  REBUILD. NOT YET COMPILED.
+- PUSH e379b52 "Batch2d" (18:45) VERIFIED against a separate clone: all
+  82 files delivered since 8f5e38b (Setup1, Pair1, Pair2, GS1, RLog1)
+  identical ignoring CRLF / BOM; nothing else pushed; group Dependencies
+  kept (10); pasdoc / project checks 0 problems. Working copy reset to
+  origin/main (this note goes out with the next zip).
+- GS1 FIRST RUN (owner, 18:53, packages rebuilt, SteamDemo FMX Win64
+  Debug, Auto Start on, closed with [X]): ACCESS VIOLATION in steam_api64
+  right after steamclient64 unloaded. CAUSE (mine, GS1): DoShutdownLocked
+  called FClient.SetWarningMessageHook(nil) AFTER SteamAPI_Shutdown (GS1
+  moved the ISteamClient release behind ShutdownClientLocked; before GS1
+  it ran first). Zip Fix13 (follows RLog1): ReleaseClientIntf - the hook
+  is removed and the wrapper freed BEFORE whichever shutdown is the last
+  one (SteamAPI_Shutdown without a server, SteamGameServer_Shutdown
+  without a client). REBUILD STEAMWORKS (+ dependants).
+- TWO-PC RUN (owner, 19:00, FMX on both, GS1 + RLog1 + Fix13, accounts
+  NOT friends, the guest a new limited account): component test 30/30 on
+  BOTH (RulesResponded fired: tsapi_test = 1 read back; server auth
+  validated; GameServerStats OK on the host, Fail on the guest); pair
+  test guest 8/8, host 7/8 - Friends: the host never got the guest's
+  rich presence (re-requested 60 s) while the guest read the host's at
+  once; likely the limited account (to retry as friends). The guest's
+  rules query of the host's PUBLIC IP failed: NAT, informational. Remote
+  log connected on the 3rd manual try.
+  BUG FOUND: Steam REUSES HServerQuery numbers while answers of an earlier
+  query with the same number are still arriving (own-server ping got 1
+  while the CS2 ping 1 ran; the test matched the CS2 answer to its own
+  ping). Zip Fix14 (follows Fix13): MatchmakingServers plug-in -
+  StartPing / StartPlayerDetails / StartServerRules return the PLUG-IN'S
+  OWN query id (the response object's Serial, 1..MaxInt, never reused),
+  events carry it, StopServerQuery takes it (StoreQuery keeps Steam's
+  handle in Obj^.Query for the cancel; an unknown id is only logged - a
+  raw query of the generated PingServer & co. is cancelled with the
+  generated CancelServerQuery). Pair test logs SetRichPresence's result
+  and the value read back, and its Friends note hints at the limited
+  account. DemoRemoteLog searches up to 3 x 2.5 s by itself (earlier
+  searches kept in FSpent, freed by the next Toggle / destructor: a retry
+  starts inside the previous search's handler). REBUILD STEAMWORKS (+
+  dependants). NOT YET COMPILED.
+- OWNER (19:12): docs/ComponentIcons.md was out of date. Zip Fix14b
+  (follows Fix14): it lists all 34 registered components (TSteamAPI, 24
+  client, 9 game server - TSteamNetworking now included, "planned" section
+  gone). The 7 server copies can be supplied as their own .ico files or as
+  one server badge composited onto the client icons. docs/README.md line
+  updated. NO PACKAGE REBUILD.
+- OWNER (19:14): "is docs/components correct then?" - no: the 7 server
+  copies had no index entry and the index still said "Still to come: the
+  game-server API". Zip Fix14c (follows Fix14b): docs/components/README.md
+  gets a "Game-server components" table (all 9; the copies link to their
+  client page); gen_docs.py adds a "Game-server copy" line to a page whose
+  unit declares TSteamGameServer<Name> = class(TSteam<Name>) (Utils,
+  Networking, NetworkingSockets, NetworkingMessages, HTTP, UGC,
+  Inventory); those 7 pages regenerated. NO PACKAGE REBUILD.
+- PUSH 2c6acb0 "Docs 14b" + 5a7063b "Docs 14c" (19:16) VERIFIED against a
+  separate clone: Fix13 / Fix14 / Fix14b / Fix14c pushed, every file
+  identical ignoring CRLF / BOM EXCEPT docs/components/
+  TSteamMatchmakingServers.md - my error: Fix14 shipped it generated
+  BEFORE the plug-in was regenerated (gen_docs ran on the old unit; the
+  first gen_steam_api call lacked the SDK path), so it still described
+  Steam's query handle. Zip Fix14d (follows Fix14c): the regenerated page.
+  RULE: run gen_steam_api.py <sdk> FIRST, gen_docs.py after it. Also
+  pushed (owner's IDE): the 12 .dproj files default to Win64 (Platform
+  Condition) - expected for the Win64 round, no paths in them. Working
+  copy reset to origin/main. NO PACKAGE REBUILD.
+- OWNER (19:19, SteamDemo FMX Win64 Debug): E2169 "Field definition not
+  allowed after methods or properties" in DemoRemoteLog.pas(51) - mine,
+  Fix14 put the FreeSearches / StartSearch declarations between fields.
+  Zip Fix15 (follows Fix14d): moved after the last field. The IDE's "Line
+  endings are LF" note is only a hint (git stores LF); the zip's .pas is
+  CRLF. RULE: in a class, new methods go AFTER every field. NO PACKAGE
+  REBUILD.
+- TWO-PC RUN 2 (owner, 19:24, FMX Win64, roles swapped: the NEW account
+  on the second PC (a tablet) HOSTED, the main account was the guest):
+  main 30/30 + pair 7/8; tablet 30/30 on its third run, pair 8/8. Friends
+  failed again on the side READING THE NEW ACCOUNT'S rich presence (main,
+  level 15, as guest this time); the new account's SetRichPresence ->
+  True and read back. So: Steam does not publish a limited account's
+  rich presence to a non-friend - not our bug; to retest as friends. The
+  tablet got THREE "Test components" presses ~4 s apart: each restarted the
+  test and the cut runs reported FAILs (Rules, ValidateAuthTicketResponse)
+  that were only the restart. Zip Fix16 (follows Fix15): a press while the
+  component test / pair test runs is IGNORED with a log line (both end by
+  themselves). Remote log: the 3-try search worked (the receiver was not
+  up for the first round; the next press found it at once). OWNER (19:28):
+  LogReceiver gets File > Clear Log (empties the memo only; the session
+  file keeps every line); RemoteLogging/README.md. NO PACKAGE REBUILD.
+  NOT YET COMPILED.
+- OWNER (19:35, SteamDemoVCL Win64): E2169 in uMain.pas(180) - mine,
+  RLog1 (not Fix14): RemoteLogChanged was declared between FRemote and
+  FAutoStart in SteamDemoVCL AND SteamDemoLCL (FPC accepts it, so the LCL
+  one never showed). Zip Fix17 (follows Fix16): moved after the last
+  field in both; stale "21 components" comment fixed. project_check.py
+  now CHECKS E2169 (comment / string aware, statement by statement, per
+  visibility section, records skipped): 0 on the tree, and it reports
+  both the pushed DemoRemoteLog.pas and the old VCL uMain.pas. NO
+  PACKAGE REBUILD.
+- OWNER (19:37): an LCL vs FMX / VCL pair run would be interesting. Zip
+  Fix18 (follows Fix17): TSteamPairTest.AppName (set by each form:
+  'SteamDemo (FMX)', 'SteamDemoVCL', 'SteamDemoLCL') and MyBuild = name +
+  compiler (FPC {$I %FPCVERSION%} / Delphi CompilerVersion) +
+  TSteamLib.PlatformDescription; the host publishes it as lobby data
+  host_build, the guest as member data guest_build; each log says "this
+  copy: ..." / "the other copy: ..." and the "finished as" line names
+  both. docs/TestSetup.md: mixed pairs, and the rich-presence limit for a
+  new limited account. NO PACKAGE REBUILD. NOT YET COMPILED (FPC side
+  especially: {$I %FPCVERSION%}).
+- FIRST FPC vs DELPHI PAIR RUN (owner, 19:57, Fix18): main = SteamDemoLCL
+  (FPC 3.2.2, host, main account), tablet = SteamDemoVCL (Delphi 37.0, guest,
+  new account), NOT friends. Both component tests 30/30; MyBuild lines
+  right on both sides (FPC side compiled). Guest 8/8; host 6/8. BUG
+  (mine, since the DONE handshake): the guest stopped 9 ms after sending
+  DONE with "the other copy sent no DONE within 60 s" - Tick took NowT,
+  then Poll sent DONE and set FDoneTicks > NowT, and the UInt64
+  NowT - FDoneTicks wrapped to a huge value. It never showed before
+  because DONE used to go out from a chat handler, not from Poll. The
+  early leave cost the host its old-P2P answer (packet in flight) and the
+  rich-presence row (the known non-friend limit). Zip Fix19 (follows
+  Fix18): TicksSince(ANow, AFrom) (0 when AFrom is later) for every tick
+  difference in the pair test, NowT re-read after Poll; the component
+  test's time-out check guarded the same way. NO PACKAGE REBUILD. NOT
+  YET COMPILED.
+- FIX19 CONFIRMED + PAIR TEST COMPLETE (owner, 20:10 and 20:23, Win64):
+  20:10 tablet VCL host / main LCL guest, not friends: tablet 30/30 + 8/8,
+  main 30/30 + 7/8 (only Friends) - the host waited for the guest's DONE
+  (55 s) and both closed together. 20:23 AS FRIENDS, main LCL host / tablet
+  VCL guest: BOTH 30/30 AND 8/8; rich presence read both ways within a
+  second; pair test ~10 s. So the Friends failures were Steam's limit for
+  a limited account and a non-friend, not ours (docs/TestSetup.md says
+  so). FPC vs Delphi done both ways round; FMX vs VCL done (19:44). Left
+  for the SteamDemo* round: nothing; next batch SteamConsole --server
+  (dedicated server) + FPC console. Zip Fix20 (follows Fix19): these
+  notes + TestSetup.md. NO PACKAGE REBUILD.
+- PUSH caa00b9 "All done bar server" (20:28) VERIFIED against a separate
+  clone: Fix14d-Fix20 (13 files) identical ignoring CRLF / BOM, nothing
+  else pushed; pasdoc / project checks 0 problems on the clone. Working
+  copy reset to origin/main (this note went out with zip Handover7).
+- OWNER (18:15): the FMX SteamDemo SWITCHES TO THE SHARED
+  demos/Shared/SteamComponentTest.pas (no more FMX copy of the test; the
+  test's plug-in components leave its form); the DEDICATED server is
+  tested with SteamConsole --server (console batch, after this one).
+- OWNER'S PLAN (17:15) - CHANGES THE ORDER above ("GameServer LATER,
+  AFTER the full Win64 round"): first make the SteamDemo* demos FEATURE
+  COMPLETE INCLUDING THE GAME SERVER, so the second user needs only ONE
+  testing session; then the Win64 round. Also: SteamConsole only has the
+  start of the API - bring it up to date, and an FPC version of the
+  console is wanted. Proposed order: (1) game-server batch (GameServer +
+  GameServerStats plug-ins, SteamGameServer_Init path in the core, a
+  server in the demos with its own query port - closes RulesResponded -
+  and server rows in the pair test: the guest joins the host's server,
+  auth through the server); (2) SteamConsole runs the shared
+  SteamComponentTest / SteamPairTest (framework-free already) from
+  command-line switches, plus SteamConsoleFPC (.lpi / .lpr, plain FPC,
+  no LCL) next to the Delphi project.
+- OWNER (17:08): setting up Lazarus / FPC on the Mac and on Linux for the
+  end-of-project round. Waiting there: FPC LayoutProbe on Linux64 /
+  macOS ARM64 (expect 0 different with Fix9's padding), FPC Win32
+  (thunks' FPC asm path + probe), SteamTimeToLocal's localtime_r path,
+  LCL SteamFormToRGB (PaintTo on Cocoa / GTK2), SteamDemoLCL's pair test
+  against a Delphi copy.
+- Callback updating (owner, 2026-10-30: "threaded is vital" for game
+  engines): TSteamworks.UpdateMode sumTimer / sumThread / sumManual and
+  Delivery sdMainThread / sdOnUpdate / sdPumpThread; the components mirror
+  them (UpdateMode, Delivery published). Only ONE thread drains the
+  manual-dispatch queue; the worker copies payloads and fetches call
+  results (TSteamCallbackDispatcher.PumpToQueue), delivery happens in
+  DeliverQueued. Generated plug-ins are unaffected (same TSteamCallbackData).
+  Never add a framework call (TTimer, message box, Application.Terminate)
+  that can run on the worker: use TThread.Queue (see SafeTerminate).
+
+## Project files
+- Every .dproj has a `<WelcomePageFile Path="..."/>` inside
+  `<Delphi.Personality>`, so the IDE shows a README as the project page;
+  gen_projects.py writes it too. Demos (owner, 2026-11-03): their OWN
+  `demos/<Demo>/README.md` next to the .dproj (`Path="README.md"`) - the
+  WINDOWS RELEASE DEPLOYMENT for a Steam depot: which files, where relative
+  to the .exe, what must not ship (steam_appid.txt), the launch option,
+  testing the Release folder. The Lazarus demos have the same page next to
+  their .lpi. Keep these pages in step with the post-build events / data
+  files whenever a demo's deployment changes. Packages and LogReceiver keep
+  the repository / RemoteLogging README.
+- The .dproj / .groupproj files in the repository were re-saved by the Delphi
+  13 IDE (ProjectVersion 20.5, extra platform sections, post-build events
+  repeated per configuration). They are now AUTHORITATIVE.
+- `tools/gen_projects.py` created them and still holds the reference settings
+  (post-build copy, DeployFile paths, search paths). By default it only creates
+  MISSING files (a new demo or package); `--force` overwrites everything and
+  would discard IDE changes - only use it deliberately and re-check in the IDE.
+- To add a unit to an existing project: add it to the `.dpr`/`.dpk` uses /
+  contains clause AND a `<DCCReference Include="...">` in the .dproj (or let the
+  owner add it in the IDE), then run project_check.py. Keep the generator's
+  lists in step so a future `--force` would produce the same set.
+- Every unit must be in both the `.dpr`/`.dpk` and the `.dproj`
+  (project_check.py verifies this).
+- `.dproj` files are UTF-8 with BOM and CRLF and must parse as XML.
+- PALETTE ICONS (2026-11-05, docs/ComponentIcons.md): source in
+  design/icons/<Class>.ico; tools/gen_icon_res.py (stdlib only) writes
+  design/Steamworks.Reg.dcr, fmx/ and vcl/Steamworks.*.Reg.dcr and
+  lcl/Steamworks.LCL.Reg.res, each linked by `{$R}` in the Reg unit beside
+  it (Delphi and FPC both resolve that next to the unit - no package path
+  needed). Names: Delphi BITMAP <CLASS> / <CLASS>16 / <CLASS>32; Lazarus
+  RCDATA PNG <CLASS> / <CLASS>_150 / <CLASS>_200 (checked against the
+  Lazarus IDE source and its own paletteimg.res). Never hand-edit the
+  .dcr / .res. `*.res` is git-ignored: lcl/Steamworks.LCL.Reg.res has a `!`
+  exception, and .gitattributes marks .ico / .dcr / .res binary.
+  gen_steam_api.py's write_registration() writes both Reg units AND
+  packages the icons; it needs no SDK (one-liner in its docstring).
+  OWNER CONFIRMED (2026-11-05 22:32): every component shows its icon in the
+  IDE - the 32-bit alpha bitmaps work in Delphi 13.
+- VIRTUALGAMEPAD GLOW (2026-11-05, docs/VirtualGamepadModels.md): the three
+  VirtualGamepad demos share src/PadParts.pas (GENERATED by
+  tools/gen_pad_parts.py from models/*.glb: each clip's joint, its part's
+  rest centre and radius in glTF model space, trackpad marker nodes
+  Trackpad_Left / _Right / _Center) and src/PadActivity.pas (hand-written:
+  in-use rules, "in use" log lines, glow fade, touch position). Both are
+  identical copies (project_check SHARED). The glow is a translucent unlit
+  sphere per part, a child of the model (FMX TSphere + TColorMaterialSource,
+  Castle TCastleSphere pmUnlit), STATIC at the rest centre - parts move under
+  1 % of the model, so no per-frame joint maths. Views: FMX moves
+  Sprite3DCamera (Azimuth / PolarAngle: front 0/0, back 180/0, top 180/90 -
+  owner's numbers); Castle turns the model by ViewQuat = Rx(incl) * Ry(-azim),
+  which shows the same picture (worked out against Sprite3DCamera's
+  Qy(a) * Qx(-p) and the model's half turn about X). Castle APIs used were
+  checked against the engine source (TCastleSphere / pmUnlit in
+  CastleRenderOptions / TCastleShape stCircle / LocalBoundingBox skips
+  children that do not exist).
+
+## Source rules
+- NEVER WRITE A STORED VALUE AS A LITERAL IN TEXT (owner, 2026-11-03).
+  Anything kept in a property, variable or constant (an AppID, the SDK
+  level, a callback id, a port, a count, a timer interval, a file name)
+  is shown by formatting THAT value into the string - `Format('AppID %d',
+  [SteamAPI1.AppID])`, `STEAMWORKS_SDK_VERSION`, `<Name>_k_iCallback`,
+  `tmRumble.Interval` - never by typing the number into a message,
+  caption or form file. A value used in code AND in a message gets a
+  named constant. Form-file captions hold no numbers; FormCreate builds
+  the title. Generated data with no variable to read (the .vdf files)
+  leaves the value out. Docs (.md) are text: keep them in step by hand.
+- ASCII only in sources; use `#$xxxx` codes for other characters.
+- `{$I Steamworks.inc}` right after the `unit` line of every library unit.
+- RTL units unscoped in `lib/` (`SysUtils`, `Generics.Collections`, ...)
+  so they resolve in Delphi (via DCC_Namespace) and FPC.
+- Portable callbacks use method pointers (`of object`). Anonymous methods
+  only inside `{$ifdef STEAMWORKS_ANONYMOUS_METHODS}`.
+- No class constructors/destructors in `lib/` (use unit initialization /
+  finalization) - keeps FPC behaviour predictable.
+- Steamworks.inc sets Steam's packing ({$ALIGN 4} outside Windows) for EVERY
+  record in lib/, not only Steam structs. Never put managed fields (string,
+  dynamic array, interface) in a record TYPED CONSTANT in lib/, nor in a
+  record Steam or another compiler sees: on Linux64 such a string field sat
+  at offset 4 and Format got a bad pointer (access violation). Use parallel
+  arrays or a class instead. (An in-memory record held in a list, such as
+  the subscription entries of Steamworks.Callbacks, is fine.)
+- FPC aligns a record-typed field by the record's SIZE, not its alignment
+  (see PROBE RESULT): generated SDK records are packed under FPC with
+  explicit _fpcpad fields (generator), so never hand-write an SDK record
+  that nests another record without checking it with the LayoutProbe.
+- C `bool` -> `Boolean`; C enums need 4 bytes (the .inc does this);
+  C++ `const T&` parameters are pointers, never records by value;
+  structs under `#pragma pack(1)` are `packed record`.
+- Flat exports are cdecl. Optional exports must be checked with Assigned().
+- Pascal comments do not nest: a doc comment that contains `{$...}` or any
+  `{` must use `(* *)` (pasdoc_check.py enforces this).
+- FPC's Windows unit declares `TCriticalSection = TRTLCriticalSection` (a
+  record): a unit that uses Windows must write `SyncObjs.TCriticalSection`
+  (first FPC compile, 2026-10-30, failed on exactly that).
+- Initialise an empty dynamic-array Result with `Result := nil`, not
+  `SetLength(Result, 0)`, and write `Result := nil;` before a
+  `SetLength(Result, N)` (FPC warns 5093 "result ... not initialized").
+- FIRST FPC BUILD (Lazarus 4.8 / FPC 3.2.2 Win64, 2026-10-30): after the
+  TCriticalSection fix the library and SteamDemoLCL compiled and linked.
+  Remaining messages, all accepted: FPC's own generics.collections
+  (4046 "Constructing a class TCustomDictionaryEnumerator with abstract
+  method" for every TDictionary, 5071 / 6058 notes), unused Sender /
+  parameter hints, managed-local hints. Everything else in the log is
+  Lazarus rebuilding its own LCL packages.
+- SteamDemoLCL FIRST RUN (18:28, log checked): DLL load, SDK 1.65, 28
+  versions, all 5 plug-ins with live data, friend avatar handle 6, all 6
+  icon fetches (1109) with handles 11-16, OnPersonaStateChange, Stop /
+  Start, close (FormClose twice, clean). ONE BUG: RANK_001 showed
+  2025-08-23 08:58, Delphi 09:58 (confirmed right by the Steam client).
+  The review's claim that FPC's UnixToDateTime(T, False) equals Delphi's was
+  WRONG: FPC 3.2 applies TODAY's offset (GMT in late October) to every date.
+  Fix: SteamTimeToLocal (Steamworks.Types). Delphi: UnixToDateTime(T,
+  False). FPC: FPC 3.2.2 has NO per-date offset (the GetLocalTimeOffset
+  (DateTime, ...) overload is newer - first attempt failed to compile), so
+  the OS is asked: Windows SystemTimeToTzSpecificLocalTime (kernel32),
+  Linux / macOS libc localtime_r (tm_gmtoff; struct under packrecords C).
+  All three demos use it. CONFIRMED 18:37 (SteamDemoLCL, Win64): RANK_001
+  2025-08-23 09:58, Feb dates unchanged; the build had no warnings from our
+  code (8 left, all FPC's generics 4046). Same run: Start with Steam closed
+  -> result 2 via OnInitFailed, app kept running; Show info without Steam ->
+  "press Start first"; Start after Steam came up -> full data; normal close
+  -> FormClose once, clean. The localtime_r path waits for an FPC Linux /
+  macOS build. SteamDemoLCL Win64 COMPLETE.
+- No `TArray<T>` / `.ToArray` in `lib/` (FPC 3.2's Generics.Collections
+  clashes); use `TSteamStringArray`, `TSteamPluginClassArray` or local
+  `array of` types and copy loops.
+- Generic methods in `lib/` only under `{$ifdef STEAMWORKS_ANONYMOUS_METHODS}`
+  or `{$ifndef FPC}`; typed variants are named `...Typed<T>`.
+- PasDoc on every unit (comment before `unit`) and every member, private
+  fields included. Use @link, @code, @param, @returns, @raises, @longCode(# #).
+- Hand-written .fmx/.dfm files: set only the properties the form needs.
+  Leave defaults (Touch.*, DataDetectorTypes, ...) to the IDE - a wrong enum
+  name stops the form loading.
+- No credentials in source or logs.
+- No paths, user names or machine names from anyone's computers in ANY
+  tracked file (sources, projects, docs, CLAUDE.md test notes): describe test
+  machines generically ("an Apple-silicon Mac", "the PAServer scratch folder").
+  Paths in pasted logs are fine in chat, never in the repository. Paths in
+  projects are relative or use IDE macros ($(BDS), $(PROJECTDIR), ...).
+
+## Logging and testing
+- Log lines must say exactly what happened (values, results, paths): the
+  owner tests promptly and pastes the demo log back as evidence.
+- State plainly when an earlier conclusion was wrong.
+
+## Known gaps / to check
+- Generated binding (2026-10-30, SDK 1.65 headers + steam_api.json from the
+  owner): Steamworks.SDKTypes (all typedefs / enums / constants / 209 structs
+  and callback structs) and plug-ins Utils, User, Friends, Apps, UserStats;
+  RemoteStorage, Screenshots, Timeline, UGC, Input added in the fifth
+  session (Input with a hand-written by-value shim, see the fifth-session
+  notes).
+  verify_generated.py: 836 layouts (209 structs x Win64/Win32/Linux64/macOS
+  ARM64) and 229 flat signatures identical to the C headers; both checks
+  proven to catch deliberate errors. NOT YET COMPILED by Delphi or FPC - the
+  next owner build is the first; expect small fixes.
+  Findings that shaped it:
+  * CSteamID / CGameID are declared under #pragma pack(1): byte-aligned
+    inside structs. TSteamID is now a `packed record` (as a plain record it
+    put 86 callback-struct layouts out across the four targets).
+  * steam_api.json lists C union members as separate fields
+    (SteamNetworkingIPAddr, SteamNetworkingIdentity,
+    SteamNetworkingConfigValue_t, SteamInputActionEvent_t, RemotePlayInput_t):
+    those and the 8 structs that embed them are skipped with a reason until
+    the generator emits variant records (networking batch).
+  * SteamDatagramHostedAddress / ...GameCoordinatorServerLogin are only
+    forward-declared publicly: skipped (opaque Pointer where used).
+  * steam_api.json was made on 64-bit: intp / uintp / size_t / intptr_t are
+    pointer-sized (NativeInt / NativeUInt), not the "long long" it says.
+  * The '#if SMALL pack(push,4) #elif LARGE pack(push,8)' pair is ONE push;
+    counting it as two misclassifies every struct after its pop.
+  * Natural-alignment regions (Steamworks.AlignNatural.inc) currently hold no
+    generated struct with an 8-byte field, so that switch is untested until
+    the networking structs are generated.
+  * Buffers: a pointer followed by a count parameter (cb..., c[A-Z]..., ...Size,
+    ...Max) stays a Pointer, never a var (GetImageRGBA, GetInstalledDepots,
+    GetDownloadedLeaderboardEntry would otherwise write a buffer over one
+    variable); const struct pointers stay Pointer (NULL is often allowed).
+  * Independent review (no compiler) found one certain compile error - extras
+    fields emitted after a method in Utils' private section - now fixed (the
+    generator writes extras before Need). Possible, untested: Delphi / FPC may
+    pass Boolean / UInt8 / UInt16 arguments without widening them to 32 bits,
+    which clang-built callees on x86-64 POSIX (Linux64, macOS x64) assume. If
+    a narrow argument ever arrives wrong there, that is the first suspect.
+  * The old hand-written Utils names changed to Valve's (GetIPCountry,
+    GetSteamUILanguage, GetAppID, GetCurrentBatteryPower, ...); extras kept:
+    ServerTime, GetImageRGBABytes (was GetImageRGBA -> TBytes), OnLowBattery,
+    OnIPCountryChanged, deprecated IsRunningOnSteamDeck. HasSteamHardware-
+    Detection / SteamHardwareType are gone: Assigned(U.Flat.IsRunningOnSteam-
+    Hardware) and IsRunningOnSteamHardware (ESteamHardwareType) replace them.
+- Tested 2026-10-30, Delphi 13 Win64: packages build and install; SteamConsole
+  and SteamDemo initialise with AppID 2275430, ISteamUtils returns live data,
+  stop / restart works, closing while running is clean. Version fallbacks match
+  the 1.65 Win64 scan. check_redist.py identifies all seven real 1.65
+  libraries (incl. Linux vs Android aarch64; the macOS dylib is universal).
+  Steam not running -> clean failure, result 2 with Steam's message.
+- Steam client exit, tested 2026-10-30 (Steam -> Exit): windowed demo gets a
+  close request with no prior 704, closes cleanly; FormClose ran twice (likely
+  one WM_CLOSE per top-level window). Console gets 704 then 103 and is ended
+  ~10 s later; SteamConsole exits by itself on 704 (tested: stops within 50 ms).
+- Failure messages tested 2026-10-30 (Win64): Steam not running -> result 2
+  with Steam's text; missing DLL and 32-bit DLL in a Win64 folder -> every
+  path tried with the Windows error (193 for wrong bitness) and the
+  redistributable_bin file to copy. -debug_steamapi: no warnings produced, so
+  the warning hook is still unexercised.
+- Win32 tested 2026-10-30: SteamConsole and SteamDemo match Win64 (DLL load,
+  SDK 1.65, AppID 2275430, Show info, stop / restart). The earlier "post-build
+  did not copy" was steam_api.dll missing from redistributable_bin (probably
+  moved, not copied, during test 6) - not a project problem. Post-build now
+  always echoes a line; check_redist.py would have reported it.
+- ISteamGameSearch and ISteamMusicRemote were removed in SDK 1.65 (no header,
+  not in steam_api.json); their fallback versions are gone from
+  Steamworks.Versions (28 left = the 28 the scan finds everywhere).
+  ISteamClient_GetISteamMusicRemote stays an optional (unbound) export.
+- FPC build of lib/ and SteamConsole not yet run.
+- Linux64 tested 2026-10-30 (Delphi 13 via PAServer, Steam client running):
+  SteamConsole loads libsteam_api.so beside the executable, SDK 1.65, init OK,
+  ISteamUtils live data, 5 internal callbacks in 3 s, clean shutdown. The 28
+  detected versions equal the fallbacks (minus the two known missing ones).
+  The log showed a RELATIVE library path (ParamStr(0) is argv[0] on POSIX) and
+  a US-locale server time; fixed (exe folder now ExpandFileName'd, times ISO)
+  and confirmed on a rebuild the same day (absolute path, 2026-10-30 11:11:48).
+  SteamDemo on Linux64 (2026-10-30): Start, Show info, Stop, Start again all
+  as on Windows; same 28 versions; ISteamUtils live data. WARNING HOOK PROVEN:
+  Show info produced "[S_API WARN] The loaded overlay DLL doesn't support
+  IsOverlayEnabled" (severity 1) via OnWarning. Steam's text ends in a line
+  break; the hook now TrimRight's it - confirmed (one line, no blank).
+  Window close (command line, Steam running): FormClose ran ONCE (Windows:
+  twice), then SteamAPI shut down cleanly. That command-line run produced no
+  overlay warning, unlike the PAServer-launched runs - possibly the overlay
+  .so is only loaded (LD_PRELOAD?) in PAServer's environment; unverified.
+  Steam -> Exit, SteamDemo (2026-10-30): NO close request, process not ended;
+  704 arrived TWICE (11:29:30, 11:29:31); by the second the pipe was broken.
+  The later FormClose -> SteamAPI_Shutdown made steamclient assert (Broken
+  pipe, steamclient.cpp 837) and write minidumps to /tmp/dumps (upload failed:
+  no libcurl.so - harmless). Fix: ShutdownOnSteamExit (core + FMX, default
+  true) shuts SteamAPI down right after the first OnSteamShutdown; repeats of
+  704 are ignored. Re-test with Linux5.zip: the core shut down correctly on
+  704, but the demo showed "Access violation at 44E42F, accessing 1708" the
+  instant Steam -> Exit was chosen. addr2line: System.SysUtils.WideFormatBuf.
+  Cause (most likely): the demo's OnCallback names each callback with
+  SteamCallbackGroupName; 704 was the first non-internal callback ever named,
+  and its table was a record typed constant with a string field misaligned by
+  {$ALIGN 4}. Replaced by two parallel arrays, no Format. (The 11:29 run's
+  missing "Callback 704 (Utils+4)" line was the same crash, unnoticed.)
+  CONFIRMED 2026-10-30 12:01 (Linux7.zip): "Callback 704 (Utils+4), 1 bytes"
+  (SteamShutdown_t is an empty struct; size 1, not 8 as predicted), one
+  OnSteamShutdown, SteamAPI shut down 1 ms later, no second 704, no asserts or
+  minidumps, later window close clean with Steam running: False.
+  SteamConsole 60, Steam -> Exit (2026-10-30 12:19, rebuilt binary): 704
+  named "Utils+4", SteamAPI shut down 1 ms later, pump stopped early, clean
+  exit, no asserts. A first run at 12:06 crashed in WideFormatBuf (same
+  accessed address 1708) - its binary was STALE (11:13, before the fix): the
+  IDE redeployed the old Linux64 build after the folder was deleted. Lesson:
+  after source changes use Project -> Build for the remote platform and check
+  the deployed executable's timestamp before trusting a result.
+LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
+- Android64 is enabled in the FMX projects with only the Steam library deployed
+  (library\lib\arm64-v8a\); the IDE adds the standard Android deployment
+  entries itself. Not yet run on a device.
+
+## Sixth session (2026-10-31, in progress)
+- Push of Handover1 checked (b5e5306): pasdoc / project checks clean,
+  gen_input_mapping.py and gen_docs.py reproduce the pushed files (CRLF
+  only). The zip-by-zip comparison was not possible (zips not here).
+- Owner's export of a 2026 Steam Controller layout (an XInput "Gamepad with
+  Gyro" template, kept outside the repo): its controller_type is
+  `controller_triton` (not in Valve's documented list). Sources: switch,
+  button_diamond, dpad, joystick, right_joystick, both triggers, both
+  trackpads, gyro. No back grips / grip sensors in it (names unconfirmed).
+  Modes seen: single_button, joystick_camera, gyro_to_mouse, flickstick;
+  activators Soft_Press, Double_Press. Steam MIXES CASE in its own file
+  (button_a, button_B, button_X, button_y): read names case-insensitively.
+- Zip Gyro1 (follows Handover1): gen_input_mapping.py adds
+  controller_triton (STANDARD + gyro, camera on the right stick, trackpads
+  unbound) and a gyro group on the PS5 and triton layouts - mode
+  gyro_to_mouse (as Steam writes it), gameactions InGame Camera, always
+  on, so Camera = right stick + gyro. Menu-set group ids on PS5 shift by
+  one. gen_projects.py "files" + SteamInputDemo.dproj (post-build copies,
+  6 DeployFile entries) list controller_triton.vdf. NOT YET TESTED: whether
+  a gyro_to_mouse group feeds an absolute_mouse game action (fallback:
+  mode absolute_mouse), and the triton layout on the real pad.
+- Zip PadId1 (follows Gyro1): SteamInputDemo shows the controller it reads
+  in a banner at the top (pnlPad: lblPadName large / bold, lblPadInfo):
+  readable name, Steam type id + value, the controller_type Steam looks
+  for and whether that .vdf is ours (exists next to the manifest), the 3D
+  model, motion sensors (+ "gyro moves Camera" on PS5 / triton). Rebuilt
+  only when handle / type / count changes; each change logged as
+  "Controller identified". InputTypeName / InputTypeId cover all 19 SDK
+  1.65 types; LayoutTypeName / ModelName / MotionText in uMain.pas must
+  stay in step with gen_input_mapping.py. New layouts: controller_switch2_pro,
+  controller_switch_joycon_pair, controller_generic (third-party "PS4
+  compatible" pads often report GenericGamepad) - STANDARD, no gyro; .dproj
+  + gen_projects "files" updated. Owner's pads to test: Xbox One, Steam
+  Controller, PS5, PS4-compatible, Switch. NOT YET COMPILED.
+- Owner's PadId1 run (13:39): motion / acceleration / orientation come
+  through on the gyro pads, but A, B, triggers and sticks responded
+  INCONSISTENTLY across pads. Owner: "Consistency across all gamepads is
+  extremely important"; bind X, Y, d-pad, Start, Select, Home, shoulders,
+  both triggers, stick presses, and the Steam Controller's back paddles.
+- Zip Bind1 (follows Plan1): InGame is now ONE ACTION PER PHYSICAL
+  CONTROL (LeftStick, RightStick, Gyro, LeftTrigger, RightTrigger,
+  ButtonA-Y by position, LeftBumper, RightBumper, Left/RightStickClick,
+  DPadUp/Down/Left/Right, Start, Select, BackLeft/Right[Upper]); Menu set
+  MenuConfirm / MenuBack (Start opens it, MenuBack returns). Old actions
+  (Move, Camera, Throttle, Fire, Jump, Menu, Select, Back) are gone;
+  Gyro1's "gyro drives Camera" is replaced by the Gyro action on EVERY pad
+  with motion sensors (PS4, PS5, Switch Pro, Switch 2 Pro, Joy-Con pair,
+  Deck, both Steam Controllers). gen_input_mapping.py: CONTROLLERS are
+  dicts (sources, replace, back); OPTIONAL = Gyro + back paddles; layout()
+  asserts every other action is bound exactly once on every pad. 2015
+  Steam Controller: right_trackpad (joystick_move) = RightStick + click,
+  left_trackpad (dpad) = d-pad. Back paddles: gordon 2, Deck / triton 4;
+  the _upper names and triton's paddle names are UNCONFIRMED. Home /
+  Guide / PS / Steam is reserved by Steam - cannot be bound. Demo: the
+  banner adds which layout Steam LOADED for the pad (mapping creator 0 =
+  ours; otherwise "a DIFFERENT layout" - the likely cause of the
+  inconsistency); optional actions unbound show "not on this controller",
+  other unbound ones "NOT BOUND ... Steam is using a different layout".
+  NOT YET COMPILED.
+- Push 34c252b (13:45) accidentally deleted CLAUDE.md, demos/, docs/,
+  tools/ (70 files); restored by zip Restore1 (whole folders from the
+  working copy) and pushed as 5399be8 - all 125 files verified identical.
+- TESTED 13:50 (owner, Win64, Xbox One pad, Bind1): banner "Xbox One /
+  Series controller", XBoxOneController (3), layout controller_xboxone.vdf
+  (ours), "Steam loaded OUR default layout (mapping by 0, revision 0.0)";
+  handles resolved for all 25 actions; every non-optional action bound
+  with the expected origin and glyph; Gyro and the four back paddles "not
+  bound (optional)" - correct for an Xbox pad.
+- Zip Layout1 (follows Bind1): owner found the layout bad even full
+  screen. Left column 560 wide; memState Align Top (440) + splState
+  (TSplitter, Top) + lbBindings Align Client; splLeft (TSplitter, Left)
+  between the left column and the log; window 1200 x 824.
+- Owner (14:09), for readers: on Windows 11 the Xbox Game Bar takes the
+  pad's middle Xbox and Share / options buttons (View and Menu are fine);
+  disable it in Settings -> Gaming -> Game Bar to test them. Zip Notes1
+  (follows Layout1): README Known issues entry + SteamInputMapping.md
+  troubleshooting row; README's "no controller" entry brought up to date
+  (layouts for every pad type, banner).
+- Owner (14:15): the Xbox pad responds correctly to all Bind1 mappings
+  (Microsoft's View = our Select, Menu = our Start). Start alone switched
+  the set and emptied the Live state panel. Zip Combo1 (follows Notes1):
+  the Menu set now opens only on Start while RightTrigger > 0.25
+  (MENU_TRIGGER_MIN in uMain.pas); Start alone is logged with a hint;
+  MenuBack (ButtonB) still returns. Reason (owner asked for it to be
+  explained): bad for a game, right for a pad-testing tool - Start must
+  stay an ordinary button to watch, and a set switch must never happen by
+  accident. Manifest title of Start and SteamInputMapping.md updated.
+- Owner (14:27-14:28): Combo1 works (Start registers as a button);
+  XBOX PASSES. Seen in the Menu set: the caption still said "(action set,
+  actions, motion)"; the Xbox button turned MenuConfirm / MenuBack "active
+  False" (Steam overlay / Game Bar has the pad - expected); B switched
+  back at once so MenuBack could not be watched. Zip Menu1 (follows
+  Combo1): lblState names the set (UpdateStateCaption); leaving the Menu
+  set takes MenuConfirm + MenuBack (A + B) together; a change of the set's
+  actions to all-inactive and back is logged once each way
+  (FSetActiveState). MenuBack title regenerated into all layouts.
+- Push 4cbb8fe "XBox One Gamepad Passes Testing" (14:40, Menu1 + the
+  rest; pushed for the Gorilla3D developer): all 125 files match except
+  the IDE re-saves - SteamInputDemo.dproj gained Android / iOS platform
+  sections (accepted; every .vdf still in post-build + 6 DeployFile
+  entries), Steamworks.groupproj LOST ITS DEPENDENCIES AGAIN and listed
+  packages first (Build / Clean / Make targets intact) - restored from the
+  working copy in zip Pads1.
+- PS5 run (14:40): "almost passes" - motion shown, quaternion follows the
+  pad; the Gyro action (mouse-like, absolute mouse) confused the owner,
+  who asked for it to be called Trackpad. It IS the gyro (tilting moves
+  it); kept the name, explained it (title "Gyro (motion sensors, reported
+  as mouse movement)"), and added REAL trackpad actions instead.
+  PS5 glyphs: "only fail" - cause unknown; LoadGlyph now tries knockout
+  small / medium, light, dark and logs every failed attempt ("NO GLYPH:
+  ..."); waiting for that log line.
+- Zip Pads1 (follows Menu1): optional actions LeftTrackpad / RightTrackpad
+  (+Click; Steam Deck, triton; not on the 2015 pad, whose trackpads are
+  its right stick / d-pad) and CenterTrackpad (+Click; PS4 / PS5 touchpad,
+  source name center_trackpad UNCONFIRMED). Trackpads use joystick_move
+  (finger position -1..1). Generator: OPTIONAL maps action -> source or
+  paddle count; per-controller "modes"; asserts one analog action per
+  group. Owner has an ROG Ally-like handheld with two trackpads - its
+  type is unknown until the banner shows it.
+- PS5 log 15:06 (a build BEFORE Pads1): PS5Controller (13), our layout,
+  every action bound with PS origins (Cross 258, Circle 259, Options 264,
+  Create 265, L2 / R2 "soft" 79 / 81, Gyro Move 99) and EVERY glyph
+  loaded (32x32) - yet none showed. Cause: the KNOCKOUT style is white on
+  transparent (only Xbox face buttons are coloured), invisible on the
+  light list; the Xbox run showed only A / B too. Zip Glyph1 (follows
+  Pads1): LoadGlyph tries Light (black on white) first, then light medium,
+  dark, knockout. Motion raw values: accel (-462, -2557, 16016) at rest -
+  magnitude ~16200, so probably raw sensor counts with ~16384 = 1 g
+  (assumption, unconfirmed).
+- PS5 log 15:19 (Pads1 + Glyph1): our layout; CENTER_TRACKPAD CONFIRMED
+  (CenterTrackpad = "Center Pad Swipe" 73, Click = "Center Pad Click"
+  283); every glyph Light style and visible ("plentiful and good" - owner;
+  the PS face buttons' _sm files are 64x64, the rest 32x32). Logged: A B
+  X Y, d-pad, L1 / R1, both sticks to +-1, both triggers ANALOG (0.20,
+  0.34, 0.46, 0.78 ... 1.00 - the old Throttle question is answered).
+  NOT logged although the owner pressed "all the buttons" and waved the
+  pad: Start (Options), Select (Create), stick clicks, touchpad, Gyro.
+  Open: were they pressed? Gyro may move by less than the 0.2 log step.
+  Zip Log1 (follows Glyph1): analog actions also logged on ANY move away
+  from zero; motion logged once a second while rotation speed > 500 raw.
+- PS5 PASSES (log 15:26, Log1 build; with the 15:19 run): Options =
+  Start (hint shown, no set switch without the trigger), Create = Select,
+  L3 / R3, touchpad position (CenterTrackpad -1..1, back to 0 on
+  release), GYRO WORKS (gyro_to_mouse group feeds the absolute_mouse
+  action: per-frame deltas up to ~9.6, 0 at rest - the Gyro1 doubt is
+  settled), the PS button made every action inactive and Steam reloaded
+  our layout (mapping by 0) twice - all as designed. Motion while waving:
+  accel up to ~17300, rotation speed up to ~4550 raw (~280 deg/s if
+  +-2000 deg/s full scale); at rest |accel| ~16200 = 1 g. Only
+  CenterTrackpadClick was not exercised (no press logged). Zip PS5Pass1
+  (follows Log1): this note; center_trackpad marked confirmed in the docs
+  and the generator comment.
+- Push e0f52f9 "PS5 Gamepad Passes Testing" verified: all 125 files
+  identical (group Dependencies kept this time).
+- XBOX ONE PASSES AGAIN (log 15:35, PS5Pass1 build): every glyph Light
+  style and visible (xbox_ / shared_ / shared_color_ files, all 32x32);
+  Gyro and all trackpad / paddle actions "not bound (optional)"; motion
+  identity + zeros (no sensors); every button, both sticks, both
+  triggers ANALOG (0.29, 0.44, 0.64, 0.69 ... 1.00); Start alone only
+  hints; Guide -> all inactive, layout reloaded (mapping by 0), active
+  again; Guide held -> inactive, then the pad disconnected 10 s later.
+- Owner (15:33): start / stop / bindings / rumble / log state / copy were
+  all tested - SteamInputDemo is now a pad-examining tool, so ALL BUTTONS
+  GO and Steam opens by itself. Zip Auto1 (follows PS5Pass1):
+  pnlTop + six buttons + tmRumble removed; tmStart
+  (100 ms, enabled in the form) opens Steam once the window is up; on
+  OnInitFailed or OnShutdown (Steam client exit) it retries every 5 s
+  (RETRY_MS) unless the window is closing (FClosing). README updated.
+- Steam Controller 2026 first run (15:40): SteamController2026 (17),
+  controller_triton.vdf found, motion works - but Steam loaded a
+  DIFFERENT layout (mapping by 76561198027655094 = the creator of the
+  XInput "Gamepad with Gyro" template the owner exported earlier; uses
+  Steam Input API False) so everything was NOT BOUND. Fix: choose the
+  game's official layout in Steam's controller settings (owner did).
+  Adding the exe as a non-Steam game is NOT needed (SteamAppId already
+  ties the process to 2275430) - owner: "scratch that note". The 2804
+  slot-change callback named the pad's type Steam Deck (14) while
+  GetInputTypeForHandle says 17 - Steam's report, harmless.
+- Steam's layout browser listed all 11 official layouts with the SAME
+  title. Zip Titles1 (follows Auto1): each layout's localized title /
+  description names its controller (CONTROLLER_NAMES in
+  gen_input_mapping.py, e.g. "SteamInputDemo - Steam Controller (2026)").
+- STEAM CONTROLLER 2026 PASSES (log 16:06, after re-selecting the
+  official layout, restarting Steam AND the demo - owner: "horrible", now
+  documented in SteamInputMapping.md "When Steam keeps loading another
+  layout" + README): our layout (mapping by 0); glyphs are Steam Deck art
+  (sd_ prefix: sd_l2, sd_r1, sd_ltrackpad_swipe, sd_button_menu ...;
+  face buttons shared_button_a..y); both sticks, L3 / R3, L1 / R1, both
+  triggers analog, d-pad, Menu / View, A X Y, BOTH TRACKPADS (positions
+  -1..1), gyro (mouse deltas up to ~74), motion, Guide -> inactive /
+  layout reloaded / active. PADDLES CONFIRMED: button_back_left / _right
+  = L5 / R5 (375 / 376), _upper = L4 / R4 (373 / 374) - action titles now
+  say so. Not exercised: ButtonB, trackpad clicks. Zip Triton1 (follows
+  Titles1): docs + README + generator comments / titles.
+- Owner (16:13): add File > View Controller Settings (Steam's layout
+  selector again), Rumble, Exit. Zip Menu2 (follows Triton1): TMainMenu
+  (FMX.Menus) with those three; View Controller Settings calls
+  ShowBindingPanel and, when that returns False (no overlay - the demo is
+  not started by Steam), opens steam://controllerconfig/<AppID> through
+  the OS (ShellExecute / open / xdg-open) - that URL is UNTESTED (could
+  not be confirmed from Valve's docs); then logs that the program needs a
+  restart after a layout change. Rumble = the old 500 ms TriggerVibration
+  (tmRumble back). Owner had not pressed the trackpads (clicks) or B on
+  the 2026 pad.
+- 2026 pad, log 16:14: BOTH TRACKPAD CLICKS CONFIRMED (Left / Right Pad
+  Click 343 / 350; position keeps reporting while clicked). B still not
+  pressed. The pad appeared 5 s BEFORE Steam loaded its layout: the
+  bindings were listed first (all "NOT BOUND" - misleading), then again
+  correctly once the layout arrived - probably what made the owner think
+  a restart was needed. Zip Wait1 (follows Menu2): bindings are listed
+  only once OnSteamInputConfigurationLoaded has named the pad
+  (LayoutLoaded), or after LAYOUT_WAIT_MS (15 s) anyway.
+- Menu2 / Wait1 FAILED TO COMPILE (owner 16:18): E2037 LoadGlyph differs,
+  LoadFromFile / Width / Height undeclared - Winapi.Windows (added to the
+  implementation uses for ShellExecute) declares a TBitmap record that hid
+  FMX.Graphics.TBitmap in the implementation. Zip Fix1 (follows Wait1):
+  Winapi.Windows removed (SW_SHOWNORMAL written as 1), LoadGlyph's
+  parameter written FMX.Graphics.TBitmap in both places. Lesson: in an
+  FMX unit never put Winapi.Windows in a uses clause after FMX.Graphics.
+- STEAM CONTROLLER 2026 COMPLETE (log 16:21, Fix1 build - "everything
+  checks out"): B pressed (last control); layout loaded at once, no
+  premature NOT BOUND list; File > View Controller Settings:
+  ShowBindingPanel returned TRUE from an IDE-started demo (the overlay
+  WAS in the process - the earlier "False from the IDE" note was wrong;
+  steam://controllerconfig fallback still untested and not needed);
+  closing the panel -> actions inactive 2 s, layout reloaded (mapping by
+  0), active again - NO RESTART NEEDED, so the "restart the game" step
+  was wrong too (it was the layout-arrives-late gap). File > Rumble
+  worked. Zip Docs2 (follows Fix1): docs step 5 = wait, restart only if
+  needed; View Controller Settings named in step 2; ShowBindingPanel row
+  corrected; the demo's hint after the panel says the same.
+- Push 00c67a9 "Steam Controller 2026 Gamepad Passes Testing" verified:
+  all 125 files identical, group Dependencies kept.
+- GORILLA3D 1.5.4.4003 (owner, 16:38, "needed for later"): zip G3D1
+  (follows the push) updates GameEngineIntegration.md 6.5 to it. Viewport
+  behaviour for Steam unchanged; new render resolution (RenderScale,
+  RenderWidth / Height, RenderFit, RenderFilter) noted as harmless.
+  RESOLVED (owner relaying the developer, 16:42): the changelist is
+  right - UseFixedFrameRate now works on Android and Linux too; the
+  viewport guide will be updated. iOS not stated. Zip G3D2 (follows G3D1)
+  says so in GameEngineIntegration.md. For the VISUALISER (from 1.5.3 / 1.5.4 changelists):
+  ResetToBindPose, RecacheAnimations(ByName), DiscardAnimationCache(ByName),
+  HasCurrentAnimation / TryGetCurrentAnimation / IsAnimationPlaying (1.5.3);
+  1.5.4 fixes single-key (pose) clips, rigid non-skinned meshes under a
+  joint, zero-length clips in a crossfade, and - IMPORTANT for pressing
+  several buttons at once - a clip without a track for a node now puts
+  that node in its REST pose instead of keeping the previous clip's pose.
+  Our models have one clip per input, so playing one clip may reset every
+  other input to rest: driving several inputs at once probably needs
+  joint transforms set directly (or per-input clip layering) - ask the
+  developer. SeekTo (1.5.0) places the play head without computing a pose.
+- SWITCH PRO PASSES (log 16:46, owner has Steam's button SWAP on for it):
+  SwitchProController (10), our layout at once (mapping by 0, layout
+  loaded 30 ms after the pad - no premature list); glyphs switchpro_
+  prefix (face buttons shared_button_a..y); ButtonA..Y report Switch A /
+  B / X / Y (192-195) = "Xbox arrangement by letter" because of the swap
+  setting (to confirm once with the swap off: ButtonA should then report
+  Switch_B, the bottom button); every button, + / -, L / R, ZL / ZR
+  (digital 0 / 1), sticks, clicks, d-pad, Gyro (mouse deltas up to ~300
+  on fast swings), motion (|accel| at rest ~17400 - a little above the
+  ~16400 of the others), Home -> inactive 0.3 s -> layout reloaded ->
+  active. Capture and Rumble not exercised. Zip Switch1 (follows G3D2):
+  SteamInputMapping.md section 5 explains the swap (place by ORIGIN).
+  SWAP OFF (log 16:54; owner: "button B on Switch triggers ButtonA"):
+  button_a = the BOTTOM button, and Steam reports XBOX 360 ORIGINS
+  (153-160, 166, 172, 177-180) with Xbox glyphs for face buttons,
+  bumpers, Start / Back, stick clicks and d-pad; sticks, ZL / ZR and gyro
+  stay Switch origins (205, 211, 201, 203, 221). Swap on again = A is A,
+  Switch origins. My Switch1 text ("off -> Switch_B") was WRONG; zip
+  Switch2 (follows Switch1) replaces it with a table. Visualiser: origin
+  -> position must include the Xbox 360 rows even for a Switch pad.
+- JOY-CON PAIR PASSES (log 17:17; the owner's Mac had to be shut down -
+  it kept grabbing the Joy-Cons over Bluetooth): SwitchJoyConPair (8),
+  our layout at once; ButtonA = "B Button" (Switch_B 193) i.e. the
+  BOTTOM button, ButtonB = Switch_A, X / Y likewise swapped = POSITIONAL
+  with Switch-family origins (unlike the Pro with the swap off, which
+  reported Xbox 360 origins); glyphs switchpro_; every button, + / -,
+  L / R, ZL / ZR (digital), sticks, clicks, d-pad, gyro (right Joy-Con:
+  "Right JoyCon Gyro Move" 236 - Steam returns NO glyph path in any
+  style), motion, Home -> inactive -> reloaded. SL / SR and Capture are
+  not in our layout. The pair ran with Steam's "Nintendo layout" option
+  ON (owner, 17:21). Zip JoyCon2 (follows JoyCon1) adds that to the docs.
+  Zip JoyCon1 (follows Switch2): LoadGlyph falls back
+  to GetGlyphForActionOrigin_Legacy; docs note the Joy-Con behaviour.
+- SINGLE JOY-CON (R) (log 17:24): SwitchJoyConSingle (9); no file of
+  ours, but Steam ADAPTED our default (mapping by 0): ButtonA / B / X / Y
+  = Switch_JoyConButton_S / E / W / N (250 / 249 / 251 / 248, positional,
+  EMPTY GetStringForActionOrigin names, glyphs shared_buttons_s/e/w/n),
+  stick -> LeftStick (+Click; values arrived although its origin list was
+  empty), SL / SR -> LeftBumper / RightBumper (origins Switch L / R 196 /
+  197), + -> Start; RightStick, triggers, d-pad, Select, Gyro unbound
+  (motion data still there). Home -> inactive -> reloaded. Zip JoyCon3
+  (follows JoyCon2): banner says "Steam ADAPTED the game's default
+  layout" when the type has no file of ours (it said "OUR default
+  layout"), "no file of ours for this type" instead of "Steam uses its
+  own"; an origin with no name is listed as "(Steam gives no name)";
+  docs paragraph.
+- SINGLE JOY-CON (L) (log 17:26, a build before JoyCon3): the same as
+  the right one - adapted default (mapping by 0), arrow buttons ->
+  ButtonA / B / X / Y via JoyConButton_S / E / W / N, stick -> LeftStick
+  (+Click), - (Minus, 199) -> Start; SL / SR not pressed. Zip JoyCon4
+  (follows JoyCon3): docs sentence. ALL OWNER'S NINTENDO PADS DONE.
+- XBOX 360-EMULATING PAD (log 17:43): XBox360Controller (2), our file
+  exists, "mapping by 0" BUT "uses Steam Input API False" and every
+  action NOT BOUND - Steam Input is off for that pad, so Steam gives the
+  game no action layout; the banner wrongly said "OUR default layout"
+  (it looked only at the creator). Zip Api1 (follows JoyCon4): API False
+  -> "Steam Input is NOT active for this pad ... turn Steam Input on";
+  docs troubleshooting row. Waiting for a run with Steam Input on.
+- XBOX 360-EMULATING PAD PASSES once Steam Input was on for it (log
+  17:53): API True, our layout, Xbox 360 origins (153-180) and glyphs;
+  every button, both sticks, clicks, d-pad, Start / Back, bumpers;
+  triggers DIGITAL (0 / 1 - the pad has no analog triggers); Guide ->
+  inactive -> reloaded. Its face buttons are PRINTED in Nintendo
+  positions but the pad reports Xbox positions, so ButtonA = bottom and
+  the glyph says "A" although the button there is labelled B - nothing
+  the game can detect (the pad lies about itself). Zip Pad360 (follows
+  Api1): this note + a docs sentence.
+- SAME CLONE PAD AS A "PS4" (log 17:59; the pad has several emulation
+  modes): PS4Controller (5), our layout (API True), PS4 origins (X 50,
+  Circle 51, Triangle 52, Square 53, L1 / R1 54 / 55, Options 56, Share
+  57, L2 / R2 79 / 81, touchpad 73 / 74, Gyro 99) with ps_color_ glyphs
+  (64x64) - all positional, all buttons, sticks, clicks, d-pad and
+  Options / Share registered; triggers digital again; NO motion data ever
+  (identity quaternion, zeros) and no touchpad input: the clone claims to
+  be a PS4 but has no gyro / touchpad, so the banner's "motion sensors
+  yes" (it goes by the TYPE) is wrong for it. Every pad the owner has is
+  now tested. Zip PadPS4 (follows Pad360): this note + a docs sentence.
+- SAME CLONE AS A "SWITCH PRO" (log 18:00): SwitchProController (10),
+  our layout - which arrived 5 s AFTER the pad, and the bindings were
+  listed only then (no premature NOT BOUND: the Wait1 logic proven);
+  Switch origins A 192 etc.; every button, sticks, clicks, d-pad, + / -,
+  L / R, ZL / ZR digital; in THIS mode the gyro works (Gyro Move 221,
+  motion data) - it had none as a "PS4". Not yet tested with real
+  hardware: Xbox 360 (genuine), PS4 DualShock 4 (gyro / touchpad),
+  Steam Deck, 2015 Steam Controller, Switch 2 Pro; owner may order some.
+  Zip PadSwitch (follows PadPS4): this note.
+- Push 2b8777d "Last Gamepads Passes Testing" verified: all 125 files
+  identical.
+- REMOTE LOGGING (owner 18:14-18:48; zip RemoteLog1 follows the push):
+  web server + MySQL design dropped; Delphi App Tethering has no Linux,
+  so a roll-your-own LAN protocol: receiver announces on UDP 47811
+  (TSTEAMAPI-LOGRECEIVER 1 <port> <name>), sender connects TCP 47812,
+  "HELLO app|platform|machine|session", receiver ASKS THE USER (Accept)
+  -> OK / NO, then plain UTF-8 lines; a known session id reconnects
+  without asking. The Accept prompt is QUEUED to the main thread and the
+  Indy worker waits on an event (200 ms polls of FClosing / connected), so
+  closing the window cannot deadlock. Files: Documents/LogReceiver/
+  <session>_<app>_<machine>.log, UTF-8 without BOM (own append routine -
+  TFile.AppendAllText may write a BOM each time). Sender: queue + thread,
+  reconnect every 3 s keeping unsent lines, Stop flushes up to 1 s.
+  SteamInputDemo: File > Send log to receiver... (2.5 s discovery, then
+  InputQuery IP:port prefilled) / Stop sending log; the backlog is sent
+  first. NOT YET COMPILED (Indy calls written from memory: TIdUDPClient
+  ReceiveString / Broadcast, TIdStackLocalAddressList, TIdContext.Binding).
+  Owner may publish a release build of LogReceiver. Independent review
+  (no compiler): no compile errors found; fixed from it - Stop no longer
+  blocks up to 2 min (handshake ReadLn in 500 ms slices), a refused
+  sender stops queueing (Active = thread not finished; the demo resets
+  its menu), list rebuild no longer fires OnChange / loses the
+  selection / duplicates lines (FUpdatingList), files opened
+  fmShareDenyNone for append and view, reconnect keeps "connected"
+  (ContainsValue), dead-sender check via CheckForDataOnSource(0),
+  OnChange / queued status guarded after FormClose.
+  Owner's first build (19:25): E2169 in SteamInputDemo uMain.pas - the
+  RemoteLogStatus method declaration sat between private FIELDS (fields
+  must come before methods in a visibility section); moved. Owner:
+  "More robust is better (always)" - the receiver now tries TCP 47812 ..
+  47821 (RL_PORT_TRIES) and announces the port it got. Zip RemoteLog2.
+  Owner (19:39): "I thought we were doing auto-discovery?" (the demo still
+  asked for the address), the question must be a FORM, modal, centred on
+  the main window, and SteamOS opens every main window full screen, so a
+  pad combination starts it: DPadUp + ButtonY + LeftBumper together.
+  Zip RemoteLog3 (follows RemoteLog2): TRemoteLogDiscovery (RemoteLog.
+  Sender: Discover on a thread, result queued to the main thread; never
+  free it inside its handler); the demo searches in the background and
+  connects AT ONCE when exactly one receiver answers; none / several ->
+  src/uRemoteLogTarget (TfrmRemoteLogTarget, Position OwnerFormCenter:
+  list, address box, Search again, Connect, Cancel) - REMOVED again in
+  RemoteLog4 (below). The combo fires when
+  the last of the three goes down; while sending or searching it is
+  ignored (logged). Owner (19:42) asked why LogReceiver listed four
+  addresses (a VPN adapter, the LAN, two virtual adapters): the
+  server binds to every adapter and the line lists each IPv4 address -
+  VPN / virtual-machine adapters included. Real problem found from it:
+  Windows sends 255.255.255.255 out of ONE adapter, possibly the VPN, so
+  the announcement now also goes to each adapter's directed broadcast
+  (from TIdStackLocalAddressIPv4.SubNetMask - written from memory, not
+  yet compiled). Top line reworded.
+  Owner (19:49): LogReceiver must ASK which IP to listen on, ordered by
+  network size (10.x last), the machine's real IP first if it can be
+  told, OK starts listening, File > Exit; SteamInputDemo needs NO modal
+  any more (auto-discovery: File menu or the pad combo just connect).
+  Zip RemoteLog4 (follows RemoteLog3; DELETE demos/SteamInputDemo/src/
+  uRemoteLogTarget.pas and .fmx): LogReceiver/src/uNetworks.pas -
+  LocalNetworks: Windows GetAdaptersAddresses (own declarations of the
+  _LH records up to FirstGatewayAddress, natural alignment - written from
+  memory, NOT checked against iptypes.h: no Windows headers here) gives
+  friendly name, IfType, OperStatus, prefix length, gateways; "real" =
+  up + Ethernet / Wi-Fi + IPv4 gateway + no virtual word in name /
+  description (VIRTUAL_WORDS); other systems: Indy's list (SubNetMask),
+  nothing real. Order: real, then 192.168 / 172.16-31 / 10 / other /
+  169.254 (owner's "network size" read as the private RANGE size - a VPN
+  is often a /32, so the real prefix would have put it first). Receiver:
+  layChoose row (cbNetwork + OK), binds the TCP server and the announcer
+  (BoundIP) to the chosen IP only, announces to its directed broadcast +
+  255.255.255.255, remembers the choice (Documents/LogReceiver/
+  LogReceiver.ini, preselected next time), File > Exit. Demo: no dialog -
+  connects to the first receiver found; none -> log line.
+  Owner's build (20:15): E2029 in RemoteLog.Sender - RemoteLog3 had
+  appended TRemoteLogDiscovery's methods AFTER the unit's initialization
+  section (I replaced the final "end." blindly). Moved; zip RemoteLog5.
+  Lesson: when appending to a unit, check for initialization /
+  finalization first.
+- SteamInputDemo FIRST LINUX64 RUN PASSED (owner, 21:05; Ubuntu with
+  Steam, RemoteLog5 build): Xbox One (USB), PS5 (Bluetooth) and Steam
+  Controller 2026 (USB) all tested successfully; the gamepad had to be
+  set in Steam first (layout selection, as on Windows). Remote logging
+  ACROSS MACHINES PROVEN: started with the pad combo (DPadUp + Y +
+  LeftBumper) on Linux, discovered the LogReceiver on Windows, log
+  received there. LOG CHECKED (owner's LogReceiver file, 21:10): Linux
+  x64 shim PROVEN - Analog two-register return (LeftStick -0.16 / -0.99,
+  Left / Right / Center trackpads +-1, gyro mouse deltas up to ~41),
+  Motion via sret (|accel| ~16300 at rest = 1 g, quaternions), Digital;
+  every glyph from Steam's linux64/../controller_base/images/api/light;
+  layouts loaded within 25 ms (PS5, triton: mapping by 0). Combo: first
+  try found no receiver (LogReceiver not yet on OK), second found it at
+  the chosen LAN address, accepted 5 s later. One MISLEADING output: a
+  configuration callback for the OTHER pad re-listed the PS5's bindings
+  while the PS5 was disconnecting (gone 5 s later) - every action "NOT
+  BOUND ... Steam is using a different layout". Zip LinuxLog1 (follows
+  LinuxPass1): LogOrigins first checks whether ANY required action has an
+  origin; if none, ONE line says the pad may be disconnecting or uses a
+  layout without our actions (list detail "NO BINDINGS (see log)").
+  CORRECTION (owner, 21:12): the PS5 was not "disconnecting" by itself -
+  the owner was changing its Steam controller settings (most likely
+  Steam Input turned off for it, which also drops it from the game's
+  list). The one-line message names both causes, so it stands.
+  LINUX MENUS (owner, 21:13, from his GDEMFetch project, Delphi 13 /
+  Ubuntu GTK 3): FMX's native GTK menu bar shows only FIRST LETTERS.
+  Moving the items to a TMenuBar and freeing the TMainMenu crashes
+  (libgobject g_object_ref) or gives GTK-CRITICAL warnings; freeing a
+  TMainMenu that still has items leaves GTK's bar showing. Tested method:
+  COPY the items to a TMenuBar (owned like the originals), free the
+  originals ONE BY ONE, RecreateOSMenu, free the TMainMenu, then give the
+  copies the originals' names (re-points the form's published fields).
+  Zip LinuxMenu1 (follows LinuxLog1): FmxLinuxMenu.pas (ReplaceMainMenu,
+  Linux-only body, no-op elsewhere) in demos/SteamInputDemo/src AND
+  RemoteLogging/LogReceiver/src - two IDENTICAL copies (projects use only
+  their own sources); project_check.py reports any difference (proven
+  with a deliberate one). Called first in both FormCreates. Our items use
+  only Text / OnClick (+ '-' separator). Rules: never keep a reference to
+  a designed menu item from before the swap; add run-time items after it.
+  README Known issues entry. NOT YET RUN on Linux: check from a terminal
+  that no GTK-CRITICAL lines appear and File shows full names. Next: a real
+  Steam deployment test (depot: executable with exec bit,
+  libsteam_api.so, steam_input_manifest.vdf + 11 controller_*.vdf,
+  probably libfmux.so; Release build; launched through Steam, ideally on
+  the Steam Deck, to see whether the Steam Linux runtime has GTK 3).
+- macOS RELEASE BUILD of SteamInputDemo (owner, 21:34) printed at exit
+  "objc[...]: objc_disposeClassPair: class 'FMXWindow' still has
+  subclasses, including 'NSKVONotifying_FMXWindow'!" - FMX disposing its
+  run-time window class while macOS's KVO subclass of it exists (made
+  whenever something observes the window: system, Steam overlay).
+  Harmless at exit; not our code. Only worth chasing if it appears while
+  running or with a crash on quit.
+- macOS SIGNING for Steam (owner asked, 21:27): Steam installs carry no
+  quarantine attribute, so Gatekeeper does not block unsigned games
+  launched from Steam; ARM64 code still needs at least an ad-hoc
+  signature (PAServer deploy does that). For Developer ID + hardened
+  runtime + notarization a Steam game needs the entitlements
+  com.apple.security.cs.disable-library-validation (libsteam_api.dylib
+  is signed by Valve's team) and com.apple.security.cs.allow-dyld-
+  environment-variables (the overlay is injected via DYLD_*; without it
+  no overlay, so no ShowBindingPanel). Goes in Entitlement.TemplateOSX.xml.
+  OPEN: our .vdf files deploy to Contents/MacOS, which codesign treats
+  as code and rejects - move them to Contents/Resources (and look for the
+  manifest there on macOS) before a Developer ID build. Not done yet.
+- Switch 2 Pro (owner, 2026-10-31): will NOT be bought or tested -
+  controller_switch2_pro.vdf stays "generated, not tested on hardware".
+- GORILLA3D author's notes (16:58-17:29): since 1.5.4 UseFixedFrameRate
+  works and defaults to True on Windows, macOS, Linux and Android; iOS
+  has no timer (event based). On Linux / Android the timer only paces:
+  frames are drawn in the FMX paint cycle (shared GL context), so slow
+  form painting lowers the rate. GameEngineIntegration.md 6.5 updated.
+  MULTI-INPUT ANIMATION: he wrote Gorilla.Animation.Parallel
+  (TGorillaParallelAnimator, sample ParallelAnimation - his copyrighted
+  code, NOT in this repo, kept outside): extracts only the joints each
+  clip moves and combines running clips ADDITIVELY on the rest pose.
+  API: Model := (load with caching []), Press(clip) holds at the detected
+  PeakTime, Release, Play, PlayLoop, SetValue(clip, 0..1) for triggers,
+  SetAxis(negClip, posClip, -1..1) for sticks, StopAll, IsAnyActive,
+  Update / AutoUpdate, OnClipFinished; the model's own AnimationManager
+  must not play at the same time. Clip names as in our models
+  (X_Press, Circle_Press, Trigger_Right_Press_Full, Stick_Left_Up / _Down
+  / _Left / _Right, Stick_Left_Press, ...). His sample loads our three
+  .glb from the TSteamAPI checkout. This is the visualiser's animation
+  layer: map Steam actions -> Press / Release / SetValue / SetAxis.
+- 3D VISUALISER ORDER (owner, 2026-10-31 12:38): Gorilla3D FIRST (FMX,
+  Delphi; installed on the owner's machine, and its developer makes
+  changes quickly), CGE second (also installed, but updates take far
+  longer). So the first visualiser is an FMX app on TSteamAPI +
+  TSteamInput loading models/*.glb in Gorilla3D; ask the owner for the
+  installed Gorilla3D version and its glTF skin / animation API before
+  writing it (unknown here; GameEngineIntegration.md has 1.5.3 notes).
+  Anything Gorilla3D lacks (seeking a clip, driving a joint) is a
+  request to its developer, not a workaround.
+
+## Seventh session (2026-10-31 - 2026-11-02, ended)
+- Handover2 push (90ef3e9 / 4ed5295 "Passover"): uRemoteLogTarget.* gone,
+  FmxLinuxMenu.pas in both places, project_check / pasdoc_check 0
+  problems. File-by-file comparison not done (zip not here).
+- VISUALISER (owner, 21:53): name demos/VirtualGamepad. TGorillaParallel
+  Animator is NOT in Gorilla3D 1.5.4 - it was the author's answer to how
+  to do the task; his code, never in this repo. Switch model is months
+  away. The mapping stays IDENTICAL to SteamInputDemo's: zip VGen1
+  (follows Handover2) - gen_input_mapping.py writes every file to OUTS
+  (both demos' src). Asked the owner for the animator unit + sample
+  (scratchpad only), how the project finds it (Library path suggested),
+  and whether it goes into the next Gorilla3D release. Layout titles
+  still say "SteamInputDemo - <pad>" in both (neutral title offered).
+- Zip VGroup1 (follows VGen1; owner: VirtualGamepad must be in the
+  group): gen_projects.py entry (FMX app, desktop platforms, depends
+  SteamworksFMX, redist, files = INPUT_FILES - the shared list SteamInput
+  Demo uses too) -> VirtualGamepad.dproj created (missing-file mode);
+  hand-written SKELETON .dpr + src/uMain.pas / .fmx (frmGamepad, one
+  label); Steamworks.groupproj edited BY HAND (no --force): Projects entry
+  after SteamInputDemo with SteamworksFMX dependency, its three targets,
+  Build / Clean / Make lists. README layout + tools lines. NOT YET
+  COMPILED. FmxLinuxMenu copy waits until the form gets a menu.
+- Owner's video (bandicam, 19:05; kept outside the repo): the author's
+  ParallelAnimation sample on our PS5_Animated.glb, 60 FPS, both sticks
+  dragged independently at once, keyboard "any number at once", Demo
+  (many at once) / Stop all, clip list; Gorilla3D Developer Edition
+  (watermark). Its panel says "31 clips, 14 moving parts" where these
+  notes say 37 clips / 16 joints - check against the .glb (it may skip
+  Root / Body and clips without a joint).
+- Push 99021ef "Start VirtualGamepad" verified: all 21 files of VGen1 +
+  VGroup1 identical except VirtualGamepad.dproj, re-saved by the IDE
+  (iOS / Android sections, post-build repeated per configuration, 3
+  standard DeployFile entries) - units, search path, welcome page, every
+  post-build copy and all 39 DeployFile entries survived.
+- Zip Deploy1 (follows the push; owner: "multi-platform, make sure
+  deployment is taken care of"): VirtualGamepad ships the 3 models
+  (MODEL_FILES = ..\..\models\*_Animated.glb in gen_projects.py):
+  Windows post-build copies (all 6 events: the generator's 2 CDATA ones
+  and the IDE's 4 per-configuration ones, '&&'-joined), Linux64 beside
+  the executable; macOS data (.vdf + .glb) goes to Contents\Resources\
+  (gen_projects.py key mac_data; the library stays in Contents\MacOS),
+  which closes the codesign problem FOR THIS PROJECT (SteamInputDemo
+  still deploys .vdf to Contents/MacOS). The IDE-saved .dproj was edited
+  by hand; a --force run in a scratch copy gives the same DeployFile set
+  and post-build copies. DataFolder in uMain.pas = exe folder, or
+  ../Resources on macOS; the skeleton shows "Deployment OK / INCOMPLETE",
+  the folder, manifest, layouts n of 11, models n of 3 (names) - one
+  build per platform tests deployment. NOT YET COMPILED. Android: not a
+  target yet (data would go to assets\internal\). Unknown: whether
+  Gorilla3D needs files of its own deployed on macOS / Linux - check
+  when it is added.
+- Owner (22:10): "do the 3D visuals" (and pointed to Gorilla3D's v1.5
+  docs, gorilla3d.de/doc/v3/version/v1.5, and his PasDoc of 1.5.3,
+  peardox.com/G3D/). Zip Visual1 (follows Deploy1): VirtualGamepad is a
+  real program. Steam Input copied from SteamInputDemo (InGame set only,
+  same TInputAction order minus the Menu actions; explicit RunFrame from
+  tmPoll; tmStart / RETRY_MS auto-start; configuration callback texts;
+  ShowBindingPanel from File > View Controller Settings; the FIRST
+  connected pad is shown). 3D built IN CODE (no Gorilla objects in the
+  .fmx): TGorillaViewport (Align Client), TGorillaSmoothCameraController
+  (cnpOrbit, Orbiting) with a TGorillaCamera child at distance 6, a
+  directional TGorillaLight child of the camera, the model by type
+  (ModelFileFor: PS3/4/5 -> PS5, Steam Controller 2015 / 2026 / Deck ->
+  Steam Controller, else Xbox) loaded with LoadNewModelFromFile(viewport,
+  nil, path, []) - no caching, as the author's animator needs - and
+  AnimationManager.Current.Stop (the manager has NO StopAnimation - the
+  v1.5 Models page shows one, the reference / PasDoc do not; Stop jumps
+  to the clip's last frame = rest pose). Motion: the pad's rotQuat relative to the
+  first reading (View > Recenter motion resets; View > Follow pad motion
+  toggles, menu TEXT changes - no IsChecked, FmxLinuxMenu copies only
+  Text / OnClick) applied as FModel.TransformMatrix := Scale(3) *
+  QuatToMatrix (FMX row-vector convention). Banner + lblLive (pressed
+  buttons, non-zero analog values); presses / releases logged; log file
+  VirtualGamepad.log. FmxLinuxMenu: THIRD identical copy (COPIES in
+  project_check.py), in .dpr / .dproj / gen_projects.py. Gorilla units
+  from the IDE library path (no project path). Sources of each Gorilla
+  call: v1.5 docs Viewport / Camera (smooth controller code) / Light
+  (CreateLight example) / Models (LoadNewModelFromFile, StopAnimation),
+  PasDoc TGorillaModel (TransformMatrix, AnimationManager). NOT YET
+  COMPILED. UNKNOWN until run: Steam's motion axes vs Gorilla's (the
+  model may turn the wrong way round an axis - fix in ApplyMotion), glTF
+  Y-up vs FMX Y-down (model may be upside down), whether TransformMatrix
+  survives the controller / animation updates, model centre (it sits
+  0..0.6 above its origin, so a little off-centre).
+  Gorilla3D platform facts (v1.5 docs): Windows - no extra DLLs unless
+  physics (Jolt) / audio (FMOD); Linux - libsk4d.so (Skia4Delphi) must be
+  deployed or installed in /usr/local/lib, X11 only (no Wayland), OpenGL
+  4.3+; macOS - Metal, Intel x64 only (Apple silicon "on the roadmap"),
+  ad-hoc signing for development. [RESOLVED 2026-11-03, owner: libsk4d.so is
+  Skia's redistributable - the IDE packages it automatically on deploy;
+  nothing to add to the .dproj.] Old note: libsk4d.so is NOT in the .dproj yet:
+  its path on the owner's machine is unknown (asked).
+  Independent review (no compiler) of Visual1 found and fixed: the
+  StopAnimation call above, and FMX.Graphics missing from the uses
+  (TStyledSetting - SteamInputDemo has it); LightType written
+  FMX.Types3D.TLightType.Directional in case a Gorilla unit declares its
+  own. Verified against the docs: every other Gorilla identifier,
+  TMatrix3D, the Steam Input calls, the .fmx events.
+- VIRTUALGAMEPAD FIRST RUN (owner, 23:20, Win64 Debug, Visual1): COMPILED
+  and ran. Steam: DLL loaded, SDK 1.65, ISteamInput started, manifest
+  found ONLY through the src\ fallback; 3D scene created (no Gorilla
+  error); Steam Controller 2026 identified (type 17), our layout
+  (mapping by 0) 35 ms later, 29 handles resolved, first motion quat
+  +0.06 +0.02 -0.00 +1.00. BUT "Deployment INCOMPLETE": no .vdf and no
+  .glb in Win64\Debug although steam_api64.dll is there - the post-build
+  event that made this build did not run (the manifest copy follows the
+  DLL copy in the same event). The delivered events are complete (16
+  copies, ~4000 chars, same CR + && format as SteamInputDemo's working
+  ones). Asked for the build's Output messages. Zip Visual2 (follows
+  Visual1): ModelPath falls back to <repo>\models when run from
+  <project>\<platform>\<config> without the copy (logged as such), like
+  ManifestPath's src\ fallback; the deployment check still reports it.
+- Owner's 23:26 run (Visual2): both models LOADED from <repo>\models
+  (Gorilla3D reads our .glb, no error); the model switched Xbox -> Steam
+  Controller when the 2026 pad was identified; first motion quat -0.15
+  +0.16 -0.68 +0.70 (~90 deg about Z). Post-build copies still not run
+  (0 of 11 layouts) - build Output asked for again. Screenshot 23:28:
+  "way too close" - the model filled the whole view (MODEL_SCALE 3 at
+  distance 6 should have fitted a 0.95-wide model: Gorilla's import or
+  the controller changes the size / distance). Zip Visual3 (follows
+  Visual2): MODEL_SCALE 1; FitCamera after each load - the controller's
+  own fit (Target := model, AutoAdjustCameraToTarget, AdjustCameraTo
+  Target(True); PasDoc TGorillaSmoothCameraController) and a log line
+  with GetAnimatedBoundingBox (size + centre, evidence for the scale);
+  Target := nil before a model is freed.
+- Owner's 23:31 screenshot (Visual3): camera fit WORKS ("Camera fitted
+  to the model: True"); Gorilla imports at file scale (bounding box 0.94
+  x 0.65 x 0.39, centre 0 0.31 0.02 = the .glb's own numbers - so the
+  23:28 "too close" was our 3x at a fixed distance). We saw the BACK
+  (L4 / L5 / R4 / R5 paddles toward the camera, upright); the paddle
+  labels looked MIRRORED - unresolved: real handedness mirror or an
+  artefact of the back view; the front view will show (D-pad / left stick
+  should be on the left, text readable). Zip Visual4 (follows Visual3):
+  the model gets half a turn about Y before the pad's rotation
+  (QUAT_HALF_TURN_Y, face to the camera); View > Show back / Show face
+  toggles it (FShowBack, FLastMotion redraws at once).
+- Owner's 23:35 screenshot (Visual4): the FACE, but UPSIDE DOWN
+  (trackpads at the top, ABXY bottom-left, "A" read as an inverted A) -
+  every label ROTATED half a turn, none mirrored: no handedness flip, the
+  import just has glTF Y-up against FMX Y-down (the 23:31 back view was
+  upside down too). Zip Visual5 (follows Visual4): base turn = half a
+  turn about X for the face (= half about Y, then half about Z), half
+  about Z for the back (QUAT_HALF_TURN_X / _Z).
+- Owner's REFERENCE (23:35, his own model viewer, kept outside the repo):
+  Steam Controller face-on, D-pad top left, ABXY top right, sticks in
+  the middle, trackpads at the bottom, pad about 3/4 of the view wide -
+  Visual5's orientation should match it. Zip Visual6 (follows Visual5):
+  MODEL_SCALE 2.5 after the fit (the fit left it ~1/4 wide).
+- Owner's 23:38 screenshot (Visual6, pad switched off): the Xbox model
+  RIGHT WAY UP and face-on (Visual5's base turn confirmed on a second
+  model) but still ~1/4 of the view wide - the fit INCLUDES the model's
+  scale, so 2.5 changed nothing; back to 1. Owner: with no controller the
+  placeholder Xbox model "doesn't look like No controller". Zip Visual7
+  (follows Visual6): no model at start; RemoveModel when FActive is 0
+  (banner) and on Steam shutdown; a model only once Steam reports a pad.
+  OPEN: the size - the fit's distance is too large for the owner's taste
+  (reference: ~3/4 wide); mouse wheel zoom untested.
+- Owner's 23:42 screenshot (Visual7, maximised): Steam Controller
+  upright and face-on like the reference; A / B presses logged. The pad
+  sat ABOVE the view's centre: the models' origin is their bottom edge
+  (bounding-box centre y 0.31) - also the pivot of the pad's rotation.
+  Zip Visual8 (follows Visual7): FModelCentre (GetAnimatedBoundingBox
+  centre, model units - the box is untransformed: its centre stayed
+  +0.31 under the base half turn) moved to the origin in the transform
+  (T * S * R) before the fit. Size still ~1/5 of the window.
+- Owner's 23:49 run (Visual8, Xbox One pad): log CLEAN - our layout,
+  29 handles, every button press / release (A B X Y, two D-pad
+  directions at once, Start / Select, RightBumper). Screenshot: still
+  ~1/4 wide and still a little above centre. OWNER (23:52): the motion
+  part came first; the MAIN job is the model REPLAYING THE BUTTONS AND
+  STICKS (the Xbox pad has no gyro). That needs TGorillaParallelAnimator
+  - asked AGAIN for Gorilla.Animation.Parallel.pas (+ his sample), to be
+  kept in the scratchpad, never committed; writing against the CLAUDE.md
+  summary alone would repeat the StopAnimation mistake. Zip Visual9
+  (follows Visual8): the camera is fitted ONCE at scale 1 with
+  AutoAdjustCameraToTarget OFF (FFitting), then the model is shown at
+  VIEW_SCALE 3 - with auto adjust on, the controller re-fitted to every
+  scale. MODEL_SCALE gone.
+- Owner (23:54) ATTACHED the author's ParallelAnimation zip (kept in the
+  scratchpad, NEVER in the repo): Gorilla.Animation.Parallel.pas (1489
+  lines; includes .\..\Gorilla.Platforms.inc; his sample references it
+  as ..\..\lib\instance\ - so it lives in Gorilla3D's lib\instance\,
+  on the owner's Library path) + sample Unit1.pas. API read from the
+  SOURCE: Model := (extracts clips, bind pose, stops AnimationManager),
+  FindClip, ClipCount, Joints, Press / Release / Play / PlayLoop /
+  SetValue / SetAxis(neg, pos, v) / Stop (Boolean, False if no clip),
+  StopAll, IsAnyActive, Update, AutoUpdate (default True, own ticker).
+  Sample scene: design camera Position.Z := -24, point TGorillaLight on
+  it, TDummy pivot, LoadNewModelFromFile(pivot, nil, file, []), Scale :=
+  8 / largest side of GetAbsoluteBoundingBox, RotationAngle.X := 180,
+  pivot := -absolute box centre; sticks SetAxis with BOTH axes negated
+  (the clips tilt opposite to their names in that view); triggers
+  SetValue(Trigger_*_Press_Full, 0..1); PS model detected by
+  FindClip('Circle_Press'); ClipOf table = our ButtonClip.
+  Owner's 23:55 screenshot (Visual9): model huge and off-centre - the 3x
+  after the fit and the centring through TransformMatrix were GUESSES
+  (owner: "You're guessing"); the translation part of TransformMatrix had
+  no visible effect. Zip Anim1 (follows Visual9): scene = the sample's,
+  verbatim (PlaceModel); my own camera controller / fit / FModelCentre
+  gone; TransformMatrix (scale * rotation, no translation) written ONLY
+  for pad motion and Show back (never on an Xbox pad) - not yet seen on
+  screen with the pivot, and its rotation pivots about the model's origin
+  (bottom edge), not its centre. Animation: AnimateButton (Press /
+  Release on edges, ButtonClip positional table incl. PS names, paddles
+  L5 / R5 lower, L4 / R4 upper), AnimateAnalog (sticks SetAxis -x / -y,
+  triggers SetValue x; only on change), ResetAnimState (StopAll) on a new
+  model / controller / Steam stop. Gyro and trackpads: no clips.
+  System.Math listed BEFORE System.StrUtils (string IfThen must win).
+  NOT YET COMPILED.
+- Owner (23:58): "look at the camera handling in github.com/peardox/
+  Sprite3D - that's how to do it". Its src/lib/Sprite3DCamera.pas
+  (TSprite3DCamera: three single-axis TDummy pivots, Azimuth /
+  PolarAngle / Roll / Distance, FitToBounds / FitToBoundsMax reading the
+  frustum from Gorilla's GetProjectionMatrix, boxes carried through
+  LocalToAbsolute3D) depends only on RTL / FMX / Gorilla. OWNER'S
+  DECISION (2026-11-01): VENDOR IT UNCHANGED - demos/VirtualGamepad/src/
+  Sprite3DCamera.pas, byte-for-byte (UTF-8 BOM, //** comments, private
+  members without PasDoc); pasdoc_check.py skips the files in VENDORED
+  (path -> origin). Re-copy it, never edit it, when Sprite3D changes.
+  Zip Cam1 (follows Anim1): camera as in Sprite3D's main form -
+  UsingDesignCamera False, TSprite3DCamera.Create(viewport) (the rig
+  parents itself), FOV 45, point light child of the camera at its origin;
+  FitView = FitToBounds(model, 0.08) then Distance * FZoom, after each
+  load, resize, Show back and orbit step; left drag orbits (azimuth and
+  polar), wheel zooms (1.1 per notch), right / Ctrl-click resets. Model
+  placement stays the author's sample (pivot, scale, X 180). In .dpr /
+  .dproj / gen_projects. NOT YET COMPILED.
+  Owner's build Output (00:00, Anim1): F2613 Gorilla.Animation.Parallel
+  not found - expected: the unit is on no path yet. His Win64 library
+  path has only Gorilla3D's DCU folder (Public Documents\Gorilla3D\37.0\
+  Win64\Release); the unit is SOURCE and includes .\..\Gorilla.
+  Platforms.inc, so it must sit one folder below that include (the
+  author's tree: lib\instance\, include in lib\). Asked where
+  Gorilla.Platforms.inc is on his machine; if Gorilla3D's install has no
+  sources / include, the author has to ship the unit (or a DCU) - a
+  request to him, not ours to work round. (The Output also showed no
+  post-build lines: compile failed first, so the copy question is still
+  open.)
+- Owner's builds 00:12-00:23: Gorilla.Platforms.inc is in Gorilla3D's
+  GAMEPACKAGE\lib (Public Documents\Gorilla3D\37.0 - that folder holds
+  Gorilla3D SOURCES: with it on the path dcc recompiled Gorilla.* from
+  source, so it must NOT be on a search path); F2613 persisted. Owner:
+  "it was in the zip I gave you" - I handed the unit back laid out as
+  instance\Gorilla.Animation.Parallel.pas (GorillaParallel-instance.zip,
+  extract into GAMEPACKAGE\lib; not a repo file). Owner: "put the path in
+  the dproj". Zip Path1 (follows Cam1): VirtualGamepad's search path =
+  src;$(PUBLIC)\Documents\Gorilla3D\$(PRODUCTVERSION)\GAMEPACKAGE\lib\
+  instance - macros only (PUBLIC = Windows public profile env var,
+  PRODUCTVERSION as in the UserTools.proj import), so no machine path in
+  the tracked file; gen_projects.py + README the same.
+- Owner (00:32): F2613 again; "the far simpler solution is to just stick
+  it in the same folder as uMain" - did that, IT COMPILED. Zip Local1
+  (follows Path1): Path1's $(PUBLIC) search path removed again (back to
+  "src"); .gitignore ignores demos/VirtualGamepad/src/Gorilla.Animation.
+  Parallel.pas and demos/VirtualGamepad/Gorilla.Platforms.inc (the
+  include one folder up, should he have put it there) so the author's
+  code can never be pushed; pasdoc_check.py skips them (LOCAL_ONLY).
+  README: copy the unit next to uMain.pas. FIRST COMPILE of the animator
+  code, ButtonClip / AnimateAnalog, PlaceModel and the Sprite3D camera
+  (Cam1): no errors.
+- Owner (00:34): the author wrote Gorilla.Animation.Parallel.pas
+  SPECIFICALLY for this project. AUTHOR'S ANSWER (relayed 14:55): "fine
+  for me if you want to push it to the repo, because the next G3D version
+  might take a while. Just remove the licensing." This replaces the
+  earlier rule "his code, never in this repo" for THIS unit only. Zip
+  Anim2 (follows Local1): demos/VirtualGamepad/src/Gorilla.Animation.
+  Parallel.pas IN THE REPO - his 10-line copyright header removed, and
+  {$I .\..\Gorilla.Platforms.inc} (Gorilla3D's source tree, not covered
+  and not in a clone) replaced by the one constant it declares for
+  Delphi 10.3+ (pfidAllGorillaPlatforms = pidAllPlatforms) - the ONLY two
+  changes; otherwise his file as sent (scratchpad copy). In VENDORED
+  (pasdoc_check skips it, origin noted); in .dpr / .dproj /
+  gen_projects. .gitignore keeps only Gorilla.Platforms.inc ignored.
+  Sample Unit1.pas stays outside the repo (not asked). If a Gorilla3D
+  release ships the unit, delete ours and use his.
+- Push d11e7e9 "Getting there" (15:05) VERIFIED: all 13 files delivered
+  since 99021ef (Deploy1, Visual1-9, Anim1, Cam1, Path1, Local1, Anim2)
+  identical ignoring CRLF / BOM; Sprite3DCamera.pas byte-identical to
+  Sprite3D's; pasdoc / project checks 0 problems; VirtualGamepad search
+  path "src" only; group Dependencies intact. Owner removed Gorilla3D's
+  GAMEPACKAGE\lib\instance folder; no tracked file refers to it.
+  NEXT: owner's run of Anim2 with the Xbox pad (buttons / sticks /
+  triggers on the model, framing) and the Steam Controller / PS5 (gyro
+  through SetModelRotation, untested with the pivot); the Windows
+  post-build copies (manifest / layouts / models never arrived in
+  Win64\Debug - Output with the "Steamworks post-build" lines needed).
+- STEAM DEPLOYMENT of SteamInputDemo (owner, 2026-11-01): Release
+  depots for Windows, macOS ARM and Linux64 uploaded; Windows and macOS
+  ARM WORK from Steam. Linux64 (Ubuntu 26.04, Wayland desktop) starts
+  and quits. Findings:
+  * Run by hand, a Release build relaunches through Steam and exits
+    (RestartIfNecessary True) - expected; steam_appid.txt next to the
+    exe stops that for a terminal test (never ship it).
+  * Terminal run (15:27, steam_appid.txt) WORKS: libsteam_api.so beside
+    the exe, Steam Input + manifest, window, clean close.
+  * libfmux: NOT a depot file - FMXLinux carries it inside the
+    executable (14 MB) and unpacks ~/.fmxlinux/libfmux-1.0dev.so at
+    start (proven: deleted, run, recreated). It needs libgtk-3.so.0,
+    libgdk-3.so.0, libgdk_pixbuf-2.0.so.0 (versioned names).
+  * Under Steam (stderr via Launch Options
+    "%command% > /tmp/sid-steam.txt 2>&1"; the gameoverlayrenderer.so
+    "wrong ELF class" lines are harmless):
+    - Steam Linux Runtime 4.0 (Steam's default here): "GTK 3 is required
+      to be installed." + runtime error 217 - no usable GTK 3 in 4.0.
+    - Steam Linux Runtime 3.0 (sniper): GTK loads (canberra-gtk-module
+      messages), then EAccessViolation calling address 0, BEFORE the
+      log was written - with and without GDK_BACKEND=x11.
+  * Our suspect in sniper: FormCreate ran ReplaceMainMenu (FmxLinuxMenu)
+    BEFORE creating the log, so a crash there leaves no log. Zip
+    LinuxRT1 (follows Sync3): both demos create the log FIRST, log
+    "FormCreate started", then ReplaceMainMenu, then "Main menu ready".
+    Next run in sniper: no log at all = FMX / unit initialisation;
+    only "FormCreate started" = our menu swap; both lines = later.
+  * Not yet done: a blank FMX app in sniper (isolates FMXLinux), a
+    backtrace, the scout / LD_LIBRARY_PATH question. If FMX itself
+    fails in sniper -> Embarcadero bug report (FMXLinux in Steam Linux
+    Runtime 3.0 / 4.0), with this evidence.
+  * LinuxRT1 build in sniper (16:08): STILL NO LOG -> the crash is
+    before FormCreate. BLANK FMX FORM (owner, Release, copied over the
+    Steam exe, 16:18): FAILS under 4.0 (no GTK 3 - expected), WORKS
+    under 3.0 sniper. So FMXLinux runs in sniper and something of
+    SteamInputDemo's crashes before OnCreate: unit initialisation (our
+    Steamworks units, Indy via RemoteLog.Sender) or form streaming in
+    CreateForm (prime suspect TMainMenu - the native GTK menu bar the
+    blank form lacks; TSteamAPI / TSteamInput constructors next).
+    Zip LinuxRT2 (follows LinuxRT1): both .dpr files write POSIX-only
+    stderr markers "start-up: units initialised" / "application
+    initialised, creating the main form" / "main form created" (stderr
+    is what %command% > file 2>&1 captures). With the log's "FormCreate
+    started" that places the crash between two lines.
+    Linux runtime for the app: 3.0 sniper (4.0 has no GTK 3) - set on
+    the partner site once the crash is fixed.
+  * LinuxRT2 in sniper (16:22): "units initialised", "creating the
+    main form", "main form CREATED", then the AV at 0. So OnCreate
+    (menu swap included) completed and the crash is in the running
+    program - first suspect tmStart -> SteamAPI1.Open. Yet NO log file
+    although FormCreate ran: creating it next to the exe FAILED (game
+    folder not writable inside the runtime; the failure was silent).
+    Zip LinuxRT3 (follows LinuxRT2): AddLog writes every line to stderr
+    first and flushes (POSIX only), so the whole log - Steam's core log
+    lines included - reaches the launch-options capture; a failed log
+    file is reported with its path and error. LATER: a shipped game
+    must log / save under the user's folders (XDG / AppData / Library),
+    never next to the executable.
+  * LinuxRT3 in sniper (16:27): the same three markers, then the AV -
+    and NO AddLog line at all ("FormCreate started" missing). CORRECTION:
+    my reading of LinuxRT2 was WRONG - FMX's Application.CreateForm only
+    QUEUES the form; FMX creates it inside Application.Run, so "main form
+    created" printed before the form existed (marker renamed in LinuxRT4:
+    "Application.Run (FMX creates the queued forms now)"). Correct
+    reading: the crash is while FMX STREAMS uMain.fmx, before OnCreate;
+    the blank form passes, so a component of ours: prime suspect
+    TMainMenu (FMX's native GTK menu bar on Linux), then TSteamAPI /
+    TSteamInput, then the rest. Asked the owner: blank form + TMainMenu
+    in sniper. If TMainMenu: Embarcadero bug, and on Linux the form must
+    not stream a TMainMenu at all (FmxLinuxMenu replaces it anyway).
+  * Owner (16:39-16:42): blank form + TMainMenu RUNS in sniper (from
+    Steam; "M" = the first-letter GTK menu bar; atk-bridge warning
+    harmless) - TMainMenu cleared. TSteamAPI / TSteamInput constructors
+    read: harmless at load (a timer, defaults, linking; nothing loaded).
+    Owner: "maybe the FMX menu fix?" - ReplaceMainMenu runs in FormCreate
+    and his test form did not have it; whether FormCreate was reached
+    depends on that build having LinuxRT3's uMain.pas (unconfirmed).
+    Zip LinuxRT5 (follows LinuxRT4): SteamInputDemo's form traces its own
+    load on stderr (POSIX): constructor start / end, "creating a <class>"
+    per streamed component (TReader.OnCreateComponent, previous handler
+    chained, restored after), Loaded before / after; FormCreate's lines
+    follow. The last line before the AV names the culprit, the menu swap
+    included ("FormCreate started" without "Main menu ready").
+  * LinuxRT5 in sniper (16:46): Panel, Label, Label, Layout, Label, then
+    "creating a TListBox" -> AV. Not our code, not the menu fix. Owner's
+    LD_DEBUG=symbols trace (17:03): just before the AV the program looked
+    up gtk_event_controller_set_propagation_phase and
+    gtk_event_controller_handle_event in the GLOBAL scope only (exe,
+    overlay, libc / libm / libdl / librt / libpthread, GL, X11 / xcb) -
+    libgtk-3 NOT in it - found nothing, called nil. Both exist in GTK
+    3.24 (sniper's): inside pressure-vessel libgtk-3 is loaded privately
+    (RTLD_LOCAL) so FMX's global dlsym misses it; FMX calls the result
+    unchecked. EMBARCADERO BUG (FMX Linux, TListBox creation in Steam
+    Linux Runtime 3.0). Zip LinuxRT6 (follows LinuxRT5): SteamInputDemo
+    unit src/FmxLinuxGtkGlobal.pas (Linux-only initialization:
+    dlopen libgtk-3.so.0 and libgdk-3.so.0 with RTLD_LAZY|RTLD_GLOBAL,
+    result on stderr) in .dpr / .dproj / gen_projects. If it fixes
+    sniper: copy it to VirtualGamepad and LogReceiver (COPIES in
+    project_check.py, like FmxLinuxMenu) and report the bug.
+  * Owner (17:07): bug report written - docs/fmx-steamos-gtk3-bug.md
+    (listed in docs/README.md). It marks two items NOT YET CONFIRMED:
+    the one-TListBox minimal repro and the RTLD_GLOBAL workaround -
+    update it when the owner has run them. Zip BugDoc1 (follows LinuxRT6).
+  * Owner (17:19): short fix doc - docs/fmx-steamos-gtk3-bug-fix.md
+    (owner wrote "fmx-steamos.gtx-bug-fix.md"; named to pair with the
+    report - rename if he meant otherwise): Runtime 3.0 not 4.0, the
+    RTLD_GLOBAL unit + .dpr example, checking a launch. Marked "step 2
+    not yet run in the runtime". Zip BugDoc2 (follows BugDoc1).
+  * Owner (17:21): docs/fmx-menu-bug-fix.md - the Linux first-letter
+    menu fix (FmxLinuxMenu.ReplaceMainMenu): usage, the core of the unit,
+    what does not work, rules; status: method proven in GDEMFetch, runs
+    without errors in our demos, full names / no GTK-CRITICAL still
+    unconfirmed on screen. In docs/README.md. Zip BugDoc3 (follows
+    BugDoc2).
+  * OWNER (18:01): "Linux fixed" - with FmxLinuxGtkGlobal (LinuxRT6)
+    SteamInputDemo starts from Steam in Runtime 3.0 on Ubuntu. "SteamOS
+    has additional issues" - details asked. Zip GtkAll1 (follows
+    BugDoc3): FmxLinuxGtkGlobal.pas copied to VirtualGamepad and
+    LogReceiver (.dpr / .dproj / gen_projects); project_check.py checks
+    BOTH shared units (FmxLinuxMenu, FmxLinuxGtkGlobal) in all three
+    src folders (COPY_DIRS; proven with a deliberate difference); unit
+    doc says PROVEN + the copies; bug report and fix doc: workaround
+    proven, minimal repro still unconfirmed, SteamOS open.
+- STEAMOS (ROG Ally, owner 18:23-19:17): from Steam (Game Mode and
+  Desktop) with Runtime 3.0 it showed a launch graphic and returned;
+  stderr ended before ANY program output. Konsole on the Ally:
+  * outside the runtime (steam_appid.txt): WORKS fully (exit 0) -
+    FMX, GTK fix, menu fix, Steam, Steam Input all fine on SteamOS.
+  * inside sniper (".../SteamLinuxRuntime_sniper/run -- ./prog"): exit
+    139 (SIGSEGV), no output at all, ~/.fmxlinux not even created.
+  * LD_DEBUG=libs: "libicuuc.so.78: undefined symbol: u_strToUTF8",
+    "./SteamInputDemo: undefined symbol: ucol_open_78 / ucol_close_78".
+    In the container: pressure-vessel/overrides has the HOST's
+    libicuuc.so.78 + libicudata.so.78 (brought in for the graphics
+    drivers) but NO libicui18n.so.78; sniper's own /usr/lib has a
+    COMPLETE ICU 67.
+  * CAUSE, from the owner's Delphi 13 RTL source (kept in the
+    scratchpad, Embarcadero's - not in the repo): System's
+    initialization calls InitICU (source/rtl/sys/ICU.inc). OpenICU_Lib
+    tries the UNVERSIONED name, then 99 downto 40; libicuuc -> .78 and
+    REMEMBERS 78, so libicui18n is tried ONLY as .78 -> handle 0; then
+    ucol_open := dlsym(0 = global scope, 'ucol_open_78') = nil,
+    unchecked; SetUTF8CompareLocale -> GetNewLocalICU calls it, still
+    inside System's init -> signal 11 before any unit of ours. Not
+    fixable from program code. System.Internal.ICU also never checks
+    its dlsym results. SECOND EMBARCADERO BUG.
+  * FIX PROVEN BY HAND (19:13): in sniper, links /tmp/icu67/libicuuc.so
+    -> /usr/lib/x86_64-linux-gnu/libicuuc.so.67 and libicui18n.so ->
+    ...67 with LD_LIBRARY_PATH=/tmp/icu67 - the unversioned names are
+    tried FIRST, so Delphi takes the complete 67 pair: program ran,
+    Steam + Steam Input up, exit 0 (log file WAS written here).
+  * Controller: callback 2801 "Xbox One connected" but never
+    "Connected controllers" (0 handles) in BOTH Konsole runs (inside
+    and outside the runtime) - most likely because Steam did not launch
+    it, so Steam routes no pad to it. Needs a launch FROM Steam.
+  Zip IcuFix1 (follows GtkAll1): src/SteamInputDemo.sh - POSIX sh
+  launcher: newest version N with BOTH libicuuc.so.N and libicui18n.so.N
+  in /usr/lib/x86_64-linux-gnu, links in $XDG_RUNTIME_DIR (or /tmp)/
+  delphi-icu-N, prepends it to LD_LIBRARY_PATH, execs the program;
+  no complete pair (normal desktop) -> unchanged. Named <prog>.sh it
+  starts <prog>; named <prog> it starts <prog>.bin (test without
+  touching Steam's settings). Logic tested here with fake libraries
+  (67 complete + 78 half -> 67; both naming modes; none -> unchanged).
+  Deployed Linux64 only (gen_projects key linux_files; .dproj edited by
+  hand, matches a --force run). .gitattributes: *.sh eol=lf.
+  NEXT: owner tests from Steam in Game Mode via the rename trick; then
+  the depot's Linux launch command -> SteamInputDemo.sh on the partner
+  site; docs (ICU report + fix) once proven from Steam.
+- ICU LAUNCHER PROVEN FROM STEAM (owner, ROG Ally, Game Mode, Runtime
+  3.0, 19:35; rename trick: SteamInputDemo.bin + script as
+  SteamInputDemo; log via LogReceiver - remote logging + pad combo
+  PROVEN on SteamOS too): started, Steam + Steam Input up, every button,
+  analog triggers, motion. Layout: first "mapping by 76561198027655094"
+  (= the OWNER's account: a layout left over from his October testing of
+  a DIFFERENT, unrelated build under this AppID, synced to the Ally by
+  Steam; uses Steam Input API False -> nothing bound) - File > View
+  Controller Settings (ShowBindingPanel True in Game Mode) -> official
+  layout, mapping by 0, all bound. Owner-specific: a player does not
+  inherit it. (The same creator ID on 2026-10-31 was that leftover too.)
+  ROG Ally facts: type XBoxOneController (3) -> our banner says Xbox One,
+  controller_xboxone.vdf loads; BUT button origins are LENOVO LEGION GO
+  ones (A 410, B 411, X 412, Y 413, LB 414, RB 415, Menu 416, View 417,
+  LS 437, RS 443, Y1 448, Y2 449, D-pad 451-454; sd_ glyphs for
+  Menu / View), sticks / triggers XBoxOne origins (122 / 124 / 126 /
+  132). Back buttons arrive as Legion Go Y1 / Y2 and Steam put them on
+  ButtonX / ButtonA by itself. It HAS a gyro (motion data) - our Xbox
+  layout binds no Gyro and MotionText says "no" (wrong for it). Its
+  accel is ~9.8 at rest (m/s^2) where PS5 / Steam Controller give
+  ~16400 = 1 g: the visualiser must not assume one unit.
+  Zip IcuDoc1 (follows IcuFix1): docs/fmx-steamos-icu-bug.md (report)
+  + docs/fmx-steamos-icu-bug-fix.md (short, script); GTK fix doc status
+  points at it; docs/README.md lists both.
+  Owner (19:54): ALL public-release settings already done on the partner
+  site (no TO DO left there).
+- Push dda6ff5 "SteamDeck+ Linux fixes" (after 8997113) VERIFIED: 21 of
+  22 files delivered since d11e7e9 identical; SteamInputDemo.dproj =
+  IDE re-save (default platform Linux64, entries reordered, both
+  SteamInputDemo.sh DeployFile entries + FmxLinuxGtkGlobal kept -
+  accepted). Steamworks.groupproj: the IDE DROPPED THE DEPENDENCIES
+  AGAIN (all <Dependencies/>) and listed packages first - restored from
+  the working copy in zip Group3. demos/DummyTest/ (owner's blank-form
+  sniper test, SteamInputDemo.dpr + Unit1) came along in 8997113 - not
+  in the group; pasdoc_check reports its Unit1 (3 problems) - owner
+  asked whether to keep it. SteamInputDemo.sh is mode 100644 in git
+  (Steam's install made every file executable anyway).
+- Push e2a4954 (20:06) VERIFIED: demos/DummyTest removed (owner forgot
+  it), Group3 applied - groupproj (10 dependencies) and CLAUDE.md
+  identical; pasdoc / project checks 0 problems. Working copy reset.
+- Owner (20:18-20:23): capabilities? ISteamInput (SDK 1.65) has NO
+  per-pad capability call (GetSessionInputConfigurationSettings is a
+  per-session family bitmask: PS 1, Xbox 2, Generic 4, Switch 8).
+  controller_caps in exported layouts is an undocumented internal mask
+  (not in our generated layouts; decoding it would need exports from
+  several pads). OWNER'S CHOICE: a run-time PROBE reporting what a pad
+  has beyond its type's profile. Zip Probe1 (follows Notes5),
+  SteamInputDemo only: OriginFamily (SDK origin families are contiguous
+  ranges - named first / last constants), ExpectedFamily /
+  ExpectsMotion / ExpectsBackButtons per type, IsBackButtonOrigin (SDK
+  grip / L4..R5 / Y1 Y2 / Horipad names; Frame analog grips and 2026
+  grip sensors excluded); ProbeOrigin in LogOrigins (reset per layout);
+  accelerometer / gyroscope from GetMotionData in ReadActions (non-zero
+  accel / rotation speed); ProbeText -> banner third line "Detected
+  beyond the <type> profile: ..." + log lines. All 53 origin constants
+  checked against SDKTypes. docs/SteamInputMapping.md section 5: "When
+  the type is not the whole story (handhelds)". NOT YET COMPILED.
+  Expected on the Ally: motion sensors (accelerometer + gyroscope); back
+  buttons: Y1 Button, Y2 Button; controls report as LenovoLegionGo.
+  On the plain Xbox pad: nothing.
+- Owner (20:23): new input devices ON ORDER - PS4 DualShock 4 (official;
+  gyro + touchpad, the real thing after the clone), Logitech G920 wheel
+  and Thrustmaster T.Flight Hotas One (flight stick + throttle). Wheel and
+  HOTAS are not gamepads: Steam Input may report them as Generic or not
+  at all (they are DirectInput / HID devices) - expect "interesting".
+- Owner (20:30-20:36): the OS each app runs under in every main form
+  caption (SteamOS: native or Proton; maybe macOS too) - "and Build
+  number" (read as the OS build number; the Steam app build id needs
+  ISteamApps and would come after Steam starts - offered, not done).
+  Zip Caption1 (follows Probe1): TSteamLib.RunningOS (lib/Steamworks.
+  API): Windows = RtlGetVersion ("Windows 11 (10.0 build 26100)"); under
+  Wine (ntdll exports wine_get_version) "Wine <ver>", "Proton <ver>
+  (Wine <ver>)" when STEAM_COMPAT_DATA_PATH is set (version = last word
+  of the prefix's version file, "proton-" stripped - FORMAT UNCONFIRMED),
+  then the host from wine_get_host_version (sysname / release) + its
+  os-release or SystemVersion.plist read through Z:, then ", reporting
+  <Windows version>"; Linux = os-release PRETTY_NAME (+ VERSION_ID if
+  missing, + "build BUILD_ID"), "<host> in <runtime>" when
+  /run/host/os-release exists (pressure-vessel), + ", Linux kernel
+  <osrelease>"; macOS = SystemVersion.plist ProductVersion + build. Files
+  read by a loop (proc files report size 0). PlatformDescription = target
+  + " build on " + RunningOS + Rosetta / WOW64 - so the core's
+  "Platform:" log line carries it too (SteamConsole gets it that way).
+  Captions: SteamDemo / VCL / LCL / SteamInputDemo / VirtualGamepad
+  append it in FormCreate (the two input demos also log it);
+  LogReceiver appends TOSVersion.ToString (no Steam unit there). Game
+  Mode on SteamOS shows no title bar - the log line is what shows it
+  there. NOT YET COMPILED (Delphi or FPC). Packages must be rebuilt.
+- ROG ALLY PROBE RUN (owner, 20:41-20:43, Probe1 build - before
+  Caption1: its Platform line still "Linux x64 build"): PROBE1 WORKS -
+  banner "Detected beyond the Xbox One / Series controller profile:
+  motion sensors (accelerometer + gyroscope); back buttons: Y2 Button,
+  Y1 Button; controls report as LenovoLegionGo" (exactly as expected);
+  accel (0, 4, 10) = m/s^2 again. Steam's adapted binding puts Y2 on
+  ButtonA and Y1 on ButtonX, BUT pressing a back paddle logged ButtonY +
+  ButtonB together (20:42:44, 20:43:18, 20:43:23) and never ButtonA /
+  ButtonX: Steam does not see a Y1 / Y2 press at all, it sees B + Y -
+  so the paddles are remapped BELOW Steam (Ally firmware mapping set in
+  Armoury Crate on Windows and kept in the device, or SteamOS's Ally
+  driver) - unconfirmed which; Steam's Test Device Inputs would tell.
+  Not our code. LogReceiver's header showed TOSVersion inside the
+  container: "Steam Runtime 3 (sniper) #1 SMP ... (Version 7.2.7)" -
+  the container, not SteamOS. Zip Caption2 (follows Caption1):
+  TRemoteLogSender.Start takes an optional APlatform (default '' =
+  TOSVersion.ToString, '|' replaced); SteamInputDemo passes
+  TSteamLib.PlatformDescription. The "NO action has a binding" line
+  (seen twice, each time just before "every action INACTIVE" when the
+  Ally's Steam / QAM button was used) now names the overlay case too.
+  CORRECTION (owner, 20:53): Steam's Settings > Controller > Test shows
+  the paddles as their OWN buttons, L4 and R4, triggering nothing else -
+  so my "remapped BELOW Steam" was WRONG. The B / Y comes from Steam's
+  handling of OUR layout: controller_xboxone.vdf had no back-paddle
+  source, so Steam filled the paddles in itself (the origin list said
+  Y2 -> ButtonA, Y1 -> ButtonX, yet presses arrived as ButtonB /
+  ButtonY - that mismatch is unexplained; most likely one paddle = B,
+  the other = Y, pressed together in the log). Zip Paddles1 (follows
+  Caption2): gen_input_mapping.py controller_xboxone = GYRO + back=4
+  (gyro + button_back_left / _right / _left_upper / _right_upper, as on
+  the Deck / triton) - for handhelds that report XBoxOneController (Ally)
+  and Xbox Elite paddles; a plain Xbox pad has none of these sources.
+  Regenerated controller_xboxone.vdf (both demos; only file whose content
+  changed). SteamInputMapping.md paragraph. TO TEST: Ally - which actions
+  L4 / R4 now fire (BackLeftUpper / BackRightUpper expected, or the lower
+  pair), Gyro bound; plain Xbox pad - still passes (Gyro / paddles "not
+  bound (optional)"). If Steam rejects or ignores the extra sources on a
+  plain pad, split an Ally-only layout instead (no separate type exists,
+  though). After pushing, Steam may keep the old layout until it reloads
+  the game's layouts (View Controller Settings / restart).
+- Owner (20:57): "apply all Linux / SteamOS fixes to the demos that have
+  not had them yet". Zip LinuxAll1 (follows Paddles1):
+  * SteamDemo (FMX, has 3 TListBox, no menu): FmxLinuxGtkGlobal (4th
+    identical copy; .dpr before uMain, .dproj, gen_projects), stderr
+    start-up markers in the .dpr, AddLog to stderr first + flushed
+    (POSIX), a failed log file reported with path + error, ICU launcher
+    src/SteamDemo.sh deployed Linux64.
+  * SteamConsole: ICU launcher src/SteamConsole.sh (the RTL bug is in
+    System's init, so consoles die too); output is already stdout.
+  * VirtualGamepad: ICU launcher src/VirtualGamepad.sh (it had the GTK
+    unit, menu fix, markers, stderr log already).
+  * Not applied, on purpose: FmxLinuxMenu in SteamDemo (no TMainMenu);
+    SteamDemoVCL (Windows only); SteamDemoLCL (FPC / LCL - neither bug
+    is in FPC's RTL or the LCL; untested in sniper though); LogReceiver
+    launcher (a desktop tool, never started by Steam - outside the
+    container the host's ICU is complete).
+  * project_check.py: SHARED table - FmxLinuxMenu in 3 projects,
+    FmxLinuxGtkGlobal in 4, the launcher script in 4 (named per program,
+    content identical) - all must stay identical.
+  * Each program's Linux launch command on the partner site would be
+    <name>.sh (only SteamInputDemo is on Steam). NOT YET COMPILED.
+- LAUNCHER PLAN (owner, 21:09-21:18, "for later"): one AppID, a
+  front-end launcher as the only launch option, children SteamDemo /
+  SteamInputDemo / VirtualGamepad (+ Exit), launcher hides while a child
+  runs. Written up as docs/Launcher.md (owner wrote "Laucher.md"),
+  listed in docs/README.md. Key points: launcher stays alive (playtime /
+  Running state); real child processes (macOS: the bundle's binary via
+  posix_spawn, never `open`); only the launcher restarts through Steam;
+  children detect it by an env var set by the launcher
+  (TSTEAMAPI_LAUNCHER_PID, optional parent-pid check) - SteamAppId /
+  SteamGameId cannot tell; launcher shuts Steam Input + SteamAPI down
+  while a child runs (one holder); ONE action manifest per AppID, so the
+  launcher's actions join the shared manifest; Linux children inherit
+  the ICU LD_LIBRARY_PATH from Launcher.sh. Open: pad navigation (Menu
+  set or own set), depot folder names, "Back to launcher" in children.
+  Zip Launcher1 (follows LinuxAll1). Zip Todo1 (follows Launcher1): the
+  launcher is an END-OF-PROJECT to-do (CLAUDE.md top + README).
+- ROG ALLY RUN 2 (owner, 21:31-21:34, "paddles still wrong"): the
+  bindings were IDENTICAL to the Probe1 run - Y2 Button on ButtonA, Y1 on
+  ButtonX, and Gyro / every Back* action "not bound" - so Steam did NOT
+  use Paddles1's controller_xboxone.vdf (that file binds gyro and the
+  four button_back_* sources). The paddles again logged as ButtonB /
+  ButtonY presses, one at a time this time (21:33:37-43: B, Y, B, Y ...),
+  so most likely one paddle = B and the other = Y in Steam's adapted
+  layout - although its origin list says Y2 -> A, Y1 -> X (unexplained).
+  Also: "Platform: Linux x64 build" in BOTH the demo's line and the
+  core's, i.e. the Steamworks package (lib/Steamworks.API.pas, Caption1)
+  was NOT rebuilt for Linux64 before this build - the demo's uMain.pas
+  had Caption1 (it logs "Platform:" in FormCreate). Likely causes for the
+  layout: the game folder on the Ally still holds the OLD .vdf (only the
+  executable replaced), or Steam kept its cached copy. Zip Revision1
+  (follows Todo1): gen_input_mapping.py LAYOUT_REVISION = 1 written as
+  minor_revision into EVERY layout (all 11 x 2 regenerated - content
+  change, not only line endings); SteamInputDemo's configuration callback
+  reads major / minor_revision from the file next to the program
+  (LayoutFileRevision) and logs "CURRENT file" or "Layout revision
+  MISMATCH ... OLDER copy" (the old files report 0.0). ASSUMPTION, to be
+  confirmed by the next run: m_unMajorRevision / m_unMinorRevision ARE
+  the layout file's major_revision / minor_revision. SteamInputMapping.md
+  section "Which copy of the layout did Steam load?". NOT YET COMPILED.
+- ROG ALLY RUN 3 (owner 21:49-21:52, Revision1 build): COMPILED, and the
+  check WORKS: "Layout revision MISMATCH: Steam loaded 0.0, but
+  controller_xboxone.vdf next to the program is 0.1" - so the new file IS
+  in the game folder and Steam uses an older copy (Gyro / Back* still
+  unbound confirms it independently of the revision assumption). Valve's
+  action-manifest page: the manifest path override "will be remembered
+  for the rest of the Steam session"; nothing documented about layout
+  caching - so most likely Steam must be RESTARTED after layouts change.
+  Platform lines still "Linux x64 build" -> Steamworks package still not
+  rebuilt for Linux64. One A + X pair (21:49:38, pressed together,
+  released together) may be both paddles = the Y2 -> A / Y1 -> X
+  bindings Steam reports; the many single B / Y presses may be the face
+  buttons - asked the owner to press each paddle ALONE once. Zip
+  Revision2 (follows Revision1): mismatch message says restart Steam;
+  SteamInputMapping.md: restart Steam after layout changes, partner-site
+  setting "Custom Configuration (Bundled with Game)".
+- Owner (21:58, screenshot from a laptop + Xbox One pad, kept outside the
+  repo): Steam's "Load new Layout" > Official Layouts shows THREE entries
+  all titled "Official Layout for G3DGames - SteamInputDemo default
+  layout" / "Default bindings for the TSteamAPI Steam Input test" - the
+  MANIFEST's localization title, not each layout's own (Titles1 had put
+  per-controller titles only in each layout's localization block, while
+  the layout header said "#title" - Steam resolved the token from the
+  manifest). Three = the layouts that fit an Xbox pad (xboxone, xbox360,
+  generic, presumably); FOUR on the Ally - so on the Ally a pick among
+  identical names may well have chosen a layout without gyro / paddles,
+  which could also explain the revision 0.0 / unbound gyro. Zip Titles2
+  (follows Revision2): layout title / description are LITERAL text
+  ("SteamInputDemo - Xbox One / Series (r2)", description names the
+  .vdf and revision); LAYOUT_REVISION = 2; all 22 layouts regenerated
+  (manifest unchanged); SteamInputMapping.md section "Telling the
+  official layouts apart". Steam must reload (restart) to show the new
+  titles.
+- ROG ALLY RUN 4 (owner 22:14-22:15, Titles2): the browser now showed
+  distinct titles and the owner CHOSE "SteamInputDemo - Xbox One / Series
+  (r2)" - yet Steam reported revision 0.0, Gyro and all Back* still
+  unbound, Y2 -> ButtonA, Y1 -> ButtonX, and the paddles still produced
+  B / Y presses (22:15:35-38). CONCLUSIONS: (1) my Revision1 assumption
+  was WRONG - m_unMajorRevision / m_unMinorRevision are NOT the layout
+  file's revision; the "MISMATCH / OLDER copy / restart Steam" message
+  was misleading (the Ally run 3 reading built on it was wrong too).
+  Zip Ally5 (follows Titles2): the demo now logs both numbers as
+  information only; docs section rewritten (the title's "(rN)" is the
+  real indicator). (2) Our controller_xboxone layout IS loaded, but its
+  gyro group and button_back_* groups do not reach the Ally: Steam
+  presents the Ally's controls with LenovoLegionGo origins, and the
+  Xbox One source names (gyro, button_back_left / _right / _upper) are
+  evidently not the ones Steam maps the Ally's paddles / gyro to; Steam
+  fills the paddles itself (Y2 -> A, Y1 -> X; presses observed as B / Y,
+  still unexplained). Valve's documented controller_type list has no
+  Legion Go / Ally / SteamOS-handheld entry (ESteamInputType 15
+  SteamOSHandheld exists). NEXT (asked): on the Ally, bind the paddles
+  and gyro in Steam's own layout editor for this game, then export it
+  (Export Layout / steam://dumpcontrollerconfig?appid=2275430) - Steam's
+  file will name the controller_type and the source names it uses for
+  the Ally's paddles and gyro, as the triton export did.
+- OWNER (22:37): ROG Ally paddles PARKED - "too much time on buttons
+  hardly anyone uses". State left: controller_xboxone layout binds gyro +
+  four button_back_* sources (Paddles1) - harmless on the Ally (they just
+  do not reach it), but NOT yet re-run on a plain Xbox pad (expected:
+  Gyro / Back* "not bound (optional)"); if that pad misbehaves, revert
+  controller_xboxone to STANDARD sources (gen_input_mapping.py) and bump
+  LAYOUT_REVISION. Kept: literal "(rN)" layout titles, the probe, the
+  information-only revision log line. To resume: the Ally layout export
+  described above. Zip Park1 (follows Ally5): this note.
+- OWNER (22:43-22:46): VirtualGamepad starts with motion OFF; a LONG press
+  of Start (LONG_PRESS_MS = 800, once per hold - FStartUsed) shows an
+  overlay menu (FMX TRectangle, Align Contents, created in code by
+  CreateOverlay) and activates the Menu action set. Items: Return to App,
+  Enable / Disable Motion (greyed out until the pad has sent real motion
+  data - FHasMotion, the same test as ApplyMotion), Enable / Disable
+  Remote Logging (SteamInputDemo's sender code; also File > Send log to
+  receiver; search path ..\..\RemoteLogging\src added), Exit (queued
+  with ForceQueue so Steam is not shut down inside the poll). D-pad up /
+  down move (greyed items skipped, no wrap), A chooses, B returns; a
+  mouse click on an item works too. Switching motion on recenters (the
+  orientation then = front view). New manifest actions Menu/MenuUp +
+  MenuDown on dpad_north / _south (gen_input_mapping.py; shared with
+  SteamInputDemo, which ignores them); LAYOUT_REVISION 3 -> titles "(r3)".
+  NOT COMPILED here (no Delphi) and not run: check that the 2D overlay
+  draws above the Gorilla3D viewport. Zip Overlay1 (follows Park1).
+- OWNER (23:00) on Overlay1: works on Xbox and PS5 (PS5: motion item
+  selectable). Steam Controller: D-pad moves the model but NOT the menu.
+  The r3 triton / gordon layouts DO bind MenuUp / MenuDown (checked), so
+  Steam most likely used an older copy of the layout for that pad (no log
+  sent - unconfirmed). Fix: OpenOverlay asks DigitalActionOrigins for
+  every Menu action; if any is unbound, FMenuUsesInGame - the InGame set
+  stays active and the overlay reads DPadUp / DPadDown / ButtonA /
+  ButtonB (MenuFallback), logged. Every choice now closes the overlay;
+  item renamed Start / Stop Remote Logging. Zip Overlay2 (follows
+  Overlay1).
+- OWNER (23:07): README title is now just "Steamworks for Delphi"
+  ("(FMX first, then VCL and FPC)" removed) - goes in the next zip.
+- OWNER (23:21): VirtualGamepad - with more than one pad connected the
+  overlay's TOP row names a controller between left / right arrows
+  (U+25C0 / U+25B6, "n of m", "- shown" for the current one); D-pad left
+  / right goes through the pads (wrapping, FMenuPads taken when the
+  overlay opens, FMenuPadIndex); A on the row makes it the shown pad
+  (FChosenPad, RefreshControllers prefers it while connected; ResetState
+  forgets it) and closes the menu; moving alone changes nothing. A change
+  in the number of pads closes the overlay. New Menu actions MenuLeft /
+  MenuRight on dpad_west / _east, LAYOUT_REVISION 4 ("(r4)"); fallback
+  maps them to DPadLeft / DPadRight. Log panel (memLog, splLog), the live
+  line (lblLive) and the info lines (lblPadInfo) REMOVED - the banner is
+  one line (name + "n of m connected - hold Start to change"); the log
+  goes to the file, stderr and the LogReceiver; FLogLines (TStringList,
+  last 20000 lines, freed in Destroy) keeps the backlog for remote
+  logging. ReadActions / ReadMenuActions are procedures now. Zip Pads2
+  (follows Overlay2) - also carries the README title change.
+- OWNER (23:31): FOSS licence, MIT if everything allows. LICENSE (MIT,
+  "Copyright (c) 2026 G3DGames" - holder name is the owner's to change)
+  at the root; README "Licence" section lists what it does NOT cover:
+  models/ (CC0, own LICENSE), Gorilla.Animation.Parallel.pas (Gorilla3D
+  author's code, included with permission, licence NOT stated - ask him
+  whether MIT is fine), the Steamworks SDK (not in the repo; Valve's
+  licence) + trademarks. Sprite3DCamera.pas is the owner's own code
+  (Sprite3D repo has no licence file) - covered by MIT as his choice.
+  Zip Licence1 (follows Pads2).
+- OWNER (23:33): README title "Steamworks for Pascal" (not Delphi). Zip
+  Title2 (follows Licence1).
+- OWNER (23:39): the Xbox One model's sticks moved the wrong way
+  vertically. FStickYSign: +1 for MODEL_XBOX, -1 (the sample's sign) for
+  PS5 / Steam Controller; x stays negated on all. Zip Stick1 (follows
+  Title2). If PS5 / Steam Controller turn out wrong too, the sign table
+  is per model file.
+- OWNER (23:42): Steam Controller model the same, PS5 right. FStickYSign
+  is now -1 for MODEL_PS only, +1 for Xbox and Steam Controller. Zip
+  Stick2 (follows Stick1).
+- OWNER (23:50): on the non-PS5 models left / right was mirrored too.
+  FStickSign now applies to x AND y: -1 (sample) for MODEL_PS, +1 for
+  Xbox and Steam Controller. Zip Stick3 (follows Stick2).
+- Push c3d4bf1 "Better Virtualpad" (2026-11-02 00:10) VERIFIED: every
+  file delivered since e2a4954 (Probe1 ... Stick3, 56 files) identical
+  ignoring CRLF / BOM, except IDE re-saves of SteamConsole.dproj
+  (entries reordered; both SteamConsole.sh DeployFile entries kept) and
+  SteamDemo.dproj (default Release / Linux64, extra platform sections;
+  SteamDemo.sh + FmxLinuxGtkGlobal kept) - accepted. Group Dependencies
+  intact; pasdoc / project checks 0 problems. Working copy reset to
+  origin/main.
+
+## Eighth session (2026-11-02, ended)
+- Push aae5991 "Handover" VERIFIED: every tracked file identical to the
+  working copy (Handover4's CLAUDE.md included); working copy reset.
+- OWNER (00:21): a version of VirtualGamepad for Free Pascal with Castle
+  Game Engine, LCL, in demos/VirtualGamepadLCL; (00:29) AppID 480 - it
+  will not go on Steam properly. Zip CGE1 (follows Handover4):
+  * VirtualGamepadLCL.lpi / .lpr (requires SteamworksLCL,
+    castle_engine_lcl, castle_engine_base, LCL; output <cpu>-<os>/, units
+    lib/<cpu>-<os>/ - both git-ignored), src/uMain.pas / .lfm
+    (TfrmGamepadLCL; SteamAPI1 AppID 480, SetAppIdEnvironment True and
+    RestartIfNecessary False in EVERY build), src/PadAnimator.pas, and the
+    generated manifest + 11 layouts (gen_input_mapping.py OUTS + this
+    folder).
+  * FACT from the .glb files: every clip writes EVERY joint (51 / 48 / 63
+    channels on Xbox / PS5 / Steam Controller) but moves one, so Castle's
+    own TimeSensor clips played side by side would fight (Castle's
+    simultaneous_animations example only works for clips on different
+    objects). PadAnimator (ours, engine-free, fpjson) reads the clips from
+    the .glb, keeps the moving channels, peak = key of largest movement,
+    Press / Release / SetValue / SetAxis like Gorilla's animator, combines
+    additively (offset from the clip's FIRST key - the PS5's Menu / View
+    clips start ~1.5 mm off the node pose) and hands each changed joint to
+    OnApplyJoint -> TTransformNode Translation / Rotation (axis-angle).
+    Joints are found with Scene.Node(TTransformNode, name,
+    [fnNilOnMissing]) - reachable inside TSkinNode (reviewer checked
+    x3dnodes_castle.inc). REQUIRES Castle from Nov 2025+ (GPU skinning,
+    joints movable from code - castle-engine.io/skin); older Castle bakes
+    skinning and nothing would move. Scene.ProcessEvents True.
+  * 3D: TCastleControl created in code (alClient), TCastleViewport
+    FullSize, a TCastleDirectionalLight added to Viewport.Camera (Fpc2;
+    Items.UseHeadlight is deprecated), TCastleExamineNavigation (drag / wheel; disabled while the
+    overlay shows), AssignDefaultCamera after each load, Scene.Center =
+    box centre; Show back = half turn about Y (Castle and glTF are both
+    Y-up, no flips). Pad motion -> Scene.Rotation - axes vs Steam NOT YET
+    SEEN. Stick signs copied from VirtualGamepad (PS5 -1, others +1) -
+    NOT YET SEEN in Castle.
+  * Overlay in Castle UI (TCastleRectangleControl / TCastleLabel inside
+    the control, so always above the 3D view): controller row (several
+    pads), Return to App, Enable / Disable Motion, Exit - VirtualGamepad's
+    logic incl. the InGame fallback; '<' '>' instead of arrow characters
+    (Castle's default font). NO remote logging item: RemoteLog.Sender is
+    Delphi / Indy - an FPC sender (fcl-net) would be needed (offered).
+  * Data: exe folder, else ../src (manifest + layouts) and ../../../models
+    (run from <project>/<cpu>-<os>/). Log VirtualGamepadLCL.log next to
+    the exe + stderr on UNIX. Steam library copied by hand (as
+    SteamDemoLCL).
+  * Independent review (no compiler, against Castle master sources, the
+    library and the .glb files): ONE certain compile error fixed (ClampF
+    used before its declaration); fixed: resting joints rewritten every
+    frame (ArcCos of a single-precision self-dot is never 0 - now a
+    component compare), JSON chunk code page (SetCodePage CP_UTF8), a
+    clip leak on exceptions, a pending QueueAsyncCall after destruction
+    (RemoveAsyncCalls in Destroy), the PS5 Menu / View start jump (first
+    key as base). Its heads-up: SteamworksLCL.lpk was last built before
+    Steamworks.Plugin.Input existed - the Input shim gets its FIRST FPC
+    compile in this build. NOT YET COMPILED.
+- OWNER'S FIRST FPC BUILD of SteamworksLCL.lpk after Caption1 (08:39,
+  Lazarus 4.8 / FPC 3.2.2 Win64): E3026 in lib/Steamworks.API.pas 728 -
+  GetEnvironmentVariable('STEAM_COMPAT_DATA_PATH') resolved to FPC's
+  Windows-unit GetEnvironmentVariable(PChar, PChar, DWord) (Windows is in
+  the implementation uses; Delphi's overload resolution picked SysUtils',
+  FPC's did not). Only error in the unit (FPC read it to the end). Fixed:
+  SysUtils.GetEnvironmentVariable. Lesson: in lib/ units that use
+  Windows, qualify SysUtils routines whose names Windows also declares.
+  Zip Fpc1 (follows CGE1). The rest of the package (Plugin.Input's first
+  FPC compile) not reached yet.
+- OWNER'S BUILD 08:47: SteamworksLCL.lpk COMPILED (Plugin.Input's shim
+  included - first FPC compile of it); VirtualGamepadLCL: PadAnimator.pas
+  compiled (hints only), uMain.pas ONE error - E4025 [fsBold] resolved to
+  X3DNodes' TX3DFontStyle (X3DNodes is after Graphics in the uses);
+  fixed as Graphics.fsBold. The deprecation warning on
+  Items.UseHeadlight is gone: a TCastleDirectionalLight child of the
+  viewport's camera (Castle's own suggestion in the message). Zip Fpc2
+  (follows Fpc1). Lesson: in units using X3DNodes / Castle units, qualify
+  LCL enum values that Castle also declares.
+- OWNER (08:57): remote logging for VirtualGamepadLCL - "we have the
+  receiver, just need to connect to it". Zip FpcLog1 (follows Fpc2):
+  RemoteLogging/src/RemoteLog.SenderFPC.pas - the SAME public API as
+  RemoteLog.Sender (TRemoteLogSender Discover / Start / Stop / Send /
+  Active / OnStatus, TRemoteLogDiscovery, TRemoteLogReceiverInfo), so the
+  demo code is VirtualGamepad's unchanged; written on FPC's Sockets unit
+  (fpSocket / fpBind / fpRecvFrom for the UDP announcements on 47811 with
+  SO_REUSEADDR, fpConnect / fpSend / fpRecv for TCP), SO_RCVTIMEO slices
+  (DWORD ms on Windows via WinSock2, timeval on Unix) so Stop is never
+  held up; MSG_NOSIGNAL ($4000) on Linux, SO_NOSIGPIPE ($1022) on macOS;
+  machine name from COMPUTERNAME / fpUname; status texts queued to the
+  main thread through a locked list + TThread.Queue(Self, DeliverStatus),
+  RemoveQueuedEvents before the thread is freed; lines end with LF, UTF-8
+  (the receiver reads LF lines). A blocking connect to an unreachable
+  host can take the OS's time (Windows ~20 s) - Stop waits for it.
+  Demo: overlay item Start / Stop Remote Logging, File > Send log to
+  receiver, FLogLines backlog (20000 lines), sender freed last in
+  FormClose; .lpi OtherUnitFiles src;../../RemoteLogging/src. NOT YET
+  COMPILED (Sockets / WinSock2 names written from memory of FPC 3.2.2).
+- OWNER (09:27): "OK, that's all good now" (after FpcLog1) - read as:
+  VirtualGamepadLCL builds and runs with FpcLog1 (Lazarus 4.8 / FPC
+  3.2.2 Win64). (09:28) the details are confirmed too - see the
+  handover's "Next / open".
+
+## Ninth session (2026-11-02, ended)
+- Push b29fab4 "Handover" (09:30) checked against the clone (zips not
+  here): pasdoc / project checks 0 problems; gen_input_mapping.py,
+  gen_docs.py reproduce every committed file (CRLF only); .gitignore
+  entries for VirtualGamepadLCL present, no Lazarus output / *.lps /
+  backup/ tracked (189 files); group Dependencies kept (12).
+- Review of the eighth-session units (owner: "run a PR over
+  everything", then "fix things"). Zip Review1 (follows Handover6):
+  * PadAnimator: a CUBICSPLINE sampler (three values per key) is now
+    SKIPPED instead of being read as plain keys (Blender exports LINEAR /
+    STEP, so no current model is affected). Unit header says so.
+  * RemoteLog.SenderFPC: Discover also sets SO_REUSEPORT ($0200) under
+    DARWIN - BSD needs it besides SO_REUSEADDR for two listeners on UDP
+    47811 on the same Mac (LogReceiver + the demo). Its other Unix paths
+    were checked against the FPC 3.2.2 RTL (BaseUnix TTimeVal / UtsName /
+    fpUname, SO_RCVTIMEO, MSG_NOSIGNAL $4000, SO_NOSIGPIPE $1022): no
+    change needed. NOT YET COMPILED on macOS.
+  * CLAUDE.md: the doubled seventh-session handover heading removed.
+  * Checked, nothing to do: lib/Steamworks.API.pas and Steamworks.Core.pas
+    (the lib/ units using Windows) have no other unqualified call to a
+    name FPC's Windows unit also declares.
+  * Noted (no change): on macOS Lazarus builds an .app bundle, so
+    ParamStr(0) is inside Contents/MacOS/ and VirtualGamepadLCL's ../src
+    and ../../../models fallbacks will not resolve - part of the open
+    "no deployment" item.
+- Push 6175ace "Claude Fable Reviewed" (Review1) checked against the
+  clone: exactly its 3 files, pasdoc / project checks 0 problems, group
+  Dependencies kept (12). The zip itself was not here to compare.
+- COMPONENT INVENTORY (owner asked 09:47): used as COMPONENTS on a form so
+  far only TSteamAPI (FMX / VCL / LCL), TSteamFriends, TSteamUserStats
+  (SteamDemo x3) and TSteamInput (input demos). The other seven had only
+  been reached as plug-ins in code (Show info, SteamConsole): never
+  dropped, linked or their events fired.
+- Zip CompTest1 (follows Review1), owner: "Add tests for the untested
+  components to SteamDemo". SteamDemo (FMX) gets SteamUtils1, SteamUser1,
+  SteamApps1, SteamRemoteStorage1, SteamScreenshots1, SteamTimeline1,
+  SteamUGC1 on the form (SteamAPI = SteamAPI1, events wired in the .fmx),
+  a Test components button, a Components tab (one row per component:
+  PASS / FAIL / waiting + details) and tmTests (1 s; requests unanswered
+  after TEST_TIMEOUT_MS = 20 s are "NO ANSWER"). Per component: Attached,
+  synchronous calls through .Plugin (exception = calls FAILED), then:
+  * Utils: reads (universe, seconds active, server time, IPC count, ...)
+    + CheckFileSignature(own exe) -> OnCheckFileSignature (705).
+  * User: reads (logged on, NAT, phone, 2FA, GetUserDataFolder - path not
+    logged) + GetAuthSessionTicket (identity nil) -> callback 163, ticket
+    cancelled on arrival + GetDurationControl -> 167.
+  * Apps: reads (beta name, betas, timed trial, DLC count, launch command
+    line length, ...) + GetFileDetails(exe name) -> 1023 (FileNotFound
+    expected for a dev build).
+  * RemoteStorage: FileWriteAsync(steamdemo_component_test.txt) -> 1331;
+    on OK FileReadAsync -> 1332, FileReadAsyncComplete inside the handler,
+    data compared, FileDelete. IsCloudEnabledForApp was False (see the
+    CORRECTED note below): the test then calls SetCloudEnabledForApp(True)
+    (CompTest2); a write refused while it stays off is noted, not failed.
+  * Screenshots: HookScreenshots(True) + TriggerScreenshot -> 2302 ->
+    WriteScreenshot (320x180 generated gradient) -> 2301 -> SetLocation;
+    unhooked when the test ends. ADDS ONE PICTURE to the user's
+    screenshots for the app.
+  * Timeline: game mode Playing, tooltip, StartGamePhase / SetGamePhaseID
+    / event / EndGamePhase, mode Menus, then DoesEventRecordingExist ->
+    6002 and DoesGamePhaseRecordingExist -> 6001 (no recording expected).
+  * UGC: subscribed / downloaded counts (Boolean argument) +
+    CreateQueryAllUGCRequestPage + SendQueryUGCRequest -> 3401 (up to 3
+    items logged, query released) + GetWorkshopEULAStatus -> 3420.
+  Passive events (IP country, low battery, server connect / disconnect,
+  DLC installed, URL launch parameters, timed trial, local file change,
+  subscribed list changed, item installed) only log, "(not requested by
+  the test)". PASS = attached + every call returned + every requested
+  answer arrived, whatever result code. FinishTests cleans up (unhook,
+  cancel a pending ticket, release a pending query) and logs a verdict per
+  component + "N of 7 components PASS"; it also runs on OnShutdown and
+  FormClose. README step 3 describes it. NOT YET COMPILED. Open questions
+  the run answers: does CheckFileSignature (old API) still answer; does
+  the Timeline phase query answer for a phase without a recording.
+  Independent review (no compiler) before delivery, all fixed:
+  * CERTAIN compile error: the new private methods were inserted before
+    the existing field FLogFile (E2169 field after methods). LESSON
+    (second time): when adding to a class, put new FIELDS above the first
+    method of that section.
+  * Stop skipped the cleanup (OnShutdown comes after SteamAPI_Shutdown):
+    btnStopClick now runs FinishTests BEFORE Close; OnShutdown only ends
+    the test (Steam client exit, no cleanup possible).
+  * In thread mode the pump thread releases a call result before the
+    queued handler runs, so FileReadAsyncComplete in the 1332 handler MAY
+    return False (UNVERIFIED): logged as its own reason, with a
+    synchronous FileRead to tell "fetch refused" from "file wrong". If it
+    happens, the library needs a way to fetch async-read data on the pump
+    thread - a real library question, not a demo bug.
+  * FileWriteAsync refused (no call handle) while cloud is off for the
+    app: noted, not counted as a failure.
+  * FinishTests deletes the cloud file if the read-back never ran.
+  * The timeline game mode stays Menus for the session (documented).
+- CORRECTED (owner, 10:14-10:23): "Steam Cloud is off on the partner
+  site" was WRONG. The Cloud settings page shows byte quota 102400000
+  (102.4 MB) and 10000 files per user, saved AND published (owner: "all
+  these things are already done") - the quota SteamConsole read back in
+  the fifth session. IsCloudEnabledForApp = False is something else. My
+  next claim, "it is the user's per-game switch in Properties > General",
+  was wrong too: the client shows NO Cloud switch for this app (it does
+  for the owner's other published games); "developers only" and a
+  missing publish were also ruled out by the owner. Cause still UNKNOWN.
+  Zip CompTest2 (follows CompTest1), owner: "try enabling it yourself":
+  TestRemoteStorage calls SetCloudEnabledForApp(True) when
+  IsCloudEnabledForApp is False and logs it before / after (and in the
+  row's note). Stays False -> Steam keeps Cloud off for the app itself,
+  not for this user. Valve means that call for a player's choice in the
+  game's options, never silently - here only because the owner asked.
+- FIRST COMPONENT TEST RUN (owner, 10:32, CompTest2, Win64 Delphi 13,
+  thread mode): 6 OF 7 PASS. Every component attached, every synchronous
+  call returned.
+  * Utils PASS: CheckFileSignature answers (705, "no signatures for this
+    app" 3) - the old API still works.
+  * User PASS: auth ticket handle 2, 240 bytes, callback 163 OK, cancelled;
+    DurationControl OK (not applicable).
+  * Apps PASS: GetFileDetails -> FileNotFound (9) as expected for a dev
+    build. betas 1 available; build id 26367283.
+  * RemoteStorage PASS: IsCloudEnabledForApp False, SetCloudEnabledForApp
+    (True) left it FALSE - yet FileWriteAsync OK, FileReadAsync OK (48
+    bytes), FileReadAsyncComplete TRUE IN THREAD MODE (the review's worry
+    was unfounded - no library change needed), data identical, FileDelete
+    True. So the Cloud API WORKS for 2275430 although the per-app flag
+    says off; why that flag stays False (and the client shows no Cloud
+    switch) is still unknown - it does not block the API. The old "writes
+    fail until it is enabled" was WRONG.
+  * Screenshots FAIL: no ScreenshotRequested (2302) after HookScreenshots
+    (True) + TriggerScreenshot in 20 s; Show info in the same run said
+    "Overlay enabled: False". Likely cause (UNCONFIRMED): TriggerScreenshot
+    is carried out by the overlay. Unhooked by the cleanup.
+  * Timeline PASS: both recording queries answer (no recording, 0 ms).
+  * UGC PASS: query OK, 0 items; WorkshopEULAStatus answered InvalidParam
+    (8) with a garbage version - Workshop is not set up for the app.
+  Zip CompTest3 (follows CompTest2): the Screenshots test checks
+  IsOverlayEnabled - with the overlay the hook / trigger path as before,
+  without it WriteScreenshot directly -> OnScreenshotReady (note says the
+  trigger path was not testable); WriteTestScreenshot helper. EULA fields
+  logged only when the result is OK (+ row note); earliest purchase as a
+  UTC date; launch command line as its length plus the raw return value
+  (1 for an empty line - includes the NUL, it seems). Open: run the demo
+  FROM STEAM (overlay present) once to test the trigger path.
+- SECOND RUN (owner, 10:39, CompTest3): 7 OF 7 PASS. Overlay False ->
+  direct WriteScreenshot 320x180 -> handle 7 -> OnScreenshotReady (2301,
+  OK) -> SetLocation True. Owner's picture of it in the Steam library
+  (G3DGames, 10:39, 9 KB) shows the gradient exactly as written: top left
+  dark blue, top right magenta, bottom left green, bottom right pale
+  yellow = WriteScreenshot takes R G B in that byte order, rows TOP-DOWN
+  (confirmed). EVERY PLUG-IN COMPONENT HAS NOW PASSED A BASE TEST (Win64).
+  Cosmetic: cleanup logs HookScreenshots(False) also when not hooked.
+- OWNER (10:36): the overlay dependency of TriggerScreenshot "creates a
+  dependency issue"; (10:44) "make it do what the function implies - take
+  a screenshot of the app". Zip Shot1 (follows CompTest3):
+  * fmx/Steamworks.FMX: SteamBitmapToRGB (TBitmap -> packed RGB via
+    GetPixel, alpha dropped) and SteamFormToRGB(AForm, out W, H) (form
+    PaintTo an offscreen TBitmap at AForm.Handle.Scale, white background).
+    The Screenshots plug-in is deliberately NOT used there: its unit
+    registers the plug-in in initialization, so using it from
+    Steamworks.FMX would link it into every FMX program ("dropped and
+    linked"); the caller calls WriteScreenshot. FMX.Forms moved from the
+    implementation to the interface uses (TCustomForm parameter).
+    Known limits (documented): natively drawn platform controls and 3D
+    viewports may be missing from PaintTo. VCL / LCL counterparts not
+    written yet.
+  * SteamDemo: WriteFormScreenshot captures the demo's own window (the
+    Components tab) instead of the gradient; SHOT_ constants gone.
+  * Docs: README Known issues "TriggerScreenshot (and F12) does nothing"
+    (observed, not proven - a run from Steam is still open); README layout
+    line; docs/components/TSteamAPI.md section "Screenshots: SteamFormToRGB
+    (FMX)"; tools/doc_extras/Screenshots.md (example uses SteamFormToRGB,
+    overlay bullet) + regenerated TSteamScreenshots.md.
+  REBUILD RUNTIME PACKAGE STEAMWORKSFMX (every platform) - fmx/ changed.
+  NOT YET COMPILED.
+
+- FIRST macOS ARM64 RUN (owner, 21:51, SteamDemoLCL, FPC 3.2.2 /
+  Lazarus, macOS 27.0.1, not an .app bundle, aarch64-darwin/): first start
+  "Cannot load libsteam_api.dylib" (not copied - manual for Lazarus, as
+  docs/Install-Lazarus-FPC.md says); after copying it Steam started, 23
+  plug-ins. Component test 29 / 30 (three runs): only Screenshots FAILS -
+  IsScreenshotsHooked stays False after HookScreenshots(True) (overlay
+  off; on Windows the hook takes with the overlay off too). Cause
+  UNKNOWN: a macOS Steam-client difference or FPC aarch64-darwin bool
+  passing (C bool param as Pascal Boolean; Apple's ABI wants the caller
+  to extend small arguments). Every callback payload check passed (e.g.
+  1221 is 704 bytes here, 712 on Windows - the FPC ARM64 layouts are
+  right). Pair test as HOST against SteamDemoVCL on Windows, accounts
+  FRIENDS: 7 / 8 - Friends failed although friends: Steam kept sending
+  FriendRichPresenceUpdate (336) for the peer, app 2275430, with status ""
+  every 5 s; the Mac's own value read back fine. Zip Mac1 (follows
+  Handover7): the pair test logs every rich-presence key / value of the
+  peer on each update (0 keys = nothing arrived; another key = a key
+  mismatch); the screenshot note gives the overlay state. Open: the
+  guest's (VCL) log for that run; File > Take Screenshot on the Mac (LCL
+  SteamFormToRGB on Cocoa + WriteScreenshot); a Mac run started from
+  Steam (overlay). NO PACKAGE REBUILD. NOT YET COMPILED.
+  GUEST LOG (VCL, Windows, 21:56): the Friends row failed THERE too -
+  Steam sent 336 for the Mac account with status "" every 5 s, its own
+  value read back fine. So in that run rich presence crossed in NEITHER
+  direction (at 20:23, both on Windows, both ways within a second). The
+  API path works on both sides; suspected environment: the main account
+  signed in on two Steam clients (Windows PC + Mac), or the Mac client not
+  counting the app as running (started outside Steam). To check: the
+  guest's friends list ("In-Game" for the Mac account?) and Mac1's key
+  logging.
+- DELPHI FMX ON macOS ARM64 (owner, 22:12, PAServer .app, dylib deployed
+  to Contents/MacOS fine): component test 29 / 30 - Screenshots the same
+  hook result as FPC -> NOT an FPC bool problem: the macOS Steam client
+  keeps the hook off. Pair test as host against VCL / Windows (friends):
+  7 / 8, rich presence empty BOTH ways again (the guest read "" too). So
+  rich presence does not cross whenever the main account runs on the Mac,
+  with either compiler - Steam environment, not the binding (still open:
+  the main account possibly signed in on the Windows PC as well; check
+  with the PC's Steam signed out, and a Windows-Windows run to compare).
+  Payloads on macOS are smaller (pack 4 vs 8: 1023 36 / 40, 2101 24 / 32,
+  6002 12 / 16, 513 12 / 16, 504 20 / 24, 1221 704 / 712, server
+  responses 440 / 448): every size check passed with both compilers. The
+  Delphi .app found LogReceiver at once; the Lazarus build never did
+  (suspected: macOS Local Network permission of Lazarus - README).
+  Zip Mac2 (follows Mac1): the screenshot hook not taken on macOS is
+  information, not a FAIL ({$if defined(DARWIN) or defined(MACOS)});
+  README Known issues: the macOS hook and the Lazarus Local Network
+  permission. NO PACKAGE REBUILD. NOT YET COMPILED.
+- MAC2 RUN (owner, 22:24, Delphi FMX macOS ARM64 guest, VCL Windows
+  host on the tablet, friends): Mac2 compiled; component test 30 / 30
+  (Screenshots informational). Pair 7 / 8 on both: Mac1's key logging
+  says "0 key(s)" for the Windows peer on every update - Steam delivers
+  NOTHING for the peer to the Mac, and the Windows side reads "" for the
+  Mac account. Open question to the owner: was the main account's Steam
+  client on the Windows PC still signed in?
+  OWNER (22:27): yes - Steam was running on ALL machines (the main
+  account on the Windows PC AND the Mac). Most likely cause: two sessions
+  of the main account; Steam routes its rich presence to / from the other
+  one. To confirm: Steam > Exit on the Windows PC, then the Mac pair run.
+  OWNER (22:29): File > Take Screenshot WORKED on the Mac (Delphi FMX,
+  macOS ARM64): SteamFormToRGB (FMX) + WriteScreenshot reach the user's
+  screenshots although the hook never takes. The log lines for it
+  (handle, OnScreenshotReady, SetLocation) were not in the pasted log;
+  OWNER (22:31): picture and colours GOOD (right way up, RGB order
+  right) - SteamFormToRGB (FMX) confirmed on macOS ARM64.
+  Zip Mac3 (follows Mac2): these notes only. OWNER (22:32): pushing, then
+  the LCL build again on the Mac; remote logging still does not work from
+  the LCL build there (README Known issues: Local Network permission of
+  Lazarus / Terminal - unconfirmed).
+  OWNER (22:42 / 22:45): run from Terminal, Steam itself prints "Using
+  broadcast address on Mac OS X will fail, need to enumerate network
+  interfaces" (its LAN server list - not ours; we only LISTEN on UDP
+  47811). `nc -u -l 47811` in the same Terminal heard
+  "TSTEAMAPI-LOGRECEIVER 1 47812 <name>" AT ONCE -> NOT the Local Network
+  permission: the FPC listener (RemoteLog.SenderFPC.Discover) hears
+  nothing on macOS although packets arrive. Cause unknown (statically
+  checked: bind INADDR_ANY + SO_REUSEADDR / SO_REUSEPORT, SO_RCVTIMEO with
+  BaseUnix TTimeVal, recvfrom). Zip RLog2 (follows Mac3): Discover(ATimeout,
+  out ADiag) counts packets / bytes / first text / receive errors / the
+  SO_RCVTIMEO result; TRemoteLogDiscovery.Diagnostics (also in the Delphi
+  sender, always ''); DemoRemoteLog logs it after each empty search. The
+  README "Local Network" entry is probably WRONG - fix it once the
+  diagnostics say why. NO PACKAGE REBUILD. NOT YET COMPILED.
+  OWNER (22:55): the Mac FPC remote-log failure is PARKED - remote
+  logging is for the Steam Deck and the Windows tablet. Zip RLog3 (follows
+  RLog2): README Known issues entry corrected (not the Local Network
+  permission; FPC listener, cause unknown, parked; bare executable from
+  Terminal has no menu bar - run from Lazarus or as an .app).
+- MAC LCL RUN 2 (owner, 22:39, SteamDemoLCL FPC 3.2.2 macOS ARM64 host,
+  VCL Windows guest, after Steam > Exit on the Windows PC): component
+  test 30 / 30 (Screenshots informational), PAIR 8 / 8 - rich presence
+  read at once ("1 key(s): status = ..."). BUT the guest (VCL, Windows)
+  still read "" for the Mac account the whole minute: 7 / 8 there. So the
+  second session was ONE cause (Mac now reads Windows), the other
+  direction (Windows reading the Mac account) is still open - the
+  tablet saw a persona change $A for the main account at 22:36 (status +
+  gone offline: the PC's Steam exiting). Next check: does the tablet's
+  friends list show the main account "In-Game" while the Mac copy runs
+  (a Mac client may not report a game started outside Steam)? The guest
+  ran an old VCL build without Mac1's key logging. docs/TestSetup.md
+  says exactly this (zip RLog2, re-sent). macOS
+  ARM64 is now done for both compilers bar the FPC remote-log listener
+  and LCL SteamFormToRGB on Cocoa (File > Take Screenshot not tried yet).
+
+## Eleventh session (2026-11-04, ended)
+- Push 655c430 "Handoner" (= VclPad1 + GorillaDoc1 + Handover8) checked
+  against the clone: pasdoc_check / project_check 0 problems,
+  VirtualGamepadVCL present, PadAnimator identical in LCL + VCL,
+  VirtualGamepad.dpr without GlobalUseSkia, group Dependencies 13. (Zips
+  not here, so no file-by-file comparison.)
+- OWNER (01:58): "First PR the repo" = an independent review of
+  everything (five reviewers, no compiler), then (04:10) "yes" = fix all
+  of it. Zip Review2 (follows Handover8):
+  * NO CERTAIN COMPILE ERROR anywhere (VirtualGamepadVCL included).
+  * lib/Steamworks.Core.pas: ScheduleMainDelivery uses TThread.ForceQueue
+    - Queue runs the method AT ONCE on the main thread (Delphi and FPC),
+    so a delivery scheduled by StartPumpThread inside Initialize /
+    StartGameServer / StopGameServer ran user handlers BEFORE those calls
+    returned (a Shutdown from such a handler left StartGameServer
+    continuing on a torn-down session). StopPumpThread sets
+    FWorkerStopping under FThreadLock before it nils FPumpThread (race
+    with RunCallbacks on a game thread, sumThread + sdOnUpdate). A failed
+    required-plug-in Initialize rolls back without OnShutdown; NEW public
+    TSteamworks.RollbackShutdown (DoShutdown with the events suppressed)
+    used by TCustomSteamAPI when the listen server of a client fails to
+    start (OnInitFailed without a preceding OnShutdown). FReleaseEvery
+    recomputed per tick (PumpInterval changes), server version string
+    UTF-8 not ANSI, Result := nil before SetLength (Core, API).
+  * lib/Steamworks.Types.pas: CallbackMsg_t declared under
+    AlignNatural.inc (24 bytes on 64-bit non-Windows, was 20; offsets
+    unchanged; the C size is natural if the struct is outside the pack
+    region - the Linux / macOS LayoutProbe run will say; the larger
+    buffer is safe either way).
+  * The review's "an exception in ThreadTick's finally ends the worker
+    silently" was WRONG (the outer except covers that finally) - no
+    change. Also unchanged: records with a Proc (anonymous method)
+    field in Callbacks.pas under STEAMWORKS_ANONYMOUS_METHODS - they are
+    in-memory only; the Source rule about managed fields now says so.
+  * demos/Shared: DemoGameServerOwnedByTests (SteamComponentTest) - a
+    server the FORM started (Roles) is no longer logged off / stopped by
+    the last test (it was: only the tests counted DemoGameServerUsers);
+    TicksSince in the component test (two unguarded UInt64 differences);
+    163 formatted from GetAuthSessionTicketResponse_t_k_iCallback; %u for
+    HAuthTicket in the pair test; Val result checked.
+  * Demos: REMOTE_SEARCH_MS / RESOLVE_RETRY_MS constants (the 2.5 s and
+    1 s were typed into text) in SteamInputDemo + the three VirtualGamepads;
+    "%d models" from Length(MODEL_FILES); stale "since r4"; SteamInputDemo
+    lblPadInfo text ("Press Start Steam" - no such button); btnPair
+    caption without a number (x3); dead FMotionPending field (FMX).
+  * Docs: README (30 components, Shared/ list, "all three frameworks
+    done", Input / 2c / game-server status lines, four input demos,
+    Gorilla text under VirtualGamepad, layout additions, VirtualGamepadVCL
+    build step), Install-Lazarus-FPC (macOS ARM64 ran), TSteamAPI.md +
+    vcl/lcl doc comments (SteamFormToRGB tested), VirtualGamepad README
+    (sk4d.dll in the depot), doc_extras/Input.md (steam_controllers.vdf),
+    gen_docs.py targets string (six) -> all 26 component pages
+    regenerated, RemoteLogging README, gen_steam_api.py comments.
+  * Not changed (harmless, owner's .dproj are authoritative):
+    SteamworksFMX.dproj search path lacks ..\lib\plugins; SteamConsole
+    .dproj has Android64 without the .so DeployFile.
+  * Twin drift between the three SteamDemos noted, not harmonised (tab
+    switching on Test, init-failed text, log-file error logging, timer
+    design, settings-folder helper) - offer open.
+  ====> RUNTIME RECOMPILE REQUIRED: STEAMWORKS, STEAMWORKSFMX,
+  STEAMWORKSVCL (ALL PLATFORMS), REINSTALL DCLSTEAMWORKS (+FMX/VCL);
+  LAZARUS: STEAMWORKSLCL <==== (Core / Types / Components / API changed;
+  vcl / lcl comment-only). NOT YET COMPILED.
+  Unverified until a run: TThread.ForceQueue under FPC 3.2.2 (believed
+  present since 3.2.0); the listen-server rollback path.
+- OWNER (04:22): VirtualGamepadVCL COMPILED AND RAN on Win32 and Win64
+  ("ok" - the Castle-for-Delphi names on the watch list are right; no log
+  sent). Gorilla InitGLX (handover NEXT 2) is WAITING ON THE AUTHOR.
+  Review2 is being applied and pushed (handover NEXT 1 + 2).
+
+## Twelfth session (2026-11-04)
+- Push 0f9ee4e "Handoner" (= Handover9) verified against a fresh clone:
+  only CLAUDE.md differs from ae2891d; pasdoc_check / project_check 0
+  problems; group Dependencies 13.
+- OWNER (04:28): "complete SteamConsole" = handover NEXT 1. Zip Console1
+  (follows Handover9):
+  * demos/SteamConsole/src/uConsoleMain.pas REWRITTEN: Steam through a
+    TConsoleSteamAPI (TCustomSteamAPI created in code; PumpStart / Stop
+    empty - the loop calls Update every TICK_MS and CheckSynchronize(
+    TICK_MS) in EVERY mode now, was Sleep except mode main;
+    TerminateApplication = RequestStop; BigPictureWindow bpwNone).
+    Command line: [seconds] [mode] (unchanged meaning for the smoke test,
+    which is the old program) + --test (shared SteamComponentTest), --pair
+    (shared SteamPairTest, AppName = the executable's name), --server
+    (alone: DEDICATED, Roles = [srGameServer]; with --test / --pair: a
+    LISTEN server, Roles = [srClient, srGameServer], that the tests borrow
+    - DemoGameServerOwnedByTests stays False, so they leave it running),
+    --port / --query-port (only with --server, must differ), --help.
+    Tests Tick every TEST_TICK_MS; the loop ends on Enter / Ctrl+C /
+    signal, 704 on the client pipe, Steam gone, the seconds limit, or
+    (no --server) when the tests finish; then Finish, ServerLogOff
+    (advertising off + LogOff), a per-row summary, Close. Mode worker is
+    refused for tests / server (handlers would run on the worker while the
+    loop Ticks). Exit codes EXIT_OK 0 / EXIT_STEAM 1 / EXIT_USAGE 2 /
+    EXIT_TEST_FAILED 3 (in the interface; the .dpr / .lpr use EXIT_USAGE).
+    Server: SetModDir / SetProduct / SetGameDescription /
+    SetDedicatedServer / LogOnAnonymous after Open; on 101 name, map,
+    SERVER_MAX_PLAYERS, rule tsapi_kind, SetAdvertiseServerActive; 102 /
+    103 / 115 logged; a status line every STATUS_MS. Callback lines only
+    in smoke / server runs (the tests log their own).
+  * DECISION (proposed, owner may change): ServerExit (704 on the
+    SERVER's pipe) stays ignored by the core - NO LIBRARY CHANGE; the
+    console logs it and a dedicated server keeps running (it needs no
+    client). Unverified whether Steam ever sends it to a dedicated server.
+  * NEW src/uConsoleStop.pas: Windows SetConsoleCtrlHandler (Ctrl+C /
+    Break / close / log-off / shut-down; close waits up to
+    STOP_CLOSE_WAIT_MS for StopWatchDone), POSIX SIGINT / SIGTERM / SIGHUP
+    (FPC BaseUnix.fpSignal, Delphi Posix.Signal.signal; the handler resets
+    to the default so a second signal kills), an Enter thread (Eof /
+    Readln, FreeOnTerminate, never waited for - EOF at once when stdin is
+    not a console). A second Ctrl+C on Windows kills only after a FIRST
+    Ctrl+C (not after Enter).
+  * NEW SteamConsoleFPC.lpr / .lpi next to SteamConsole.dpr (same src +
+    ../Shared, plain FPC, no package: ../../lib, ../../lib/plugins on the
+    unit path; output <cpu>-<os>/ and lib/<cpu>-<os>/, both in .gitignore).
+    gen_projects.py: SteamConsole units + "fpc_twin" / "fpc_search", lpi()
+    writes the .lpi when missing (the delivered one IS its output).
+    project_check.py: every .lpi parses / its units exist; twin check (.lpi
+    units = .dproj units, .lpr uses = .dpr uses) - proven to catch a
+    removed unit and a wrong path.
+  * SteamConsole.dpr / .dproj: + SteamComponentTest, SteamPairTest (..\
+    Shared), uConsoleStop.
+  * Docs: demos/SteamConsole/README.md (usage, dedicated server and its
+    steamclient need - Valve's documentation, UNTESTED -, depot notes),
+    README (layout, FPC build, game-server status line),
+    Install-Lazarus-FPC.md (SteamConsoleFPC).
+  * Independent review (no compiler): NO certain compile error. Fixed
+    from it: a failed listen server ends the run (all or nothing - the
+    "continuing without it" branch could never run); second Ctrl+C after
+    Enter no longer kills; server name / help text from FProgramName / no
+    typed counts; EXIT_USAGE exported; unused FServerLoggedOn removed;
+    --port without --server refused, equal EFFECTIVE ports checked after
+    the defaults; Say ignores EInOutError (console gone while closing).
+    Left: a Ctrl+C that aborts the Enter thread's Readln may be logged as
+    "Enter pressed" (the stop itself is right).
+  * Tried: FPC from Castle Game Engine's GitHub release - github.com web /
+    API blocked here (403), so still no compiler.
+  ====> NO PACKAGE REBUILD (only demos/SteamConsole, tools, docs) <====
+  NOT YET COMPILED (Delphi or FPC). Belief, unverified until a build:
+  Delphi Posix.Signal.signal(SigNum, Handler) / FPC BaseUnix.fpSignal
+  declarations; FPC SetConsoleCtrlHandler(@ConsoleCtrl) signature check;
+  Readln from a thread in FPC (Input is a threadvar).
+- CONSOLE1 FIRST RUN (owner, 10:58, Delphi 13 Win64, Debug, Steam client
+  running): COMPILED FIRST TIME. `SteamConsole --test`: 30 / 30 PASS in
+  2.8 s, exit code 0 - the test's own listen server (27115 / 27116)
+  started, logged on, rules / ping / players of itself, ticket validated
+  by the server, then logged off and stopped by the test; loop ended on
+  "the tests have finished", summary, SteamAPI shut down. The Windows
+  code of uConsoleStop compiled (the POSIX parts still unbuilt).
+  Seen, NOT a fault: PowerShell 5.1 with `2>&1` turns Steam's stderr line
+  "Setting breakpad minidump AppID = ..." into a NativeCommandError block
+  in the log; cmd or PowerShell 7 give plain lines (demo README says so,
+  zip Console2).
+  Still to run: --server (client closed), --server --test, --pair,
+  Enter / Ctrl+C, SteamConsoleFPC.
+- DEDICATED SERVER FIRST RUN (owner, 11:01 with the Steam client OPEN;
+  11:12 again with the client CLOSED on this PC - the run that counts):
+  THE DEDICATED PATH WORKS. "Game server initialised (pipe 1, user 1;
+  27015 / 27016, mode 3; dedicated: no client)" from SteamAppId alone (no
+  steam_appid.txt); Steam's stderr shows the anonymous ID
+  76561197960265728; 101 0.93 s after LogOnAnonymous; game-server SteamID
+  (9029...), public IP; "secure no" at 101 then 115 VAC secure yes 0.27 s
+  later (timing, not a fault); status line at 60 s: logged on yes, secure
+  yes; THE STEAM CLIENT (started afterwards) LISTED THE SERVER; Ctrl+C ->
+  "stop requested: Ctrl+C", advertising off + LogOff, "Game server
+  (dedicated) shut down - Steam stopped" 116 ms later, exit code 0. So
+  the Windows console control handler works too. steamclient came from
+  the installed (closed) Steam client - a machine WITHOUT the client
+  (SteamCMD only) is still untested. Server callbacks seen: 1281, 1222,
+  703, 101, 115 and two internal ids, all on the main thread (manual).
+  Zip Console3 (follows Console2): these notes, README status line, demo
+  README. NO PACKAGE REBUILD.
+- LISTEN SERVER BORROWED BY THE TEST (owner, 11:18, `SteamConsole --server
+  --test`, Win64): 30 / 30 PASS. "a game server runs already (query port
+  27016, 0 other test(s) using it) - tested as it is"; the test waited for
+  the console's 101 (no second LogOnAnonymous); cleanup "the game server
+  left running: not started by a test (our rule removed)"; status line at
+  60 s logged on / secure yes; ENTER -> "stop requested: Enter pressed",
+  LogOff, summary, "SteamAPI and the game server shut down", exit 0. All
+  Windows stop paths now tried (Ctrl+C 11:13, Enter 11:20). First time the
+  LAN list found a server (1 - the console's own).
+  BUG FOUND (log text only, shared SteamComponentTest, older than
+  Console1 - the 10:58 run showed it too): OnPlayersComplete /
+  OnRulesComplete printed the INTERNET server's counters for the
+  own-server query ("query 8, 5 players" = the CS2 server's 5; "query 6,
+  0 rules" after two rules). Verdicts were right (they use FGSRuleCount).
+  Zip Console4 (follows Console3): each query logs its own count (NEW
+  FGSPlayerCount for the own server, also in its row note).
+  NO PACKAGE REBUILD; rebuild the demos that use the shared test
+  (SteamDemo, SteamDemoVCL, SteamDemoLCL, SteamConsole).
+- OWNER'S GROUP BUILD (11:25, Delphi 13 Win64, Debug, all applications):
+  NO ERRORS; SteamConsole without hints. Hints of ours fixed in zip
+  Console5 (follows Console4):
+  * H2443 RenameFile not inlined (SteamDemo uMain 338, SteamDemoVCL uMain
+    292): Windows unit added FIRST in the INTERFACE uses (FMX: under
+    {$IFDEF MSWINDOWS}). NOT in the implementation uses: units there come
+    after all interface units, so Winapi.Windows' record TBitmap would
+    shadow Vcl.Graphics' (SteamDemoVCL uses TBitmap three times in its
+    implementation) - a first attempt did exactly that and was caught
+    before delivery. SteamDemoLCL untouched (FPC has no such hint; Windows
+    would break its Linux build) - the VCL / LCL twins differ there.
+  * LogReceiver uNetworks: H2077 R (the adapter-list loop is a repeat
+    loop now), H2077 Done (False only in {$ELSE}: on Windows both
+    branches set it), H2443 TCollection.GetCount (System.Classes in the
+    implementation uses).
+  Not ours, left: 6 x W1029 in TKraftConstraintJoint* (Castle Game
+  Engine's Kraft physics, linked by VirtualGamepadVCL).
+  NO PACKAGE REBUILD; rebuild SteamDemo, SteamDemoVCL, LogReceiver.
+- CONSOLE5 BUILD (owner, 11:29): ALL DEMOS COMPILED, Win64 (the
+  Windows-first interface uses in both SteamDemos included). (This note
+  goes out with the next zip.)
+- CONSOLE BATCH STATE (13:30): done on Win64 (Delphi) - smoke via the
+  test runs, --test, --server (client closed, listed), --server --test,
+  Enter + Ctrl+C. Left: --pair, SteamConsoleFPC (Lazarus).
+- REMOTE LOGGING RELEASE (owner, 13:43): LogReceiver will be released as a
+  GitHub Release for 64-bit desktops (FMX: Win64, macOS, Linux64); all GUI
+  demos send to it (SteamConsole does not - redirect its output). Owner
+  tests the Mac / Linux receivers (only the Windows receiver has run).
+- NEW DEMO SteamDemoPad - OWNER'S DESIGN (13:53 - 14:19), demos/SteamDemoPad,
+  FMX, a Big Picture / Steam Deck variant of SteamDemo driven by the pad
+  through Steam Input (manifest + layouts from gen_input_mapping.py):
+  * UI DRAWN by the program (no standard controls for the content): one
+    full-screen drawing surface; tabs switched with LB / RB; D-pad moves a
+    highlight, A selects, B back; right stick scrolls; keyboard / mouse /
+    touch as a fallback.
+  * Steam starts AUTOMATICALLY at start-up (no Auto Start setting, no
+    settings file needed); then Show Info and the component test run by
+    themselves. NO File menu, no Copy Log, no Output / Components tabs.
+  * Log: sent to LogReceiver. The program LOOKS FOR A RECEIVER AT START
+    (often fails: the user must Accept on the receiver) and the menu item
+    retries (unreliable, may need several attempts); lines before the
+    connection are kept and sent.
+  * A ONE-LINE STATUS BAR shows the start-up results (e.g. "Component
+    test: 30 / 30 PASS - log: sending to <receiver>").
+  * MENU on a SHORT press of Start / Menu (no long hold), like
+    VirtualGamepad's overlay: Send Log to Remote, Take Screenshot,
+    Restart Steam (owner chose (c): Stop + Start in one go - after a plain
+    Stop the pad could not reach Start, Steam Input needs Steam), Exit.
+  * TABS: Personal, Achievements, Two Users (more later: Workshop,
+    Inventory, Remote Server). Achievements: A on one unlocks / clears it
+    after an OK / Cancel CONFIRMATION (a small menu-like dialog). Two
+    Users: A starts the pair test; its 8 rows shown.
+  * Launch options (partner site): undecided. Valve advises against a
+    launcher / a choice step for Deck users (steamhardware/recommendations
+    page); proposal: SteamDemoPad the default option, desktop SteamDemo a
+    second one. The owner checks the partner site's launch-option fields
+    (partner docs page sdk/uploading not reachable from the workspace).
+  * Deck Verified rules to keep: smallest text >= 9 px at 1280 x 800 (aim
+    12), glyphs matching the active input (Steam Input action origins),
+    1280 x 800 / 720, no unsupported-hardware warnings.
+  * OWNER (14:20): ITS OWN MANIFEST WITH A DIFFERENT NAME (not the shared
+    steam_controllers.vdf). (14:33) every FMX / Linux patch of docs/ applied
+    + SKIA ENABLED ("a good test case, can always be removed"). (14:34)
+    + a Controller Settings menu item, (14:35) + Rumble, (14:53) + the
+    controller-switching row of VirtualGamepad's overlay (meController,
+    first, only with more than one pad; Left / Right cycles, A chooses
+    FChosenPad = THE pad for Controller Settings, Rumble and the hint-line
+    button names while connected; every pad still navigates; a mouse click
+    on the row chooses the pad it names - no cycling by mouse).
+- ZIP PAD1 (follows Console5) - NEW demos/SteamDemoPad. NOT YET COMPILED.
+  * tools/gen_input_mapping.py: PROFILES. "input" = the old tables
+    (output byte-identical, CRLF aside - checked); "pad" = SteamDemoPad's
+    steamdemopad_controllers.vdf, ONE set Pad (PadUp/Down/Left/Right on
+    the d-pad AND the left stick in group mode dpad, PadSelect A, PadBack
+    B, PagePrev / PageNext shoulders, PadMenu Start, PadScroll right stick
+    analog), layouts pad_controller_<type>.vdf (prefix: no clash with
+    controller_*.vdf in a shared depot folder), PAD_LAYOUT_REVISION 1;
+    multi_source (one action from several sources) and
+    bound_sources_only (no group for an unbound source - an unbound gyro
+    group in gyro_to_mouse mode could move the OS pointer).
+  * src/uMain.pas (+ .fmx): ONE TPaintBox draws everything on a 1280 x 800
+    virtual screen scaled to the window (Min of both ratios; a wider
+    window gets a wider virtual width); TTextLayout with ellipsis; rows
+    ROW_H 72 (headers too); list clipped (IntersectClipRect); hit
+    rectangles recorded while drawing (mouse / touch, topmost first).
+    Input: every connected pad, ActivateActionSet each frame, edges +
+    repeat (REPEAT_DELAY_MS / REPEAT_MS) for the directions, right stick
+    scroll; FActivePad = the pad that pressed last. The pad loop EXITS
+    when a press restarted / closed Steam (FResolved False or Input <> P).
+    Keyboard: arrows, Enter / Space, Escape / Backspace, PgUp / PgDn, Tab,
+    Q / E, M / F10. (Menu button top right: REMOVED in Pad3 - right click.)
+    Start-up: tmStart (300 ms) opens Steam; OnInitialized -> StartInput,
+    pages, FStartupDue -> next tmTests tick: ShowInfo + FTest.Start.
+    Menu: Controller Settings (ShowBindingPanel), Rumble (TriggerVibration
+    RUMBLE_SPEED, tmRumble 500 ms), Send Log to Remote (DemoRemoteLog.Toggle,
+    also once in FormCreate), Take Screenshot (SHOT_DELAY_MS after the menu
+    closed, SteamFormToRGB), Restart Steam / Start Steam, Exit; greyed
+    when not possible. Confirmation: Cancel highlighted first.
+    Log: file next to the exe (+ .previous.log), stderr on POSIX, receiver.
+  * FMX fixes: FmxLinuxGtkGlobal, FmxWineCanvas (FIVE identical copies now
+    - header text changed in all five), FmxSkiaCanvas (TWO copies:
+    VirtualGamepad + SteamDemoPad; project_check SHARED), ICU launcher
+    src/SteamDemoPad.sh (FIVE copies), no FmxLinuxMenu (no menu bar).
+    project_check FMX_DIRS = MENU_DIRS + SteamDemoPad.
+  * Skia: gen_projects.py skia=True writes what the IDE's Enable Skia adds
+    (DCC_Define SKIA in Base; Skia DeployFile entries for Win32 / Win64 /
+    Linux64, $(BDS) or $(SKIADIR)) - SteamDemoPad's generated entries are
+    IDENTICAL to the 12 in VirtualGamepad.dproj (compared); VirtualGamepad
+    marked skia=True too. The .dpr lists FMX.Skia, NO GlobalUseSkia line.
+  * gen_projects.py entry (DESKTOP_PLATFORMS, PAD_INPUT_FILES, mac_data
+    Contents/Resources, linux_files); SteamDemoPad.dproj GENERATED (new);
+    Steamworks.groupproj: SteamDemoPad added BY HAND after SteamDemo
+    (Projects + Dependencies SteamworksFMX, three Targets, Build / Clean /
+    Make lists).
+  * Docs: demo README (behaviour, fixes, Skia, depot incl. sk4d.dll, the
+    UNVERIFIED two-manifests-per-AppID question), README layout,
+    docs/SteamInputMapping.md (profiles), docs/Launcher.md (manifest
+    point rewritten; open decisions 5 two manifests per AppID - unverified
+    for players - and 6 SteamDemoPad as default launch option).
+  * Independent review (no compiler): NO certain compile error;
+    generator's "input" output verified unchanged by the reviewer too.
+    Fixed from it: row hit rectangles clipped to the list (a half-hidden
+    row under the page row took tab clicks - the one LIKELY bug); first
+    selectable row highlighted from the start; confirmation Left = OK,
+    Right = Cancel, Up / Down toggle, and NO repeat while the menu /
+    confirmation is open; the duplicate Space mapping removed; greyed menu
+    entries do nothing; a pad-poll exception stops only the pad, repaints
+    go on; FreeAndNil(FLog / FText); literals formatted (k_EResultOK,
+    BATTERY_MAINS, INVALID_SCREENSHOT, RUMBLE_OFF); friends asked for once
+    per Steam start (no request / log line on every rebuild); the title
+    stops before the LB name; virtual HEIGHT follows the window too
+    (FVirtualH: status bar at the bottom of a 4:3 / portrait window); the
+    text layout is created at the first paint for the canvas class in use
+    (TextLayoutByCanvas - GDI+ / Skia), not DefaultTextLayout.
+    Belief, unverified until a build: TPaintBox publishes OnMouseWheel (85
+    %); TextLayoutByCanvas signature; FMX canvas API (95 %).
+  ====> NO PACKAGE REBUILD FOR PAD1 (demos, tools, docs only) <====
+- OWNER'S BUILD (15:13, Win64): uMain.pas(2233 / 2238) E2015 "Operator not
+  applicable" x4: the constant PIC (picture size) and DrawList's TRectF
+  local Pic are ONE identifier (Pascal ignores case; the local wins) - so
+  R.Height - PIC subtracted a rectangle. Neither the review nor I saw it.
+  Zip Pad2 (follows Pad1): constant renamed PIC_SIZE; NEW project_check.py
+  rule: a constant (capitals) also spelled in another case anywhere in its
+  unit is reported (0 hits in every other source; proven on this error).
+  NO PACKAGE REBUILD.
+- PAD2 FIRST RUN (owner, 15:25, Win64, main laptop, Steam client in Big
+  Picture): COMPILED, RAN; component test 30 / 30 PASS at start-up;
+  Personal page with avatars and friends; Steam Input button names shown
+  ("L1 Button", "A Button", "Menu Button"); remote log searched 3 times
+  (no receiver running). Owner: "good job" - but:
+  * NOT full screen although Steam was in Big Picture. Code path
+    bpwFullScreen = Form.FullScreen := True looks right; most likely the
+    single check at Open answered no (program started outside Big Picture
+    / from the IDE?) - asked for the "Big Picture" log lines.
+  * Title (left) and Menu button (right) pointless - removed.
+  * Hint line: "Left Stick Move Up / Left Stick Move Down" - the first
+    origin of an action bound twice.
+  Zip Pad3 (follows Pad2): no title, no menu button (right click opens
+  the menu); the LB / RB names get wider slots; hint names = the SHORTEST
+  origin name of an action; CheckBigPicture every second (tmTests):
+  IsSteamInBigPictureMode -> FullScreen := True when it turns yes (logged
+  both ways; leaving Big Picture changes nothing). NO PACKAGE REBUILD.
+- PAD3 RUN (owner, 15:30-15:31, Win64 Debug started from the IDE, client
+  in Big Picture): NOT full screen again. The log: "Big Picture: no"
+  (TSteamAPI at Open), "Big Picture at start: no", Show Info "overlay no,
+  ... Big Picture no", and no change line later - STEAM ITSELF answered no
+  all along. IsSteamInBigPictureMode is yes only for a program Steam
+  launched (overlay); VirtualGamepad was launched from Steam on the Ally.
+  So the code is not at fault; test by starting the build THROUGH Steam
+  (Launch Options `"<path>\SteamDemoPad.exe" %command%` - suggested,
+  untried). Remote log: no receiver in the 3 start-up searches; the menu
+  item found it at the first try, accepted - SEND LOG TO REMOTE WORKS.
+  Steam Input: 10 actions resolved, names D-Pad Up / A Button / L1 Button
+  / R1 Button / Menu Button (L1 = a PlayStation-type pad?). OBSERVED, NOT
+  EXPLAINED: "Steam Input layout loaded ... revision 0.0" although every
+  pad_ layout says minor_revision 1 - Steam may have used a layout of its
+  own (the bindings still match ours); asked which pad.
+  OWNER: show Steam's ICONS for L1 / R1 instead of the names. Zip Pad4
+  (follows Pad3): Steam's glyph PNGs (knockout, dark, small, light, then
+  legacy) for every button and the scroll stick, drawn in the page row
+  and the hint line (now items of icons + a word, measured and centred);
+  the name where Steam has no picture; pictures logged per action. README:
+  Big Picture needs a Steam launch + the Launch Options trick.
+  NO PACKAGE REBUILD.
+- OWNER (15:36-15:43): Pad4 "good enough for a release build". Steam-only
+  behaviour (Big Picture flag, overlay, Controller Settings panel, layout
+  revision, RestartIfNecessary, the depot) needs a Steam launch / a
+  release - proposed: a BETA BRANCH upload, then laptop + Ally. Launch
+  options (Launcher.md decisions 5 / 6): DEFERRED by the owner ("can
+  always add it later"). Options noted: (1) two launch options + Steam's
+  picker, (2) SteamDemoPad only + a "Desktop version" menu item, (3)
+  look at the picker on a beta branch first. Still wanted from the
+  partner site: the Launch Type list. (This note goes out with the next
+  zip.)
+  Build: SteamDemoPad (new, in the group); VirtualGamepad / SteamInputDemo
+  / SteamDemo / LogReceiver only for the comment change in the shared
+  units (no code change).
+- PAD4 RELEASE RUN (owner, 16:34): the Release build launched from Steam
+  goes FULL SCREEN in Big Picture on the main laptop and on the Ally
+  (the Debug-run "no" was the not-launched-by-Steam case, as explained).
+  Pair test Miix - main laptop passed (logs to come with the server
+  tests). Steam's FPS counter shows ~0: by design - the program repaints
+  only when something changes (FDirty).
+  OWNER: (a) the remote-log item said Stop Sending before anything was
+  connected; it must read Start Sending -> Connecting... (greyed, no
+  click) -> Stop Sending to Remote ONLY once connected and sending, and
+  a failed / timed-out connect returns to Start Sending; (b) the menu
+  wraps at top / bottom; (c) Up / Down held repeat in the menu ~0.5 s.
+  Zip Pad5 (follows Pad4):
+  * RemoteLog.Protocol: TRemoteLogState (rlsIdle / rlsConnecting /
+    rlsAccepted). BOTH senders (Indy + FPC, kept identical): State (set
+    by the thread BEFORE each status message; Start -> connecting, Stop
+    -> idle) and Retry (default True = old behaviour for SteamInputDemo /
+    VirtualGamepads; False: a failed / lost connection gives up with
+    "... - stopped, n line(s) not sent"). RemoteLog.Protocol moved to the
+    senders' INTERFACE uses (the type is in their interface).
+  * DemoRemoteLog: State (drsIdle / drsSearching / drsConnecting /
+    drsSending), Busy, Sending only when ACCEPTED; Retry False; Toggle
+    ignores clicks while searching / connecting (logged); a sender that
+    gave up is NOT freed inside its own status handler any more (the
+    FPC DeliverStatus loop would have run on a freed thread) - it stays
+    until the next Toggle / Shutdown; Changed on every search start and
+    status message; MenuText per state.
+  * SteamDemo FMX / VCL / LCL: the File item is greyed while Busy.
+  * SteamDemoPad: Start Sending to Remote / Looking for Remote... /
+    Connecting... (greyed) / Stop Sending to Remote; status bar per state
+    (idle keeps the last [remote log] line = why); MoveMenu wraps;
+    MENU_REPEAT_MS 500 for Up / Down held in the menu (first step too);
+    confirmation still no repeat.
+  NO PACKAGE REBUILD. NOT YET COMPILED.
+- STEAM MACHINE (SteamOS 3.8, owner, 17:16 and 17:22; Pad4 RELEASE build
+  installed from Steam, the app never on that machine before): native
+  Linux64 build in Steam Runtime 3 (sniper), TLinuxCanvas, Steam hardware
+  type 2. Big Picture yes -> FULL SCREEN at 1920 x 1080 AND at 3840 x 2160
+  (4K, scale 1.00). Manifest loaded from the install folder, 10 actions,
+  Steam Deck-style glyphs (knockout medium 128x128). COMPONENT TEST 30 OF 30
+  PASS both runs - incl. the listen server (anonymous log-on, own rules /
+  ping / players at 127.0.0.1, ticket validated), Inventory GenerateItems /
+  ConsumeItem (partner account), UTF-8 / emoji server names. Controller
+  Settings: ShowBindingPanel True; the layout came back as "revision 0.0"
+  again (still unexplained). Remote log: run 1 - 3 start-up searches found
+  nothing (receiver not yet up), the menu item found it and was accepted;
+  run 2 - found during the start-up searches, accepted ~13 s later. Side
+  note: a repeated AddPromoItem answered OK with ONE item of all zeros
+  (instance / definition / quantity 0) - Steam's "nothing granted" form.
+  Zip Pad6 (follows Pad5): two leftover "Send Log to Remote" texts in
+  SteamDemoPad (the start-up log line, the unit comment) now name the new
+  item. NO PACKAGE REBUILD.
+- OWNER (17:55, last cosmetic point before release): show the device in
+  use under the tabs, row text size, centred. Zip Pad7 (follows Pad6):
+  DrawDevice / DeviceText - "Controller in use: <InputTypeName of
+  TargetPad>" (+ "(n connected)" with several), "No controller connected
+  (keyboard, mouse or touch)", or "No controller - Steam is not running";
+  DEVICE_H 40, the list starts below it; the poll repaints when the text
+  changes (FDeviceText). README. NO PACKAGE REBUILD. NOT YET COMPILED.
+- PUSH 7f52a78 "SteamDemoPad" (18:08) VERIFIED against a separate clone:
+  Pad1-Pad7 identical ignoring CRLF / BOM except IDE re-saves (accepted):
+  SteamDemoPad.dproj (default Win64, post-build per configuration, 99
+  DeployFile, all 11 pad layouts copied), SteamConsole.dproj (default
+  platform), Steamworks.groupproj (Dependencies kept, SteamDemoPad in it).
+  Checks 0 problems. Working copy reset. Owner released SteamDemoPad.
+- OWNER (18:45, released build, screenshot with no pad): the hint line
+  showed only pad buttons - with no controller there was no visible way to
+  the menu (right click / M were not shown). Zip Pad8 (follows the push):
+  KeyboardMode (Steam not running or no pad) -> keyboard / mouse key caps
+  (DrawCap / CapWidth; THintItem.Names, KeyHint) in the hint line for page,
+  menu and confirmation, and Q / E beside the page row (PAGE_PREV_KEY /
+  PAGE_NEXT_KEY / MENU_KEY constants, also used by FormKeyDown); hint items
+  with a Button are CLICKABLE (new hit kind hkHint -> PressButton) in both
+  modes: menu, select / choose, close / cancel, the page keys beside the
+  tabs. The bars are now drawn AFTER the overlay (readable over the shade,
+  their clicks win over hkOutside). README. NO PACKAGE REBUILD. NOT YET
+  COMPILED.
+
+## Handover (2026-11-17, sixteenth session) - READ THIS FIRST
+Work happens from the Epubunum sessions (EpubReader / EpubBuilder use
+TSteamAPI for their Steam builds). Zip Screen1, based on push ea0a132,
+replaces TSteamAPI-FreeType1 (not pushed yet) and contains it:
+- docs/fmx-steamos-freetype-bug.md, docs/fmx-steamos-freetype-bug-fix.md,
+  docs/README.md rows (FreeType1: the Deck crash in Skia's text, fixed by
+  Ubuntu 22.04's FreeType next to the program, first on LD_LIBRARY_PATH).
+- NEW fmx/Steamworks.FMX.Screen.pas (in SteamworksFMX: .dpk, .dproj,
+  gen_projects.py): SteamScreenInfo(Form) - the display's size in units,
+  pixels and mm (Windows EDID from the registry, else GetDeviceCaps;
+  macOS CGDisplayScreenSize, CoreGraphics by dlopen; Linux GDK 3.22
+  monitor mm by dlopen; a Steam Deck's 1280 x 800 panel: 155 x 97 mm, LCD
+  and OLED averaged), Big Picture and IsRunningOnSteamHardware, and the
+  suggestion: BigUi = Big Picture or a handheld (< 10"); viewing distance
+  1.6 diagonals (400 - 3000 mm); UiScale makes a unit look as big from
+  there as 1/96" at 711 mm; 1 outside BigUi (the system's scaling is the
+  user's). Made-up sizes (96 dpi) and EDID aspect codes (16 x 9 cm) are
+  ignored and said so in SizeNote. NOT COMPILED. First stage of the
+  owner's big-screen / gamepad work (2026-11-17): the numbers are logged
+  by EpubReader on every machine before any layout uses them. Next: a pad
+  overlay menu unit (VirtualGamepad's, made reusable) in fmx/.
+RUNTIME RECOMPILE: STEAMWORKSFMX (ALL PLATFORMS), THEN DCLSTEAMWORKSFMX.
+
+## Handover (2026-11-13, fifteenth session, part 2)
+OWNER 14:39 (VirtualGamepad, Motion on): the skybox's HORIZONTAL direction
+needs reversing. SKY_YAW_SIGN -1 -> 1 in all three uMain.pas (FMX, LCL,
+VCL kept in step; the FMX one is what the owner SAW - the Castle twins
+NOT YET SEEN). SKY_PITCH_SIGN (vertical) unchanged at -1, NOT YET SEEN.
+Zip Sky1 based on push 45b03e2 ("docs" = UserManual1, applied as
+delivered). Demos only: NO PACKAGE REBUILD, recompile the three demos.
+
+## Handover (2026-11-11, fifteenth session)
+`skybox` is merged into `main` (push 69bc11b, PR #1); work on `main`
+unless the owner says otherwise. OWNER asked for docs/UserManual.md, a
+user manual of every component (see the docs/ entry under Layout rules
+for its rules: dependency order, popular features first, icon per
+component, AppID 480 examples). Zip UserManual1 (based on 69bc11b):
+docs/UserManual.md (new), docs/README.md (row), README.md (Documentation
+line), CLAUDE.md. Docs only - NO PACKAGE REBUILD. Examples NOT COMPILED;
+Spacewar names (stats NumGames / NumWins / NumLosses / FeetTraveled /
+MaxFeetTraveled / AverageSpeed, achievements ACH_WIN_ONE_GAME /
+ACH_WIN_100_GAMES / ACH_TRAVEL_FAR_*, leaderboards "Quickest Win" /
+"Feet Traveled", drop generator 10, server mod dir "spacewar") are from
+Valve's Spacewar sample from memory - NOT YET CHECKED against the SDK /
+a run (the manual's 8.2 and 18.2 list them at run time). The fourteenth
+session's open points below still stand.
+
+## Handover (2026-11-07, end of the fourteenth session)
+WHERE THINGS STAND: the owner's push 80f8851 "Skybox" on branch `skybox`
+equals the last delivery (Glow21), apart from VirtualGamepad.dproj, which
+his IDE re-saved (order changed, default Config back to Debug - left as he
+has it; all 216 skybox DeployFile entries and the six one-line post-build
+events survived). Nothing is undelivered. Work on `skybox`.
+
+DONE THIS SESSION (details in the parts below, newest first):
+* VirtualGamepad (all three twins, FMX / LCL / VCL kept in step):
+  overlay menu = Controller, Return, View (Front / Back / Top cycle),
+  Skybox (None / Grid / Sky / Stars), Highlights on / off, Gyro, Motion,
+  Controller Settings, Steam Hardware (panel over the menu; greyed without
+  Steam hardware), Remote Logging, Exit; menu wraps, up / down repeat
+  500 ms; mirrored glow + animation (paddles, triggers, bumpers) in the
+  back / top views; D-pad glows per arm; Steam Controller DPad_Up stops
+  half way; glow 25 %; poll no longer dies without a pad (FHaloOf guard);
+  layout check (CheckBindings: orange warning + Steam's layout screen once
+  when Steam's layout binds nothing - happens after a layout REVISION
+  change; not yet seen with the check in place).
+* Gyro = model turns with the pad. Motion (accelerometer pads only) =
+  gyro + the model moves (TPadMotion in PadActivity.pas: high-passed
+  acceleration, damped, spring back, -1..1 x MOTION_RANGE), the camera goes
+  to the Motion view (pvMotion: azimuth 360, inclination 270 - owner: model
+  now correct), turning round (yaw about "up" from gravity) turns only the
+  skybox, tilting the pad up / down tilts the skybox (and the model,
+  MOTION_PITCH_SKY_ONLY False), skybox turned SKY_MOTION_TILT 90 in the
+  Motion view (owner 04:43: "much better"). Skybox default Sky.
+* Steam Input layouts: r23 (gyro always on, trackpads no inner dead zone,
+  Menu set only binds what it uses - trackpad positions survived the
+  overlay); pad_ layouts r2; layouts in <src>\controllers\, manifests name
+  "controllers/<file>" (Steam loads them - confirmed).
+* Deployment: ONE-LINE post-build `call "$(PROJECTDIR)\deploy.bat"
+  $(Platform) $(Config)` in all Windows dproj groups (the IDE broke the
+  multi-line event; .deploy.targets and Required deployment entries did NOT
+  run in the IDE - do not try them again). deploy.bat (gen_projects.py)
+  copies into <Platform>\<Config>: exe dir = dll + manifest, controllers\,
+  models\, images\<same subfolders>. GENERAL RULE (owner): layouts in
+  controllers\, models in models\, images in images\ - for every project.
+* Steam hardware log line + panel (IsRunningOnSteamHardware etc.); icons
+  for all programs; PS4 pad tested on Windows (all controls fine).
+
+OPEN / TO CHECK NEXT (all NOT YET SEEN unless the owner reports):
+* Motion: MOTION_SRC / MOTION_SIGN axis mapping (log "Motion: accelerometer
+  axis X reacted"), SKY_YAW_SIGN / SKY_PITCH_SIGN directions, the "sensors'
+  up axis" log line staying put while tilting, skybox face orientation /
+  mirroring (Grid shows each face), FMX SKY_HALF vs the camera's far plane
+  (box visible - owner saw it, so fine on Windows).
+* The unbound-layout warning (CheckBindings) - wait for it to happen; owner
+  does not want a test switch.
+* Steam Deck: re-test the right trackpad after r23 (the Menu-set fix is
+  the likely cure), Motion on the Deck, GDI+ ~19 fps vs Skia ~52 fps under
+  Proton (recommend TSAPI_FMX_CANVAS=skia; default unchanged - owner's
+  decision).
+* Lazarus projects have no deploy step (data found via repository
+  fallbacks); macOS / Linux Delphi deployment of the new subfolders NOT
+  YET RUN.
+* Real skybox art from the owner later (a folder in images/skyboxes with
+  px / nx / py / ny / pz / nz .png; run tools/gen_projects.py afterwards so
+  deploy.bat and the Deployment entries list it).
+
+## Handover (2026-11-07, fourteenth session, part 13)
+OWNER 04:34: model in the Motion view now right, but the skybox looked straight up: SKY_MOTION_TILT 90 (degrees about the screen horizontal, Motion view only; FMX matrix * Tilt last, Castle ViewQuat * Tilt * yaw * pitch; sign NOT YET SEEN). OWNER 04:25: default skybox Sky (SKY_DEFAULT). OWNER 04:24 on Glow19: "last time (Glow18) was closer - go back to that,
+but make tilt of the pad affect the skybox inclination; the controller
+model needs 180 inclination relative to current". READ: his 04:04 "no
+vertical movement" meant TILT (up / down) -> skybox inclination, not
+lifting. Glow20 = Glow18's three uMain.pas (movement in the pad's axes,
+model = conj(Q0) * conj(yaw twist) * Q) PLUS: the Motion view pvMotion
+(azimuth 360, inclination 270 = Glow19's 90 + 180; whether Gorilla's
+Sprite3DCamera takes a polar angle of 270 is NOT KNOWN), ViewSwapped,
+SetMoveMotion / gyro-off view switching, and the pitch twist about the
+player's right -> FMotionPitch -> skybox inclination (SKY_PITCH_SIGN -1);
+the pitch STAYS on the model (MOTION_PITCH_SKY_ONLY = False; True = only
+the skybox tilts). Glow19's world-frame movement / ToPlayer are gone
+(part 12 below describes them - superseded).
+
+## Handover (2026-11-07, fourteenth session, part 12)
+OWNER 04:04 on Glow18: rotation (chair turn -> skybox) good. Asked: (a) no
+vertical movement - lifting must move the model; tilting the pad up /
+down -> the skybox's INCLINATION (asked back: "both", may try others);
+(b) "gyro adjusted for the other sensors" (no preference: Steam's fused
+rotQuat already uses the accelerometer for tilt; heading cannot be
+corrected without a magnetometer - told him; the "player's part" is taken
+out instead); (c) Motion starts in a new view: the player at the origin
+holding the pad, skybox far away = Top turned by azimuth 180 (pvMotion,
+azimuth 360, inclination 90; not in the View row's cycle - CycleView
+cycles Front / Back / Top; ViewSwapped(V) = back / top only, replacing
+"<> pvFront" for glow / trackpad / clip mirroring). Glow19 (all three):
+* the accelerometer goes into TPadMotion turned into Steam's frame
+  (QuatRotate(Q normalised, accel)) - gravity stays one direction, so the
+  movement is world movement; MotionOffset / LogMotionAxes project it on
+  the PLAYER's axes (ToPlayer: up = FUp, right = the pad's x at the front
+  view made level, towards = right x up). Fixes "no vertical movement"
+  (in pad axes, up was whatever axis gravity was on).
+* MotionRelative: yaw twist about up -> FMotionYaw; then pitch twist about
+  the player's right -> FMotionPitch; the model gets the rest (roll /
+  twist): conj(Q0) * D_rest * Q0. Skybox: FMX CreateRotationX(SKY_PITCH_
+  SIGN * pitch) * CreateRotationY(SKY_YAW_SIGN * yaw); Castle ViewQuat *
+  Y(yaw) * X(pitch). SKY_PITCH_SIGN -1, NOT YET SEEN.
+* SetMoveMotion: on -> FViewBeforeMotion, SetView(pvMotion); off (also via
+  gyro off) -> back.
+
+## Handover (2026-11-07, fourteenth session, part 11)
+OWNER 03:51 on Glow17: (1) no skybox at start - wanted one by default:
+SKY_DEFAULT 'Grid' (else the first found), FindSkies picks it, CreateScene
+shows it (SetSky). (2) "hold the pad still and turn the chair: the model
+turns too - an orientation change from motion should not turn it".
+DONE (Motion only; Gyro alone still follows every turn, it cannot tell):
+MotionRelative splits the turn since the front view, D = Q * conj(Q0)
+(Steam's frame), swing-twist about "up" = FUp, a slow average (k 0.02
+per poll) of posAccel turned by Q (QuatRotate, now also in the FMX unit);
+the twist angle -> FMotionYaw -> the skybox turns about the scene's
+vertical by SKY_YAW_SIGN (-1) * FMotionYaw (FMX TMatrix3D.CreateRotationY;
+Castle ViewQuat * Y-quat); the model gets conj(Q0) * conj(twist) * Q.
+ASSUMES the accelerometer and rotQuat share axes and that rotQuat maps
+pad -> world: the log "Motion: the sensors' up axis is x y z" (after ~60
+polls) must stay the same when the pad is tilted - if it follows the pad,
+use QuatConj(Q) in MotionRelative's QuatRotate. Twisting the pad flat
+now also counts as turning round (said to the owner).
+
+## Handover (2026-11-07, fourteenth session, part 10)
+OWNER 03:10: the unbound-layout warning cannot be provoked now - wait for
+it to happen (no test switch wanted). 03:19 ASKED FOR (Glow17, all three
+VirtualGamepads), asked back and answered: skybox turns the OTHER way
+from the pad with Motion on ("model turns, sky turns too"); skyboxes
+generated for testing, owner adds proper ones later.
+* Overlay rows now: Controller, Return, View, Skybox (oiSky, left / right
+  + A, like View; click = next), Highlights, Gyro (oiMotion, was "Motion":
+  the old rotate-only function), Motion (oiMove, NEW), Controller
+  Settings, Steam Hardware, Remote Logging, Exit. ITEM_HEIGHT 48 -> 40,
+  ITEM_GAP 8 -> 6 so 11 rows fit 720 px. View menu caption "Gyro (the
+  model turns with the pad)" (form files untouched; the code sets it).
+* Motion = gyro + movement + skybox turning. SetMoveMotion(True) switches
+  the gyro on; gyro off switches Motion off. Enabled only when the pad has
+  an accelerometer (TPadMotion.HasAccel: any non-zero posAccel).
+* TPadMotion (PadActivity.pas, shared): gravity = low-pass of posAccel
+  (GRAVITY_TAU 0.5 s), linear = (reading - gravity) / |gravity| in g
+  (pad-independent units), dead zone 0.03 g, velocity with damping 3/s,
+  offset with spring 1.2/s, clamped -1..1. NOT rotated by the pad's
+  orientation (pad axes used as they are). uMain MotionOffset maps axes
+  with MOTION_SRC / MOTION_SIGN (identity, NOT YET SEEN ON A PAD:
+  LogMotionAxes logs the first axis reacting > 0.35 g per Motion switch-on).
+  Offset * MOTION_RANGE (0.35) * model size: FMX moves FPivot from
+  FPivotBase (x, -y, -z: FMX y down, z away); Castle sets FScene.Translation
+  turned by ViewQuat (Castle turns the model for the views). Written in
+  ApplyMoveAndSky, called with the gyro write (FMX: throttled with it).
+* Skyboxes: images/skyboxes/<Name>/{px,nx,py,ny,pz,nz}.png (repo root;
+  tools/gen_skyboxes.py draws Grid / Sky / Stars, 512 px, CC0; README
+  there). FindSkies lists folders with pz.png (data folder
+  images\skyboxes\, else the repository's). FMX: an EMPTY TGorillaModel
+  (FSkyRoot) holding six TPlane (TwoSide, TTextureMaterialSource),
+  SKY_HALF = 6 * MODEL_SIZE (far plane NOT KNOWN - if the box is clipped
+  make it smaller), turned through TransformMatrix like the pad model:
+  inverse of the pad's scene turn (QuatToMatrix(HALF_X)^-1 * QuatToMatrix
+  (AQ * HALF_X)). Castle: TCastleBackground (Texture*X/Y/Z URLs, Rotation
+  axis-angle) as FViewport.Background; turned by ViewQuat (views) and
+  conj(AQ) with Motion. Face orientation / mirroring NOT YET SEEN.
+* Deployment: gen_projects.py SKYBOX_FILES (VirtualGamepad, VCL);
+  deploy_subdir keeps the images\ subfolders (images\skyboxes\Sky\);
+  ensure_data_entries adds missing macOS / Linux Deployment entries (108
+  for the FMX dproj). .gitattributes: *.png binary.
+NOT COMPILED. Expected log: "Skyboxes: 3 found", "The pad has an
+accelerometer ...", "Motion on ...", "Motion: accelerometer axis ...".
+
+## Handover (2026-11-07, fourteenth session, part 9)
+OWNER 02:49: Glow15's poll fix confirmed (pad switched on after start is
+picked up). 02:46: the "layout failed to load" (pad found, inputs dead
+until the game's default layout is chosen again in Steam's layout screen)
+has been seen before too, with everything in one folder - he believes it
+happens after a layout REVISION change; not the controllers\ subfolder.
+02:52 ASKED FOR, done in the three VirtualGamepads (Glow16):
+CheckBindings, BIND_CHECK_MS 5000 after the handles are resolved (and
+again after every new layout, which resolves again), then every
+BIND_RECHECK_MS 5000 while nothing is bound: counts the InGame digital
+actions with origins (DigitalActionOrigins). None: log line, the orange
+warning line FUnboundNote under the pad name (TEXT ONLY - with no working
+layout the pad cannot press anything, and in Big Picture there may be no
+mouse; owner), and ONCE per pad (FBindPanelTried) ShowBindingPanel. The
+text says what to do: layout screen open -> choose the default there;
+otherwise Big Picture / Steam hardware (InBigPicture) -> Steam / PS /
+Guide button > Controller settings; desktop -> Library > game >
+Controller settings or File > View Controller Settings. When a layout
+binds something again: warning removed, logged. NOT COMPILED.
+
+## Handover (2026-11-07, fourteenth session, part 8)
+OWNER 02:38 (Glow14 deployed, PS4 over Bluetooth, Windows):
+(1) Started with the pad OFF: "Poll failed: EAccessViolation ... Read of
+address 0" x3, "Polling stopped after 3 errors" - the pad switched on
+later was never seen. CAUSE: UpdateGlow runs every poll; before any model
+is loaded FHaloOf[] is still all 0 (fields start at 0; -1 only once a
+model was loaded or removed) and FHalos empty -> Level[0] on a nil array.
+Always there, hidden while a pad was connected at start (the model loads
+in the first poll). FIX (all three twins): the halo loop checks FHaloOf[A]
+< Length(FHalos) and < Length(FHaloMirror); FHaloMirror is cleared with
+FHalos on model removal.
+(2) Restarted: pad found, but its inputs were dead until he chose the
+layout in Steam's layout screen ("the layout had failed to load"); then
+"Steam loaded the game's default layout" and everything worked, the
+touchpad also after a view change (r23 fix confirmed). READING: Steam CAN
+load the layouts from controllers/ (proved by that line and the working
+input); the failure is most likely Steam's remembered choice from before
+the move - the game default at the OLD path (top level), which deploy.bat
+deletes. Expected to be a one-off per pad type; if it happens again on a
+fresh start, rethink (e.g. manifest + layouts together in controllers\).
+(3) "Model PS5_Animated.glb is not in the data folder - using the
+repository's copy" was wrong (it was in data\models\): the FMX check now
+compares with DataFolder + MODEL_DIR.
+CHANGED over Glow14: the three VirtualGamepad uMain.pas, CLAUDE.md.
+
+## Handover (2026-11-07, fourteenth session, part 7)
+OWNER 02:15: Windows deployment WORKS ("At last - success") with the
+one-line post-build + deploy.bat (Glow13 = his push 3c779bb).
+GENERAL DEPLOYMENT RULE (owner 02:15-02:18, for every project, now and new
+ones): the executable, the Steam library and the action manifest(s) sit
+at the top of the deployed folder; data files go in subfolders by kind -
+controller layouts in controllers\, models in models\, images in
+images\ (a project without models / images simply has no such folder).
+Implemented: gen_input_mapping.py LAYOUT_DIR = "controllers" - layouts
+are GENERATED into src\controllers\ (both profiles; the old copies in
+src\ are deleted by the generator) and the manifests name
+"controllers/<file>" (Steam: "path" is relative to the manifest's folder;
+a subfolder is not shown in Valve's examples - FIRST RUN MUST CONFIRM
+Steam loads them: log "Steam loaded the game's default layout"). Layout
+revisions unchanged (contents unchanged). gen_projects.py
+deploy_subdir(): *.vdf under \controllers\ -> controllers\, *.glb/*.gltf ->
+models\, IMAGE_EXTS -> images\; deploy.bat copies into those subfolders
+(mkdir as needed); update_data_deploy moved the macOS / Linux Deployment
+entries of the IDE-saved dprojs (LocalName src\controllers\..., RemoteDir
++ subfolder). Programs: VirtualGamepad (all three) LAYOUT_DIR / MODEL_DIR
+in CheckDeployment and ModelPath (the repository fallback to models\ is
+unchanged); SteamInputDemo LAYOUT_DIR where it looks for our layout file.
+SteamDemoPad only opens its manifest (Steam follows the paths). No
+images are deployed by any project yet. The owner must DELETE the old
+src\controller_*.vdf / src\pad_controller_*.vdf (a zip cannot delete;
+git rm); deploy.bat removes old top-level copies in the output folder itself.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL, SteamInputDemo, SteamDemoPad (DELPHI), VirtualGamepadLCL (LAZARUS); the other projects only need deploy.bat refreshed (no rebuild needed, but a build runs it) <====
+
+## Handover (2026-11-07, fourteenth session, part 6)
+WINDOWS DEPLOYMENT, FINAL FORM (Glow13; supersedes parts 3 and 5 below):
+the owner's Project Options > Build Events (Release Win64) showed our
+post-build commands with every line after the first starting "&copy" -
+the IDE's round trip of the multi-line event (CDATA in Base_Win64 + its own
+"&&"-joined per-config copy) had broken it, and the build ran none of it,
+silently. NOW: every Windows PostBuildEvent (Base_Win32 / Base_Win64 CDATA
+and the IDE's four per-config groups) is the single line
+    call "$(PROJECTDIR)\deploy.bat" $(Platform) $(Config)
+(gen_projects.py POST_BUILD / set_post_build, surgical on the IDE-saved
+dprojs; new dprojs get it from dproj()). deploy.bat (write_deploy_bat) in
+each of the 7 project folders copies the Steam dll + data files to
+<Platform>\<Config>, reports MISSING, exits 1 (fails the build: Cancel On
+Error). REMOVED again: <Project>.deploy.targets + its Import, the Required
+Deployment entries (the dprojs in Glow13 are the owner's e8ba55f files with
+only the PostBuildEvent text changed). If the IDE still shows no
+"copied ..." lines: the owner can double-click deploy.bat. NOTE for later:
+after unzipping .dproj changes the owner must reopen the project (the IDE
+keeps it in memory and may save its old copy back).
+
+## Handover (2026-11-07, fourteenth session, part 5)
+OWNER 01:52 (Glow10 applied, VirtualGamepad Release Win64 Build): still no
+.vdf / .glb / steam_api64.dll copies, and the Build output shows neither
+the post-build event nor the "TSteamAPI deploy:" message - the Delphi 13
+IDE build runs neither PostBuildEvent nor targets imported into the dproj
+(they would only run with msbuild on the command line). sk4d.dll DOES
+arrive: a Deployment entry Required="true" for Win64. TAKE 2 (Glow12):
+gen_projects.py ensure_win_deploy adds DeployFile entries (Class File,
+Required="true", RemoteDir .\, Debug + Release, Win32 + Win64) for the
+Steam dll and every data file to the 7 Windows app / console dprojs
+(VCL ones had an empty <Deployment Version="5"/>, now filled), and
+write_deploy_bat writes deploy.bat into each project folder: a sure
+fallback (no IDE feature) - "deploy.bat [Win64|Win32] [Release|Debug]",
+copies, reports MISSING files, pauses when double-clicked. UNKNOWN
+whether the IDE copies Required deployment files on Build (sk4d.dll
+suggests so) or only on Project > Deploy - ask the owner which; then
+drop what does not work. Zip Glow12 = against the latest push e8ba55f
+(Glow11 not pushed yet: it contains Glow11 too).
+
+## Handover (2026-11-07, fourteenth session, part 4)
+ZIP RULE (owner 01:49: ".gitattributes keeps coming although unchanged - no
+file in the zip may be identical to the last version"): a zip holds ONLY
+files that differ from the owner's LATEST PUSH (git fetch origin first),
+compared with line endings ignored, plus new files - never a cumulative
+list since an older commit. Before building a zip: fetch, take the push as
+the base, carry this session's changes onto it, and check the owner's own
+edits are kept (e8ba55f "Final tweaks": his only edit over Glow7 was
+VirtualGamepad.dproj default Config Release - kept). Zip Glow11 = Glow8 +
+Glow9 + Glow10 work against e8ba55f (88 files): layouts r23 (input) and
+pad layouts r2 (PAD_LAYOUT_REVISION 1 -> 2: their Steam Controller layout
+got the trackpad "deadzone_inner_radius" "0" too), deploy.targets, the
+PadParts hint fix, log texts, docs. Glow10 is superseded (it was built
+against 53fd7d1 and would have reset the Release default).
+
+## Handover (2026-11-07, fourteenth session, part 3)
+Zip Glow10 follows Glow9 and contains it. OWNER (01:40): Win64\Release held
+only the .exe and the dlls; wants every deployment file next to the exe.
+His Build output (01:45, Delphi 13 / 37.0, VirtualGamepad Release Win64)
+shows brcc32 + dcc64 and "Success" - NO post-build event line at all: the
+IDE did not run the PostBuildEvent (present in Base_Win64 and in the
+IDE's own per-config groups at the end of the dproj). Cause not known.
+FIX, independent of build events: gen_projects.py writes
+<Project>.deploy.targets next to every app / console .dproj that has a
+redistributable or data files (SteamDemo, SteamDemoPad, SteamDemoVCL,
+SteamConsole, SteamInputDemo, VirtualGamepad, VirtualGamepadVCL): MSBuild
+target TSteamAPIDeploy, AfterTargets="Build;Make", Win32 / Win64 only,
+Error per missing file, Copy to $(DCC_ExeOutput), Message (high) "TSteamAPI
+deploy: n files copied to ...". The IDE-saved .dproj files only get ONE
+line, an <Import> of it right after the .deployproj import
+(ensure_deploy_import; gen_projects.py now always does this, idempotent;
+new dprojs get it from dproj()). The old post-build events are left in
+place (harmless if they ever run: the same copies). EXPECTED in the next
+Build output: the "TSteamAPI deploy:" line; if it is missing too, the IDE
+dropped or ignores the import - next step a deploy.bat. sk4d.dll still
+comes from Delphi (Skia). Lazarus (.lpi) projects: no copy step yet.
+Also: PadParts' FindPadTrackpad has no loop while no model marks a
+trackpad (the build's hints H2135 / H2164); gen_pad_parts.py.
+CHANGED over Glow9: tools/gen_projects.py, tools/gen_pad_parts.py, the
+three PadParts.pas, 7 .dproj (one Import line), 7 new .deploy.targets,
+README.md, 7 demo READMEs, CLAUDE.md.
+====> REBUILD (Project > Build) VirtualGamepad, VirtualGamepadVCL, SteamInputDemo, SteamDemoPad, SteamDemo, SteamDemoVCL, SteamConsole (DELPHI); VirtualGamepadLCL (LAZARUS, PadParts) <====
+
+## Handover (2026-11-07, fourteenth session, part 2)
+Zip Glow9 follows Glow8 and contains it. OWNER (01:35, PS4 log 01:34, r22
+deployed): "Touchpad: clicked, but no touch position" appears once the view
+is switched to Top. Read in the logs: it is the OVERLAY MENU, not the view -
+touches reported until the first overlay (this log 01:34:10-17, PS4 log
+01:09-01:11:29, Deck log right pad 00:29:59), none after it (on the Deck the
+left pad still worked). The input profile wrote a group for EVERY source in
+the Menu set as well, the unused ones empty (joystick_move without
+gameactions = Steam drives the virtual pad's stick from it); after Menu ->
+InGame Steam gave the trackpad no position any more. Also, since r21, the
+Menu set's empty gyro group had "gyro_button" "0" - always on, and an unbound
+gyro_to_mouse group can move the mouse pointer (the reason the pad profile
+has bound_sources_only). FIX: the input profile also uses
+bound_sources_only=True (Menu set: button_diamond + dpad only; InGame
+unchanged, every source bound there); LAYOUT_REVISION 22 -> 23, 44 layouts
+regenerated. CAUSE NOT PROVEN - expected: touches reported after the overlay
+menu; if not, next suspect is Steam itself (ActivateActionSet back to
+InGame), then try re-activating InGame a second time / a touch release.
+The Deck right-pad problem (Glow6's gyro theory) may be this one too.
+CHANGED over Glow8: tools/gen_input_mapping.py, the 44 controller_*.vdf,
+the three uMain.pas (log text), docs/SteamInputMapping.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL, SteamInputDemo (DELPHI), VirtualGamepadLCL (LAZARUS); copy the .vdf to the game folder; RESTART STEAM (r23) <====
+
+## Handover (2026-11-07, fourteenth session)
+Zip Glow8 follows Glow7 and contains it (and Glow6 .. Glow1). OWNER now
+has a PS4 controller; log 01:09-01:13 (Windows 11, VirtualGamepad FMX,
+D2D 60 fps): type 5 PS4Controller -> PS5_Animated.glb; every button,
+stick, trigger, bumper, the touchpad touch and click, gyro, the view row
+(Front / Back / Top) all logged as expected; "Steam hardware: none" (the
+overlay item greyed). ONE FINDING: 01:12:33 "Touchpad: clicked, but Steam
+reports no touch position" - a click in the MIDDLE of the touchpad. Cause:
+the touchpad is a joystick_move whole-source group, and Steam's default
+inner dead zone turns a touch near the centre into (0, 0) = no touch.
+FIX: gen_input_mapping.py writes "deadzone_inner_radius" "0" (key as in
+Steam's own controller_neptune_* templates, 0..32767) into whole-trackpad
+groups (left / right / center_trackpad; sticks keep Steam's dead zone);
+LAYOUT_REVISION 21 -> 22, all 44 input layouts regenerated. The log line's
+text now names both causes (dead zone before r22, gyro before r21).
+"Gyro: motion" at the same moment as "Touchpad: touched" on the PS4 is the
+pad moving under the finger, not the Deck's gyro-activation problem (the
+touches were reported).
+CHANGED over Glow7: tools/gen_input_mapping.py, the 44 controller_*.vdf,
+the three uMain.pas, docs/SteamInputMapping.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL, SteamInputDemo (DELPHI), VirtualGamepadLCL (LAZARUS); RESTART STEAM so it loads the r22 layouts <====
+NOT COMPILED here. Expected: a click in the middle of the PS4 touchpad
+shows the dot there, and no "no touch position" line.
+
+## Handover (2026-11-06, thirteenth session, part 7)
+Zip Glow7 follows Glow6 and contains it (and Glow5 .. Glow1). OWNER (00:54):
+an overlay menu item for the Steam hardware - greyed out when none is
+detected; otherwise it opens a panel ON TOP of the menu with everything
+known about the hardware, and an OK button that closes only that panel.
+Done in all three twins: oiHardware "Steam Hardware" after Controller
+Settings; enabled when FSteamHardware > 0 (Ord(IsRunningOnSteamHardware),
+read in SteamInitialized; 0 also when steam_api is older than 1.65 or the
+call fails). ChooseOverlayItem opens the panel and returns WITHOUT closing
+the menu (the only such item). Panel (CreateInfo, made with the overlay;
+FMX: TRectangle Align Contents inside FOverlay, dimming the menu, centred
+INFO_WIDTH x INFO_HEIGHT panel; Castle: full-size TCastleRectangleControl
+in FOverlay swallowing presses): title, HardwareInfoText (Steam hardware,
+default settings config, under Proton, Big Picture, Steam in VR, battery
+(255 = mains / none), Steam language, IP country, controller shown, model,
+platform description), OK button (mouse) - A or B on the pad close it too
+(ReadMenuActions: while FInfoOpen only A / B count, no menu repeat).
+Closing the overlay hides the panel; opening resets it. Log lines "Steam
+hardware panel open / closed".
+CHANGED over Glow6: the three uMain.pas, README.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL (DELPHI), VirtualGamepadLCL (LAZARUS) (+ everything Glow6 asked for if not done yet) <====
+NOT COMPILED here. Expected on the Deck: "Steam Hardware" enabled, the
+panel shows "Steam hardware: Steam Deck" etc. above the dimmed menu; on a
+PC it is greyed and skipped by up / down.
+
+## Handover (2026-11-06, thirteenth session, part 6)
+Zip Glow6 follows Glow5 and contains it (and Glow4 / 3 / 2 / 1). OWNER
+(00:38, Deck log 00:29-00:33): the right trackpad clicks and glows but its
+touch position mostly does not show; the left one always works. LOG: one
+"Right trackpad: touched" (00:29:59.083, the SAME millisecond as "Gyro:
+motion"), afterwards many RightTrackpadClick presses with no touch, and
+Gyro motion / still periods while the right pad was in use. CAUSE (Steam's
+own UI text, steamui_english.json in SteamTracking, token
+ControllerConfigurator_Interstitial_Gyro_DescA2: "By default, the gyro only
+sends input to the game when you're touching the Right Joystick or Right
+Trackpad"): our gyro groups had no "gyro_button" setting, so on the Deck /
+Steam Controller the right-pad touch switched the gyro on and Steam did not
+pass it to RightTrackpad. FIX: gen_input_mapping.py writes "gyro_button"
+"0" into every gyro group (InGame and Menu sets; 0 = "Gyro Enable Button -
+Always On", GyroNone, the first of Steam's choices; the only example in
+Steam's templates, controller_ps5_gamepad_mouse_gyro.vdf, writes
+"gyro_button" "12" the same way) - VALUE 0 NOT CONFIRMED by a run yet.
+LAYOUT_REVISION 20 -> 21: every input-profile layout regenerated (titles
+"(r21)"; SteamDemoPad's pad_ layouts unchanged - no gyro). The three
+VirtualGamepads also log once per pad "Right trackpad: clicked, but Steam
+reports no touch position ..." when that happens again, and log the Steam
+hardware after OnInitialized ("Steam hardware: Steam Deck, default config
+Steam Deck, under Proton: True" - owner: SDK 1.65 replaced
+IsRunningOnSteamDeck with IsRunningOnSteamHardware; the library already
+binds it, SteamDemo logs it too). The library's debug line "Optional export
+SteamAPI_ISteamUtils_IsRunningOnSteamDeck not found" is expected with a
+1.65 redistributable (left as it is: no library change).
+CHANGED over Glow5: tools/gen_input_mapping.py, the 44 controller_*.vdf
+layouts (11 per folder: SteamInputDemo, VirtualGamepad, VirtualGamepadLCL,
+VirtualGamepadVCL; the manifests steam_controllers.vdf are unchanged), the three uMain.pas,
+docs/SteamInputMapping.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL (DELPHI), VirtualGamepadLCL (LAZARUS); SteamInputDemo too (its post-build step deploys the new layouts) <====
+====> RESTART STEAM on the Deck after deploying, so it loads the r21 layouts <====
+NOT COMPILED here. Expected: the log line "Controller identified ..." and
+the layout title show r21; the right trackpad dot follows the finger; Gyro
+reports motion whenever the Deck moves, not only while the right pad is
+touched; no "clicked, but Steam reports no touch position" line.
+
+## Handover (2026-11-06, thirteenth session, part 5)
+Zip Glow5 follows Glow4 and contains it (and Glow3 / 2 / 1). OWNER (00:21):
+(1) highlights off / on in the overlay menu, one alternating item: oiGlow
+after the view row, "Disable Highlights" / "Enable Highlights", FGlowOn
+(True at start); off hides the halos and the on-model trackpad glow; the
+yellow dots and the 2D trackpad squares (which still light on a click)
+stay. (2) Steam Controller model: DPad_Up clips into the body at the top
+edge. Measured here (D-pad vertices hidden behind body vertices seen from
++Z: rest 203, DPad_Up at 0.4 / 0.5 / 0.6 / 1.0 of its 4.98-degree peak: 208 /
+210 / 225 / 259; the other directions and the other models stay near rest):
+DPAD_UP_PEAK = 0.5 on that model only - FMX sets the Gorilla clip's
+PeakTime, Castle uses the new TPadAnimator.LimitPeak (PadAnimator.pas, both
+copies). The clip is eased, so half the peak time is about half the angle.
+CHANGED over Glow4: the three uMain.pas, both PadAnimator.pas,
+docs/VirtualGamepadModels.md, README.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL (DELPHI), VirtualGamepadLCL (LAZARUS) <====
+NOT COMPILED here.
+
+## Handover (2026-11-06, thirteenth session, part 4)
+Zip Glow4 follows Glow3 and contains it (and Glow2 / Glow1). OWNER (00:09)
+on Glow3: highlights now correct, everything else OK, but the paddles,
+triggers and bumpers must also MOVE swapped in the back and top views (front
+correct). Done in all three twins: AnimClip (MIRRORED_CLIPS pairs
+Shoulder_Left/Right_Press, Trigger_Left/Right_Press_Full, L4/R4_Press,
+L5/R5_Press) used by AnimateButton and the trigger SetValue calls; SetView,
+when the swap changes, stops all clips, clears FAnimX/FAnimY and presses the
+held buttons again on their new clips. Sticks and face buttons not swapped
+(not asked). CHANGED over Glow3: the three uMain.pas,
+docs/VirtualGamepadModels.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL (DELPHI), VirtualGamepadLCL (LAZARUS) <====
+NOT COMPILED here. Expected: in the back view L4 moves and glows the paddle
+on the screen's left; a trigger held while switching views keeps its pull.
+
+## Handover (2026-11-05, thirteenth session, part 3: glow and overlay fixes)
+Zip Glow3 follows Icons1 and CONTAINS Glow2 (and so Glow1): applying Glow3
+alone is enough. OWNER'S FEEDBACK on Glow2 (23:30, Steam Deck): trackpad
+visualisation "perfect"; phantom A after an overlay choice GONE (log 23:33
+checked here: no ButtonA press after any overlay choice). Asked for, and
+done in all three twins:
+(1) one overlay row "View: Front" instead of Show Front / Back / Top; D-pad
+left / right change it (like the controller row), A shows it, a mouse click
+shows the next view (FMenuView, ViewRowText, CycleView; the View menu keeps
+its three items);
+(2) back and top views: the glow goes to the left / right MIRROR part
+(FHaloMirror from PadParts' new Mirror field; a marked on-model trackpad
+swaps too, x negated; the 2D trackpad squares do not), front view as before;
+(3)+(4) the Steam Controller's Start (Menu) halo sat half a button left, its
+Select (View) halo in the middle: both joints carry stray pieces -
+gen_pad_parts.py now links pieces into groups (LINK_GAP) and picks, for
+mirror-twin clips, the pair of groups that mirror each other; Menu / View
+now at x = +/-0.169, y 0.558 (checked on a drawing of the model);
+(5) the overlay menu wraps at top and bottom; up / down held repeat every
+500 ms (MENU_REPEAT_MS, as SteamDemoPad's menu; FMenuRepeatAt, 0 at open so
+a direction held when the menu opens does not repeat);
+(6) the D-pad glows per arm (PadParts Key DPad/Up ...; halos grouped by Key
+instead of joint) - Up + Right shows two arms;
+(7) subtler glow: GLOW_ALPHA 0.45 -> 0.25 (2D trackpad squares unchanged).
+PadParts.pas: TPadPart has new fields Key and Mirror (99 rows).
+CHANGED in Glow3 over Glow2: tools/gen_pad_parts.py, the three PadParts.pas,
+the three uMain.pas, docs/VirtualGamepadModels.md, README.md, CLAUDE.md.
+====> REBUILD VirtualGamepad, VirtualGamepadVCL (DELPHI), VirtualGamepadLCL (LAZARUS); if Glow2 was not applied: every program as listed below <====
+====> NO LIBRARY / PACKAGE REBUILD <====
+NOT COMPILED here. Expected from the owner: overlay row "View: Front - shown"
+cycles with left / right, A shows it; menu wraps and repeats; in the back
+view L4 glows the paddle on the screen's left; D-pad diagonals show two arms;
+Start / Select halos on their buttons. OBSERVATION for the owner (not acted
+on): log 23:33 ran with GDI+ at about 19 fps (dips to 6-8), the 21:51 run with
+Skia at about 52 fps - TSAPI_FMX_CANVAS=skia is recommended on the Deck;
+making Skia the default under Wine is a decision for the owner.
+
+## Handover (2026-11-05, thirteenth session, part 2: Steam Deck findings)
+Zip Glow2 follows Icons1 and CONTAINS Glow1 (sent 22:54, maybe not applied)
+- applying Glow2 alone is enough (owner pushed Icons1 as "Icons"; palette
+icons CONFIRMED in the IDE). From the owner's first Steam Deck run of VirtualGamepad
+(Proton 11, SteamOS 3.9.5, log 21:51): paddles registered but could not be
+seen (clips verified: they move as far as A_Press - the back faces away),
+no analog lines, a phantom "ButtonA pressed" 68 ms after the overlay's A,
+and contradictory canvas lines (TSkRasterCanvas although gdi was "chosen").
+OWNER'S DECISIONS (22:26): three views in the overlay menu - Show Front,
+Show Back, Show Top (Top = front view + azimuth 180, inclination 90); the
+model is NEVER turned automatically; analog controls log that they are in
+use, no values; a glow on every control in use (cyan, fades 0.7 s) so short
+travel still shows; trackpad press glows, a touch shows a yellow dot; all
+three twins at once. Deck and Switch models are being commissioned
+(brief: docs/VirtualGamepadModels.md, trackpad marker nodes). Owner (22:31):
+LogReceiver gets an icon - an ear; (22:59) the demos (x3), the
+VirtualGamepads (x3), SteamDemoPad and SteamInputDemo too. APP ICONS: drawn
+by tools/gen_icons.py (APP_ICONS: one drawing per family, twins share it -
+SteamDemo navy handwheel, SteamDemoPad the same + gamepad badge,
+SteamInputDemo orange D-pad + face buttons, VirtualGamepad teal gamepad with
+a glowing button, LogReceiver purple ear; 16 px frames drawn simpler).
+<project>.ico beside each project: Delphi .dproj Icon_MainIcon in the
+Base_Win32 / Base_Win64 groups (+ Icns_MainIcns <project>.icns in
+Base_OSX64 / Base_OSXARM64 for the FMX ones) and {$R *.res} in the .dpr
+(SteamDemo, SteamDemoPad, SteamInputDemo, VirtualGamepad and LogReceiver had
+none - the FMX template omitted it, so no icon could be linked); Lazarus
+.lpi <Icon Value="0"/> in General = "has an icon", <project>.ico beside the
+.lpi (checked in the Lazarus IDE source, projecticon.pas). SteamConsole (a
+console program) has none.
+NEW files: tools/gen_pad_parts.py; demos/VirtualGamepad*/src/PadParts.pas
+and PadActivity.pas (three identical copies each);
+docs/VirtualGamepadModels.md; <project>.ico for LogReceiver, SteamDemo,
+SteamDemoVCL, SteamDemoLCL, SteamDemoPad, SteamInputDemo, VirtualGamepad,
+VirtualGamepadVCL, VirtualGamepadLCL, and <project>.icns for the five FMX
+ones. CHANGED: the three uMain.pas and their form files (View menu: Show
+front / back / top, mnuViewClick), VirtualGamepad.dpr/.dproj,
+VirtualGamepadVCL.dpr/.dproj, VirtualGamepadLCL.lpr/.lpi,
+the eight .dproj / two .lpi (icons), SteamDemo / SteamDemoPad /
+SteamInputDemo / VirtualGamepad / LogReceiver .dpr ({$R *.res}), tools/gen_icons.py (draws the ear
+too), tools/project_check.py (the two new shared units), .gitattributes
+(*.icns), the three demo READMEs, RemoteLogging/README.md,
+docs/README.md, docs/SteamInputMapping.md, README.md, CLAUDE.md. Nothing to
+delete.
+====> REBUILD EVERY PROGRAM: SteamDemo, SteamDemoVCL, SteamDemoPad, SteamInputDemo, VirtualGamepad, VirtualGamepadVCL, LogReceiver (DELPHI); SteamDemoLCL, VirtualGamepadLCL (LAZARUS) <====
+====> NO LIBRARY / PACKAGE REBUILD (LIB, PLUG-INS, DESIGN PACKAGES UNCHANGED) <====
+Checked here: PadParts positions drawn onto each model's skinned front view
+(every halo on its control; paddles / triggers at the back / top); the
+Steam Controller's Profile / View / Menu joints carry stray vertices far
+from the button (dropped by the generator, logged); pasdoc_check and
+project_check clean; LCL / VCL units still differ only in framework lines.
+NOT COMPILED (no Delphi / FPC here). Expected from the owner: (1) all three
+build; (2) on the Deck: the overlay shows Show Front / Back / Top, Top shows
+the bumpers and triggers from above with the face towards the top of the
+screen; (3) a paddle press glows on the back view; (4) the log has "Left
+stick: horizontal motion" etc. and NO "ButtonA pressed" right after an
+overlay choice; (5) trackpad squares at the bottom of the view with the
+yellow dot; (6) VirtualGamepad's log: if Skia is on without
+TSAPI_FMX_CANVAS, a line now says the .dpr has GlobalUseSkia := True again
+(remove it), and the frame-rate lines say "TSAPI_FMX_CANVAS not set, default
+gdi"; (7) every program shows its icon on the task bar (the five FMX projects
+that had no {$R *.res} now also get the IDE's manifest and version info with
+the project resource - if one behaves differently, that is why). RISKS: the FMX glow spheres are standard
+TSphere children of the TGorillaModel - if Gorilla3D does not draw FMX
+objects under a model, nothing glows in VirtualGamepad only (the Castle twins
+are independent of that); the Castle glow spheres are children of the scene.
+
+## Handover (2026-11-05, thirteenth session: palette icons)
+Zip Icons1 follows Pad8 (the newest zip recorded below). The 34 palette
+icons, drawn this session (owner approved the preview), now ship in the
+design packages. NEW files: design/icons/ (34 <Class>.ico, ServerBadge.ico,
+svg/ with 35 .svg), design/Steamworks.Reg.dcr, fmx/Steamworks.FMX.Reg.dcr,
+vcl/Steamworks.VCL.Reg.dcr, lcl/Steamworks.LCL.Reg.res,
+tools/gen_icon_res.py, tools/gen_icons.py. CHANGED: design/Steamworks.Reg.pas
+and lcl/Steamworks.LCL.Reg.pas (regenerated: one `{$R}` each),
+fmx/Steamworks.FMX.Reg.pas, vcl/Steamworks.VCL.Reg.pas (one `{$R}` each),
+tools/gen_steam_api.py (delphi_reg_unit() + write_registration(); the
+Delphi Reg text is unchanged otherwise - diffed), .gitignore, .gitattributes,
+docs/ComponentIcons.md (now the reference, not the brief), docs/README.md,
+README.md, CLAUDE.md. Nothing to delete.
+====> REBUILD AND REINSTALL DCLSTEAMWORKS, DCLSTEAMWORKSFMX, DCLSTEAMWORKSVCL (WIN32 IDE); LAZARUS: RECOMPILE SteamworksLCL.lpk AND REBUILD THE IDE <====
+====> NO RUNTIME PACKAGE REBUILD (STEAMWORKS / STEAMWORKSFMX / STEAMWORKSVCL UNCHANGED) <====
+Checked here: all 207 images in the four resource files decoded and
+compared byte-exact with the .ico frames; the .res header layout matches
+Lazarus' own paletteimg.res field for field; pasdoc_check and
+project_check clean; a missing icon stops gen_icon_res.py with its name and
+is a NOTE in gen_steam_api.py. NOT checked (no compiler here): the IDEs
+themselves. Expected from the owner: (1) Delphi 13 Win32 IDE - every
+Steamworks palette button shows its icon, also at 150 % / 200 % scaling
+(16 / 32 px bitmaps); if an icon shows a magenta fringe or box, Delphi is
+ignoring alpha - tell me, the fix is in gen_icon_res.py only. (2) Lazarus -
+same check (24 / 36 / 48 px). (3) A form with components on it: the
+designer's non-visual component icons use the same resources.
+Lessons: Pillow reads a 32-bit BI_RGB BMP as RGB (drops alpha) - check
+such bitmaps from the raw bytes. The Lazarus wiki is behind a bot check;
+read the IDE source (sparse clone of github.com/fpc/lazarus) instead.
+
+## Handover (2026-11-04, end of twelfth session)
+State: last verified push 0f9ee4e (= Handover9). Delivered since: zip
+Console1 (follows Handover9), then Console2 (follows Console1: this
+CLAUDE.md + demos/SteamConsole/README.md - the first run, PowerShell note),
+then Console3 (follows Console2: CLAUDE.md, README.md,
+demos/SteamConsole/README.md - the dedicated server ran), then Console4
+(follows Console3: CLAUDE.md, demos/Shared/SteamComponentTest.pas - the
+own-server query counts), then Console5 (follows Console4: CLAUDE.md,
+demos/SteamDemo/src/uMain.pas, demos/SteamDemoVCL/src/uMain.pas,
+RemoteLogging/LogReceiver/src/uNetworks.pas - build hints), then Pad1
+(follows Console5: NEW demos/SteamDemoPad, see "ZIP PAD1" above), then Pad2 (follows Pad1: uMain.pas PIC -> PIC_SIZE,
+project_check.py case-clash rule, CLAUDE.md), then Pad3 (follows Pad2: uMain.pas,
+README of the demo, CLAUDE.md - first-run layout points, Big Picture
+re-check), then Pad4 (follows Pad3: uMain.pas, README of the demo,
+CLAUDE.md - Steam's button pictures, Big Picture explained), then Pad5
+(follows Pad4: remote-log state, menu wrap / repeat - see "PAD4 RELEASE
+RUN"), then Pad6 (follows Pad5: uMain.pas text, CLAUDE.md - Steam
+Machine run), then Pad7 (follows Pad6: uMain.pas, README of the demo,
+CLAUDE.md - controller line under the tabs); push 7f52a78 verified; then
+Pad8 (follows that push: uMain.pas, README of the demo, CLAUDE.md -
+keyboard / mouse hints, clickable hints) - the SteamConsole batch, details in "Twelfth
+session" above. Files: demos/SteamConsole/{SteamConsole.dpr,
+SteamConsole.dproj, SteamConsoleFPC.lpi (NEW), SteamConsoleFPC.lpr (NEW),
+README.md, src/uConsoleMain.pas, src/uConsoleStop.pas (NEW)},
+tools/gen_projects.py, tools/project_check.py, .gitignore, README.md,
+docs/Install-Lazarus-FPC.md, CLAUDE.md. Nothing to delete.
+====> NO PACKAGE REBUILD FOR CONSOLE1 <====
+NEXT SESSION FIRST: verify the Console1 push as in "Syncing safely"
+(SteamConsole.dproj may come back as an IDE re-save: keep it, check its
+four DCCReference .pas entries survived), run pasdoc_check.py and
+project_check.py on the clone.
+
+### Results expected from the owner (in this order)
+1. SteamConsole Win64 (Delphi): --test DONE (30 / 30, exit 0, 10:58).
+   Left: `SteamConsole` (smoke, as before), `--help`, Enter during a run.
+2. `SteamConsole --server` client closed: DONE (11:12, listed by the
+   client, Ctrl+C clean). Left: a machine with SteamCMD only (no client),
+   and Linux (~/.steam/sdk64/steamclient.so).
+3. `SteamConsole --server --test`: DONE (11:18, 30 / 30, server left
+   running, Enter stop clean).
+4. `SteamConsole --pair` against a GUI demo's Pair on the second account.
+5. SteamConsoleFPC (Lazarus, Win64): build and the same --test; then the
+   Review2 regression items below still apply (ForceQueue under FPC).
+
+### NEXT (in order)
+0. SteamDemoPad (zip Pad1): owner builds it (Win64 first; Skia enabled),
+   runs it with a pad - pages, menu, confirmation, controller row,
+   Rumble, Controller Settings, Send Log to Remote; then Big Picture /
+   the ROG Ally (native Linux with the ICU launcher, and Proton with
+   TSAPI_FMX_CANVAS=gdi / skia / vulkan). Owner checks the partner site's
+   launch-option fields (Launcher.md open decisions 5 and 6).
+1. Fix what the Console1 runs show (left: --pair, SteamConsoleFPC).
+2. Gorilla InitGLX (waiting on its author), Proton on the Ally, the full
+   Win64 / Win32 round, end-of-project platforms - as in the eleventh
+   handover below (its items 2-4) - plus SteamConsoleFPC on Linux /
+   macOS (signals, the Enter thread) and the dedicated server on Linux
+   (~/.steam/sdk64/steamclient.so).
+Offers still open: as in the eleventh handover below.
+
+### Lessons this session (follow them)
+- Pascal ignores case: a CONSTANT and a local / field of the same name in
+  another case clash (PIC / Pic). Name constants so no variable can match
+  (project_check.py now reports it).
+- A unit in the IMPLEMENTATION uses comes after every interface unit in
+  scope: never add Windows there in a VCL / FMX unit (its TBitmap, TRect
+  aliases and DeleteFile would win); put it FIRST in the interface uses.
+- github.com itself (web pages, releases, API) is blocked from the
+  workspace like apt; only git clone of the repository works. Do not plan
+  on downloading a compiler.
+- A listen server that fails takes the client with it (DoActivate is all
+  or nothing): code after a successful Open may assume the server runs.
+
+## Handover (2026-11-04, end of eleventh session) - READ THIS FIRST
+State: last verified push ae2891d "Handoner" (checked 04:25 against a
+separate clone): exactly the 52 files of zip Review2, identical ignoring
+CRLF / BOM, nothing else pushed, pasdoc_check / project_check 0 problems,
+group Dependencies intact (13). Working copy reset to origin/main.
+Delivered since ae2891d: ONLY this CLAUDE.md (zip Handover9, follows
+Review2). Nothing to delete. ====> NO PACKAGE REBUILD FOR HANDOVER9 <====
+(Review2 itself needed ALL packages rebuilt - the owner has applied it.)
+NEXT SESSION FIRST: verify the Handover9 push as in "Syncing safely" (only
+CLAUDE.md should differ from ae2891d), run pasdoc_check.py and
+project_check.py on the clone.
+
+### Done this session
+1. Independent review of the whole repository (five reviewers, no
+   compiler): no certain compile error anywhere; fixes delivered as zip
+   Review2 - details in the "Eleventh session" section above (core
+   ForceQueue delivery, stop-race, CallbackMsg_t natural size,
+   RollbackShutdown, shared-test server ownership, literal-value rule
+   drift in the demos, docs brought up to date, 26 component pages
+   regenerated).
+2. Push ae2891d verified.
+3. Owner: VirtualGamepadVCL compiled and ran on Win32 and Win64 ("ok").
+
+### Results still expected from the owner
+- The Review2 regression (Win64, FMX / VCL / LCL): Test components 30 /
+  30 and one pair run, after the package rebuild - the core changes touch
+  callback delivery and the listen-server start. Also the first sign of
+  trouble would be TThread.ForceQueue under FPC 3.2.2 (believed present
+  since 3.2.0): a Lazarus build of SteamworksLCL settles it.
+- A VirtualGamepadVCL log (none sent; "ok" only).
+
+### NEXT (in order)
+1. SteamConsole batch (ninth-session plan): run the shared
+   SteamComponentTest / SteamPairTest from command-line switches (Tick once
+   a second from the console loop; a TCustomSteamAPI created in code with
+   Roles / UpdateMode / Active), `--server` = the DEDICATED server (Roles =
+   [srGameServer], no Steam client, steam_appid.txt / SetAppIdEnvironment,
+   LogOnAnonymous, advertise, answer queries, stay up until a key /
+   Ctrl+C) - the dedicated path has NEVER RUN; plus SteamConsoleFPC (.lpi /
+   .lpr, plain FPC, no LCL; cthreads first); add both to gen_projects.py /
+   project_check.py. The console's ServerExit (704 on the server pipe)
+   is ignored by the core today - decide whether a dedicated server
+   should react.
+2. Gorilla InitGLX (native Linux VirtualGamepad under Runtime 3.0):
+   WAITING ON THE AUTHOR (owner, 04:22). When he answers: finish
+   docs/gorilla-opengl-bug.md; repro without Steam
+   (SteamLinuxRuntime_sniper/run -- ./VirtualGamepad).
+3. Proton on the Ally: TSAPI_FMX_CANVAS=vulkan (and skia) with the current
+   VirtualGamepad; VirtualGamepadLCL on the Ally.
+4. Full Win64 / Win32 round; then the end-of-project platforms (FPC Win32,
+   macOS ARM64, Linux64 / SteamOS with FPC: LayoutProbe - it will also
+   settle the CallbackMsg_t size -, localtime_r, LCL SteamFormToRGB on
+   Cocoa, FPC remote-log listener on the Mac), the launcher
+   (docs/Launcher.md), component icons.
+Offers not yet answered: harmonise the three SteamDemo twins (tab
+switching on Test, init-failed text, log-file error logging, timer
+design, DemoSettingsFolder in the FMX demo); remote-log retries +
+remembered receiver; TSAPI_ typo warning; log-file fallback to
+~/.config/G3DGames/<program>/ on a read-only program folder; VCL wheel
+zoom focus (FControl.TabStop / SetFocus); shaderc section in the Gorilla
+report; the two harmless .dproj differences vs gen_projects
+(SteamworksFMX search path, SteamConsole Android64 DeployFile).
+
+### Lessons this session (follow them)
+- TThread.Queue runs the method AT ONCE when called on the main thread
+  (Delphi and FPC); use ForceQueue when it must wait for the message loop.
+- A review finding is checked before it is fixed: one of this session's
+  (an exception in a finally "escaping" the worker) was wrong - the outer
+  except covered it.
+- When several agents edit in parallel, give each a disjoint file set;
+  write CLAUDE.md last.
+- A Python edit script must not assert in the middle of a sequence of
+  replacements: a failed assert left an earlier replacement unwritten.
+
+## Handover (2026-11-04, end of tenth session) - READ THIS FIRST
+State: last verified push b0a18b2 "VirtualGamepad Steam" (checked
+2026-11-04 against the working copy, ignoring CRLF / BOM): it holds every
+zip up to and including Overlay1 (Deploy1, Lit1, Layout1, Rename1,
+Proton1-3, BigPic1/2, Canvas1/2b, Motion1, Skia1, Overlay1). Its .dproj
+files are IDE re-saves - KEEP THE OWNER'S (VirtualGamepad.dproj carries
+the IDE's Enable Skia entries: SKIA define, sk4d.dll / libsk4d.so deploy).
+Delivered since b0a18b2, in order:
+  1. VclPad1 (follows Overlay1) - NEW demos/VirtualGamepadVCL, shared
+     PadAnimator fixes, VirtualGamepad.dpr WITHOUT GlobalUseSkia := True.
+  2. GorillaDoc1 (follows VclPad1) - docs/gorilla-opengl-bug.md.
+     LinuxPad1 (shaderc deployment) was WITHDRAWN: do not apply it.
+  3. Handover8 (follows GorillaDoc1) - this CLAUDE.md.
+  (Pushed as 655c430.) 4. Review2 (follows Handover8; eleventh session,
+  see above) - the review fixes: ====> RUNTIME RECOMPILE REQUIRED: ALL
+  PACKAGES <====.
+Nothing to delete.
+NEXT SESSION FIRST: verify the push of those three zips as in "Syncing
+safely" (VirtualGamepadVCL new; PadAnimator identical in LCL + VCL;
+VirtualGamepad.dpr has no GlobalUseSkia line), run pasdoc_check.py and
+project_check.py on the clone. Reset any generated .dproj in the working
+copy to the owner's pushed one before zipping a .dproj.
+WHERE THE TENTH-SESSION NOTES ARE: the "TENTH SESSION, zip ..." entries
+directly below the ninth-session State paragraph, NEWEST FIRST.
+
+### Done this session
+1. A README.md per demo (Windows Release depot layout), each project's
+   welcome page (Deploy1).
+2. Stored values never written as literals: captions from SteamAPI1.AppID,
+   STEAMWORKS_SDK_VERSION, PlatformDescription; constants for test values
+   and callback ids (Lit1). VirtualGamepad has its own AppID 4108310.
+3. Steam Input: manifest renamed steam_controllers.vdf, LAYOUT_REVISION 20
+   (Rename1); stale layout notes (Layout1).
+4. Proton: FmxWineCanvas (4 copies) - FMX under Wine defaults to GDI+
+   (Wine's Direct2D leaves FMX white); TSAPI_FMX_CANVAS=gdi|gpu|d2d|none|
+   skia|vulkan; FmxSkiaCanvas for VirtualGamepad; docs/Proton.md.
+5. Big Picture in TSteamAPI: BigPictureWindow (default bpwMaximized),
+   InBigPicture, DisplaySize - FMX / VCL / LCL. Confirmed on the Ally.
+6. VirtualGamepad: frame-rate log, motion throttle (Motion1, confirmed),
+   overlay item "Controller Settings" (also LCL).
+7. NEW VirtualGamepadVCL (Castle Game Engine, AppID 4108310) - NOT YET
+   COMPILED; an independent review found no compile errors.
+8. Native Linux VirtualGamepad under Steam: crash found in Gorilla3D
+   (Gorilla.Linux.Glx.InitGLX, Runtime error 217 inside Steam Linux
+   Runtime 3.0; fine outside it); bug report written for its author.
+
+### Results (owner, ROG Ally / IdeaPad)
+- Proton (Ally, Win64): gdi works, 14-18 fps at 1920x1036 (8-16 with
+  motion); d2d white; gpu access violation; Game Mode works; maximised in
+  Big Picture on a 1920 x 1080 display.
+- Native Linux (IdeaPad, Ubuntu 26.04, Mesa Iris Xe): from a terminal it
+  runs fully (OpenGL 4.6, TLinuxCanvas, all files found); from Steam
+  (Runtime 3.0) it dies in InitGLX before the form. shaderc ruled out
+  (same address with and without it).
+
+### NEXT (in order)
+1. Owner: apply VclPad1 + GorillaDoc1; build VirtualGamepadVCL Win64 /
+   Win32 (Castle Game Engine for Delphi on the library path, including
+   src/compatibility/delphi-only/fcl-json). Watch: Vcl.CastleControl,
+   Container.Fps.RealFps / OnlyRenderFps, Node(..., [fnNilOnMissing]).
+2. Gorilla InitGLX: owner runs the two checks still open - the trace's
+   find library= lines for libGL / libGLX / libX11, and Select-String on
+   Gorilla.Linux.Glx.pas (InitGLX: dlopen names, raise, initialization) -
+   then update docs/gorilla-opengl-bug.md with the failing line and send
+   it to Gorilla3D's author. Try the reproduction without Steam
+   (SteamLinuxRuntime_sniper/run -- ./prog). Possible stop-gap, UNTRIED:
+   a launcher fix if InitGLX wants an unversioned library name.
+3. Proton test of TSAPI_FMX_CANVAS=vulkan (and skia) on the Ally with the
+   VclPad1 .dpr; VirtualGamepadLCL on the Ally.
+4. Later: Skia canvas on native Linux as its own test (after it starts
+   with TLinuxCanvas); the stale server-side layout for 4108310; Launcher
+   open decision 4; then the ninth-session NEXT list below (SteamConsole
+   batch with --server, full Win64 / Win32 round, end-of-project
+   platforms).
+Offers not yet answered: remote-log retries + remembered receiver;
+warning for TSAPI_ variable typos; log file fallback to
+~/.config/G3DGames/<program>/ when the program folder is read-only;
+shaderc as its own short section in the Gorilla report; VCL mouse wheel
+zoom without first clicking the view (FControl.SetFocus).
+
+### Lessons this session (follow them)
+- BoolToStr(B, 'yes', 'no') is FPC only: Delphi has no such overload
+  (E2010 in BigPic1). Use if / else.
+- The IDE's Project > Enable Skia writes GlobalUseSkia := True into the
+  .dpr, switching Skia on for EVERY platform; it must be deleted (it was
+  still in push b0a18b2).
+- A Release build started from a terminal asks Steam to relaunch it and
+  exits - that run says nothing about a Steam launch. Debug builds set
+  the AppID themselves.
+- Start-up "Runtime error 217" on Linux = an exception in a unit
+  initialization (SysUtils is finalized first, so no message). Method:
+  launch options LD_DEBUG=libs %command% > ~/vg-stderr.txt 2>&1, then
+  addr2line -f -C -e <program> 0x<address>. Delphi has no map-file option
+  for Linux.
+- A "not found" library in a loader trace is a SUSPECT, not the cause:
+  check whether the crash address changes when it is supplied (shaderc).
+- Launch-option variable names must be exact (TSAPI_FMXCANVAS typo cost a
+  test round); ask for the log line that echoes the setting.
+- Say "unverified" until a run proves it; several claims this session
+  had to be withdrawn (Game Mode, frame-rate log, AppID theory).
+
+## Handover (2026-11-02, end of ninth session)
+State: last verified push caa00b9 "All done bar server" (verified 20:28 -
+Fix14d to Fix20, 13 files, identical ignoring CRLF / BOM). Delivered since:
+NOTHING except this CLAUDE.md (zip Handover7, follows Fix20). Nothing to
+delete. NO PACKAGE REBUILD (the packages were last rebuilt by the owner for
+Fix13 / Fix14; every later zip touched demos, docs and tools only).
+TENTH SESSION, zip GorillaDoc1 (follows VclPad1; REPLACES LinuxPad1 - do
+not apply LinuxPad1): NATIVE LINUX VirtualGamepad under Steam (IdeaPad,
+Ubuntu 26.04, Runtime 3.0) dies with "Runtime error 217 at
+0000000000B63B34" during unit initialization (after the GTK fix lines,
+before "units initialised"); from a terminal (outside the runtime) it
+works. addr2line -f -C -e VirtualGamepad 0xB63B34 ->
+Gorilla::Linux::Glx::InitGLX(unsigned long long). shaderc RULED OUT: with
+Gorilla3D's libshaderc_shared.so.1 next to the program it loads, same
+crash, same address (LoadShaderc evidently does not raise) - so no shaderc
+deployment (LinuxPad1 withdrawn). Bug report docs/gorilla-opengl-bug.md
+(owner: "for the author"); cause INSIDE InitGLX still unknown. OPEN: the
+owner's Gorilla.Linux.Glx.pas (InitGLX: dlopen names, raise) and the
+trace's find library= lines for libGL / libGLX / libX11; reproduce with
+SteamLinuxRuntime_sniper/run -- ./prog. Method for any start-up 217:
+LD_DEBUG=libs %command% > ~/vg-stderr.txt 2>&1 + addr2line on the
+address (Delphi Linux has no map-file option). ====> NO PACKAGE REBUILD <====
+TENTH SESSION, zip VclPad1 (follows Overlay1): NEW demos/VirtualGamepadVCL
+(owner: "to complete the set"; Castle Game Engine; AppID 4108310; now).
+A port of VirtualGamepadLCL by checked text replacements (scratch script):
+Vcl.CastleControl (UI via FControl.Container.Controls - the VCL control has
+no Controls shortcut), Steamworks.VCL, RemoteLog.Sender (Delphi; same API
+as SenderFPC), Debug SetAppIdEnvironment / Release RestartIfNecessary,
+queued Exit / Controller Settings via PostMessage(WM_VG_CLOSE /
+WM_VG_SETTINGS) (dropped if the form is gone), TFormatSettings.Invariant,
+data fallback ..\..\src and ..\..\..\..\models (IDE output folders), frame
+rate from Container.Fps.RealFps / OnlyRenderFps every FPS_LOG_MS.
+PadAnimator.pas is ONE source for FPC and Delphi ({$IFDEF FPC}{$mode
+delphi}{$ENDIF}; Delphi's fpjson = CGE's delphi-only fcl-json), identical
+copies in LCL + VCL (project_check.py SHARED). gen_projects.py entry
+(.dproj generated: post-build DLL + 12 .vdf + 3 .glb, Win32/Win64,
+WelcomePage README.md), gen_input_mapping OUTS += VirtualGamepadVCL,
+Steamworks.groupproj entry (Dependencies SteamworksVCL; Build / Clean /
+Make lists) - Dependencies of the group kept intact. NOT COMPILED: check
+Vcl.CastleControl, Container.Fps.RealFps / OnlyRenderFps, fpjson from CGE
+on the Delphi library path, TCastleScene.Node(..., [fnNilOnMissing]).
+====> NO PACKAGE REBUILD <====
+Review of the port (independent agent, against CGE 5c63b34): no compile
+error found. Fixed in BOTH PadAnimator copies: SetCodePage(..., UTF8_CODE_PAGE
+= 65001) (Delphi's System may not declare CP_UTF8); GetJSON(UTF8ToString())
+under Delphi (CGE's fpjson takes UnicodeString; W1057 otherwise). Watch:
+wheel zoom needs FControl focused (VCL sends WM_MOUSEWHEEL to the focused
+control); bpwFullScreen recreates the window (and the GL context).
+Also in VclPad1: VirtualGamepad.dpr WITHOUT the IDE's GlobalUseSkia := True
+(push b0a18b2 kept it, so Skia drew FMX on every platform). Owner 23:32:
+native Linux VirtualGamepad does not start under Steam - cause UNKNOWN;
+asked for %command% > ~/vg-stderr.txt 2>&1 (suspects: that line;
+libsk4d.so not found inside the runtime -> launcher adds $here to
+LD_LIBRARY_PATH).
+TENTH SESSION, zip Overlay1 (follows Skia1): overlay menu item
+"Controller Settings" (oiSettings, after Motion; enabled with Steam Input
+running and a pad shown) in VirtualGamepad AND VirtualGamepadLCL - calls
+the File > View Controller Settings handler (ShowBindingPanel), queued
+after the poll (FMX ForceQueue, LCL QueueAsyncCall AsyncControllerSettings).
+Owner: Big Picture shows no window menu. ====> NO PACKAGE REBUILD <====
+TENTH SESSION, zip Skia1 (follows Motion1): Gorilla3D docs v1.5 (Core /
+Skia, Platforms / Linux) read - GlobalUseSkia only takes effect in a unit
+initialization right after FMX.Forms; Windows Skia canvases:
+GlobalUseSkiaRasterWhenAvailable True = TSkRasterCanvas (CPU), False =
+TVkCanvas (Vulkan GPU, Delphi 13.2+ - the owner has 13.2); Skia repaints
+the whole form (Gorilla 1.5.1+ merges repaints;
+TGorillaViewport.UsesWholeFormRepaintHandling); Gorilla on Linux: NEW, its
+feature matrix all unverified, X11, GL 4.3, libsk4d.so. FmxWineCanvas (4
+copies): values skia / vulkan (Direct2D off; FmxWineCanvasActive /
+FmxWineCanvasChoice). NEW VirtualGamepad-only unit FmxSkiaCanvas (after
+FmxWineCanvas in the .dpr) sets GlobalUseSkia + RasterWhenAvailable.
+OWNER MUST: Project > Enable Skia for VirtualGamepad, then DELETE the
+IDE-written GlobalUseSkia := True line in the .dpr (and expect the IDE to
+add Skia deploy entries / FMX.Skia to the .dproj / .dpr - fine). Test:
+TSAPI_FMX_CANVAS=vulkan %command% on the Ally. ====> NO PACKAGE REBUILD <====
+TENTH SESSION (after Motion1): Motion1 CONFIRMED on the Ally - no freeze,
+8-16 fps with motion under GDI+. NEXT = NATIVE LINUX VirtualGamepad for
+4108310 (never built for Linux before). Checked against the docs: it
+already has every program-side Linux fix (ICU .sh in Linux64 deployment,
+FmxLinuxGtkGlobal, ReplaceMainMenu, AddLog to stderr, .dpr markers,
+overlay menu); libsk4d.so is packaged by the IDE. Partner site: Linux
+depot, launch = VirtualGamepad.sh, Steam Linux Runtime 3.0. Open offer:
+log file falls back to ~/.config/G3DGames/<program>/ when the program's
+folder is read-only (Steam's Linux runtime).
+TENTH SESSION, zip Motion1 (follows Canvas2b, which replaced Canvas2 +
+BigPic2): Ally results - gdi 14-18 fps at 1920x1036 (steady ~17.7), d2d
+white, gpu ACCESS VIOLATION. Enable Motion froze drawing ("no new frame")
+with the Ally's pad AND a PS5 DualSense; input kept arriving; recovery
+after Disable Motion. Cause taken to be the transform written on every
+16 ms poll (repaint per write) at ~55 ms per GDI+ frame. VirtualGamepad
+ApplyMotion now keeps the newest turn and writes it at most every
+Max(FFrameTimeMs, MOTION_MIN_MS) ms (FFrameTimeMs = last measured mean
+frame time). TO CONFIRM on the Ally; also check on Windows (never seen on
+screen before per the SetModelRotation comment). Steam reports layout
+revision 0.0 although the files say 20 - known (SteamInputDemo logs both).
+NEXT: native Linux VirtualGamepad on the Ally; remote-log retries +
+remembered receiver; TSAPI_ typo warnings. ====> NO PACKAGE REBUILD <====
+TENTH SESSION, zip BigPic2 (follows Canvas2): BigPic1 failed to compile
+(owner, dcc32): Steamworks.Components.pas(1009) E2010 - BoolToStr(B, 'yes',
+'no') is FPC-only; Delphi's second parameter is UseBoolStrs: Boolean.
+Replaced by if / else. LESSON: no BoolToStr with string arguments in code
+that Delphi compiles. ====> RUNTIME RECOMPILE REQUIRED: ALL PACKAGES <====
+TENTH SESSION, zip Canvas2 (follows Canvas1): TSAPI_FMX_CANVAS=none
+(change nothing - FMX / the .dpr decide; the baseline and the off switch);
+FmxCanvasClassName (TCanvasManager.DefaultCanvas.ClassName) - the canvas
+FMX REALLY uses - logged by the three FMX demos at start and in
+VirtualGamepad's frame-rate line. Owner's point (20:51): renderers change
+(Skia, Vulkan, a later FMX) - so the workaround is ONLY about avoiding
+Direct2D under Wine, never touches GlobalUseSkia, and the default must be
+re-measured when FMX or Proton changes (Proton.md records results).
+PasVulkan REMOVED from the docs (owner: it has Steam support of its own):
+GameEngineIntegration 6.7 dropped (Console became 6.7), README /
+docs index / Install-Lazarus-FPC mentions removed. Next on the Ally:
+VirtualGamepadLCL (Win64 under Proton and / or native Linux; AppID 480 -
+a non-Steam shortcut). ====> NO PACKAGE REBUILD FOR CANVAS2 <====
+TENTH SESSION, zip Canvas1 (follows BigPic1) - STEP 1 of the canvas work,
+demos only: FmxWineCanvas (4 copies) now reads TSAPI_FMX_CANVAS = gdi
+(default, CONFIRMED to draw, slow: GDI+ is CPU) / gpu (GlobalUseGPUCanvas,
+D2D off - UNTESTED under Proton) / d2d (white under Proton 11); old
+TSAPI_FMX_D2D gone; FmxWineCanvasName for logs. VirtualGamepad logs
+"Frame rate: ..." every FPS_LOG_MS from FViewport.DeltaTime sampled every
+FPS_SAMPLE_MS (Gorilla's TGorillaFrameEvent signature avoided on purpose -
+not verifiable here), with canvas + viewport size. NEW docs/Proton.md (owner
+asked; index + README links). The owner's earlier "d2d fastest" run was
+with a build that did not read TSAPI_FMX_CANVAS (= GDI+). STEP 2 AFTER THE
+NUMBERS: move the choice into Steamworks.FMX initialization (not a
+TSteamAPI property: FMX picks the canvas at first form creation, before
+the component exists; and only FMX is affected), best canvas as default
+under Wine, .dpr override + env var; drop the copied unit. Package rebuild
+then. ====> NO PACKAGE REBUILD FOR CANVAS1 (beyond BigPic1's) <====
+TENTH SESSION, zip BigPic1 (follows Proton3): BIG PICTURE in TSteamAPI
+itself (owner: Game Mode showed VirtualGamepad narrower than the display;
+"perfect" -> default bpwMaximized). TSteamBigPictureWindow (bpwNone,
+bpwMaximized default, bpwFullScreen); published BigPictureWindow (FMX, VCL,
+LCL); public InBigPicture; abstract ApplyBigPictureWindow (protected,
+returns the log text) and DisplaySize(out W, H; out Scale) (public) in
+TCustomSteamAPI, implemented per framework on HostForm (owner form, else
+Application.MainForm): FMX WindowState / FullScreen, Screen.DisplayFromForm
+(BoundsRect logical + Scale); VCL wsMaximized / bsNone+wsMaximized,
+Screen.MonitorFromRect; LCL wsMaximized / wsFullScreen, MonitorFromRect.
+CheckBigPicture runs in DoActivate after AttachLinked, before
+OnInitialized, client role only; asks TSteamUtilsPlugin
+.IsSteamInBigPictureMode (Components now uses Steamworks.Plugin.Utils);
+one log line either way, never raises. NO size is ever assumed - Big
+Picture is 1280x800 (Deck), 1920x1080 (Ally), up to 4K (Steam Machine).
+docs/components/TSteamAPI.md section "Big Picture and Game Mode".
+VirtualGamepad PANEL_WIDTH constant (was a bare 600). NOT COMPILED HERE:
+check FMX TDisplay.BoundsRect / .Scale and VCL/LCL MonitorFromRect names.
+====> RUNTIME RECOMPILE REQUIRED: ALL PACKAGES <====
+TENTH SESSION, zip Proton1 (follows Rename1): FMX Win64 builds under
+Proton were ALL WHITE (menus only) - SteamDemo, SteamInputDemo and
+VirtualGamepad on the owner's ROG Ally, Proton 11.0-2e. PROTON_LOG: the
+programs RUN (SteamAPI_Init OK, Gorilla3D picked OpenGL 4.6 / Mesa), but
+Wine's builtin d2d1 has PushLayer / PopLayer / PushAxisAlignedClip as
+stubs (~3300 each) - FMX's D2D canvas clips through them. New unit
+FmxWineCanvas (4 identical copies like FmxLinuxGtkGlobal, in the .dpr
+after it; project_check.py SHARED, gen_projects.py units): under Wine
+(ntdll wine_get_version) GlobalUseDirect2D := False in its
+initialization -> GDI+ canvas; env TSAPI_FMX_D2D=1 keeps D2D; the demos
+log FmxWineCanvasNote. CONFIRMED (owner, 20:01): Win64 Debug builds of
+SteamInputDemo (2275430) and VirtualGamepad (4108310) in their Steam
+install folders, Proton 11 - both work perfectly, Gorilla3D's 3D view
+included. NOT YET CHECKED IN GAME MODE (owner: still to confirm - earlier
+SteamInputDemo showed nothing at all there). Still unmeasured: GDI+ speed. README Known issues
+entry added.
+(PROTON_USE_WINED3D=1 also white - consistent: d2d1 is Wine's either
+way.) NO PACKAGE REBUILD (beyond Lit1's).
+TENTH SESSION, zip Rename1 (follows Layout1): the action manifest is now
+steam_controllers.vdf (gen_input_mapping.py MANIFEST_NAME; MANIFEST_FILE in
+the three input demos; post-build events + Deployment in SteamInputDemo /
+VirtualGamepad .dproj; gen_projects.py INPUT_FILES) and LAYOUT_REVISION
+jumped 4 -> 20 (no content change). Why: AppID 4108310 kept loading a
+layout from an OLD test (sets InGame / Menu / "Menu Actions", layout
+"Controller_PS5") after Reset, cleared local configs and a Steam restart;
+the owner suspects Steam keeps a manifest by its NAME. DELETE the three
+demos/<SteamInputDemo|VirtualGamepad|VirtualGamepadLCL>/src/
+steam_input_manifest.vdf. RESULT NOT YET KNOWN - ask the owner for the
+OnSteamInputConfigurationLoaded line (want "mapping by 0, revision 0.20").
+NO PACKAGE REBUILD (beyond Lit1's).
+TENTH SESSION, zip Layout1 (follows Lit1): README Known issues + docs/
+SteamInputMapping.md - a reused AppID loads its old saved controller
+layout; fix = Reset Controller Layout in Steam developer mode (owner,
+2026-11-03). NO PACKAGE REBUILD (beyond Lit1's).
+TENTH SESSION, zip Lit1 (follows Deploy1; Deploy1 verified in push
+3359f82 - identical bar the IDE's OSXARM64 entries): stored values no
+longer typed as literals (Source rules, first item) - captions built in
+FormCreate from SteamAPI1.AppID + STEAMWORKS_SDK_VERSION (form files
+hold no numbers); callback ids from <Name>_k_iCallback; new constants
+TEST_GS_RULE_VALUE, TEST_GS_MAX_PLAYERS, PAIR_GS_RULE_VALUE, PAIR_MEMBERS,
+RUMBLE_SPEED, MAX_POLL_ERRORS; TSteamLib.TargetSDKGeneration; the pair
+test's guest now also checks the rule's VALUE (it only checked the name
+while the note said "= 1 read back"); SteamDemo's unused APP_ID removed;
+gen_input_mapping.py writes no AppID (all 36 .vdf regenerated);
+VirtualGamepad AppID 4108310 in its README / .dpr / README.md;
+docs/Launcher.md open decision 4 (VirtualGamepad left the shared AppID).
+REBUILD ALL PACKAGES (Steamworks.API interface changed): STEAMWORKS,
+STEAMWORKSFMX, STEAMWORKSVCL (all platforms), REINSTALL DCLSTEAMWORKS,
+DCLSTEAMWORKSFMX, DCLSTEAMWORKSVCL; LAZARUS: STEAMWORKSLCL.
+TENTH SESSION (2026-11-03): zip Deploy1 (follows Handover7) - a README.md
+per demo next to its .dproj / .lpi: Windows RELEASE deployment for a Steam
+depot (owner: other OSes already deploy through the .dproj). The five demo
+.dproj files now open their own README.md as the welcome page;
+gen_projects.py writes that for demos. NO PACKAGE REBUILD.
+NEXT SESSION FIRST: verify the Handover7 push as in "Syncing safely"
+(only CLAUDE.md should differ from caa00b9), run pasdoc_check.py and
+project_check.py on the clone.
+
+WHERE THE NINTH-SESSION NOTES ARE: two places. The morning (Review1 ...
+Shot1) is the "Ninth session" section above. Everything from Batch2c
+onwards (Setup1, Pair1, Pair2, GS1, RLog1, Fix13 ... Fix20) was written
+into the notes block near the top, after "Project AppID: 2275430." -
+search for "Zip GS1", "TWO-PC RUN", "FIX19 CONFIRMED". Read those before
+touching the core, the game server or the shared tests.
+
+### Done this session
+1. GAME SERVER (zip GS1, details under "Zip GS1"): core roles srClient /
+   srGameServer (FClientUp / FServerUp, a second callback dispatcher for
+   the server pipe, StartGameServer / StopGameServer, listen server and
+   dedicated paths); plug-ins GameServer + GameServerStats; the seven
+   server copies TSteamGameServer<X> of Utils, Networking,
+   NetworkingSockets, NetworkingMessages, HTTP, UGC, Inventory (generator
+   SERVER_COPIES); TCustomSteamAPI Roles + GameServer* properties and
+   events; GetPublicIP by-value shim. Fix13: the warning hook is released
+   before the LAST Steam shutdown (access violation on close).
+2. SHARED TESTS used by all three SteamDemo programs (FMX switched to
+   them): demos/Shared/SteamComponentTest.pas (30 rows: 21 client + the
+   game server and its copies; listen server on 27115 / 27116) and
+   demos/Shared/SteamPairTest.pas (two users through a lobby, 8 rows:
+   lobby, chat, rich presence, auth tickets, NetworkingMessages, sockets
+   P2P, old P2P packets, the host's listen server validating the guest's
+   ticket). DONE handshake so neither side leaves early.
+3. Remote logging in SteamDemo* (File > Send log to receiver,
+   demos/Shared/DemoRemoteLog.pas, 3 automatic searches); LogReceiver File
+   > Clear Log.
+4. Fixes from the runs: MatchmakingServers query ids are the plug-in's own
+   (Steam reuses HServerQuery numbers) - Fix14; repeat presses of the test
+   buttons ignored - Fix16; E2169 field-after-method errors (Fix15, Fix17)
+   and project_check.py now detects them; pair test UInt64 tick wrap
+   (TicksSince) - Fix19; each copy's build (program, compiler, platform)
+   in the lobby and both logs - Fix18.
+5. Docs: GameServer / GameServerStats pages, components index with a
+   game-server table, "Game-server copy" lines on the client pages,
+   docs/ComponentIcons.md (34 components), docs/TestSetup.md (second
+   user, mixed pairs, friends).
+
+### Test results (owner, Win64, Delphi 13 + FPC 3.2.2 / Lazarus)
+- Component test 30 / 30 on both PCs with FMX, VCL and LCL.
+- Pair test 8 / 8 on BOTH sides as Steam friends (20:23, LCL host / VCL
+  guest). FMX vs VCL and FPC vs Delphi run both ways round. Without
+  friendship the rich-presence row fails on the side reading the new,
+  limited account (Steam's limit, documented in TestSetup.md).
+- Expected, informational: rules query of the host's PUBLIC address from
+  the same LAN (NAT); CS2 servers often do not answer rules / players;
+  GameServerStats Fail for the new account; Workshop / Inventory item
+  tests skipped (not set up on the partner site); "stat Play_Count cannot
+  be set by a game server" (partner-site permission).
+- Accounts: the main account (level 15, main PC) and a second, new,
+  limited account (partner group, on a tablet); they are now friends.
+
+### NEXT (owner's plan, in order)
+1. SteamConsole batch: bring demos/SteamConsole up to date (today it is a
+   310-line smoke test of 10 plug-ins: src/uConsoleMain.pas) - run the
+   shared SteamComponentTest / SteamPairTest from command-line switches
+   (both are framework-free; Tick once a second from the console loop),
+   and `--server` = the DEDICATED server: Roles = [srGameServer], no Steam
+   client needed (steam_appid.txt / SetAppIdEnvironment), log on
+   anonymously, advertise, answer queries, stay up until a key / Ctrl+C.
+   The dedicated path has NEVER RUN. Plus SteamConsoleFPC (.lpi / .lpr,
+   plain FPC, no LCL) next to the Delphi project; add both to
+   gen_projects.py / project_check.py as the other projects are.
+2. Then the full Win64 round (and Win32 - the owner's IDE is 32-bit).
+3. End of project: FPC Win32 / macOS ARM64 / Linux64 / SteamOS (FPC
+   LayoutProbe, localtime_r, LCL SteamFormToRGB, FPC sender Unix paths),
+   the launcher (docs/Launcher.md), component icons
+   (docs/ComponentIcons.md).
+Still open from earlier handovers (below): TriggerScreenshot with the
+overlay (a run started from Steam), VirtualGamepad non-Windows builds,
+licence / name placeholders, devices on order.
+
+### Lessons this session (follow them)
+- In a class section, new methods go AFTER every field (E2169; FPC accepts
+  it, Delphi does not) - project_check.py now catches it.
+- UInt64 tick differences: never subtract a value that may be later than
+  "now" (TicksSince in SteamPairTest).
+- Regenerate in order: gen_steam_api.py <sdk> FIRST, gen_docs.py after it.
+- The generator writes CRLF; git stores LF: leave line-ending-only files
+  out of a zip. Pascal / .fmx files in a zip may be CRLF (the IDE wants
+  it; git normalises).
+- Steam reuses HServerQuery numbers while earlier answers still arrive.
+- StartGameServer is refused inside a callback handler: defer it to the
+  next Tick.
+- No Steam persona names or machine names in these notes either (the
+  ninth-session notes had some; Handover7 replaced them with "main
+  account" / "second account" / "tablet").
+
+## Handover (2026-11-02, end of eighth session)
+State: last verified push 93a9cba "Batch2a" (= Menu5, Batch2a, Doc5;
+verified 2026-11-02 13:50). All 19 plug-in components PASSED on Win64
+(16 of 16 in SteamDemo). Delivered since: Batch2b (follows Doc5; see
+"BATCH 2B" in the notes). Nothing to delete. Batch2b needs ALL runtime
+packages rebuilt (Steamworks, SteamworksFMX, SteamworksVCL; Lazarus:
+SteamworksLCL) and dclSteamworks reinstalled (Win32 design packages).
+Owner's order: FMX test first, then SteamDemoVCL / SteamDemoLCL (FPC).
+NEXT: the Batch2c build + SteamDemo run (21 components, Win64 and Win32),
+the full Win64 round, macOS ARM64, Linux / SteamOS.
+NEXT SESSION FIRST: verify the latest push as in "Syncing safely". Then,
+still open: SteamDemo Win64 run of
+Menu4 (buttons, File menu, Auto Start setting file, Take Screenshot, Test
+components 7 of 7), VCL / LCL twins of the SteamDemo changes (offered),
+TriggerScreenshot with the overlay (a run started from Steam).
+
+### Done this session (details in "Eighth session" above)
+1. demos/VirtualGamepadLCL: the visualiser for Lazarus / FPC 3.2.2 with
+   Castle Game Engine (LCL form + TCastleControl created in code), AppID
+   480, never RestartIfNecessary. Same manifest / layouts (generator
+   OUTS has a third folder) and models; overlay menu in Castle UI
+   (controller row, Return to App, Enable / Disable Motion, Start / Stop
+   Remote Logging, Exit; InGame fallback); examine navigation; a
+   directional light on the camera.
+2. src/PadAnimator.pas: engine-free parallel clip player - reads the
+   .glb (fpjson), keeps the moving channels (every clip writes every
+   joint), Press / Release / SetValue / SetAxis, additive from each
+   clip's first key, hands changed joints to OnApplyJoint ->
+   TTransformNode. Needs Castle with GPU skinning (Nov 2025+).
+3. RemoteLogging/src/RemoteLog.SenderFPC.pas: the Delphi sender's API
+   on FPC's Sockets unit; works with the existing LogReceiver.
+4. First FPC build of the whole SteamworksLCL.lpk since Caption1 and
+   Plugin.Input: one fix in lib/Steamworks.API.pas
+   (SysUtils.GetEnvironmentVariable - FPC's Windows unit hid it); the
+   Plugin.Input shim compiled under FPC without changes.
+5. Lessons recorded: qualify SysUtils routines in lib/ units that use
+   Windows (FPC); qualify LCL enums (Graphics.fsBold) where Castle's
+   X3DNodes is used.
+
+### Next / open
+- CONFIRMED (owner, 2026-11-02 09:28, Windows: "Everything in to
+  confirm checks out fine"): VirtualGamepadLCL - joints move in Castle
+  (PadAnimator + GPU skinning), several buttons at once, stick
+  directions per model (PS5 -1, others +1 - same as VirtualGamepad),
+  motion axes (Scene.Rotation), remote logging received by LogReceiver
+  (RemoteLog.SenderFPC proven on Windows), the overlay with several
+  pads.
+- VirtualGamepadLCL on Linux / macOS: untested (FPC sender's Unix paths:
+  timeval SO_RCVTIMEO, MSG_NOSIGNAL / SO_NOSIGPIPE / SO_REUSEPORT,
+  fpUname). Data files must sit next to a deployed executable (no
+  deployment set up - Lazarus copies nothing; run from
+  <project>/<cpu>-<os>/ uses ../src and ../../../models; on macOS the
+  executable is inside the .app bundle, so those fallbacks do not
+  resolve there).
+- Everything still open from the seventh-session handover below
+  ("Next / open"): VirtualGamepad remote logging and non-Windows builds,
+  Steam Controller menu log, Steamworks package rebuild for Linux64 /
+  macOS, plain Xbox pad with the Paddles1 layout, Ally paddles (parked),
+  Gorilla.Animation.Parallel.pas licence, LICENSE holder name,
+  models/LICENSE <your name>, devices on order, launcher (END of the
+  project).
+
+## Handover (2026-11-02, end of seventh session)
+State: pushed and verified c3d4bf1 "Better Virtualpad" (see the last
+note above). Nothing delivered after it except this file (zip Handover3,
+follows the push). Nothing to delete.
+NEXT SESSION FIRST: verify the Handover3 push as in "Syncing safely"
+(CLAUDE.md identical; pasdoc_check.py / project_check.py 0 problems).
+
+### Done this session (details in "Seventh session" above)
+1. VirtualGamepad (FMX + Gorilla3D) is a working visualiser: model by
+   pad type, Sprite3D orbit camera (vendored unchanged), the Gorilla3D
+   author's TGorillaParallelAnimator (in the repo with his permission)
+   playing every button / stick / trigger at once; per-model stick sign
+   (FStickSign: PS5 -1, Xbox / Steam Controller +1 - owner-confirmed
+   orientation for PS5; Xbox / Steam Controller fixed on his reports -
+   Stick3 CONFIRMED by the owner, 2026-11-02 00:14). Motion OFF at start. Long press
+   of Start (0.8 s) -> overlay menu on the Menu action set: controller
+   row (several pads; D-pad left / right, A switches), Return to App,
+   Enable / Disable Motion (greyed without motion data), Start / Stop
+   Remote Logging, Exit; each choice closes it; falls back to the InGame
+   set's D-pad / A / B when the loaded layout lacks Menu bindings. No log
+   panel: one-line banner, log to file / stderr / LogReceiver.
+2. Manifest Menu set: MenuConfirm, MenuBack, MenuUp / Down / Left /
+   Right (D-pad); LAYOUT_REVISION 4, literal per-controller layout
+   titles "SteamInputDemo - <pad> (rN)".
+3. Linux / SteamOS: FmxLinuxGtkGlobal (GTK RTLD_GLOBAL, Runtime 3.0
+   sniper) and the ICU launcher <name>.sh in SteamDemo, SteamInputDemo,
+   SteamConsole, VirtualGamepad (+ GTK unit in LogReceiver); both
+   Embarcadero bugs documented (docs/fmx-steamos-*.md); SteamInputDemo
+   PROVEN from Steam on Ubuntu and on SteamOS (ROG Ally, Game Mode).
+4. TSteamLib.RunningOS / PlatformDescription (OS, build, Wine / Proton,
+   container) in every caption and the log; LogReceiver shows the
+   sender's platform. NOT YET seen on Linux: the Steamworks package was
+   not rebuilt for Linux64 at the time ("Linux x64 build" only).
+5. SteamInputDemo capability probe (motion, back buttons, origin
+   families beyond the type) - proven on the Ally.
+6. Docs: Launcher.md (end-of-project plan), SteamInputMapping.md
+   (layout copies, titles, Menu set, handhelds); LICENSE (MIT) + README
+   "Licence" section with exceptions; README title "Steamworks for
+   Pascal".
+
+### Next / open
+- CONFIRMED (owner, 2026-11-02 00:14, Windows): Stick3 sticks right on
+  every model; the overlay works (with several pads). NOT YET TRIED:
+  Remote Logging from VirtualGamepad (overlay or File menu), and any
+  non-Windows build of VirtualGamepad (Linux / SteamOS / macOS - incl.
+  the 2D overlay above the Gorilla3D view there).
+- Steam Controller menu: the layout Steam loaded lacked the Menu
+  bindings (fallback now covers it) - a log of OpenOverlay's "binds
+  nothing to ..." line would confirm which copy Steam used.
+- Rebuild the Steamworks package for Linux64 / macOS so RunningOS shows.
+- Plain Xbox pad with the Paddles1 xboxone layout (gyro + back sources):
+  expected Gyro / Back* "not bound (optional)"; if not, revert to
+  STANDARD and bump LAYOUT_REVISION.
+- ROG Ally paddles / gyro PARKED (owner); to resume: export Steam's own
+  Ally layout (steam://dumpcontrollerconfig?appid=2275430).
+- Gorilla.Animation.Parallel.pas licence: ask its author whether MIT is
+  fine (README excludes it until then). LICENSE holder "G3DGames" - the
+  owner may change it. models/LICENSE still says <your name>.
+- Devices on order: PS4 DualShock 4, Logitech G920 wheel, Thrustmaster
+  T.Flight Hotas One (expect Generic / no Steam Input).
+- Launcher (docs/Launcher.md): END of the project only.
+- Older open items: the sixth-session handover below ("Still open").
+
+## Handover (2026-10-31, end of sixth session)
+State: pushed and verified 91b5d57 "Remote Loggin" = every zip up to
+LinuxPass1 (117 files identical ignoring CRLF / BOM; the IDE re-saved
+SteamConsole / Steamworks / SteamworksFMX / SteamInputDemo / LogReceiver
+.dproj files - units, search paths and all .vdf DeployFile entries
+survived - and added SteamInputDemo's info.plist.TemplateOSX.xml and
+Entitlement.TemplateOSX.xml: keep them). NOT in that push: LinuxLog1 and
+LinuxMenu1, and RemoteLog4's deletion. All three are folded into zip
+Handover2 (follows the push) together with this file; the owner must
+`git rm demos/SteamInputDemo/src/uRemoteLogTarget.pas
+demos/SteamInputDemo/src/uRemoteLogTarget.fmx`. Handover2 carries the
+pushed (IDE-saved) SteamInputDemo.dproj / LogReceiver.dproj with only the
+FmxLinuxMenu DCCReference added.
+NEXT SESSION FIRST: verify the Handover2 push as in "Syncing safely"
+(every file of Handover2 identical; uRemoteLogTarget.* gone;
+FmxLinuxMenu.pas in both places; project_check.py and pasdoc_check.py
+report 0 problems).
+
+### Done this session (details in "Sixth session" above)
+1. Steam Input demo became a pad-examining tool: one action per physical
+   control, default layouts for 11 controller types (generated), banner
+   naming the pad / layout / model, glyphs (Light style), File menu (View
+   Controller Settings, Rumble, Send log to receiver, Exit), auto-start
+   of Steam with retry. PASSED on Windows with Xbox One, PS5, Steam
+   Controller 2026, Switch Pro (swap on / off), Joy-Con pair and singles,
+   a clone pad as Xbox 360 / PS4 / Switch Pro; on LINUX64 (Ubuntu) with
+   Xbox One, PS5, Steam Controller 2026 - the Linux x64 Input shim
+   (Analog two-register, Motion sret) is PROVEN.
+2. RemoteLogging/ (optional, nothing to do with Steam): LogReceiver
+   (choose network, OK, File > Exit; Accept prompt; files in
+   Documents/LogReceiver) + RemoteLog.Sender (TRemoteLogSender,
+   TRemoteLogDiscovery). Auto-discovery; SteamInputDemo starts it from
+   File > Send log to receiver or DPadUp + ButtonY + LeftBumper. PROVEN
+   Linux -> Windows across machines.
+3. Linux FMX menu fix (FmxLinuxMenu.ReplaceMainMenu) - delivered, NOT
+   YET RUN on Linux.
+4. Gorilla3D 1.5.4.4003 notes and the author's parallel animator API.
+
+### NEXT: the 3D pad visualiser in Gorilla3D (owner, 2026-10-31 21:41)
+A multi-platform FMX program (Windows, macOS, Linux; later Android)
+showing the 3D model of the connected pad, animated live by the real pad
+through Steam Input. Gorilla3D first, CGE later. Ask the owner at the
+start: (a) the project name / folder (suggestion: demos/PadVisualiser);
+(b) where TGorillaParallelAnimator comes from now - in 1.5.4.4003 itself
+or still only the author's separate unit (Gorilla.Animation.Parallel +
+sample ParallelAnimation, his copyrighted code: NEVER copy it into this
+repo; reference it from the Gorilla3D install or the owner's folder);
+(c) whether the Switch model exists yet.
+
+Build on SteamInputDemo - it already solves everything except the 3D:
+- Same Steam Input setup: TSteamAPI + TSteamInput on the form, explicit
+  RunFrame from a 16 ms timer on the UI thread, the SAME manifest and
+  layouts (InGame set: one action per physical control - LeftStick,
+  RightStick, Gyro, Left/Right/CenterTrackpad (+Click), Left/RightTrigger,
+  ButtonA..Y (by POSITION: A bottom, B right, X left, Y top),
+  Left/RightBumper, Left/RightStickClick, DPadUp/Down/Left/Right, Start,
+  Select, BackLeft/Right (L5 / R5), BackLeft/RightUpper (L4 / R4)).
+  Generated by tools/gen_input_mapping.py; decide with the owner whether
+  it writes the files into the new demo's src as well (one table, two
+  output folders) - projects use only their own files.
+- Copy from uMain.pas: handle resolution on every
+  OnSteamInputConfigurationLoaded, LayoutLoaded + LAYOUT_WAIT_MS (layouts
+  can arrive seconds after the pad), ControllerText / InputTypeName /
+  LayoutTypeName / ModelName (type -> model), the "API False" and "NO
+  BINDINGS" banners, remote logging (FSender, FDiscovery, the pad combo),
+  auto-start of Steam (tmStart, RETRY_MS), the log file next to the exe.
+- Polling: ReadActions in uMain.pas reads digital / analog / motion per
+  frame - feed those values to the animator instead of the text panel.
+
+Gorilla3D facts (GameEngineIntegration.md 6.5 has the long form):
+- 1.5.4.4003 installed on the owner's machine. UseFixedFrameRate works
+  and defaults to True on Windows, macOS, Linux, Android; iOS is event
+  based. On Linux / Android the timer only paces - frames are drawn in
+  FMX's paint cycle (shared GL context), so heavy form painting lowers
+  the frame rate: keep the form simple.
+- TGorillaTimer.OnTimer is synchronised to the main thread (author).
+  The TSteamAPI default (timer update mode) is right for this program.
+- MULTI-INPUT ANIMATION: since 1.5.4 a clip with no track for a node puts
+  that node in its REST pose, so playing one clip per input resets every
+  other input. The author's TGorillaParallelAnimator solves it: extracts
+  only the joints each clip moves and adds running clips on top of the
+  rest pose. API: Model := (load the .glb with animation caching []),
+  Press(clip) (holds at the detected peak), Release(clip), Play,
+  PlayLoop, SetValue(clip, 0..1) for triggers, SetAxis(negClip, posClip,
+  -1..1) for sticks, StopAll, IsAnyActive, Update / AutoUpdate,
+  OnClipFinished. The model's own AnimationManager must NOT play at the
+  same time. His sample loads our three .glb from a TSteamAPI checkout.
+- Anything Gorilla3D lacks is a request to its developer (he answers
+  fast), not a workaround.
+
+The models (models/, CC0, Quaternius; glTF 2.0, one skin, 30 fps):
+- XBoxOne_Animated.glb, 17 joints: Root, Body, A, B, X, Y, Trigger_Left,
+  Shoulder_Left, Guide, Menu, Profile, Stick_Right, DPad, Stick_Left,
+  View, Trigger_Right, Shoulder_Right. 33 clips: A_Press, B_Press,
+  X_Press, Y_Press, DPad_Up / _Down / _Left / _Right, Guide_Press,
+  Menu_Press, View_Press, Profile_Press, Shoulder_Left_Press,
+  Shoulder_Right_Press, Stick_Left_Up / _Down / _Left / _Right / _Press /
+  _Spin_CW / _Spin_CC, the same for Stick_Right, Trigger_Left_Press_Full /
+  _Soft, Trigger_Right_Press_Full / _Soft, EmptyAction.
+- PS5_Animated.glb, 16 joints (no Guide joint, no back-grip joints).
+  37 clips: PS NAMES for the face buttons - X_Press (Cross = joint A,
+  bottom), Circle_Press (B, right), Square_Press (X, left),
+  Triangle_Press (Y, top) - plus the Xbox-named rest, Guide_Press and
+  L4 / L5 / R4 / R5_Press although the model has no Guide or back-grip
+  joint (check what those clips move before using them).
+- SteamController_Animated.glb, 21 joints: the Xbox 17 + BackGrip4.R,
+  BackGrip5.R, BackGrip4.L, BackGrip5.L. 37 clips: Xbox names +
+  L4_Press, L5_Press, R4_Press, R5_Press.
+- NO joints or clips for trackpads (Steam Controller's two, PS5
+  touchpad) or for motion: show trackpad positions some other way (a dot
+  on the surface) and rotate the WHOLE model by GetMotionData's rotQuat
+  (Steam's axes vs Gorilla3D's are unknown - test; |accel| ~16384 = 1 g,
+  gyro raw, see the motion notes above).
+- Timings: presses 0.5 s, peak ~0.2 s; sticks / D-pad out by 0.3 s,
+  held to 0.4 s (stick tilt ~27 deg, D-pad 5 deg); triggers peak 0.23 s,
+  Soft = ~59 % of Full - use Full with SetValue(analog value).
+- Guide / PS / Steam button: reserved by Steam (no action, no origin) -
+  Guide_Press can only be shown from "every action inactive" (the demo
+  logs that change), not from an input. Xbox Share (Profile) is bindable
+  (XBoxOne_Share) but not in our manifest yet - optional action to add.
+- Type -> model (docs/SteamInputMapping.md section 5, "Which picture or
+  model for which pad"): Xbox 360 / One / generic -> Xbox, PS4 / PS5 ->
+  PS5, Steam Controller 2015 / 2026 / Deck -> Steam Controller; Switch
+  types have no model yet (owner: in the works).
+
+Action -> animator mapping (first draft, per model):
+  ButtonA/B/X/Y   Press / Release the face clip of that POSITION (Xbox &
+                  Steam Controller A/B/X/Y_Press; PS5 X(Cross)/Circle/
+                  Square/Triangle_Press)
+  Left/RightBumper   Shoulder_Left/Right_Press
+  Left/RightTrigger  SetValue(Trigger_Left/Right_Press_Full, x)
+  Left/RightStick    SetAxis(Stick_?_Left, Stick_?_Right, x) and
+                     SetAxis(Stick_?_Down, Stick_?_Up, y) - check y's sign
+  Left/RightStickClick  Stick_Left/Right_Press
+  DPadUp/Down/Left/Right  DPad_Up/Down/Left/Right
+  Start / Select  Menu_Press / View_Press
+  BackLeft/Right  L5_Press / R5_Press; BackLeft/RightUpper L4 / R4_Press
+CAUTION - positions: our layouts are positional, so ButtonA = bottom on
+Xbox, PlayStation, Steam Controller, Joy-Con pair and the Switch Pro
+with Steam's swap OFF (which then reports Xbox 360 origins). With the
+swap ON the Switch Pro reports Switch A/B/X/Y by LETTER (ButtonA = the
+right button). For a Switch model decide the joint from the ORIGIN
+(docs/SteamInputMapping.md section 5 table), not from the action name.
+
+Multi-platform rules for the new program:
+- LINUX MENUS: a TMainMenu shows only first letters on Linux (GTK). Use
+  FmxLinuxMenu.ReplaceMainMenu(Self, MainMenu1) FIRST in OnCreate (see
+  the LINUX MENUS note above for why only that method works). Add a
+  THIRD identical copy of FmxLinuxMenu.pas to the new project's src and
+  add its path to COPIES in tools/project_check.py. Keep no reference to
+  a designed menu item from before the swap; items use Text / OnClick
+  only (copy any other property the new form uses in CopyItem).
+  LinuxMenu1 is not yet run on Linux - run it from a terminal (no
+  GTK-CRITICAL lines, full names) before relying on it.
+- FMX units: never put Winapi.Windows in a uses clause after FMX.Graphics
+  (its TBitmap hides FMX's - Menu2 failed on that); write
+  FMX.Graphics.TBitmap where it matters.
+- Fields before methods in every visibility section (E2169 in
+  RemoteLog1); nothing after a unit's initialization section (E2029 in
+  RemoteLog3).
+- Files next to the executable: Windows post-build copy, DeployFile
+  entries for Linux64 and macOS - DONE for VirtualGamepad (zip Deploy1):
+  .vdf and .glb in Contents/Resources on macOS (mac_data), found through
+  DataFolder in uMain.pas; gen_projects.py "files" writes all of it.
+- Linux depot: executable (exec bit), libsteam_api.so (the game ships it;
+  Steam does NOT provide it), manifest + layouts, models, probably
+  libfmux.so; GTK 3 + OpenGL from the system. SteamOS shows every main
+  window full screen - the pad combo exists for that reason.
+- macOS: the objc_disposeClassPair FMXWindow line at exit is harmless;
+  signing entitlements in the note above.
+
+### Still open (owner)
+- Steam deployment test (Linux depot, ideally on a Steam Deck); macOS
+  .vdf to Contents/Resources before a Developer ID build.
+- uNetworks.pas (LogReceiver's network list): the Windows
+  GetAdaptersAddresses records were written from memory; the owner's run
+  listened on the chosen LAN address and was found, so the list works -
+  check once that the adapter names shown are right.
+- Real hardware still untested: genuine Xbox 360, PS4 DualShock 4, Steam
+  Deck, 2015 Steam Controller; Switch 2 Pro will not be tested.
+- From earlier sessions (fifth-session handover below): models/LICENSE
+  name, PS5 logo material name, Steam Cloud for 2275430 (see CORRECTED
+  in the ninth session), generator
+  batch 2, component icons.
+
+## Handover (2026-10-31, end of fifth session)
+State: pushed and verified up to 1467094 "More plugins inc imput" (Plugins5
++ Input1 + the owner's models/ and .gitattributes). Delivered since, NOT yet
+pushed when the session ended: MappingDoc1, InputMapping1 (tested locally
+by the owner - see below), Handover1 (this file). Nothing to delete.
+NEXT SESSION FIRST: verify the push as in "Syncing safely" - every file of
+those three zips must match (the .vdf files are CRLF; compare ignoring CR).
+Not in a fresh workspace (ask the owner to attach again when needed, keep
+outside the repo, never commit): the SDK headers (AllSteamHeaders.zip, for
+gen_steam_api.py / verify_generated.py) and the Steam Input reference files
+(INPUT.zip: Valve's SpaceWar sample, No Man's Sky's manifest + layouts).
+
+### Done this session (details in the notes below)
+1. BasicFormFMX removed.
+2. Generator batch 1: RemoteStorage, Screenshots, Timeline, UGC - TESTED
+   Win64 (SteamConsole, live data from all four). Handler variants of
+   Valve names already ending in Async are overloads (FileReadAsync).
+3. ISteamInput with a hand-written per-platform shim for the three
+   by-value struct exports; verify_generated.py section 3 checks clang's
+   lowering for 8 targets on every SDK update. TESTED Win64: SteamConsole
+   (Motion via hidden pointer) and SteamInputDemo with an Xbox One pad
+   (analog + digital + rumble + glyphs).
+4. demos/SteamInputDemo (FMX): live actions, controller list, bindings
+   with Steam glyphs, rumble, set switching, log file.
+5. tools/gen_input_mapping.py: one table -> Steam Input manifest + default
+   layouts for 7 controller types (format learned from Valve's SpaceWar
+   and No Man's Sky files the owner sent - NOT in the repo). First manifest
+   failed: it began with // comments - Steam Input files must have none.
+6. docs/SteamInputMapping.md: manifest, layouts (format, sources / inputs,
+   generator), dev vs shipping, origins -> physical positions, type ->
+   model, troubleshooting.
+7. Show info in SteamDemo / VCL / LCL prints the batch-1 plug-ins;
+   SteamConsole prints them + an ISteamInput shim smoke test.
+8. models/: owner's CC0 3D pads (Xbox One, PS5, Steam Controller 2026),
+   analysed - joints, clips, timing, position mapping (notes below).
+   PROJECT AIM recorded: make creating input mappings easy (mapping tool).
+
+### Next, in order
+1. Verify the push (above).
+2. Methodical SteamInputDemo run (owner): Xbox - Menu button (set switch,
+   Select / Back, Back returns), SLOW right-trigger pull (does Throttle
+   show values between 0 and 1?), Log state; then PS5; then Steam
+   Controller 2026 - bind it once in Steam's configurator, Export layout,
+   steam://dumpcontrollerconfig?appid=2275430 -> its controller_type
+   string -> add to gen_input_mapping.py CONTROLLERS + gen_projects.py
+   SteamInputDemo "files".
+3. If Throttle is not analog: compare our trigger group (mode trigger,
+   gameactions, virtual_mode 1) with Steam's own export of the same
+   binding and fix the generator.
+4. Mapping tool, step 1: a capture manifest (one action per physical
+   input) + capture layouts per pad from gen_input_mapping.py, so a press
+   names the physical button; then the 3D visualiser (GORILLA3D first,
+   then CGE - owner 2026-10-31, see the sixth-session notes; models'
+   clip / joint tables in the notes); then writing the user's manifest +
+   layouts from presses (port the generator to Pascal).
+5. Linux64 / macOS round: the Input shim's untested branches (two-register
+   Analog on x64 / ARM64 Unix, X8 Motion on ARM64), Boolean narrow-argument
+   question (UGC GetNumSubscribedItems), FPC on Linux / macOS, the new
+   demos; Android64 still placeholder.
+6. Generator batch 2: HTTP, Inventory, Matchmaking, Parties, ...; then C
+   unions (Networking*, SteamInputActionEvent_t); game servers last.
+7. Win32 recheck; component icons once supplied (11 needed now).
+
+### Open - owner to supply / decide
+- models/LICENSE: replace <your name>; add CC0's legalcode.txt as
+  models/LICENSE.txt or drop that line.
+- PS5 model: logo material is named "Material" (Xbox / Steam Controller:
+  "Logo") - rename if Quaternius does another pass.
+- (WRONG, corrected 2026-11-02 ninth session: the partner site HAS Cloud
+  set up - 102400000 bytes, 10000 files, published.) Steam Cloud is off
+  for app 2275430 on the partner site.
+- Optional: what Steam did with the commented manifest (to confirm the
+  cause).
+- Still open from before: post-build text for docs/Install-Delphi.md
+  section 8; TGorillaTimerMode value names; component icons.
+
+## Fifth session notes (2026-10-30 / 31, detail)
+- Push of the fourth session verified as far as GitHub allows (f9c825c):
+  demos/shared gone, .gitignore entries present, group Dependencies and
+  Build / Clean / Make order intact. The file-by-file comparison needs the
+  previous zips (not in the new workspace).
+- BasicFormFMX REMOVED (owner): out of Steamworks.groupproj and
+  gen_projects.py, README layout. Pushed and verified (190842b).
+- SDK headers supplied (AllSteamHeaders.zip, public/steam incl. lib/ and
+  steam_api.json). Regeneration reproduced the pushed binding exactly
+  (line endings only) before any change.
+- GENERATOR BATCH 1 (zip Plugins5): RemoteStorage, Screenshots, Timeline,
+  UGC - every method of all four generated (none unsupported); no change to
+  SDKTypes (their structs and callbacks were already there) or to the five
+  older plug-ins. verify_generated.py: 836 layouts, 414 flat signatures (185
+  new) identical. Added to Steamworks.dpk / .dproj, SteamworksLCL.lpk,
+  gen_projects.py; doc_extras + generated pages; README, docs, icons brief.
+  SteamConsole prints a line for each (cloud quota / files, screenshots
+  hooked, a timeline event with string + Single + enum arguments, UGC
+  subscribed counts with a Boolean argument - the narrow-argument case).
+  TESTED 23:18 (owner, Win64 Delphi 13, log checked): all four compile;
+  SteamConsole: 9 plug-ins initialised; RemoteStorage cloud on for the
+  account, OFF for the app, 0 files, quota 102400000 free of 102400000;
+  Screenshots hooked False; Timeline event handle 1 (strings + Single +
+  enum arrived); UGC 0 / 0 / 0 (Boolean argument fine on Win64). Steam
+  Cloud is not enabled for 2275430 on the partner site (writes will fail)
+  - WRONG, see CORRECTED in the ninth session.
+- Generator rule (new): Valve names already ending in Async (RemoteStorage
+  FileWriteAsync / FileReadAsync) get their handler variant as an OVERLOAD
+  of the same name, never ...AsyncAsync; gen_docs.py classifies async
+  variants by their AHandler parameter, not by name.
+- Not done on purpose: hand wrappers for the raw-pointer methods (UGC 21,
+  RemoteStorage 7, Screenshots 1 - string buffers, id arrays); RemoteStorage
+  Workshop v1 tag arrays stay `var SteamParamStringArray_t` (the header
+  declares them non-const).
+- INPUT (zip Input1, follows Plugins5): ISteamInput generated (47 methods)
+  + tools/plugin_extras/Input.pas.txt. GetDigitalActionData /
+  GetAnalogActionData / GetMotionData return pack(1) structs (2 / 13 / 40
+  bytes) BY VALUE; clang IR per target (checked, now permanent in
+  verify_generated.py section 3, "by-value returns", 3 exports x 7 targets,
+  proven to catch deliberate errors):
+    Digital  i16 in a register everywhere except i386 System V
+    Analog   sret on Windows; two registers on x64 / ARM64 Unix
+    Motion   sret everywhere (X8 on ARM64)
+  MSVC Win32: caller pops the sret pointer ("retl"); i386 Linux: callee
+  pops it ("retl $4"). Shim: Digital read as UInt16; Analog / Motion an
+  explicit first result-pointer parameter on Windows (and Motion on x64
+  Unix), a 16-byte two-UInt64 record for Analog on Unix, the compiler's
+  record return for Motion on ARM64 (X8) and everything on Linux32
+  (UNVERIFIED). Extras: Start / Stop (Init / Shutdown paired; Stop runs in
+  the new //@finalize section, before SteamAPI_Shutdown), ConnectedControllers,
+  Digital / AnalogActionOrigins, STEAM_INPUT_MAX_COUNT / _ORIGINS.
+  EnableActionEventCallbacks stays raw (SteamInputActionEvent_t is a union).
+  Generator: //@finalize extras section; the report lists hand-written
+  methods as such. gen_projects.py: "files" option (copied next to the exe
+  by the Windows post-build, deployed beside the library elsewhere).
+  demos/SteamInputDemo (FMX, desktop platforms): TSteamAPI + TSteamInput on
+  the form, src/steam_input_manifest.vdf (sets InGame: Move / Camera /
+  Throttle / Fire / Jump / Menu, Menu: Select / Back; no default layouts),
+  16 ms poll timer = game loop with explicit RunFrame on the UI thread; logs
+  controllers, button edges, stick moves, first motion data, bindings,
+  Bindings / Rumble results. SteamConsole calls the three shim exports once
+  (handle 0 -> zeros; a wrong ABI would crash). Show info in SteamDemo /
+  VCL / LCL now prints the four plug-ins of batch 1. SteamInputDemo also
+  lists every action's bindings with Steam's glyph
+  (GetGlyphPNGForActionOrigin, Small, Knockout) and logs each glyph path.
+  Independent review (no compiler) found ONE certain error - the FMX
+  SteamDemo Show-info block had landed inside the UserStats except before
+  its `on` handler - fixed; also fixed from it: the GetMotionData body test
+  now mirrors its type declaration (32-bit non-x86 targets), i686 Linux
+  added to the by-value check (all sret; the FPC side stays unverified),
+  verify's temp folder removed on every path, the demo re-resolves ALL
+  handles on a new configuration and logs bindings only once every handle
+  is known, gen_projects "files" no longer needs "redist" (Android would
+  need assets\internal\ - not supported).
+  PUSHED and verified (1467094 "More plugins inc imput": all 42 files of
+  Plugins5 + Input1 identical). TESTED 00:13 (owner, Win64 Delphi 13,
+  SteamConsole, log checked): compiles; 10 plug-ins initialised; the three
+  shim exports returned without a crash - motion quat w 1.00 is STEAM's
+  identity quaternion (the shim zeroes the result first), so the Win64
+  hidden-pointer return is proven; ISteamInput shut down 6 ms before
+  SteamAPI. 0 controllers there is expected (one RunFrame right after
+  Init). SteamInputDemo with real pads: not yet run. Steam Input is
+  enabled for 2275430; default layouts still to export (owner).
+- PROJECT AIM (owner, 2026-10-31 00:41): make creating Steam Input
+  mappings EASY - that is why the 3D models exist. Target: a mapping tool
+  (actions / sets / layers / localisation edited visually, the manifest
+  VDF written for the user, live test with the real pad animating the
+  matching model, the bindings of every action shown on it). Default
+  layout files are written by Steam (dev mode + Export layout +
+  steam://dumpcontrollerconfig); whether the tool can generate them
+  depends on their format - study the owner's exports first.
+  docs/SteamInputMapping.md is the reference for the mapping chain.
+- MODELS PUSHED (1467094): models/XBoxOne_Animated.glb,
+  PS5_Animated.glb, SteamController_Animated.glb + LICENSE (CC0; still
+  says <your name> and points to a missing LICENSE.txt - owner told);
+  .gitattributes `*.glb binary`. Modeller Quaternius (his logo is the
+  Guide badge, by design: users swap in their own branding - one material
+  + one PNG; named "Logo" on Xbox / Steam Controller, "Material" with
+  Logo.png on the PS5). Facts read from the files: glTF 2.0, one skin
+  each; shared joint names Root, Body, A, B, X, Y, DPad, Stick_Left /
+  _Right, Trigger_Left / _Right, Shoulder_Left / _Right, Menu, View,
+  Profile, Guide (not on PS5), BackGrip4/5.L/.R (Steam Controller only).
+  One clip per input (33-37), 30 fps: presses 0.5 s, peak ~0.2 s, back
+  by 0.4 s; sticks / D-pad 1 s, out by 0.3 s, held to 0.4 s, back by
+  0.7 s (stick tilt ~27 deg, D-pad 5 deg); triggers peak 0.23 s (Soft =
+  ~59 % of Full travel). Everything moves by translation except stick /
+  D-pad rotation. All clips go OUT AND BACK: hold presses at the peak,
+  seek triggers to value x 0.23 s, rotate stick joints directly.
+  ABXY joints are POSITIONS (A bottom, B right, X left, Y top) on all
+  three; PS5 clip names use PS names (X_Press = Cross -> joint A).
+  Steam reserves Guide and Quick Access (no origins); Xbox Share =
+  Profile pill IS bindable (XBoxOne_Share). Type -> model and origin ->
+  position tables: docs/SteamInputMapping.md section 5. Owner has all
+  three pads physically, a Switch model is in the works (Nintendo
+  positions: A right, B bottom, X top, Y left).
+- PLANNED (owner, 23:47): commissioned CC0 3D gamepad models - Xbox, PS5,
+  Steam Controller - glTF (.glb), one animation with a rig and bones.
+  Use: a 3D pad visualiser driven by Steam Input (Gorilla3D first, then
+  CGE - order changed by the owner 2026-10-31). Waiting on the designer for bone / animation names
+  (to map to EInputActionOrigin). Sizes (owner, 23:52): PS5 824 KB, Xbox
+  One 1077 KB, Steam Controller 1709 KB - 3.6 MB together, fine in plain
+  git (no LFS needed). Design
+  note: the visualiser needs PHYSICAL buttons, so give it its own action
+  set with one action per button and use the origins to place them.
+  Steam's glyphs (GetGlyphPNGForActionOrigin) cover 2D prompts; Kenney's
+  CC0 input prompts (kenney.nl) were offered as a fallback for keyboard /
+  mouse and for pads that bypass Steam Input (XInput).
+- STEAM INPUT FILES (owner 01:09: "your steam manifest is bad"; sent
+  working references - Valve's SpaceWar sample and No Man's Sky's
+  shipped manifest + layouts - kept OUTSIDE the repo, other people's
+  files). Differences from mine: no // comments anywhere (mine began with
+  13 comment lines - prime suspect), no empty "configurations". Layout
+  format learned from them (docs/SteamInputMapping.md section 2):
+  controller_mappings v3, groups (id, mode, inputs -> activators ->
+  Full_Press -> binding "game_action <set> <action>", or gameactions
+  { set action } for analog), presets per set (group -> "<source>
+  active"); sources / inputs share names on every pad and are positional
+  (button_a = bottom). NEW tools/gen_input_mapping.py writes the demo's
+  manifest + 7 layouts (xboxone, xbox360, ps5, ps4, switch_pro, neptune,
+  steamcontroller_gordon); structure checked by parsing them back (every
+  action bound, preset ids valid). gen_projects "files" lists them; the
+  demo's .dproj regenerated (GUID kept; only additions + the post-build
+  copies). Owner's symptom with my manifest not yet known.
+  TESTED 01:17 (owner, Win64, Xbox One pad, SteamInputDemo, log checked):
+  "a LOT better". SetInputActionManifestFilePath True; configuration
+  loaded with "mapping by 0, revision 0.0" = OUR default layout (not a
+  personal one); every binding exactly as generated (Move LS, Camera RS,
+  Throttle RT, Fire A, Jump B, Menu Menu, Select A, Back B), each glyph
+  loaded (Steam\controller_base\images\api\knockout\*_sm.png, 32x32);
+  sticks +-1.00 on both axes back to 0.00, mode joystick move, active True
+  - the Win64 13-byte analog shim returns real data; A / B edges logged in
+  order (digital shim); Xbox motion = identity + zeros (no gyro); rumble
+  worked; ISteamInput shut down before SteamAPI; only Utils + Input linked
+  (dropped-and-linked works). NOT yet exercised: the Menu button (set
+  switching), a SLOW trigger pull (Throttle only logged 1.00 / 0.00 -
+  quick full pulls + the 250 ms / 0.2 log throttle, or the trigger group
+  needs other settings), Log state, PS5, Steam Controller 2026.
+- Tried: FPC 3.2.2 from Castle Game Engine's GitHub release bundle - GitHub
+  release downloads are blocked by the proxy (403), like apt. No compiler.
+
+## Handover (2026-10-30, end of fourth session)
+State: the owner is pushing this session's work on top of 7ffc71e. Zips, in
+order: RepoRename, Threads1-5 (cumulative), then changed-files-only Demos1,
+Demos2, Demos3, Lazarus1, Docs1, Docs2, Docs3, Lazarus2, and Handover (this
+file). `git rm -r demos/shared` was needed (zips cannot delete).
+NEXT SESSION FIRST: verify the push as in "Syncing safely" - every file of
+this session must match; also check that demos/shared is gone, .gitignore
+has /packages/lib/ and /packages/SteamworksLCL.pas, and that the IDE kept
+the group's Dependencies and Build / Clean / Make target order.
+
+### Done and tested this session (Win64; logs checked)
+1. Repo renamed to G3DGames/TSteamAPI (CLAUDE.md URLs).
+2. Callback updating (Layout rules, "Callback updating"): TSteamworks /
+   TSteamAPI UpdateMode sumTimer | sumThread | sumManual, Delivery
+   sdMainThread | sdOnUpdate | sdPumpThread, Update, SetUpdateMode,
+   PumpInterval / CallbackInterval, Threaded, QueuedCallbackCount. Worker
+   (TSteamPumpThread) copies payloads + fetches call results
+   (Dispatcher.PumpToQueue), delivery via DeliverQueued; subscriptions
+   locked; FShutdownLock / FWorkerStopping / dead-thread reaping for the
+   shutdown races an independent review found (A, B, C, F - fixed).
+   Tested: Delphi 13 compiled first time; SteamConsole 30 manual / thread /
+   main / worker (2nd parameter; each callback line names its thread) -
+   same callbacks in every mode, right thread, clean exit, and Steam -> Exit
+   in every mode (worker mode shuts down ON the worker and is reaped).
+3. Demos use components on their forms (Layout rules): SteamDemo uMain.fmx,
+   SteamDemoVCL uMain.dfm, SteamDemoLCL uMain.lfm (shared code-built unit
+   removed). Tested FMX, VCL (Delphi) and LCL (FPC), timer and thread mode:
+   Start, icons, persona / friends, Info, Stop / Start, close, Steam -> Exit;
+   no leaks. First FPC run of the worker passed.
+4. Lazarus package packages/SteamworksLCL.lpk + generated
+   lcl/Steamworks.LCL.Reg.pas: compiled (only FPC's generics 4046
+   warnings), installed, palette page, SteamDemoLCL form opens. SteamDemoLCL
+   now REQUIRES the package (no lib / lcl search paths: that gave Lazarus'
+   "unit path ... belongs to package" warning - gone, owner 22:35).
+5. Project group: applications listed first, then runtime, then dcl
+   packages; build order by Dependencies + Build/Clean/Make targets
+   (gen_projects.py writes both).
+6. Docs (docs/): Install-Delphi, Install-Lazarus-FPC, GameEngineIntegration
+   (CGE, Gorilla3D 1.5.3 incl. the author's word that TGorillaTimer.OnTimer
+   is synchronised to the main thread, Skia4Delphi, PasVulkan, custom
+   loops), components/ (TSteamAPI.md + README hand-written, TSteam<Name>.md
+   generated by tools/gen_docs.py + tools/doc_extras/), ComponentIcons.md.
+7. Delivery rule changed: zips hold only files changed since the previous zip.
+
+### Observed, not pursued
+- FMX thread mode pauses ~110-180 ms at worker start / stop; VCL 10-20 ms,
+  LCL 1-6 ms. Library code is identical, so FMX- or launch-related; harmless.
+- Compile hints from our code (unused event parameters, "not initialised"
+  locals filled by FillChar / SetLength) - could be silenced with := nil.
+
+### Open - owner to supply
+- Exact text Delphi 13 shows for the post-build DLL copy (TODO placeholder
+  in docs/Install-Delphi.md, section 8).
+- TGorillaTimerMode value names (docs describe the queue-once mode only by
+  behaviour).
+- Component icons: brief in docs/ComponentIcons.md (.ico, 16/24/32/36/48 px;
+  11 now, 15 more planned). Then package them (Delphi .dcr/.res, Lazarus resources
+  in the .lpk) and generate them for new plug-ins in gen_steam_api.py.
+
+### Next, in order
+1. Verify the push (above).
+2. Generator batch (owner: "do other plugins as we go"): RemoteStorage,
+   Screenshots, Timeline, UGC DONE in the fifth session (not yet compiled);
+   Input DONE (shim, demo; not yet compiled); next HTTP, Inventory,
+   Matchmaking, Parties, ...; then C unions (Networking*, Input);
+   game-server interfaces last. Needs the SDK's public/steam folder zipped.
+   Each new plug-in: add its unit to packages/SteamworksLCL.lpk by hand, run
+   tools/gen_docs.py, update docs/ComponentIcons.md if names differ.
+3. Linux / macOS round in one go: both Delphi demos + SteamConsole with the
+   new update modes; FPC there (cthreads, SteamTimeToLocal's localtime_r,
+   the Lazarus package); Android64 still placeholder.
+4. Win32 recheck (packages rebuilt for Win32 first - the 32-bit IDE needs
+   them for its design packages).
+5. Component icons once supplied.
+
+Facts to keep: CGE packages the Steam library only once it is in the
+project's top-level folder and listed in CastleEngineManifest.xml
+(<include path=...>); macOS dylibs bundled automatically. CGE's CastleSteam
+must not be used with this library (both drain the same queue).
+Compile facts confirmed by the first builds: TThread.Queue(nil, M),
+RemoveQueuedEvents(nil, M), TThread.CurrentThread.ThreadID vs MainThreadID
+all compile in Delphi 13 and FPC 3.2.2.
+
+## Handover (2026-10-30, end of third session)
+State: pushed and verified up to f6cf2aa "FPC check" (every file of the
+Lazarus5 zip identical). This handover + the .gitignore fix below follow it.
+
+Done and confirmed from logs this session (Windows first, owner's order):
+- Win64, Delphi 13: SteamDemo (FMX, tabbed), SteamDemoVCL, SteamConsole;
+  Win64, Lazarus 4.8 / FPC 3.2.2: SteamDemoLCL - FIRST FPC BUILD of lib/.
+  All: 5 plug-ins live, avatar + friend avatar, 6 achievements with icons
+  (fetch path via 1109 proven), local unlock times (match the Steam client),
+  Stop / Start, close, Steam -> Exit, no leaks (VCL Debug).
+- Fresh FMX project with NO library paths links the packages' DCUs from
+  the Dcp folder (Win64 and Win32; Win32 needs the runtime packages built
+  for Win32). The owner also uses the 32-bit IDE (separate package install).
+- Failed start without OnInitFailed is SHOWN, never raised (it used to end
+  the app from FormCreate); FMX error display fixed (ShowException).
+- SteamTimeToLocal (Steamworks.Types): per-date local time; FPC 3.2's own
+  conversion is an hour out for summer dates.
+- README "Known issues (that are not really issues)": icons + Steam client
+  restart, unthemed VCL demo (left on purpose), Steam exit behaviour,
+  Win32 F2613, IsRunningOnSteamDeck debug line. Add new pitfalls there.
+
+To do now (owner): a build artifact got committed -
+  git rm --cached demos/SteamDemoLCL/lib/x86_64-win64/SteamDemoLCL.obj
+.gitignore now ignores /demos/SteamDemoLCL/lib/ (the old lib/*-*/ pattern
+is anchored to the root and never matched the demo's unit folder).
+Lazarus added a blank first line to SteamDemoLCL.lpr - harmless.
+
+Next, in order:
+1. Next generator batch (owner: "do other plugins as we go"): RemoteStorage,
+   Screenshots, Timeline, UGC, ...; then C unions (Networking*, Input);
+   game-server interfaces last. Raw-pointer methods the generator lists
+   (Apps 6, UserStats 7) are candidates for hand wrappers in plugin_extras.
+2. Other platforms in one round later: Linux64 / macOS with the components
+   and new demos; FPC on Linux / macOS (SteamTimeToLocal's localtime_r path
+   and SteamConsole's FPC build are untested); Android64 still placeholder.
+3. Unexercised: avatar handle -1 -> OnAvatarImageLoaded (own avatar always
+   cached); Win32 VCL; Release builds of the packages (share the Dcp folder).
+4. DECIDED 2026-10-30 (fifth session): BasicFormFMX removed - the
+   component-based demo forms replace it.
+5. Later / optional: Delphi 11.0 compile check (13 recommended, older not
+   guaranteed); Lazarus "Execute after" DLL copy; CGE demo (CallbackInterval
+   0 + RunCallbacks from the engine loop).
+
+## Earlier handover (2026-10-30, end of second test session)
+State: pushed and verified up to 3f0ebfe "Add Android64"; the Mac4-6 / Win1
+zips (CLAUDE.md, gen_projects.py) follow it. Every desktop platform Delphi
+targets now passes with both demos, each confirmed from its log: Win64,
+Linux64, OSXARM64, OSX64 (Rosetta 2); Win32 passed before this session's
+changes (recheck optional). Covered everywhere: library load from the
+deployed location, SDK 1.65, the same 28 interface versions, ISteamUtils live
+data, Stop / Start, window close, Steam client exit.
+
+Steam client exit (Steam -> Exit), SDK 1.65, as observed:
+  Windows  windowed: close request x2, no 704, process ended by Steam;
+           console: 704, then ended ~10 s later
+  Linux64  windowed: 704 x2, no close request, process NOT ended
+  macOS    windowed: 704 x1, no close request, process NOT ended
+  console on Linux / macOS / Windows: 704, SteamConsole exits itself
+ShutdownOnSteamExit (default on) handles all of these; OnSteamShutdown is
+raised once per session; FormClose must tolerate running twice (Windows).
+
+Next tests, in order:
+1. Linux64 via PAServer - DONE 2026-10-30 (see Known gaps).
+   Win64 recheck after this session's changes - DONE 2026-10-30, logs
+   checked: "Platform: Windows x64 build"; the first non-internal callbacks
+   on Windows (336 Friends+36, 304 Friends+4) are named correctly;
+   SteamConsole 60: 704 -> SteamAPI shut down 4 ms later, early stop, clean
+   exit; SteamDemo: Steam -> Exit gives a close request twice and no 704
+   (unchanged), second FormClose is a no-op. Owner: no leak report, build
+   copied the DLL with no ERROR. Win32 not rechecked (optional).
+2. macOS - OSXARM64 first on the owner's Apple-silicon Mac (PAServer cannot debug
+   OSXARM64: lldb deployment bug - rely on logs, run from Terminal via
+   .../X.app/Contents/MacOS/X). Then try OSX64 on the M4 under Rosetta 2;
+   fallback: an Intel Mac. dylib goes to Contents/MacOS.
+   2026-10-30: first SteamConsole OSXARM64 build failed at deploy - E0264,
+   plutil "Cannot parse ... zero-length data": the IDE wrote an EMPTY
+   Info.plist because neither demo had macOS VerInfo_Keys (only iOS ones).
+   Added VerInfo_IncludeVerInfo + VerInfo_Keys to Base_OSX64 / Base_OSXARM64
+   in both demo .dproj files and to gen_projects.py (MAC_KEYS) - fixed the
+   build. SteamConsole 60 on OSXARM64 then PASSED (2026-10-30): dylib loaded
+   from Contents/MacOS, SDK 1.65, same 28 versions as Win64 / Linux64,
+   ISteamUtils live data, Steam -> Exit: 704 named Utils+4, SteamAPI shut
+   down 3 ms later, pump stopped early, clean exit, no asserts. (Init took
+   ~2.6 s on that first macOS run, 23 ms on the next - a one-off inside
+   SteamAPI_Init, not ours.)
+   Architecture is now logged ("[info] Platform: ..."). SteamConsole 60 as
+   OSX64 on Apple silicon PASSED (2026-10-30): "macOS x64 build, running under
+   Rosetta 2", same 28 versions, Steam -> Exit clean. An Intel Mac run is
+   optional now.
+   SteamDemo OSXARM64 PASSED (2026-10-30): "macOS ARM64 build", Start / Show
+   info / Stop / Start, same 28 versions, no overlay warning. Steam -> Exit:
+   like Linux - 704 (once here), no close request, process not ended;
+   ShutdownOnSteamExit shut SteamAPI down 6 ms later; the later window close
+   ran FormClose ONCE (Steam running: False). Log file in Contents/MacOS.
+   SteamDemo OSX64 under Rosetta 2 PASSED (2026-10-30, log checked):
+   "macOS x64 build, running under Rosetta 2", same 28 versions, Show info,
+   Stop / Start, Steam -> Exit: one 704, SteamAPI shut down 8 ms later, no
+   close request; window close later ran FormClose once (Steam running:
+   False). MACOS COMPLETE: both demos on OSXARM64 and OSX64 (Rosetta 2). A
+   real Intel Mac run remains optional.
+   The IDE added demos/*/info.plist.TemplateOSX.xml and
+   Entitlement.TemplateOSX.xml (standard templates) - keep them tracked.
+3. Android64 - placeholder only for now (owner added it to SteamConsole,
+   SteamDemo and SteamworksFMX on 2026-10-30; gen_projects.py matches). Not
+   implemented / not run; later: build and deploy, check the .so is in the APK.
+4. Warning hook - proven on Linux64 (overlay warning from Show info); on
+   Windows -debug_steamapi still produced nothing.
+5. Leak check: SteamDemo Debug sets ReportMemoryLeaksOnShutdown. Win64 run
+   2026-10-30 (Start, Show info, Stop, Start, Steam -> Exit, close): no leak
+   report (owner). On POSIX targets the setting is believed to do nothing.
+6. Later: overlay and Release relaunch once a build of 2275430 is on Steam;
+   InitMode simVersioned; FPC build of lib/ + SteamConsole.
+
+Decided 2026-10-30: a missing redistributable FAILS the Windows demo builds.
+The first attempt did nothing: the IDE re-saves post-build events as ONE line
+joined with '&&', and cmd makes everything after an 'if' part of its body, so
+when the DLL was missing the whole rest of the line (the WARNING, later the
+ERROR) was skipped. The old WARNING could therefore never appear. Now:
+`copy /Y "<src>" "$(OUTPUTDIR)" || (echo ERROR: could not copy ... & exit /b 1)`
+- no 'if' anywhere in a post-build event; brackets hold only literal text
+(macro paths may contain ')'). Changed in both demo .dproj files (base and IDE
+per-config groups) and gen_projects.py. Tested 2026-10-30 (RedistFail2.zip):
+with the DLLs missing, Win32 and Win64 builds of both demos fail as expected.
+DLLs restored -> builds copy and succeed (owner, 2026-10-30 Win64 recheck).
+
+Plug-ins started 2026-10-30 (see Known gaps, "Generated binding"); the
+component refactor (TSteamAPI / TSteamLib / plug-in components / new
+packages) followed the same day, before any compile. An independent review
+of the component layer (no compiler) found: call-result events could never
+fire (subscriptions lacked IncludeCallResults) - fixed, IOFailure results are
+logged instead of raising; Notification did not unlink from the root - fixed;
+SetActive overwrote an FActive reset inside OnInitialized - fixed; IDE
+handler stubs need RequiresUnits - selection editors added in both design
+packages (TSelectionEditor is in DesignEditors, not DesignIntf - first build
+failed on that, E2003); freeing the root from its own events is documented as forbidden.
+Not done (remarks): {$LIBSUFFIX AUTO} for the packages; OnShutdown can fire
+before OnInitFailed when plug-in setup fails inside Initialize.
+FIRST COMPILE + RUN, Win64 Delphi 13, 2026-10-30 15:07 (Plugins3.zip): only
+fix needed was DesignEditors. SteamDemo: 5 plug-ins initialised; every new
+plug-in call returned live data (SteamID + account id + valid, Steam level,
+persona name / state, immediate friend count, subscribed, game language,
+build id 25323143, app owner, 6 achievements); TSteamFriends.
+OnPersonaStateChange fired from callback 304 with the right SteamID and flags,
+payload size check passed (16 bytes). SteamConsole 60 Win64 (15:11): all 5
+plug-ins, the four new plug-in lines with live data, Steam -> Exit clean (704
+named, shut down 3 ms later, early stop). Packages install and the palette
+works; a blank FMX form with the components failed with F2613 'Steamworks.FMX
+not found' (dcc32) - no Library path entries for the sources: README now
+says to add lib, lib\plugins, fmx per platform (Tools > Options > Library).
+The blank-form test (demos/SteamPlaygroundFMX, renamed by the owner to
+demos/BasicFormFMX at 15606b0 - a "user's own project" without demo
+conveniences such as the post-build DLL copy):
+the IDE wrote the typed event stub and RequiresUnits added every needed unit;
+it then failed silently because SetAppIdEnvironment was off, no DLL next to
+the exe and no OnInitFailed handler -> a failed Active := True without an
+OnInitFailed handler is now reported (shown since 2026-10-30 18:10 - it
+raised at first, see test 4; Open returns False and shows nothing).
+BasicFormFMX fails pasdoc_check (11 IDE form declarations) and its .dproj
+lists the owner's third-party runtime packages and WinARM64EC - offered to
+document / tidy it once the owner stops editing it locally. (Removed
+2026-10-30, fifth session: the component-based demo forms replace it.)
+Added (untested): SteamImageToBitmap (fmx), SteamDemo side panel with the
+user's large avatar and the achievement list (icons via
+OnUserAchievementIconFetched, avatar via OnAvatarImageLoaded when -1),
+SteamConsole prints the achievements; the AppID has 6 achievements.
+Not yet reported: SteamDemo Steam -> Exit with components attached; a fresh
+test project without manual paths (packages' DCU output).
+Added 2026-10-30 (untested): SteamDemo is tabbed (Output / Personal: avatar,
+persona, ids, level, country, friends with avatars / Achievements: icons,
+unlock state); the demos no longer reference library sources (they link the
+packages' DCUs); vcl/ + SteamworksVCL / dclSteamworksVCL + SteamDemoVCL;
+lcl/ + SteamDemoLCL (Lazarus 4.8, FPC 3.2.2 - FIRST FPC COMPILE of lib/,
+expect FPC-specific fixes). The owner's Lazarus: 4.8, FPC 3.2.2,
+x86_64-win64, win32 widgetset.
+Review of the VCL/LCL code + FPC scan of lib/ (no compiler, 2026-10-30): no
+compile errors found. Fixed: FPC 3.2's UnixToDateTime 2nd parameter is
+aReturnUTC like Delphi's (an earlier ifdef here was WRONG and gave UTC on
+FPC) - both now pass False; SteamDemoLCL.lpr lacked {$R *.res} (manifest /
+DPI); IsMultiThread := True before installing the warning hook; VCL image
+lists cd32Bit. Remaining remark: Application.Scaled does nothing for the
+code-built form (pixel sizes are not scaled).
+Tested 2026-10-30 (Win64, pushed as 202871e): the GUI demos look OK (owner).
+SteamConsole first failed F1026 'Steamworks.inc' - the unit still included it
+after the demos lost their library paths; fixed (project_check.py now flags
+any demo source that includes it). SteamConsole then PASSED (17:03, log
+checked): all 5 plug-ins, live data from each, the 6 achievements with
+unlock times, callbacks 336 / 304 named, clean shutdown. Local-time
+conversion CONFIRMED against the Steam client's achievements page: all 6
+unlock times match to the minute, including RANK_001 (unlocked in summer
+time, 09:58 in both - UTC would have shown 08:58).
+SteamDemo (FMX) and SteamDemoVCL, Win64, 17:14 / 17:15 (logs checked): all
+5 plug-ins, own large avatar handle 8 at once (cached, so the -1 ->
+OnAvatarImageLoaded path is still unexercised), 1 friend listed, 6
+achievements with local times; RANK_001-004 icons 11-14 at once;
+Played_000001 / _000005 report icon 0 and OnUserAchievementIconFetched
+(1109, 144 bytes, payload check passed) also says 0 = "no image set" per
+Valve; the Steam client shows its default starburst for both. RESOLVED: the
+AppID's achievements are throw-away test data (owner) and those two have no
+icon of their own (confirmed on the partner site) - icon 0 is correct. OnPersonaStateChange $4010
+(GamePlayed + RichPresence) for the own SteamID. Close clean, no leaks (VCL
+Debug). The demos did not log friend avatar handles - now they do.
+17:43 / 17:45 (after icons were added to Played_000001 / _000005, published,
+Steam client restarted): icon FETCH PATH PROVEN - the VCL run got
+OnUserAchievementIconFetched for all 6 (handles 11-16) and showed every
+icon in the right colours (RGBA -> BGRA swap correct). Stop / Start clean.
+Steam -> Exit with components attached (FMX and VCL): as before on
+Windows - two close requests (FormClose twice, the second with Steam running
+False), no 704, SteamAPI shut down once, clean.
+Fresh project, no library paths (test 3): Win64 compiled at once; Win32
+failed F2613 'Steamworks.Types' until the runtime packages were built for
+Win32 (new projects start on Win32) - expected, now in README Known issues.
+The owner works in the 32-bit IDE as well: there the design packages are
+built Win32 and installed separately (each IDE has its own package list).
+No OnInitFailed + Steam not running (test 4, Win32, 18:03): ESteamworksError
+"Steam did not start (result 2): ... Steam is probably not running." shown
+- no silent failure, BUT the app then DIED: Active := True in FormCreate
+raised, and the exception escaped Application.CreateForm. Fixed: a failed
+start with no OnInitFailed is now SHOWN (ShowHandlerException), never raised,
+from code and from the form file alike; Active stays False. Also fixed: FMX
+ShowHandlerException called Application.HandleException(E), which shows
+ExceptObject (nil outside an except block) - now Application.ShowException(E)
+like VCL / LCL. RE-TESTED 18:14 (Demo7, Win32 packages rebuilt): message,
+then the form stays open. (A first re-run still died - stale Win32 DCUs:
+the packages had been rebuilt for Win64 only.)
+Next:
+1. Owner builds everything on Win64 in this order: Steamworks,
+   dclSteamworks (install), SteamworksFMX, dclSteamworksFMX (install), both
+   demos. Expect compiler messages to fix - nothing generated has been
+   compiled yet. Then: drop a TSteamAPI and a TSteamFriends on a form in the
+   IDE (palette, Object Inspector events). SteamDemo: Start must log
+   "TSteamFriends.OnPersonaStateChange: SteamID ..." (callback 304 arrived on
+   every Windows start so far); Show info / SteamConsole print one line per
+   plug-in (User, Friends, Apps, UserStats). Then the other platforms.
+2. Next generator batch: RemoteStorage, UGC, Screenshots, Timeline, ...; then
+   C union support -> Networking*, Input; game-server interfaces last.
+

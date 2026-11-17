@@ -1,0 +1,28 @@
+  { Steam struct SteamNetworkingIdentity: who is on the other end of a
+    connection - a SteamID, an IP address, a string or bytes; m_eType says
+    which union member is valid (steamnetworkingtypes.h, pack(1)).
+    Hand-written (tools/sdk_extras/SteamNetworkingIdentity.pas.txt).
+    C type: SteamNetworkingIdentity. }
+  SteamNetworkingIdentity = packed record
+    { Which member below is valid (k_ESteamNetworkingIdentityType_...). }
+    m_eType: ESteamNetworkingIdentityType;
+    { Bytes used in the union (set by Valve's Set... helpers). }
+    m_cbSize: Integer;
+    case Integer of
+      { k_ESteamNetworkingIdentityType_SteamID. }
+      0: (m_steamID64: UInt64);
+      { k_ESteamNetworkingIdentityType_PSN. }
+      1: (m_PSNID: UInt64);
+      { k_ESteamNetworkingIdentityType_GenericString (NUL-terminated). }
+      2: (m_szGenericString: array[0..31] of AnsiChar);
+      { k_ESteamNetworkingIdentityType_XboxPairwiseID (NUL-terminated). }
+      3: (m_szXboxPairwiseID: array[0..32] of AnsiChar);
+      { k_ESteamNetworkingIdentityType_GenericBytes. }
+      4: (m_genericBytes: array[0..31] of UInt8);
+      { k_ESteamNetworkingIdentityType_UnknownType: the identity as a string. }
+      5: (m_szUnknownRawString: array[0..127] of AnsiChar);
+      { k_ESteamNetworkingIdentityType_IPAddress. }
+      6: (m_ip: SteamNetworkingIPAddr);
+      { Reserved: fixes the size of the union. }
+      7: (m_reserved: array[0..31] of UInt32);
+  end;
