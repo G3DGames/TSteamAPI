@@ -3667,6 +3667,19 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   COMPILED.
 
 ## Handover (2026-11-17, sixteenth session) - READ THIS FIRST
+Zip BigPicture1 (on top of push a58bd1d = Screen3; Screen4 DECLINED by
+the owner - the real fix was Per Monitor v2 DPI awareness in Epubunum's
+.dproj, after which FMX reported scale 1.50 / 3840 x 2160 correctly).
+Owner's Windows Big Picture run of EpubReader: "Big Picture: yes -
+BigPictureWindow bpwMaximized: no form to change" - Epubunum creates
+TSteamAPI in the .dpr, before any form. FMX / VCL / LCL TSteamAPI:
+ApplyBigPictureWindow without a form sets FBigPicturePending; TimerTick
+(sumTimer) applies it once HostForm <> nil and logs "Big Picture: the
+main form exists now - ...". docs/components/TSteamAPI.md says so.
+Same Big Picture run, screen: 27.2" 4K at 150 % -> big-screen interface,
+UI scale 1.75, viewing distance 1103 mm (SteamScreenInfo works on Win64).
+RUNTIME RECOMPILE: STEAMWORKSFMX, STEAMWORKSVCL, STEAMWORKSLCL (Lazarus).
+
 Work happens from the Epubunum sessions (EpubReader / EpubBuilder use
 TSteamAPI for their Steam builds). Zip Screen1, based on push ea0a132,
 replaces TSteamAPI-FreeType1 (not pushed yet) and contains it:

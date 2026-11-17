@@ -193,6 +193,19 @@ Big Picture: yes - BigPictureWindow bpwMaximized: TfrmGamepad maximised on a 192
 Big Picture: no - window left as designed
 ```
 
+When Steam is started before any form exists (a `TSteamAPI` created in the
+.dpr, with no owner), the change waits: the callback timer applies it as
+soon as the application has a main form (with `UpdateMode` `sumTimer`, the
+default), and a second line says so:
+
+```
+Big Picture: yes - BigPictureWindow bpwMaximized: no form to change yet (...) - changed once the main form exists
+Big Picture: the main form exists now - TfrmMain maximised on a 3840 x 2160 pixel display
+```
+
+For the size of the display in millimetres and a suggested scale for a
+big-screen layout, see `SteamScreenInfo` (Steamworks.FMX.Screen).
+
 `InBigPicture` keeps the answer and `DisplaySize` reports the display for
 your own layout code. Steam itself has no call for the display size.
 

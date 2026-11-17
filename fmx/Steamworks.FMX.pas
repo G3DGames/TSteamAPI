@@ -48,7 +48,12 @@ type
   private
     { Timer that pumps callbacks on the UI thread. }
     FTimer: TTimer;
-    { Timer handler: pumps callbacks. }
+    { Big Picture was found before there was a form to change (Steam
+      started in the .dpr): @link(TimerTick) applies BigPictureWindow once
+      the main form exists. }
+    FBigPicturePending: Boolean;
+    { Timer handler: pumps callbacks; applies a Big Picture window change
+      that had to wait for the main form. }
     procedure TimerTick(Sender: TObject);
     { The form this component belongs to: its owner when that is a form,
       else Application.MainForm (@nil while the main form is still being
@@ -320,8 +325,19 @@ begin
 end;
 
 procedure TSteamAPI.TimerTick(Sender: TObject);
+var
+  Done: string;
 begin
   RunCallbacks;
+  // Big Picture found before any form existed (Steam opened in the .dpr,
+  // EpubReader 2026-11-17): the window is changed now
+  if FBigPicturePending and (HostForm <> nil) then
+  begin
+    FBigPicturePending := False;
+    Done := ApplyBigPictureWindow(BigPictureWindow);
+    if TSteamworks.HasInstance then
+      TSteamworks.Instance.Log(sllInfo, 'Big Picture: the main form exists now - ' + Done);
+  end;
 end;
 
 procedure TSteamAPI.PumpStart(AIntervalMs: Integer);
@@ -382,7 +398,12 @@ var
 begin
   F := HostForm;
   if F = nil then
-    Exit('no form to change (the owner is not a form and Application.MainForm is not set yet)');
+  begin
+    // changed by TimerTick once there is a main form
+    FBigPicturePending := True;
+    Exit('no form to change yet (the owner is not a form and Application.MainForm is not set yet) - ' +
+      'changed once the main form exists');
+  end;
   if AMode = bpwFullScreen then
   begin
     F.FullScreen := True;
