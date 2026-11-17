@@ -3667,6 +3667,19 @@ LINUX64 COMPLETE (both demos: run, info, stop/restart, close, Steam exit).
   COMPILED.
 
 ## Handover (2026-11-17, sixteenth session) - READ THIS FIRST
+Zip FullScreen1 (on top of push 7953ab9 = BigPicture1, which WORKS:
+"Big Picture: the main form exists now - TfrmMain maximised", owner
+20:53). Owner: maximised still shows taskbar, caption, menu; see his
+SRDelphiFMX (lib/Lenticular.StereoViewport.pas ApplyFullScreen). FMX
+TSteamAPI bpwFullScreen on Windows now does that: GWL_STYLE minus
+WS_OVERLAPPEDWINDOW and WS_MAXIMIZE, SetWindowPos to rcMonitor
+(SWP_FRAMECHANGED), a comctl32 subclass holding the rectangle
+(WM_WINDOWPOSCHANGING), ITaskbarList2.MarkFullscreenWindow. NOT topmost
+(Steam's overlay / Big Picture must come over it). Hold released in
+Destroy. Winapi.Windows in the implementation uses has its own TBitmap:
+FMX's is written FMX.Graphics.TBitmap there. NOT COMPILED. Epubunum zip 93
+sets bpwFullScreen and leaves EpubReader's menu off in Big Picture.
+
 Zip BigPicture1 (on top of push a58bd1d = Screen3; Screen4 DECLINED by
 the owner - the real fix was Per Monitor v2 DPI awareness in Epubunum's
 .dproj, after which FMX reported scale 1.50 / 3840 x 2160 correctly).

@@ -193,6 +193,16 @@ Big Picture: yes - BigPictureWindow bpwMaximized: TfrmGamepad maximised on a 192
 Big Picture: no - window left as designed
 ```
 
+`bpwFullScreen` on Windows (FMX) does not use FMX's own `FullScreen`,
+which re-creates the window and, above 100 % scaling, sizes it in steps:
+the form's own window loses its caption and frame, is placed over its
+monitor's whole rectangle in physical pixels (over the taskbar), is held
+there (a window subclass undoes any move or size FMX makes from its
+rounded logical bounds), and the shell is told it is full screen
+(`ITaskbarList2.MarkFullscreenWindow`). A main menu, if the form has one,
+stays: leave it off in Big Picture (`InBigPicture`). Elsewhere it is
+FMX's `FullScreen`.
+
 When Steam is started before any form exists (a `TSteamAPI` created in the
 .dpr, with no owner), the change waits: the callback timer applies it as
 soon as the application has a main form (with `UpdateMode` `sumTimer`, the

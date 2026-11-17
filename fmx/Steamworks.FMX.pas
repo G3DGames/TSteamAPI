@@ -193,9 +193,159 @@ function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TByte
 implementation
 
 uses
+  // Winapi.Windows has a TBitmap too: FMX's is written FMX.Graphics.TBitmap
+  // below
+  {$IFDEF MSWINDOWS}
+  Winapi.Windows, Winapi.Messages, Winapi.MultiMon, Winapi.ShlObj, System.Win.ComObj,
+  FMX.Platform.Win,
+  {$ENDIF}
   UITypes, Steamworks.Plugin.Utils;
 
-function SteamImageToBitmap(AImage: Integer; ABitmap: TBitmap): Boolean;
+{$IFDEF MSWINDOWS}
+// Full screen on Windows, as SRDelphiFMX's LenticularDemoFMX does it (the
+// owner's): FMX's own FullScreen re-creates the window and, above 100 %
+// scaling, sizes it in steps; and a maximised window keeps the taskbar,
+// the caption and the frame (Big Picture, 2026-11-17). Instead the form's
+// own window loses its frame, covers its monitor in physical pixels, is
+// held there, and the shell is told it is full screen.
+
+type
+  { comctl32's SUBCLASSPROC. }
+  TSubclassProc = function(AWnd: HWND; AMsg: UINT; AWParam: WPARAM; ALParam: LPARAM;
+    AIdSubclass: UIntPtr; ARefData: UIntPtr): LRESULT; stdcall;
+
+{ comctl32's SetWindowSubclass.
+  @param(AWnd the window) @param(AProc the subclass procedure)
+  @param(AIdSubclass our id) @param(ARefData passed to AProc)
+  @returns(@true on success) }
+function SetWindowSubclass(AWnd: HWND; AProc: TSubclassProc; AIdSubclass: UIntPtr;
+  ARefData: UIntPtr): BOOL; stdcall; external 'comctl32.dll';
+{ comctl32's RemoveWindowSubclass.
+  @param(AWnd the window) @param(AProc the subclass procedure)
+  @param(AIdSubclass our id)
+  @returns(@true on success) }
+function RemoveWindowSubclass(AWnd: HWND; AProc: TSubclassProc; AIdSubclass: UIntPtr): BOOL; stdcall;
+  external 'comctl32.dll';
+{ comctl32's DefSubclassProc: passes a message on.
+  @param(AWnd the window) @param(AMsg the message) @param(AWParam wParam)
+  @param(ALParam lParam)
+  @returns(the result) }
+function DefSubclassProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM; ALParam: LPARAM): LRESULT; stdcall;
+  external 'comctl32.dll';
+
+const
+  { Our subclass of the form's window ('SBPF'). }
+  HOLD_SUBCLASS_ID = $53425046;
+
+var
+  { The full-screen window being held (0: none). }
+  GHoldWnd: HWND = 0;
+  { Where it is held, physical pixels. }
+  GHoldRect: TRect;
+
+{ In front of FMX's window procedure while full screen: any move or size
+  (FMX sizes from its rounded logical bounds - one pixel off at some
+  scalings) is turned into the full-screen rectangle before it happens.
+  @param(AWnd the window) @param(AMsg the message) @param(AWParam wParam)
+  @param(ALParam lParam) @param(AIdSubclass our id) @param(ARefData unused)
+  @returns(the next window procedure's result) }
+function HoldWindowProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM; ALParam: LPARAM;
+  AIdSubclass: UIntPtr; ARefData: UIntPtr): LRESULT; stdcall;
+var
+  Pos: PWindowPos;
+begin
+  if (AMsg = WM_WINDOWPOSCHANGING) and (AWnd = GHoldWnd) then
+  begin
+    Pos := PWindowPos(ALParam);
+    if (((Pos.flags and SWP_NOMOVE) = 0) and ((Pos.x <> GHoldRect.Left) or (Pos.y <> GHoldRect.Top))) or
+      (((Pos.flags and SWP_NOSIZE) = 0) and ((Pos.cx <> GHoldRect.Width) or
+      (Pos.cy <> GHoldRect.Height))) then
+    begin
+      Pos.x := GHoldRect.Left;
+      Pos.y := GHoldRect.Top;
+      Pos.cx := GHoldRect.Width;
+      Pos.cy := GHoldRect.Height;
+    end;
+  end;
+  Result := DefSubclassProc(AWnd, AMsg, AWParam, ALParam);
+end;
+
+{ Stops holding the window (it is freed, or the program ends). }
+procedure ReleaseHold;
+begin
+  if GHoldWnd <> 0 then
+  begin
+    if IsWindow(GHoldWnd) then
+      RemoveWindowSubclass(GHoldWnd, HoldWindowProc, HOLD_SUBCLASS_ID);
+    GHoldWnd := 0;
+  end;
+end;
+
+{ Tells the shell the window is full screen, so the taskbar keeps out of
+  its way (ITaskbarList2).
+  @param(AWnd the window)
+  @returns('' on success, else what went wrong) }
+function MarkFullscreen(AWnd: HWND): string;
+var
+  TaskBar: ITaskbarList2;
+  HR: HRESULT;
+begin
+  Result := '';
+  try
+    TaskBar := CreateComObject(CLSID_TaskbarList) as ITaskbarList2;
+    HR := TaskBar.HrInit;
+    if Succeeded(HR) then
+      HR := TaskBar.MarkFullscreenWindow(AWnd, True);
+    if Failed(HR) then
+      Result := Format('ITaskbarList2 failed, HRESULT $%.8x', [Cardinal(HR)]);
+  except
+    on E: Exception do
+      Result := 'ITaskbarList2 not available: ' + E.Message;
+  end;
+end;
+
+{ Makes AForm's window cover its monitor: no caption or frame, the
+  monitor's whole rectangle (taskbar included), held there.
+  @param(AForm the form)
+  @returns(what was done, for the log) }
+function WindowsFullScreen(AForm: TCommonCustomForm): string;
+var
+  Wnd: HWND;
+  Mon: HMONITOR;
+  MI: TMonitorInfo;
+  R: TRect;
+  Style: NativeInt;
+  Taskbar: string;
+begin
+  Wnd := FormToHWND(AForm);
+  if Wnd = 0 then
+    Exit('no window yet');
+  Mon := MonitorFromWindow(Wnd, MONITOR_DEFAULTTONEAREST);
+  FillChar(MI, SizeOf(MI), 0);
+  MI.cbSize := SizeOf(MI);
+  if not GetMonitorInfo(Mon, @MI) then
+    Exit('no monitor found for the window');
+  R := MI.rcMonitor;
+  ReleaseHold;
+  GHoldRect := R;
+  if SetWindowSubclass(Wnd, HoldWindowProc, HOLD_SUBCLASS_ID, 0) then
+    GHoldWnd := Wnd;
+  // WS_MAXIMIZE too: a maximised window is kept to the work area, which
+  // leaves the taskbar showing
+  Style := GetWindowLongPtr(Wnd, GWL_STYLE);
+  SetWindowLongPtr(Wnd, GWL_STYLE, Style and not (WS_OVERLAPPEDWINDOW or WS_MAXIMIZE));
+  SetWindowPos(Wnd, HWND_TOP, R.Left, R.Top, R.Width, R.Height, SWP_NOOWNERZORDER or SWP_FRAMECHANGED);
+  Taskbar := MarkFullscreen(Wnd);
+  Result := Format('full screen, borderless at (%d, %d) %d x %d physical pixels', [R.Left, R.Top,
+    R.Width, R.Height]);
+  if GHoldWnd = 0 then
+    Result := Result + ' (not held: SetWindowSubclass failed)';
+  if Taskbar <> '' then
+    Result := Result + ' (' + Taskbar + ')';
+end;
+{$ENDIF}
+
+function SteamImageToBitmap(AImage: Integer; ABitmap: FMX.Graphics.TBitmap): Boolean;
 var
   U: TSteamUtilsPlugin;
   Pixels: TBytes;
@@ -233,7 +383,7 @@ begin
   Result := True;
 end;
 
-function SteamBitmapToRGB(ABitmap: TBitmap): TBytes;
+function SteamBitmapToRGB(ABitmap: FMX.Graphics.TBitmap): TBytes;
 var
   Data: TBitmapData;
   X, Y: Integer;
@@ -266,7 +416,7 @@ end;
 
 function SteamFormToRGB(AForm: TCustomForm; out AWidth, AHeight: Integer): TBytes;
 var
-  Bmp: TBitmap;
+  Bmp: FMX.Graphics.TBitmap;
   Scale: Single;
   W, H: Integer;
 begin
@@ -284,7 +434,7 @@ begin
   H := Round(AForm.ClientHeight * Scale);
   if (W <= 0) or (H <= 0) then
     Exit;
-  Bmp := TBitmap.Create(W, H);
+  Bmp := FMX.Graphics.TBitmap.Create(W, H);
   try
     // Logical coordinates -> physical pixels, as on screen
     Bmp.BitmapScale := Scale;
@@ -319,6 +469,9 @@ end;
 
 destructor TSteamAPI.Destroy;
 begin
+  {$IFDEF MSWINDOWS}
+  ReleaseHold;
+  {$ENDIF}
   PumpStop;
   inherited;          // may call PumpStop again: FTimer is still valid here
   FreeAndNil(FTimer);
@@ -406,8 +559,12 @@ begin
   end;
   if AMode = bpwFullScreen then
   begin
+    {$IFDEF MSWINDOWS}
+    Result := F.ClassName + ' ' + WindowsFullScreen(F);
+    {$ELSE}
     F.FullScreen := True;
     Result := F.ClassName + ' full screen';
+    {$ENDIF}
   end
   else
   begin
